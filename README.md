@@ -17,6 +17,7 @@ Alfred workflows for macOS users.
 - Search Spotify tracks: use **Spotify Search** (`sp`)
 - Search Wikipedia articles: use **Wiki Search** (`wk`)
 - Search Cambridge dictionary entries: use **Cambridge Dict** (`cd`)
+- Evaluate market expressions with FX/crypto conversion: use **Market Expression** (`mx`)
 - Browse and copy quotes: use **Quote Feed** (`qq`)
 - Find/open local projects: use **Open Project** (`c`, `code`, `github`)
 - Convert epoch and datetime values: use **Epoch Converter** (`ts`)
@@ -32,11 +33,26 @@ Alfred workflows for macOS users.
 | [Spotify Search](workflows/spotify-search/README.md) | `sp` | Search Spotify tracks and open selected results in Spotify app. | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |
 | [Wiki Search](workflows/wiki-search/README.md) | `wk` | Search Wikipedia articles and open selected page links. | No |
 | [Cambridge Dict](workflows/cambridge-dict/README.md) | `cd` | Two-stage Cambridge dictionary lookup (candidate -> detail) with Enter-to-open entry URL. | Node + Playwright runtime for scraper backend |
+| [Market Expression](workflows/market-expression/README.md) | `mx` | Evaluate market expressions (numeric: `+ - * /`, assets: `+ -`) with FX/crypto conversion and copy selected rows. | Optional tuning: `MARKET_CLI_BIN`, `MARKET_DEFAULT_FIAT` |
 | [Quote Feed](workflows/quote-feed/README.md) | `qq` | Show cached quotes, refresh in background, and copy a selected quote. | Optional tuning: `QUOTE_DISPLAY_COUNT`, `QUOTE_REFRESH_INTERVAL`, `QUOTE_FETCH_COUNT`, `QUOTE_MAX_ENTRIES`, `QUOTE_DATA_DIR` |
 | [Open Project](workflows/open-project/README.md) | `c`, `code`, `github` | Fuzzy-find local Git projects, open in editor, and jump to GitHub remotes. | Optional tuning: `OPEN_PROJECT_MAX_RESULTS` |
 | [Epoch Converter](workflows/epoch-converter/README.md) | `ts` | Convert epoch/datetime values and copy selected output. | No |
 | [Multi Timezone](workflows/multi-timezone/README.md) | `tz` | Show current time across one or more IANA timezones and copy selected output. | Optional tuning: `TIMEZONE_CLI_BIN`, `MULTI_TZ_ZONES`, `MULTI_TZ_LOCAL_OVERRIDE` |
 | [Randomer](workflows/randomer/README.md) | `rr`, `rrv` | Generate random values by format and copy results. | No |
+
+## Market CLI capability (backend only)
+
+- `market-cli` powers the `market-expression` workflow and remains reusable for other workflows.
+- Command surface:
+  - `market-cli fx --base USD --quote JPY --amount 100`
+  - `market-cli crypto --base BTC --quote USD --amount 0.5`
+- Provider stack (no API key):
+  - FX: Frankfurter (`24h` TTL)
+  - Crypto: Coinbase primary + Kraken fallback (`5m` TTL)
+- Success output is deterministic JSON with freshness states:
+  - `live`
+  - `cache_fresh`
+  - `cache_stale_fallback`
 
 ## Troubleshooting
 

@@ -1,0 +1,18 @@
+[package]
+name = "market-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+alfred-core = { path = "../alfred-core" }
+chrono.workspace = true
+clap.workspace = true
+reqwest.workspace = true
+rust_decimal.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

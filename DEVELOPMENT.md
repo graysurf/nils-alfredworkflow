@@ -51,6 +51,13 @@
 - Run CI-style tests + generate JUnit:
   - `cargo nextest run --profile ci --workspace`
 
+### Market CLI live smoke (optional manual)
+
+- Live endpoint sanity check script:
+  - `bash scripts/market-cli-live-smoke.sh`
+- This is optional maintainer validation for `market-cli` provider freshness/contract behavior.
+- It is not required for commit gates or CI pass/fail.
+
 ## Coverage (optional)
 
 - Install tools:
