@@ -15,7 +15,10 @@ This document lists required local tools for development, linting, testing, and 
 - Cargo tools: `cargo-nextest`, `cargo-llvm-cov`
 - Core CLI/runtime: `git`, `jq`, `rg` (ripgrep)
 - Shell tooling: `shellcheck`, `shfmt`
+- Node runtime: `node`, `npm`
+- Node dependency: `playwright` package (managed via root `package.json`)
 - Packaging/runtime helpers: `zip`, `unzip`, `open` (macOS install/runtime), `xdg-open` (Linux CI/local smoke compatibility)
+- Optional live scraper runtime: Playwright Chromium browser (`npx playwright install chromium`)
 
 ## Install (macOS)
 
@@ -28,6 +31,11 @@ brew install shellcheck shfmt
 
 # Packaging helpers
 brew install zip unzip
+
+# Node + Playwright deps for cambridge-dict scraper tests
+npm ci
+# Optional (only for live scraping checks)
+npx playwright install chromium
 ```
 
 ## Install (Ubuntu/Debian)
@@ -39,6 +47,11 @@ sudo apt-get install -y build-essential pkg-config libssl-dev git jq ripgrep she
 
 # Rust + cargo tools used by this repo
 scripts/setup-rust-tooling.sh
+
+# Node + Playwright deps for cambridge-dict scraper tests
+npm ci
+# Optional (only for live scraping checks)
+npx playwright install chromium
 ```
 
 ## Verify
@@ -55,5 +68,8 @@ jq --version
 rg --version
 shellcheck --version
 shfmt --version
+node --version
+npm --version
+npx playwright --version
 zip -v | head -n 1
 ```

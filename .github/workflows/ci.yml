@@ -22,6 +22,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git jq ripgrep shellcheck shfmt zip unzip
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -37,6 +46,9 @@ jobs:
 
       - name: Lint
         run: scripts/workflow-lint.sh
+
+      - name: Node scraper tests
+        run: npm run test:cambridge-scraper
 
       - name: Test
         run: scripts/workflow-test.sh

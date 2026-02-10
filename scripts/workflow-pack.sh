@@ -147,6 +147,25 @@ package_one() {
 
   if [[ "$install_after" -eq 1 ]]; then
     open "$artifact"
+
+    if [[ "$id" == "cambridge-dict" ]]; then
+      # Alfred import can replace the workflow directory shortly after `open`.
+      # Delay and retry runtime setup so node_modules is not immediately wiped.
+      local runtime_ready=0
+      for _ in $(seq 1 3); do
+        sleep 2
+        if "$repo_root/scripts/setup-cambridge-workflow-runtime.sh" \
+          --wait-for-install \
+          --skip-browser \
+          --quiet; then
+          runtime_ready=1
+          break
+        fi
+      done
+      if [[ "$runtime_ready" -ne 1 ]]; then
+        echo "warn: cambridge runtime setup failed; run scripts/setup-cambridge-workflow-runtime.sh manually" >&2
+      fi
+    fi
   fi
 }
 
