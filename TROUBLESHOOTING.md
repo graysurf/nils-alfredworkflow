@@ -24,6 +24,7 @@
 | OP-03 | Error: `No such file or directory: /Users/.../Application` | Command path with spaces was unquoted (`$workflow_cli ...`). | Quote executable path (`"$workflow_cli" ...`). | Run installed `./scripts/script_filter.sh ""` and confirm JSON output. |
 | OP-04 | Repo list works, Enter open fails with `not a directory`. | Action chain passed path with trailing newline to open action. | Ensure `record_usage` outputs path without trailing newline; keep strict directory check in open action. | Alfred log shows Script Filter -> Record Usage -> Open completes. |
 | OP-05 | Script Filter failure produced blank UI. | Failure path only wrote stderr, no valid Alfred JSON response. | Add fallback error item JSON in `script_filter.sh`. | Deliberately break CLI path and verify `Open Project error` item appears. |
+| OP-06 | macOS popup: `"workflow-cli" Not Opened` / `Apple could not verify ...`. | Downloaded release artifact carried `com.apple.quarantine`; Gatekeeper blocked unsigned binary in workflow package. | Runtime scripts now clear quarantine on `workflow-cli` before execution (`xattr -d com.apple.quarantine`). | Trigger Script Filter once after install; workflow loads without Gatekeeper popup. |
 
 ## Installed-Workflow Debug Commands
 
@@ -93,3 +94,24 @@ When touching workflow runtime wiring (`info.plist.template` or script chain), a
 - `scripts/workflow-lint.sh`
 - `bash workflows/open-project/tests/smoke.sh`
 - `scripts/workflow-pack.sh --id open-project --install`
+
+## macOS Gatekeeper / Quarantine Fix
+
+If installed release workflow shows `"workflow-cli" Not Opened`, remove quarantine on the installed workflow package:
+
+```bash
+WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
+  [ -f "$p" ] || continue
+  bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
+  [ "$bid" = "com.graysurf.open-project" ] && dirname "$p"
+done | head -n1)"
+
+[ -n "$WORKFLOW_DIR" ] || { echo "workflow not found"; exit 1; }
+xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
+echo "ok: removed quarantine from $WORKFLOW_DIR"
+```
+
+Notes:
+
+- Runtime scripts also perform best-effort quarantine cleanup on `bin/workflow-cli` automatically.
+- This issue only applies to macOS Gatekeeper; Linux runners are unaffected.

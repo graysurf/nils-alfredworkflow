@@ -1,8 +1,26 @@
 #!/bin/sh
 set -eu
 
+clear_quarantine_if_needed() {
+  cli_path="$1"
+
+  if [ "$(uname -s 2>/dev/null || printf '')" != "Darwin" ]; then
+    return 0
+  fi
+
+  if ! command -v xattr >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Release artifacts downloaded from GitHub may carry quarantine.
+  if xattr -p com.apple.quarantine "$cli_path" >/dev/null 2>&1; then
+    xattr -d com.apple.quarantine "$cli_path" >/dev/null 2>&1 || true
+  fi
+}
+
 resolve_workflow_cli() {
   if [ -n "${WORKFLOW_CLI_BIN:-}" ] && [ -x "${WORKFLOW_CLI_BIN}" ]; then
+    clear_quarantine_if_needed "${WORKFLOW_CLI_BIN}"
     printf '%s\n' "${WORKFLOW_CLI_BIN}"
     return 0
   fi
@@ -14,6 +32,7 @@ resolve_workflow_cli() {
 
   packaged_cli="$script_dir/../bin/workflow-cli"
   if [ -x "$packaged_cli" ]; then
+    clear_quarantine_if_needed "$packaged_cli"
     printf '%s\n' "$packaged_cli"
     return 0
   fi
@@ -25,12 +44,14 @@ resolve_workflow_cli() {
 
   release_cli="$repo_root/target/release/workflow-cli"
   if [ -x "$release_cli" ]; then
+    clear_quarantine_if_needed "$release_cli"
     printf '%s\n' "$release_cli"
     return 0
   fi
 
   debug_cli="$repo_root/target/debug/workflow-cli"
   if [ -x "$debug_cli" ]; then
+    clear_quarantine_if_needed "$debug_cli"
     printf '%s\n' "$debug_cli"
     return 0
   fi
