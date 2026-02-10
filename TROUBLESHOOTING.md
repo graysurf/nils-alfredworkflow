@@ -14,20 +14,33 @@
 4. Verify action-chain payload handoff (arg formatting, newline/whitespace safety).
 5. Add regression assertions into smoke tests when a bug is fixed.
 
-## Case Log
+## Workflow: open-project
 
-### Case: open-project migration (2026-02-10)
+### Quick operator checks
 
-| ID | Symptom | Root Cause | Fix | Verification |
-| --- | --- | --- | --- | --- |
-| OP-01 | Looked successful, but deleting old workflow broke behavior. | Validation accidentally hit old installed workflow. | Locate installed workflow by `bundleid` before testing. | Resolve `bundleid=com.graysurf.open-project` under Alfred workflows directory. |
-| OP-02 | Script Filter finished with no items. | `scriptfile` was set but node `config.type` stayed `0` (inline mode). | Set Script Filter / Action node `config.type=8` for external script mode. | `plutil ... | jq` confirms `config.type == 8`. |
-| OP-03 | Error: `No such file or directory: /Users/.../Application` | Command path with spaces was unquoted (`$workflow_cli ...`). | Quote executable path (`"$workflow_cli" ...`). | Run installed `./scripts/script_filter.sh ""` and confirm JSON output. |
-| OP-04 | Repo list works, Enter open fails with `not a directory`. | Action chain passed path with trailing newline to open action. | Ensure `record_usage` outputs path without trailing newline; keep strict directory check in open action. | Alfred log shows Script Filter -> Record Usage -> Open completes. |
-| OP-05 | Script Filter failure produced blank UI. | Failure path only wrote stderr, no valid Alfred JSON response. | Add fallback error item JSON in `script_filter.sh`. | Deliberately break CLI path and verify `Open Project error` item appears. |
-| OP-06 | macOS popup: `"workflow-cli" Not Opened` / `Apple could not verify ...`. | Downloaded release artifact carried `com.apple.quarantine`; Gatekeeper blocked unsigned binary in workflow package. | Runtime scripts now clear quarantine on `workflow-cli` before execution (`xattr -d com.apple.quarantine`). | Trigger Script Filter once after install; workflow loads without Gatekeeper popup. |
+1. Confirm latest package was installed:
+   - `scripts/workflow-pack.sh --id open-project --install`
+2. Confirm you are testing the current installed workflow copy:
+   - Resolve installed path by `bundleid=com.graysurf.open-project`.
+3. Inspect runtime node config in installed `info.plist`:
+   - Script nodes should use external script mode (`config.type=8`) with expected `scriptfile`.
+4. Run scripts directly from the installed workflow directory:
+   - `./scripts/script_filter.sh "" | jq '.items | length'`
+5. Verify action-chain payload handoff:
+   - Confirm `Script Filter -> Record Usage -> Open` keeps path args without trailing newline.
 
-## Installed-Workflow Debug Commands
+### Common failures and actions
+
+| Symptom in Alfred | Likely cause | Action |
+| --- | --- | --- |
+| Looks successful, but deleting old workflow breaks behavior. | Validation accidentally hit an old installed workflow copy. | Locate installed workflow by `bundleid` before testing and verify target path explicitly. |
+| Script Filter finishes with no items. | `scriptfile` is set but node `config.type` stayed `0` (inline mode). | Set Script Filter / Action node `config.type=8` for external script mode, then re-pack/reinstall. |
+| Error: `No such file or directory: /Users/.../Application` | Command path with spaces was unquoted (`$workflow_cli ...`). | Quote executable path (`"$workflow_cli" ...`) and verify JSON output from installed script. |
+| Repo list works, but Enter open fails with `not a directory`. | Action chain passed path with trailing newline to open action. | Ensure `record_usage` emits path without trailing newline; keep strict directory check in open action. |
+| Script Filter failure shows blank UI. | Failure path only writes stderr and returns no Alfred JSON response. | Add fallback error item JSON in `script_filter.sh` so failures still render in Alfred. |
+| `"workflow-cli" Not Opened` / `Apple could not verify ...` | Packaged binary carries `com.apple.quarantine`; Gatekeeper blocks execution. | Clear quarantine on installed workflow package (or rely on runtime best-effort cleanup) and retry. |
+
+### Installed-workflow debug commands (open-project)
 
 ```bash
 # 1) Find installed workflow directory by bundle id
@@ -46,7 +59,7 @@ cd "$WORKFLOW_DIR"
 ./scripts/script_filter.sh "" | jq '.items | length'
 ```
 
-## Icon Setup (Workflow Object / Result Items)
+### Icon setup (open-project)
 
 Alfred has two different icon layers. If icon behavior looks inconsistent, verify which layer you are changing.
 
@@ -88,7 +101,7 @@ cd "$WORKFLOW_DIR"
 ./scripts/script_filter_github.sh "" | jq -r '.items[0].icon.path'
 ```
 
-## Regression Guardrails
+### Regression guardrails (open-project)
 
 When touching workflow runtime wiring (`info.plist.template` or script chain), always run:
 
@@ -96,7 +109,7 @@ When touching workflow runtime wiring (`info.plist.template` or script chain), a
 - `bash workflows/open-project/tests/smoke.sh`
 - `scripts/workflow-pack.sh --id open-project --install`
 
-## macOS Gatekeeper / Quarantine Fix
+### macOS Gatekeeper fix (open-project)
 
 If installed release workflow shows `"workflow-cli" Not Opened`, remove quarantine on the installed workflow package:
 
@@ -117,7 +130,22 @@ Notes:
 - Runtime scripts also perform best-effort quarantine cleanup on `bin/workflow-cli` automatically.
 - This issue only applies to macOS Gatekeeper; Linux runners are unaffected.
 
-## YouTube Search rollout support
+### Rollback guidance (open-project)
+
+Use this when open-project behavior regresses and a fast fallback is required.
+
+1. Stop rollout of new `open-project` artifacts (pause release/distribution link).
+2. Revert open-project changeset(s), including:
+   - `workflows/open-project/`
+   - `crates/workflow-cli/`
+   - related docs updates tied to open-project rollout.
+3. Rebuild and validate rollback state:
+   - `scripts/workflow-lint.sh`
+   - `scripts/workflow-test.sh`
+   - `scripts/workflow-pack.sh --all`
+4. Publish known-good artifact set and post operator notice.
+
+## Workflow: youtube-search
 
 ### Quick operator checks
 
@@ -166,7 +194,7 @@ Notes:
 - Keep fallback item titles/subtitles stable so support can match screenshots quickly.
 - Record a short incident note for each production-facing outage window.
 
-### Emergency rollback (youtube-search)
+### Rollback guidance (youtube-search)
 
 Use this when API failures are sustained or workflow usability drops sharply.
 
@@ -184,7 +212,7 @@ Use this when API failures are sustained or workflow usability drops sharply.
    - Explain that `youtube-search` is temporarily disabled.
    - Provide ETA/workaround and support contact path.
 
-## Google Search rollout support (Brave backend)
+## Workflow: google-search
 
 ### Quick operator checks
 
@@ -234,7 +262,7 @@ Notes:
 - Keep fallback titles/subtitles stable so support can match screenshots quickly.
 - Record short incident notes for each production-facing outage window.
 
-### Emergency rollback (google-search)
+### Rollback guidance (google-search)
 
 Use this when Brave API failures are sustained or workflow usability drops sharply.
 
@@ -252,7 +280,7 @@ Use this when Brave API failures are sustained or workflow usability drops sharp
    - Explain that `google-search` is temporarily disabled.
    - Provide ETA/workaround and support contact path.
 
-## Wiki Search rollout support
+## Workflow: wiki-search
 
 ### Quick operator checks
 
@@ -299,7 +327,7 @@ Notes:
 - Keep fallback titles/subtitles stable so support can match screenshots quickly.
 - Record short incident notes for each production-facing outage window.
 
-### Emergency rollback (wiki-search)
+### Rollback guidance (wiki-search)
 
 Use this when Wikipedia API failures are sustained or workflow usability drops sharply.
 
@@ -317,20 +345,22 @@ Use this when Wikipedia API failures are sustained or workflow usability drops s
    - Explain that `wiki-search` is temporarily disabled.
    - Provide ETA/workaround and support contact path.
 
-## Epoch Converter rollout support
+## Workflow: epoch-converter
 
-### Migration notes (from installed `snooze92.epoch.converter`)
+### Quick operator checks
 
-- Old bundle id: `snooze92.epoch.converter`
-- New bundle id: `com.graysurf.epoch-converter`
-- Both workflows can coexist. If both enable keyword `ts`, Alfred may route unpredictably.
-- Recommended migration:
-  1. Install new package: `scripts/workflow-pack.sh --id epoch-converter --install`
-  2. Disable old workflow or change one side's keyword to avoid conflicts.
-  3. Verify output contract on epoch input:
-     - Includes `Local ISO-like`
-     - Includes `UTC ISO-like`
-     - Includes `Local formatted (YYYY-MM-DD HH:MM:SS)`
+1. Confirm latest package was installed:
+   - `scripts/workflow-pack.sh --id epoch-converter --install`
+2. Confirm migration state from the old workflow:
+   - Old bundle id: `snooze92.epoch.converter`
+   - New bundle id: `com.graysurf.epoch-converter`
+   - If both workflows use keyword `ts`, Alfred routing can be unpredictable.
+3. Confirm script-filter contract output is JSON:
+   - `bash workflows/epoch-converter/scripts/script_filter.sh "1700000000" | jq -e '.items | type == "array"'`
+4. Confirm expected output rows on epoch input:
+   - `Local ISO-like`
+   - `UTC ISO-like`
+   - `Local formatted (YYYY-MM-DD HH:MM:SS)`
 
 ### Common failures and actions
 
@@ -341,23 +371,45 @@ Use this when Wikipedia API failures are sustained or workflow usability drops s
 | Clipboard rows do not appear on empty query | Clipboard tool unavailable/empty clipboard/unparseable clipboard text. | Confirm clipboard has parseable epoch/datetime content; behavior is best-effort. |
 | Local/UTC rows differ unexpectedly | Timezone expectation mismatch or DST boundary. | Verify local timezone and compare against UTC rows; test with explicit date+time. |
 
-### Emergency rollback (epoch-converter)
+### macOS Gatekeeper fix (epoch-converter)
+
+If installed release workflow shows `"epoch-cli" Not Opened`, remove quarantine on the installed workflow package:
+
+```bash
+WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
+  [ -f "$p" ] || continue
+  bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
+  [ "$bid" = "com.graysurf.epoch-converter" ] && dirname "$p"
+done | head -n1)"
+
+[ -n "$WORKFLOW_DIR" ] || { echo "epoch-converter workflow not found"; exit 1; }
+xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
+echo "ok: removed quarantine from $WORKFLOW_DIR"
+```
+
+Notes:
+
+- `workflows/epoch-converter/scripts/script_filter.sh` does best-effort quarantine cleanup on `epoch-cli` before execution.
+- On locked-down macOS environments, manual `xattr -dr` may still be required once after install.
+
+### Rollback guidance (epoch-converter)
 
 Use this when conversion output is incorrect or workflow is unstable.
 
-1. Disable/remove installed `epoch-converter` workflow from Alfred.
-2. Re-enable the previous `snooze92.epoch.converter` workflow (or re-import previous known-good `.alfredworkflow`).
-3. Revert epoch-converter changeset(s), including:
+1. Stop rollout of new `epoch-converter` artifacts (pause release/distribution link).
+2. Disable/remove installed `epoch-converter` workflow from Alfred.
+3. Re-enable the previous `snooze92.epoch.converter` workflow (or re-import previous known-good `.alfredworkflow`).
+4. Revert epoch-converter changeset(s), including:
    - `workflows/epoch-converter/`
    - `crates/epoch-cli/`
    - workspace member update in `Cargo.toml`
    - related docs updates (`docs/epoch-converter-contract.md`, workflow guides)
-4. Rebuild and validate rollback state:
+5. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`
    - `scripts/workflow-pack.sh --all`
 
-## Quote Feed rollout support
+## Workflow: quote-feed
 
 ### Quick operator checks
 
@@ -404,7 +456,7 @@ Notes:
 - `workflows/quote-feed/scripts/script_filter.sh` does best-effort quarantine cleanup on `quote-cli` before execution.
 - On locked-down macOS environments, manual `xattr -dr` may still be required once after install.
 
-### Optional rollback guidance (quote-feed)
+### Rollback guidance (quote-feed)
 
 Use this when quote-feed rollout quality drops and temporary fallback is required.
 
