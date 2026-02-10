@@ -49,3 +49,8 @@ The shared CLI surface used by Alfred scripts:
 - `cargo run -p xtask -- workflow pack --id <workflow> [--install]`
 - `cargo run -p xtask -- workflow pack --all`
 - `cargo run -p xtask -- workflow new --id <workflow>`
+
+## License
+
+This project is dedicated to the public domain under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/).
+See `LICENSE` for the full legal text.
