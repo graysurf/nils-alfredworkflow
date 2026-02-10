@@ -193,6 +193,7 @@ mod tests {
             project_roots: vec![root],
             usage_file: temp.path().join("usage.log"),
             vscode_path: "code".to_string(),
+            max_results: 10,
         };
 
         let output = run_with_config(
@@ -233,6 +234,7 @@ mod tests {
             project_roots: vec![root],
             usage_file: temp.path().join("usage.log"),
             vscode_path: "code".to_string(),
+            max_results: 10,
         };
 
         let recorded = run_with_config(
@@ -268,6 +270,7 @@ mod tests {
             project_roots: vec![temp.path().join("projects")],
             usage_file: temp.path().join("usage.log"),
             vscode_path: "code".to_string(),
+            max_results: 10,
         };
 
         let missing = temp.path().join("missing-project");
@@ -303,6 +306,7 @@ mod tests {
             project_roots: vec![root],
             usage_file: temp.path().join("usage.log"),
             vscode_path: "code".to_string(),
+            max_results: 10,
         };
 
         let output = run_with_config(

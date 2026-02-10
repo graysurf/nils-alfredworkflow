@@ -14,8 +14,8 @@ pub mod git;
 pub mod usage_log;
 
 pub use config::{
-    DEFAULT_PROJECT_DIRS, DEFAULT_USAGE_FILE, DEFAULT_VSCODE_PATH, RuntimeConfig,
-    expand_home_tokens, parse_project_dirs,
+    DEFAULT_OPEN_PROJECT_MAX_RESULTS, DEFAULT_PROJECT_DIRS, DEFAULT_USAGE_FILE,
+    DEFAULT_VSCODE_PATH, RuntimeConfig, expand_home_tokens, parse_project_dirs,
 };
 pub use error::WorkflowError;
 pub use feedback::{

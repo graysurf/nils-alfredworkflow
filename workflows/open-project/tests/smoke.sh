@@ -140,6 +140,7 @@ echo "$packaged_json" | jq -e '[.objects[] | select(.type=="alfred.workflow.inpu
 echo "$packaged_json" | jq -e '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.keyword] | map(select(. != null)) | index("code") != null' >/dev/null
 echo "$packaged_json" | jq -e '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.keyword] | map(select(. != null)) | index("github") != null' >/dev/null
 echo "$packaged_json" | jq -e '.connections["6F5EB7A5-CDCD-4FDD-A04B-5FACC38B2F94"] | any(.modifiers == 1048576 and .destinationuid == "FD59A9AB-0760-49CC-98D9-8B6A7CE43210")' >/dev/null
-echo "$packaged_json" | jq -e '[.userconfigurationconfig[] | .variable] | sort == ["PROJECT_DIRS", "USAGE_FILE", "VSCODE_PATH"]' >/dev/null
+echo "$packaged_json" | jq -e '[.userconfigurationconfig[] | .variable] | sort == ["OPEN_PROJECT_MAX_RESULTS", "PROJECT_DIRS", "USAGE_FILE", "VSCODE_PATH"]' >/dev/null
+echo "$packaged_json" | jq -e '.userconfigurationconfig[] | select(.variable=="OPEN_PROJECT_MAX_RESULTS") | .config.default == "30"' >/dev/null
 
 echo "ok: open-project smoke test"

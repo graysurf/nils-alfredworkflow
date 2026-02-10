@@ -15,6 +15,7 @@ assets = [
 PROJECT_DIRS = "$HOME/Project,$HOME/.config"
 USAGE_FILE = "$HOME/.config/zsh/cache/.alfred_project_usage.log"
 VSCODE_PATH = "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+OPEN_PROJECT_MAX_RESULTS = "30"
 
 [alfred]
 min_alfred = "5"

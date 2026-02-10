@@ -39,6 +39,7 @@ Optional keys:
 ### Environment defaults
 
 - `PROJECT_DIRS = "$HOME/Project,$HOME/.config"`
+- `OPEN_PROJECT_MAX_RESULTS = "30"` (clamped to `1..200`)
 - `USAGE_FILE = "$HOME/.config/zsh/cache/.alfred_project_usage.log"`
 - `VSCODE_PATH = "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"`
 
@@ -174,6 +175,41 @@ Runtime checks:
 - Empty query should return current timestamp rows (plus optional clipboard-derived rows), not malformed JSON.
 - Epoch input output should include `Local formatted (YYYY-MM-DD HH:MM:SS)` row.
 - Invalid input and missing `epoch-cli` should return non-actionable error items.
+
+## Quote Feed workflow details
+
+`workflows/quote-feed` is a dedicated workflow that uses `quote-cli` for cached quote browsing
+and interval-based ZenQuotes refresh.
+
+### Environment variables
+
+- `QUOTE_DISPLAY_COUNT` (optional): default `3`, clamped to `1..20`.
+- `QUOTE_REFRESH_INTERVAL` (optional): default `1h`, format `<positive-int><s|m|h>`.
+- `QUOTE_FETCH_COUNT` (optional): default `5`, clamped to `1..20`.
+- `QUOTE_MAX_ENTRIES` (optional): default `100`, clamped to `1..1000`.
+- `QUOTE_CLI_BIN` (optional): absolute executable path override for `quote-cli`.
+
+### Alfred command flow
+
+- Keyword trigger: `qq` (supports optional query filter).
+- Script filter adapter: `workflows/quote-feed/scripts/script_filter.sh` ->
+  `quote-cli feed --query "<query>"`.
+- Enter flow: `workflows/quote-feed/scripts/action_copy.sh` copies selected `arg` via `pbcopy`.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/quote-feed/tests/smoke.sh`
+- `scripts/workflow-test.sh --id quote-feed`
+- `scripts/workflow-pack.sh --id quote-feed`
+
+Runtime checks:
+
+- Invalid `QUOTE_*` values must return `Invalid Quote workflow config` Alfred error items.
+- Missing `quote-cli` must return a non-actionable `quote-cli binary not found` error item.
+- ZenQuotes/network refresh failures must return `Quote refresh unavailable`; cached quotes should
+  still be shown when available.
 
 ### Validation checklist
 

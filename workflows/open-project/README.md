@@ -21,6 +21,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `PROJECT_DIRS` | No | `$HOME/Project,$HOME/.config` | Comma-separated base directories to scan for Git repositories. |
+| `OPEN_PROJECT_MAX_RESULTS` | No | `30` | Maximum rows shown per query. Parsed as base-10 integer and clamped to `1..200`. |
 | `USAGE_FILE` | No | `$HOME/.config/zsh/cache/.alfred_project_usage.log` | Path to usage log used for recency sorting. |
 | `VSCODE_PATH` | No | `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code` | Editor executable path or command used to open a project. |
 

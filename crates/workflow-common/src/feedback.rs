@@ -75,7 +75,13 @@ pub fn build_script_filter_feedback_with_mode(
             .then_with(|| left_name.cmp(right_name))
     });
 
-    Feedback::new(ranked_items.into_iter().map(|(_, _, item)| item).collect())
+    let items = ranked_items
+        .into_iter()
+        .take(config.max_results)
+        .map(|(_, _, item)| item)
+        .collect();
+
+    Feedback::new(items)
 }
 
 pub fn subtitle_format(commit_summary: Option<&str>, usage_timestamp: Option<&str>) -> String {
@@ -164,6 +170,7 @@ mod tests {
             project_roots: vec![roots],
             usage_file,
             vscode_path: "code".to_string(),
+            max_results: 10,
         };
 
         let feedback = build_script_filter_feedback("", &config);
@@ -187,6 +194,7 @@ mod tests {
             project_roots: vec![PathBuf::from("/path/that/does/not/exist")],
             usage_file: PathBuf::from("/tmp/non-existent-usage.log"),
             vscode_path: "code".to_string(),
+            max_results: 10,
         };
 
         let feedback = build_script_filter_feedback("", &config);
@@ -214,6 +222,7 @@ mod tests {
             project_roots: vec![roots],
             usage_file: temp.path().join("usage.log"),
             vscode_path: "code".to_string(),
+            max_results: 10,
         };
 
         let feedback = build_script_filter_feedback("", &config);
@@ -245,6 +254,7 @@ mod tests {
             project_roots: vec![roots],
             usage_file: temp.path().join("usage.log"),
             vscode_path: "code".to_string(),
+            max_results: 10,
         };
 
         let feedback =
@@ -267,5 +277,32 @@ mod tests {
             .status()
             .expect("run git init");
         assert!(status.success(), "git init should succeed");
+    }
+
+    #[test]
+    fn max_results_limits_number_of_feedback_items() {
+        let temp = tempdir().expect("create temp dir");
+        let roots = temp.path().join("roots");
+        let alpha = roots.join("alpha");
+        let beta = roots.join("beta");
+        let gamma = roots.join("gamma");
+
+        init_repo(&alpha);
+        init_repo(&beta);
+        init_repo(&gamma);
+
+        let config = RuntimeConfig {
+            project_roots: vec![roots],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 2,
+        };
+
+        let feedback = build_script_filter_feedback("", &config);
+        assert_eq!(
+            feedback.items.len(),
+            2,
+            "feedback should be capped by max_results"
+        );
     }
 }
