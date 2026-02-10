@@ -26,7 +26,26 @@ Monorepo for Alfred workflows with shared Rust crates and thin Bash adapters.
 
 - `workflows/open-project`: parity port of `open-project-in-vscode`.
 - `workflows/_template`: scaffold template used by `scripts/workflow-new.sh`.
+- `workflows/google-search`: Alfred keyword search for Google-style web results (Brave API backend).
 - `workflows/youtube-search`: Alfred keyword search for YouTube videos (API-key based).
+
+## Google Search quick start
+
+1. Package + install:
+   - `cargo run -p xtask -- workflow pack --id google-search --install`
+2. In Alfred workflow variables, set:
+   - `BRAVE_API_KEY` (required)
+   - `BRAVE_MAX_RESULTS` (optional, default `10`, clamped to `1..20`)
+   - `BRAVE_SAFESEARCH` (optional, default `moderate`, allowed `strict|moderate|off`)
+   - `BRAVE_COUNTRY` (optional, 2-letter country code, e.g. `US`, `TW`)
+3. Use keyword in Alfred:
+   - `gg <query>`
+
+Operator notes:
+
+- `google-search` uses Brave Search API as backend and returns web results.
+- If rate limits are hit frequently, reduce `BRAVE_MAX_RESULTS` and retry with lower request frequency.
+- Contract and error mapping are defined in `docs/google-search-contract.md`.
 
 ## YouTube Search quick start
 

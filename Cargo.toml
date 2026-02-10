@@ -2,6 +2,7 @@
 members = [
   "crates/alfred-core",
   "crates/alfred-plist",
+  "crates/brave-cli",
   "crates/workflow-common",
   "crates/workflow-cli",
   "crates/xtask",
