@@ -187,6 +187,7 @@ and interval-based ZenQuotes refresh.
 - `QUOTE_REFRESH_INTERVAL` (optional): default `1h`, format `<positive-int><s|m|h>`.
 - `QUOTE_FETCH_COUNT` (optional): default `5`, clamped to `1..20`.
 - `QUOTE_MAX_ENTRIES` (optional): default `100`, clamped to `1..1000`.
+- `QUOTE_DATA_DIR` (optional): default empty; when set, overrides quote cache directory.
 - `QUOTE_CLI_BIN` (optional): absolute executable path override for `quote-cli`.
 
 ### Alfred command flow

@@ -103,7 +103,7 @@ manifest="$workflow_dir/workflow.toml"
 [[ "$(toml_string "$manifest" script_filter)" == "script_filter.sh" ]] || fail "script_filter mismatch"
 [[ "$(toml_string "$manifest" action)" == "action_copy.sh" ]] || fail "action mismatch"
 
-for variable in QUOTE_DISPLAY_COUNT QUOTE_REFRESH_INTERVAL QUOTE_FETCH_COUNT QUOTE_MAX_ENTRIES; do
+for variable in QUOTE_DISPLAY_COUNT QUOTE_REFRESH_INTERVAL QUOTE_FETCH_COUNT QUOTE_MAX_ENTRIES QUOTE_DATA_DIR; do
   if ! rg -n "^${variable}[[:space:]]*=" "$manifest" >/dev/null; then
     fail "missing env var in workflow.toml: $variable"
   fi
@@ -120,6 +120,9 @@ if ! rg -n '^QUOTE_FETCH_COUNT[[:space:]]*=[[:space:]]*"5"' "$manifest" >/dev/nu
 fi
 if ! rg -n '^QUOTE_MAX_ENTRIES[[:space:]]*=[[:space:]]*"100"' "$manifest" >/dev/null; then
   fail "QUOTE_MAX_ENTRIES default must be 100"
+fi
+if ! rg -n '^QUOTE_DATA_DIR[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
+  fail "QUOTE_DATA_DIR default must be empty string"
 fi
 
 tmp_dir="$(mktemp -d)"
@@ -347,10 +350,11 @@ assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-4
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_copy.sh"' "action scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.type == 8' "action node must be external script type=8"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"
-assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["QUOTE_DISPLAY_COUNT","QUOTE_FETCH_COUNT","QUOTE_MAX_ENTRIES","QUOTE_REFRESH_INTERVAL"]' "user configuration variables mismatch"
+assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["QUOTE_DATA_DIR","QUOTE_DISPLAY_COUNT","QUOTE_FETCH_COUNT","QUOTE_MAX_ENTRIES","QUOTE_REFRESH_INTERVAL"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="QUOTE_DISPLAY_COUNT") | .config.default == "3"' "QUOTE_DISPLAY_COUNT default must be 3"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="QUOTE_REFRESH_INTERVAL") | .config.default == "1h"' "QUOTE_REFRESH_INTERVAL default must be 1h"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="QUOTE_FETCH_COUNT") | .config.default == "5"' "QUOTE_FETCH_COUNT default must be 5"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="QUOTE_MAX_ENTRIES") | .config.default == "100"' "QUOTE_MAX_ENTRIES default must be 100"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="QUOTE_DATA_DIR") | .config.default == ""' "QUOTE_DATA_DIR default must be empty string"
 
 echo "ok: quote-feed smoke test"
