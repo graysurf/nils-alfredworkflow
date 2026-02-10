@@ -1,0 +1,16 @@
+id = "epoch-converter"
+name = "Epoch Converter"
+bundle_id = "com.graysurf.epoch-converter"
+version = "0.1.5"
+script_filter = "script_filter.sh"
+action = "action_copy.sh"
+rust_binary = "epoch-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional override path for local/debug runtime.
+EPOCH_CLI_BIN = ""
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

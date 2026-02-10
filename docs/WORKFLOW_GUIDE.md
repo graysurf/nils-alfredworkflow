@@ -109,6 +109,36 @@ Runtime checks:
 - Quota/rate-limit and API/network failures must return non-actionable error items.
 - Empty API results must return a clear `No results found` guidance item.
 
+## Epoch Converter workflow details
+
+`workflows/epoch-converter` is a local conversion workflow that uses `epoch-cli` for epoch/datetime
+conversion and copy-ready Alfred items.
+
+### Environment variables
+
+- `EPOCH_CLI_BIN` (optional): absolute executable path override for `epoch-cli`.
+
+### Alfred command flow
+
+- Keyword trigger: `ts`.
+- Script filter adapter: `workflows/epoch-converter/scripts/script_filter.sh` ->
+  `epoch-cli convert --query "<query>"`.
+- Enter flow: `workflows/epoch-converter/scripts/action_copy.sh` copies selected `arg` via `pbcopy`.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/epoch-converter/tests/smoke.sh`
+- `scripts/workflow-test.sh --id epoch-converter`
+- `scripts/workflow-pack.sh --id epoch-converter`
+
+Runtime checks:
+
+- Empty query should return current timestamp rows (plus optional clipboard-derived rows), not malformed JSON.
+- Epoch input output should include `Local formatted (YYYY-MM-DD HH:MM:SS)` row.
+- Invalid input and missing `epoch-cli` should return non-actionable error items.
+
 ### Validation checklist
 
 Run these before packaging/release:

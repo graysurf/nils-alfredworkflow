@@ -227,6 +227,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "epoch-cli"
+version = "0.1.5"
+dependencies = [
+ "alfred-core",
+ "chrono",
+ "clap",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -29,6 +29,7 @@ Monorepo for Alfred workflows with shared Rust crates and thin Bash adapters.
 - `workflows/google-search`: Alfred keyword search for Google-style web results (Brave API backend).
 - `workflows/youtube-search`: Alfred keyword search for YouTube videos (API-key based).
 - `workflows/spotify-search`: Alfred keyword search for Spotify tracks (Client Credentials flow).
+- `workflows/epoch-converter`: Alfred epoch/datetime converter with copy-on-enter actions.
 
 ## Google Search quick start
 
@@ -84,6 +85,22 @@ Operator notes:
 - `spotify-search` is search-only MVP: query tracks and open Spotify URLs in browser.
 - `SPOTIFY_CLIENT_SECRET` is stored locally in Alfred variables; treat the machine as trusted.
 - Contract and error mapping are defined in `docs/spotify-search-contract.md`.
+
+## Epoch Converter quick start
+
+1. Package + install:
+   - `scripts/workflow-test.sh --id epoch-converter`
+   - `scripts/workflow-pack.sh --id epoch-converter --install`
+2. Use keyword in Alfred:
+   - `ts <epoch-or-datetime>`
+   - `ts` (show current epoch rows + best-effort clipboard conversion rows)
+3. Select any row and press Enter to copy the value.
+
+Operator notes:
+
+- Epoch input includes an extra formatted row: `Local formatted (YYYY-MM-DD HH:MM:SS)`.
+- If `epoch-cli` is not found in packaged/debug/release path, set optional workflow variable `EPOCH_CLI_BIN`.
+- Contract and error mapping are defined in `docs/epoch-converter-contract.md`.
 
 ## Open Project behavior contract
 
