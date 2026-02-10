@@ -1,0 +1,22 @@
+id = "quote-feed"
+name = "Quote Feed"
+bundle_id = "com.graysurf.quote-feed"
+version = "0.1.5"
+script_filter = "script_filter.sh"
+action = "action_copy.sh"
+rust_binary = "quote-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional: number of quote rows shown per run. Defaults to 3, clamped to 1..20.
+QUOTE_DISPLAY_COUNT = "3"
+# Optional: refresh interval, format <positive-int><s|m|h>. Defaults to 1h.
+QUOTE_REFRESH_INTERVAL = "1h"
+# Optional: quotes to fetch when refresh is due. Defaults to 5, clamped to 1..20.
+QUOTE_FETCH_COUNT = "5"
+# Optional: max retained quotes in local cache. Defaults to 100, clamped to 1..1000.
+QUOTE_MAX_ENTRIES = "100"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"
