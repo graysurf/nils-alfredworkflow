@@ -7,7 +7,7 @@ version.workspace = true
 [dependencies]
 alfred-core = { path = "../alfred-core" }
 clap.workspace = true
-rand = "0.8"
+rand = "0.9"
 uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
