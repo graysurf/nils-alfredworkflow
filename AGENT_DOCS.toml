@@ -5,3 +5,11 @@ path = "BINARY_DEPENDENCIES.md"
 required = true
 when = "always"
 notes = "Required local toolchain and shell tool installation baseline"
+
+[[document]]
+context = "project-dev"
+scope = "project"
+path = "TROUBLESHOOTING.md"
+required = true
+when = "always"
+notes = "Repository-wide troubleshooting log and regression diagnostics"

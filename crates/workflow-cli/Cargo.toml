@@ -7,3 +7,7 @@ license.workspace = true
 [dependencies]
 clap.workspace = true
 workflow-common = { path = "../workflow-common" }
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true

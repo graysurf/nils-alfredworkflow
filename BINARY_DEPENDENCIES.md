@@ -7,6 +7,7 @@ This document lists required local tools for development, linting, testing, and 
 - Rust toolchain (`rustup`, `cargo`, `rustc`)
 - Rust components: `rustfmt`, `clippy`, `llvm-tools-preview`
 - Cargo tools: `cargo-nextest`, `cargo-llvm-cov`
+- Core CLI/runtime: `git`, `jq`
 - Shell tooling: `shellcheck`, `shfmt`
 - Packaging/runtime: `zip`, `unzip`, `open` (macOS) / `xdg-open` (Linux)
 
@@ -28,7 +29,7 @@ brew install zip unzip
 ```bash
 # Base build + shell tools
 sudo apt-get update
-sudo apt-get install -y build-essential pkg-config libssl-dev shellcheck shfmt zip unzip
+sudo apt-get install -y build-essential pkg-config libssl-dev git jq shellcheck shfmt zip unzip
 
 # Rust + cargo tools used by this repo
 scripts/setup-rust-tooling.sh
@@ -43,6 +44,8 @@ cargo fmt --version
 cargo clippy --version
 cargo nextest --version
 cargo llvm-cov --version
+git --version
+jq --version
 shellcheck --version
 shfmt --version
 zip -v | head -n 1

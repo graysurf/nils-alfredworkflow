@@ -101,9 +101,23 @@ package_one() {
   mkdir -p "$stage_dir"
 
   cp -R "$workflow_root/scripts" "$stage_dir/"
+  if [[ -d "$stage_dir/scripts" ]]; then
+    find "$stage_dir/scripts" -type f -name '*.sh' -exec chmod +x {} +
+  fi
 
   if [[ -d "$workflow_root/src/assets" ]]; then
     cp -R "$workflow_root/src/assets" "$stage_dir/"
+  fi
+
+  # Alfred object-level custom icons are files named by object UID (e.g. <UID>.png)
+  # stored at the package root. Keep any src/*.png files at the root in sync.
+  if compgen -G "$workflow_root/src/*.png" >/dev/null; then
+    cp "$workflow_root"/src/*.png "$stage_dir/"
+  fi
+
+  # Alfred expects workflow icon at package root as `icon.png`.
+  if [[ -f "$workflow_root/src/assets/icon.png" ]]; then
+    cp "$workflow_root/src/assets/icon.png" "$stage_dir/icon.png"
   fi
 
   render_plist \

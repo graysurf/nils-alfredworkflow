@@ -5,10 +5,16 @@ version = "0.1.0"
 script_filter = "script_filter.sh"
 action = "action_open.sh"
 rust_binary = "workflow-cli"
-assets = ["src/assets/icon.png"]
+assets = [
+  "src/assets/icon.png",
+  "src/assets/icon-github.png",
+  "src/8F3399E3-951A-4DC0-BC7D-CFA83C1E1F76.png",
+]
 
 [env]
-PROJECTS_ROOT = "~/Project"
+PROJECT_DIRS = "$HOME/Project,$HOME/.config"
+USAGE_FILE = "$HOME/.config/zsh/cache/.alfred_project_usage.log"
+VSCODE_PATH = "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
 
 [alfred]
 min_alfred = "5"

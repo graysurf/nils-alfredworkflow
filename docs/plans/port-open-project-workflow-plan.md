@@ -11,7 +11,7 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
 - In scope: Expand Rust core and CLI command surface for script-filter output, usage recording, and GitHub URL resolution.
 - In scope: Update `workflows/open-project/src/info.plist.template` to include working Alfred object graph, connections, modifiers, and user config variables.
 - In scope: Add/adjust tests and smoke checks required to prevent behavior regressions.
-- Out of scope: Refactor unrelated workflows (`github-open`, `_template`) beyond compatibility-safe changes.
+- Out of scope: Refactor unrelated workflows (`_template`) beyond compatibility-safe changes.
 - Out of scope: New workflow features not present in reference behavior (cache daemon, async indexing, cross-platform GUI actions).
 - Out of scope: Release automation or publishing process changes.
 

@@ -39,26 +39,17 @@ resolve_workflow_cli() {
   return 1
 }
 
-query="${1-}"
-mode="${OPEN_PROJECT_MODE:-open}"
+if [ "$#" -lt 1 ] || [ -z "$1" ]; then
+  echo "usage: action_open_github.sh <project-path>" >&2
+  exit 2
+fi
+
+project_path="$(printf '%s' "$1")"
+if [ -z "$project_path" ]; then
+  echo "usage: action_open_github.sh <project-path>" >&2
+  exit 2
+fi
+
 workflow_cli="$(resolve_workflow_cli)"
-err_file="${TMPDIR:-/tmp}/open-project-script-filter.err.$$"
-
-if json="$("$workflow_cli" script-filter --query "$query" --mode "$mode" 2>"$err_file")"; then
-  printf '%s\n' "$json"
-  rm -f "$err_file"
-  exit 0
-fi
-
-err_msg=""
-if [ -f "$err_file" ]; then
-  err_msg="$(tr '\n' ' ' <"$err_file" | sed 's/[[:space:]]\+/ /g; s/"/\\"/g')"
-  rm -f "$err_file"
-fi
-
-if [ -z "$err_msg" ]; then
-  err_msg="workflow-cli script-filter failed"
-fi
-
-printf '{"items":[{"title":"Open Project error","subtitle":"%s","valid":false}]}' "$err_msg"
-printf '\n'
+url="$("$workflow_cli" github-url --path "$project_path")"
+exec open "$url"

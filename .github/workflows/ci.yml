@@ -17,6 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Install system binaries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git jq shellcheck shfmt zip unzip
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:

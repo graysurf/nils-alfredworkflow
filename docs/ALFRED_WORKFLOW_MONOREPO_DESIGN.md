@@ -53,11 +53,6 @@
 |   |   |   `-- action_open.sh       # Alfred action glue
 |   |   `-- tests/
 |   |       `-- smoke.sh
-|   |-- github-open/
-|   |   |-- workflow.toml
-|   |   |-- src/
-|   |   |-- scripts/
-|   |   `-- tests/
 |   `-- _template/
 |       |-- workflow.toml
 |       |-- src/info.plist.template
