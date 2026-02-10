@@ -34,7 +34,10 @@ jobs:
           bundle_path="$bundle_dir/$bundle_name"
           mkdir -p "$bundle_dir"
 
-          mapfile -t bundle_inputs < <(find dist -type f \( -name '*.alfredworkflow' -o -name '*.alfredworkflow.sha256' \) | sort)
+          bundle_inputs=()
+          while IFS= read -r input; do
+            bundle_inputs+=("$input")
+          done < <(find dist -type f \( -name '*.alfredworkflow' -o -name '*.alfredworkflow.sha256' \) | sort)
           if [[ "${#bundle_inputs[@]}" -eq 0 ]]; then
             echo "error: no workflow artifacts found under dist/"
             exit 1
@@ -42,7 +45,10 @@ jobs:
 
           (
             cd dist
-            mapfile -t rel_inputs < <(find . -type f \( -name '*.alfredworkflow' -o -name '*.alfredworkflow.sha256' \) | sort)
+            rel_inputs=()
+            while IFS= read -r input; do
+              rel_inputs+=("$input")
+            done < <(find . -type f \( -name '*.alfredworkflow' -o -name '*.alfredworkflow.sha256' \) | sort)
             zip -q -r "../$bundle_path" "${rel_inputs[@]}"
           )
 
