@@ -159,6 +159,73 @@ function manyClassTexts(html, selectors, limit) {
   return output;
 }
 
+function selectorHasClass(selector, className) {
+  const pattern = new RegExp(`\\.${escapeRegExp(className)}\\b`, 'i');
+  return pattern.test(String(selector));
+}
+
+function pairBilingualDefinitions({ englishDefinitions, translatedDefinitions, limit }) {
+  const output = [];
+  const seen = new Set();
+
+  const addLine = (line) => {
+    const normalized = normalizeText(line);
+    if (!normalized) {
+      return false;
+    }
+
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    output.push(normalized);
+    return output.length >= limit;
+  };
+
+  const pairedCount = Math.min(englishDefinitions.length, translatedDefinitions.length);
+  for (let idx = 0; idx < pairedCount; idx += 1) {
+    const english = englishDefinitions[idx];
+    const translated = translatedDefinitions[idx];
+    if (addLine(`${english} | ${translated}`)) {
+      return output;
+    }
+  }
+
+  for (let idx = pairedCount; idx < englishDefinitions.length; idx += 1) {
+    if (addLine(englishDefinitions[idx])) {
+      return output;
+    }
+  }
+
+  return output;
+}
+
+function traditionalChineseBilingualDefinitions({ html, selectors, limit }) {
+  const translationSelectors = selectors.definitions.filter((selector) =>
+    selectorHasClass(selector, 'trans'),
+  );
+  const englishDefinitionSelectors = selectors.definitions.filter(
+    (selector) => !selectorHasClass(selector, 'trans'),
+  );
+
+  if (translationSelectors.length === 0 || englishDefinitionSelectors.length === 0) {
+    return [];
+  }
+
+  const englishDefinitions = manyClassTexts(html, englishDefinitionSelectors, limit * 4);
+  const translatedDefinitions = manyClassTexts(html, translationSelectors, limit * 4);
+  if (englishDefinitions.length === 0 || translatedDefinitions.length === 0) {
+    return [];
+  }
+
+  return pairBilingualDefinitions({
+    englishDefinitions,
+    translatedDefinitions,
+    limit,
+  });
+}
+
 function absolutizeUrl(rawValue) {
   const value = String(rawValue ?? '').trim();
   if (!value) {
@@ -215,7 +282,15 @@ export function extractDefineFromHtml({ html, mode, entry }) {
   const headword = firstClassText(source, selectors.headword) || fallbackHeadword({ html: source, entry: normalizedEntry });
   const partOfSpeech = firstClassText(source, selectors.partOfSpeech);
   const phonetics = manyClassTexts(source, selectors.phonetics, 4);
-  const definitions = manyClassTexts(source, selectors.definitions, 8);
+  const definitions =
+    normalizedMode === 'english-chinese-traditional'
+      ? traditionalChineseBilingualDefinitions({
+          html: source,
+          selectors,
+          limit: 8,
+        })
+      : [];
+  const effectiveDefinitions = definitions.length > 0 ? definitions : manyClassTexts(source, selectors.definitions, 8);
 
   const url = findCanonicalUrl(source) || buildDefineUrl({ entry: normalizedEntry, mode: normalizedMode });
 
@@ -223,7 +298,7 @@ export function extractDefineFromHtml({ html, mode, entry }) {
     headword,
     partOfSpeech,
     phonetics,
-    definitions,
+    definitions: effectiveDefinitions,
     url,
   };
 }
