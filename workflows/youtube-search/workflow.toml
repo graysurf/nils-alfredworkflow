@@ -1,0 +1,20 @@
+id = "youtube-search"
+name = "YouTube Search"
+bundle_id = "com.graysurf.youtube-search"
+version = "0.1.0"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "youtube-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Required: YouTube Data API v3 key.
+YOUTUBE_API_KEY = ""
+# Optional: defaults to 10; expected range is 1-25 (values above 25 are clamped by CLI).
+YOUTUBE_MAX_RESULTS = "10"
+# Optional: ISO 3166-1 alpha-2 region code (for example US, TW, JP).
+YOUTUBE_REGION_CODE = ""
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"
