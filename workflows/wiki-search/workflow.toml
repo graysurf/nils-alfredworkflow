@@ -1,0 +1,18 @@
+id = "wiki-search"
+name = "Wiki Search"
+bundle_id = "com.graysurf.wiki-search"
+version = "0.1.5"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "wiki-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional: lowercase Wikipedia language code used as the subdomain (for example en, zh, ja). Defaults to en.
+WIKI_LANGUAGE = "en"
+# Optional: maximum number of results to return. Parsed as base-10 integer and clamped to 1..20. Defaults to 10.
+WIKI_MAX_RESULTS = "10"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

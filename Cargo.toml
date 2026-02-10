@@ -7,6 +7,7 @@ members = [
   "crates/spotify-cli",
   "crates/workflow-common",
   "crates/workflow-cli",
+  "crates/wiki-cli",
   "crates/xtask",
   "crates/youtube-cli",
   "crates/randomer-cli",
