@@ -28,6 +28,7 @@ Monorepo for Alfred workflows with shared Rust crates and thin Bash adapters.
 - `workflows/_template`: scaffold template used by `scripts/workflow-new.sh`.
 - `workflows/google-search`: Alfred keyword search for Google-style web results (Brave API backend).
 - `workflows/youtube-search`: Alfred keyword search for YouTube videos (API-key based).
+- `workflows/spotify-search`: Alfred keyword search for Spotify tracks (Client Credentials flow).
 
 ## Google Search quick start
 
@@ -63,6 +64,26 @@ Operator notes:
 - Each `search.list` request consumes YouTube quota (high cost endpoint).
 - If you hit quota often, reduce `YOUTUBE_MAX_RESULTS` and avoid rapid repeated queries.
 - Contract and error mapping are defined in `docs/youtube-search-contract.md`.
+
+## Spotify Search quick start
+
+1. Copy-paste package + validation flow:
+   - `scripts/workflow-test.sh --id spotify-search`
+   - `scripts/workflow-pack.sh --id spotify-search --install`
+2. Required credentials (Alfred workflow variables):
+   - `SPOTIFY_CLIENT_ID`
+   - `SPOTIFY_CLIENT_SECRET`
+3. Optional tuning (Alfred workflow variables):
+   - `SPOTIFY_MAX_RESULTS` (optional, default `10`, clamped to `1..50`)
+   - `SPOTIFY_MARKET` (optional, 2-letter country code, e.g. `US`, `TW`)
+4. Use keyword in Alfred:
+   - `sp query-text`
+
+Operator notes:
+
+- `spotify-search` is search-only MVP: query tracks and open Spotify URLs in browser.
+- `SPOTIFY_CLIENT_SECRET` is stored locally in Alfred variables; treat the machine as trusted.
+- Contract and error mapping are defined in `docs/spotify-search-contract.md`.
 
 ## Open Project behavior contract
 
