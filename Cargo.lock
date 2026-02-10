@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "alfred-core"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "alfred-plist"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "anyhow",
 ]
@@ -108,7 +108,7 @@ checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
 
 [[package]]
 name = "brave-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "alfred-core",
  "clap",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "epoch-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "alfred-core",
  "chrono",
@@ -868,7 +868,7 @@ dependencies = [
 
 [[package]]
 name = "quote-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "alfred-core",
  "clap",
@@ -946,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "randomer-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "alfred-core",
  "clap",
@@ -1175,7 +1175,7 @@ dependencies = [
 
 [[package]]
 name = "spotify-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "alfred-core",
  "clap",
@@ -1606,7 +1606,7 @@ dependencies = [
 
 [[package]]
 name = "wiki-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "alfred-core",
  "clap",
@@ -1930,7 +1930,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "clap",
  "serde_json",
@@ -1940,7 +1940,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-common"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "alfred-core",
  "chrono",
@@ -1957,7 +1957,7 @@ checksum = "9edde0db4769d2dc68579893f2306b26c6ecfbe0ef499b013d731b7b9247e0b9"
 
 [[package]]
 name = "xtask"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1988,7 +1988,7 @@ dependencies = [
 
 [[package]]
 name = "youtube-cli"
-version = "0.1.5"
+version = "1.0.0"
 dependencies = [
  "alfred-core",
  "clap",
