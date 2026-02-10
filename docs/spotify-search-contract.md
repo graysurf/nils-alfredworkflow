@@ -49,6 +49,15 @@ Rules:
 - `arg` is required for result items and must be the canonical Spotify track URL.
 - URL format must be exactly `https://open.spotify.com/track/<trackId>`.
 
+## Action Handling Contract
+
+- `action_open.sh` accepts Alfred item `arg` values as either Spotify web URLs or Spotify URIs.
+- For Spotify web URLs (`https://open.spotify.com/...`), action script must:
+  - Convert to canonical URI form (`spotify:<kind>:<id>`).
+  - Prefer opening via Spotify desktop app (`open -a Spotify <uri>` on macOS).
+  - Fallback to `open <uri>` when app-prefixed open is unavailable.
+- For non-Spotify URLs, action script must pass through and open original URL unchanged.
+
 Non-success informational/error items:
 
 - Must still include `title` and `subtitle`.
@@ -121,5 +130,5 @@ The workflow must never crash or emit non-JSON output for handled failures.
 ## Compatibility Notes
 
 - Contract targets Alfred 5 script filter JSON shape.
-- This contract covers `spotify-search` MVP search-only behavior (track search + open URL).
+- This contract covers `spotify-search` MVP search-only behavior (track search + open in Spotify app).
 - Playback control and user-login scopes are out of scope for this contract.

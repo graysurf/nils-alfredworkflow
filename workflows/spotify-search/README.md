@@ -1,12 +1,12 @@
 # Spotify Search - Alfred Workflow
 
-Search Spotify tracks from Alfred and open selected results in your browser.
+Search Spotify tracks from Alfred and play selected results in Spotify app.
 
 ## Features
 
 - Trigger Spotify search with `sp <query>`.
 - Show track title and artist summary directly in Alfred.
-- Open selected Spotify URL in your default browser with `Enter`.
+- Open selected result in Spotify app with `Enter`.
 - Map common failures (missing credentials, rate limit, API unavailable, invalid config) to actionable Alfred messages.
 - Tune result count and market targeting through workflow variables.
 
@@ -25,7 +25,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 
 | Keyword | Behavior |
 |---|---|
-| `sp <query>` | Search and list Spotify track results, then open selected URL. |
+| `sp <query>` | Search and list Spotify track results, then open selected result in Spotify app. |
 
 ## Advanced Runtime Parameters
 

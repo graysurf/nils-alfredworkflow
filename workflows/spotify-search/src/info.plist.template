@@ -25,7 +25,7 @@
   <key>createdby</key>
   <string>graysurf</string>
   <key>description</key>
-  <string>Search Spotify tracks and open selected results in your browser.</string>
+  <string>Search Spotify tracks and open selected results in Spotify app.</string>
   <key>disabled</key>
   <false/>
   <key>name</key>

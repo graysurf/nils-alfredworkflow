@@ -176,7 +176,7 @@ mkdir -p "$tmp_dir/bin" "$tmp_dir/stubs"
 cat >"$tmp_dir/bin/open" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
-printf '%s\n' "$1" >"$OPEN_STUB_OUT"
+printf '%s\n' "$@" >"$OPEN_STUB_OUT"
 EOS
 chmod +x "$tmp_dir/bin/open"
 
@@ -189,7 +189,19 @@ set -e
 action_arg="https://open.spotify.com/track/1mCsF9Tw4AkIZOjvZbZZdT"
 OPEN_STUB_OUT="$tmp_dir/open-arg.txt" PATH="$tmp_dir/bin:$PATH" \
   "$workflow_dir/scripts/action_open.sh" "$action_arg"
-[[ "$(cat "$tmp_dir/open-arg.txt")" == "$action_arg" ]] || fail "action_open.sh must pass URL to open"
+cat >"$tmp_dir/expected-open-args.txt" <<'EOS'
+-a
+Spotify
+spotify:track:1mCsF9Tw4AkIZOjvZbZZdT
+EOS
+if ! diff -u "$tmp_dir/expected-open-args.txt" "$tmp_dir/open-arg.txt" >/dev/null; then
+  fail "action_open.sh must prefer Spotify app with spotify: URI for open.spotify.com links"
+fi
+
+external_arg="https://example.com/page"
+OPEN_STUB_OUT="$tmp_dir/open-external-arg.txt" PATH="$tmp_dir/bin:$PATH" \
+  "$workflow_dir/scripts/action_open.sh" "$external_arg"
+[[ "$(cat "$tmp_dir/open-external-arg.txt")" == "$external_arg" ]] || fail "action_open.sh must preserve non-Spotify URLs"
 
 cat >"$tmp_dir/stubs/spotify-cli-ok" <<'EOS'
 #!/usr/bin/env bash
