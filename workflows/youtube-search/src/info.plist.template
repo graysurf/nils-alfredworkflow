@@ -36,7 +36,7 @@
       <key>config</key>
       <dict>
         <key>alfredfiltersresults</key>
-        <true/>
+        <false/>
         <key>alfredfiltersresultsmatchmode</key>
         <integer>0</integer>
         <key>argumenttreatemptyqueryasnil</key>
