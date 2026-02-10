@@ -1,5 +1,5 @@
 ---
-name: release-tag
+name: release-workflow
 description: Create and push a release tag to trigger GitHub Release workflow.
 ---
 
@@ -47,7 +47,7 @@ Failure modes:
 
 ## Scripts (only entrypoints)
 
-- `<PROJECT_ROOT>/.codex/skills/release-tag/scripts/release-tag.sh`
+- `<PROJECT_ROOT>/.codex/skills/release-workflow/scripts/release-workflow.sh`
 
 ## Workflow
 

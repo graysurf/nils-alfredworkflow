@@ -3,14 +3,14 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 skill_root="$(cd "${script_dir}/.." && pwd)"
-entrypoint="${skill_root}/scripts/release-tag.sh"
+entrypoint="${skill_root}/scripts/release-workflow.sh"
 
 if [[ ! -f "${skill_root}/SKILL.md" ]]; then
   echo "error: missing SKILL.md" >&2
   exit 1
 fi
 if [[ ! -f "$entrypoint" ]]; then
-  echo "error: missing scripts/release-tag.sh" >&2
+  echo "error: missing scripts/release-workflow.sh" >&2
   exit 1
 fi
 
