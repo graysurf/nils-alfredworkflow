@@ -1,0 +1,15 @@
+id = "open-project"
+name = "Open Project"
+bundle_id = "com.graysurf.open-project"
+version = "0.1.0"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "workflow-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+PROJECTS_ROOT = "~/Project"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

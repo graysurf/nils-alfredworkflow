@@ -1,0 +1,2 @@
+# Keep formatting aligned with the workspace Rust 2024 edition.
+style_edition = "2024"

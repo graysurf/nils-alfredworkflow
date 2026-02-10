@@ -1,0 +1,7 @@
+[[document]]
+context = "project-dev"
+scope = "project"
+path = "BINARY_DEPENDENCIES.md"
+required = true
+when = "always"
+notes = "Required local toolchain and shell tool installation baseline"

@@ -1,0 +1,8 @@
+[package]
+name = "workflow-common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+alfred-core = { path = "../alfred-core" }
