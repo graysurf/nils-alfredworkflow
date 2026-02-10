@@ -36,7 +36,7 @@
       <key>config</key>
       <dict>
         <key>alfredfiltersresults</key>
-        <true/>
+        <false/>
         <key>alfredfiltersresultsmatchmode</key>
         <integer>0</integer>
         <key>argumenttreatemptyqueryasnil</key>
@@ -62,7 +62,7 @@
         <key>script</key>
         <string></string>
         <key>scriptargtype</key>
-        <integer>0</integer>
+        <integer>1</integer>
         <key>scriptfile</key>
         <string>./scripts/script_filter.sh</string>
         <key>subtext</key>

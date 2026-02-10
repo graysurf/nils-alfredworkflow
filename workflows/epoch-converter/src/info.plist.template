@@ -48,7 +48,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>ts</string>
+        <string>epoch||ts</string>
         <key>queuedelaycustom</key>
         <integer>3</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -62,7 +62,7 @@
         <key>script</key>
         <string></string>
         <key>scriptargtype</key>
-        <integer>0</integer>
+        <integer>1</integer>
         <key>scriptfile</key>
         <string>./scripts/script_filter.sh</string>
         <key>subtext</key>
@@ -106,7 +106,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword ts with an epoch or datetime input and press Enter to copy the selected output value.</string>
+  <string>Use keyword epoch (or ts) with an epoch or datetime input and press Enter to copy the selected output value.</string>
   <key>uidata</key>
   <dict>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>

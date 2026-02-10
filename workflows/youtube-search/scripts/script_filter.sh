@@ -117,6 +117,21 @@ resolve_youtube_cli() {
 }
 
 query="${1:-}"
+if [[ -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
+  query="${alfred_workflow_query}"
+elif [[ -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
+  query="${ALFRED_WORKFLOW_QUERY}"
+elif [[ -z "$query" && ! -t 0 ]]; then
+  stdin_query="$(cat)"
+  query="$stdin_query"
+fi
+
+trimmed_query="$(printf '%s' "$query" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+if [[ -z "$trimmed_query" ]]; then
+  emit_error_item "Enter a search query" "Type keywords after yt to search YouTube."
+  exit 0
+fi
+
 err_file="${TMPDIR:-/tmp}/youtube-search-script-filter.err.$$"
 trap 'rm -f "$err_file"' EXIT
 

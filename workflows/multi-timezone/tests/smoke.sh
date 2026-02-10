@@ -374,6 +374,7 @@ assert_jq_file "$packaged_json_file" '.objects | length > 0' "packaged plist mis
 assert_jq_file "$packaged_json_file" '.connections | length > 0' "packaged plist missing connections"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script filter scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "tz"' "keyword trigger must be tz"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptargtype == 1' "script filter must pass query via argv"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_copy.sh"' "action scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"
 assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["MULTI_TZ_LOCAL_OVERRIDE","MULTI_TZ_ZONES","TIMEZONE_CLI_BIN"]' "user configuration variables mismatch"

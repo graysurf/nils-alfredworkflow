@@ -8,7 +8,7 @@ Convert between epoch timestamps and datetime values from Alfred, then copy any 
 
 ## Features
 
-- Trigger conversion with `ts <value>`.
+- Trigger conversion with `epoch <value>` (or `ts <value>`).
 - Supports `epoch-cli` output directly (Alfred JSON passthrough on success).
 - Empty query runs current timestamp + clipboard-assist mode from `epoch-cli`.
 - Epoch input includes an extra formatted date row: `Local formatted (YYYY-MM-DD HH:MM:SS)`.
@@ -27,8 +27,8 @@ Set these via Alfred's "Configure Workflow..." UI:
 
 | Keyword | Behavior |
 |---|---|
-| `ts <epoch-or-datetime>` | Convert input via `epoch-cli` and show copyable result rows. |
-| `ts` | Show current epoch rows and best-effort conversion rows from clipboard content. |
+| `epoch <epoch-or-datetime>` or `ts <epoch-or-datetime>` | Convert input via `epoch-cli` and show copyable result rows. |
+| `epoch` or `ts` | Show current epoch rows and best-effort conversion rows from clipboard content. |
 
 ## Output Rows
 

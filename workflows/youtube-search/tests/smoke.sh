@@ -210,6 +210,12 @@ success_json="$({ YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-ok" "$workflow_dir
 assert_jq_json "$success_json" '.items | type == "array" and length == 1' "script_filter success must output items array"
 assert_jq_json "$success_json" '.items[0].title == "stub-result"' "script_filter should forward successful JSON"
 
+env_query_json="$({ YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-ok" alfred_workflow_query="city pop" "$workflow_dir/scripts/script_filter.sh"; })"
+assert_jq_json "$env_query_json" '.items[0].subtitle == "query=city pop"' "script_filter must support Alfred query via env fallback"
+
+stdin_query_json="$(printf 'focus music' | YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-ok" "$workflow_dir/scripts/script_filter.sh")"
+assert_jq_json "$stdin_query_json" '.items[0].subtitle == "query=focus music"' "script_filter must support query via stdin fallback"
+
 failure_json="$({ YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-fail" "$workflow_dir/scripts/script_filter.sh" "lofi"; })"
 assert_jq_json "$failure_json" '.items | type == "array" and length == 1' "script_filter failure fallback must output single item"
 assert_jq_json "$failure_json" '.items[0].valid == false' "script_filter failure fallback item must be invalid"
@@ -218,6 +224,10 @@ assert_jq_json "$failure_json" '.items[0].title == "YouTube quota exceeded"' "sc
 missing_key_json="$({ YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-missing-key" "$workflow_dir/scripts/script_filter.sh" "lofi"; })"
 assert_jq_json "$missing_key_json" '.items[0].title == "YouTube API key is missing"' "script_filter should map missing key errors"
 assert_jq_json "$missing_key_json" '.items[0].subtitle | contains("YOUTUBE_API_KEY")' "missing key subtitle should guide configuration"
+
+empty_query_json="$({ YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-ok" "$workflow_dir/scripts/script_filter.sh" "   "; })"
+assert_jq_json "$empty_query_json" '.items[0].title == "Enter a search query"' "empty query guidance title mismatch"
+assert_jq_json "$empty_query_json" '.items[0].valid == false' "empty query item must be invalid"
 
 make_layout_cli() {
   local target="$1"
@@ -306,7 +316,8 @@ assert_jq_file "$packaged_json_file" '.connections | length > 0' "packaged plist
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.type] | all(. == 8)' "script filter objects must be external script type=8"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script filter scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "yt"' "keyword trigger must be yt"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.alfredfiltersresults == true' "script filter must enable Alfred-side filtering"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptargtype == 1' "script filter must pass query via argv"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.alfredfiltersresults == false' "script filter must disable Alfred local filtering"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.type == 8' "action node must be external script type=8"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"

@@ -128,6 +128,7 @@ echo "$packaged_json" | jq -e '[.objects[] | select(.type=="alfred.workflow.inpu
 echo "$packaged_json" | jq -e '.objects[] | select(.uid=="6F5EB7A5-CDCD-4FDD-A04B-5FACC38B2F94") | .config.scriptfile == "./scripts/script_filter.sh"' >/dev/null
 echo "$packaged_json" | jq -e '.objects[] | select(.uid=="E6B67FD5-5462-46F2-BB39-75F015526AA6") | .config.scriptfile == "./scripts/script_filter.sh"' >/dev/null
 echo "$packaged_json" | jq -e '.objects[] | select(.uid=="8F3399E3-951A-4DC0-BC7D-CFA83C1E1F76") | .config.scriptfile == "./scripts/script_filter_github.sh"' >/dev/null
+echo "$packaged_json" | jq -e '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.scriptargtype] | all(. == 1)' >/dev/null
 echo "$packaged_json" | jq -e '.objects[] | select(.uid=="F718886C-3E7F-45D4-BCDF-0167EFCBA0E8") | .config.scriptfile == "./scripts/action_open.sh"' >/dev/null
 echo "$packaged_json" | jq -e '.objects[] | select(.uid=="F718886C-3E7F-45D4-BCDF-0167EFCBA0E8") | .config.type == 8' >/dev/null
 echo "$packaged_json" | jq -e '.objects[] | select(.uid=="05AA5EAC-4638-4A25-B975-FE35FBEA8FA0") | .config.scriptfile == "./scripts/action_record_usage.sh"' >/dev/null

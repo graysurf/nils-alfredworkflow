@@ -311,9 +311,12 @@ assert_jq_file "$packaged_json_file" '.objects | length >= 4' "packaged plist mi
 assert_jq_file "$packaged_json_file" '.connections | length >= 3' "packaged plist missing connections"
 
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$PRIMARY_UID\") | .config.scriptfile == \"./scripts/script_filter.sh\"" "primary script filter scriptfile mismatch"
+assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$PRIMARY_UID\") | .config.scriptargtype == 1" "primary script filter must pass query via argv"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TYPE_UID\") | .config.scriptfile == \"./scripts/script_filter_types.sh\"" "type selector scriptfile mismatch"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TYPE_UID\") | .config.keyword == \"rrv\"" "type selector keyword must be rrv"
+assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TYPE_UID\") | .config.scriptargtype == 1" "type selector must pass query via argv"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$VALUES_UID\") | .config.scriptfile == \"./scripts/script_filter_expand.sh\"" "values script filter scriptfile mismatch"
+assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$VALUES_UID\") | .config.scriptargtype == 1" "values script filter must pass query via argv"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$ACTION_UID\") | .config.scriptfile == \"./scripts/action_open.sh\"" "copy action scriptfile mismatch"
 
 assert_jq_file "$packaged_json_file" ".connections[\"$PRIMARY_UID\"] | any(.destinationuid == \"$ACTION_UID\" and .modifiers == 0)" "missing primary->copy enter connection"
