@@ -1,5 +1,10 @@
 # Workflow Guide
 
+## Platform scope
+
+- End-user workflow runtime is macOS-only because Alfred is macOS-only.
+- Linux support in this repository is for development/CI validation (lint/test/package), including Ubuntu CI runners.
+
 ## Add a new workflow
 
 1. `cargo run -p xtask -- workflow new --id <workflow-id>`

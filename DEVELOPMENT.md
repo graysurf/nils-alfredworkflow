@@ -1,5 +1,11 @@
 # Development Guide
 
+## Platform scope
+
+- Alfred runtime checks (workflow install, keyword execution, Gatekeeper/quarantine fixes) are macOS-only.
+- Development and CI quality gates (`lint`, `test`, `pack`) are expected to run on Linux as well.
+- CI baseline uses Ubuntu (`.github/workflows/ci.yml`), and tooling bootstrap supports Debian/Ubuntu (`scripts/setup-rust-tooling.sh`).
+
 ## Setup
 
 - If Rust/cargo (or required cargo tools) are not installed yet, run:

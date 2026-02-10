@@ -2,6 +2,12 @@
 
 This document lists required local tools for development, linting, testing, and packaging.
 
+## Platform intent
+
+- Alfred runtime/interactive acceptance is macOS-only.
+- Linux dependencies are intentionally kept for CI and headless test/lint/package flows.
+- This repository's CI runs on Ubuntu (`.github/workflows/ci.yml`), and `scripts/setup-rust-tooling.sh` includes Debian/Ubuntu handling.
+
 ## Required tools
 
 - Rust toolchain (`rustup`, `cargo`, `rustc`)
@@ -9,7 +15,7 @@ This document lists required local tools for development, linting, testing, and 
 - Cargo tools: `cargo-nextest`, `cargo-llvm-cov`
 - Core CLI/runtime: `git`, `jq`, `rg` (ripgrep)
 - Shell tooling: `shellcheck`, `shfmt`
-- Packaging/runtime: `zip`, `unzip`, `open` (macOS) / `xdg-open` (Linux)
+- Packaging/runtime helpers: `zip`, `unzip`, `open` (macOS install/runtime), `xdg-open` (Linux CI/local smoke compatibility)
 
 ## Install (macOS)
 

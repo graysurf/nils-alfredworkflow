@@ -8,6 +8,12 @@
 - Enable deterministic local build, CI validation, and release packaging.
 - Preserve fast iteration for Alfred-specific glue scripts.
 
+## 1.1 Platform scope
+
+- Runtime target: Alfred workflows run on macOS only.
+- Development/CI target: Linux (Ubuntu) is supported for lint/test/package validation.
+- Keep Linux dependency/setup paths for CI reliability; they are not runtime claims for Alfred users.
+
 ## 2. Non-Goals
 
 - Replacing Alfred runtime behavior.

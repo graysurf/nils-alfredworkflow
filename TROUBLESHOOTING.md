@@ -4,6 +4,7 @@
 
 - Record recurring development/runtime issues and their fixes in this repository.
 - Provide a reusable debugging playbook for future changes (not limited to one workflow).
+- Platform split reminder: Alfred runtime issues are macOS-focused; Linux references are mainly for CI/test environments.
 
 ## Quick Triage Checklist
 
