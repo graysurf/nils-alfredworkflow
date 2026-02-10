@@ -52,6 +52,103 @@ ensure_release_workflow_trigger() {
   fi
 }
 
+extract_version_value() {
+  local file="$1"
+  awk -F'=' '
+    /^[[:space:]]*version[[:space:]]*=/ {
+      value=$2
+      sub(/^[[:space:]]*/, "", value)
+      sub(/[[:space:]]*$/, "", value)
+      gsub(/^"|"$/, "", value)
+      print value
+      exit
+    }
+  ' "$file"
+}
+
+set_explicit_version() {
+  local file="$1"
+  local target_version="$2"
+  local tmp_file
+  tmp_file="$(mktemp)"
+
+  if ! awk -v target="$target_version" '
+    BEGIN { replaced = 0 }
+    {
+      if (!replaced && $0 ~ /^[[:space:]]*version[[:space:]]*=[[:space:]]*"/) {
+        print "version = \"" target "\""
+        replaced = 1
+      } else {
+        print $0
+      }
+    }
+    END {
+      if (!replaced) {
+        exit 2
+      }
+    }
+  ' "$file" >"$tmp_file"; then
+    rm -f "$tmp_file"
+    fail 1 "failed to update explicit version field in $file"
+  fi
+
+  mv "$tmp_file" "$file"
+}
+
+collect_version_targets() {
+  local semver="$1"
+  local file current
+  VERSION_TARGET_FILES=()
+  VERSION_TARGET_DESC=()
+
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    current="$(extract_version_value "$file")"
+    [[ -n "$current" ]] || continue
+    if [[ "$current" != "$semver" ]]; then
+      VERSION_TARGET_FILES+=("$file")
+      VERSION_TARGET_DESC+=("$file: $current -> $semver")
+    fi
+  done < <(git ls-files '*Cargo.toml')
+
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    current="$(extract_version_value "$file")"
+    [[ -n "$current" ]] || continue
+    if [[ "$current" != "$semver" ]]; then
+      VERSION_TARGET_FILES+=("$file")
+      VERSION_TARGET_DESC+=("$file: $current -> $semver")
+    fi
+  done < <(
+    git ls-files 'workflows/*/workflow.toml' \
+      | awk '$0 != "workflows/_template/workflow.toml"'
+  )
+}
+
+ensure_upstream_ready() {
+  local remote="$1"
+  local upstream_ref counts behind_count ahead_count upstream_remote
+
+  upstream_ref="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+  [[ -n "$upstream_ref" ]] || fail 3 "current branch has no upstream; set upstream before release"
+
+  upstream_remote="${upstream_ref%%/*}"
+  [[ "$upstream_remote" == "$remote" ]] \
+    || fail 3 "current upstream remote is '$upstream_remote' (expected '$remote')"
+
+  counts="$(git rev-list --left-right --count "${upstream_ref}...HEAD")"
+  read -r behind_count ahead_count <<<"$counts"
+  if [[ -z "$behind_count" || -z "$ahead_count" ]]; then
+    fail 3 "failed to parse ahead/behind counts for ${upstream_ref}"
+  fi
+
+  if (( behind_count != 0 )); then
+    fail 3 "local branch is behind ${upstream_ref}; pull/rebase before release"
+  fi
+
+  RELEASE_UPSTREAM_BRANCH="${upstream_ref#*/}"
+}
+
 remote="origin"
 dry_run=0
 version=""
@@ -90,6 +187,8 @@ done
 [[ "$version" =~ ^v[0-9]+(\.[0-9]+){2}([-.][0-9A-Za-z.-]+)?$ ]] \
   || fail 2 "invalid version '$version' (expected like v0.1.0)"
 
+semver="${version#v}"
+
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail 3 "not inside a git repository"
 
 ensure_release_workflow_trigger
@@ -100,6 +199,7 @@ fi
 
 remote_url="$(git remote get-url "$remote" 2>/dev/null || true)"
 [[ -n "$remote_url" ]] || fail 3 "remote '$remote' is not configured"
+ensure_upstream_ready "$remote"
 
 if git rev-parse -q --verify "refs/tags/${version}" >/dev/null; then
   fail 3 "tag already exists locally: $version"
@@ -109,13 +209,42 @@ if git ls-remote --exit-code --tags "$remote" "refs/tags/${version}" >/dev/null 
   fail 3 "tag already exists on remote '$remote': $version"
 fi
 
+collect_version_targets "$semver"
+
 echo "release workflow: .github/workflows/release.yml"
 echo "remote: $remote ($remote_url)"
-echo "version: $version"
+echo "tag version: $version"
+echo "package version: $semver"
+if [[ "${#VERSION_TARGET_DESC[@]}" -gt 0 ]]; then
+  echo "version sync targets:"
+  printf '  - %s\n' "${VERSION_TARGET_DESC[@]}"
+else
+  echo "version sync targets: already up to date"
+fi
 
 if [[ "$dry_run" -eq 1 ]]; then
-  echo "dry-run: would create tag and push to trigger release workflow"
+  echo "dry-run: would sync versions, commit/push if needed, then create and push tag"
   exit 0
+fi
+
+if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
+  for target_file in "${VERSION_TARGET_FILES[@]}"; do
+    set_explicit_version "$target_file" "$semver"
+  done
+
+  if ! command -v semantic-commit >/dev/null 2>&1; then
+    fail 3 "semantic-commit is required to commit version bump changes"
+  fi
+
+  git add "${VERSION_TARGET_FILES[@]}"
+  cat <<EOF | semantic-commit commit
+chore(release): bump version to ${semver}
+
+- Sync Cargo.toml and workflow manifest versions to ${semver}.
+EOF
+
+  git push "$remote" "HEAD:${RELEASE_UPSTREAM_BRANCH}"
+  echo "ok: pushed version bump commit to $remote/${RELEASE_UPSTREAM_BRANCH}"
 fi
 
 git tag -a "$version" -m "Release $version"

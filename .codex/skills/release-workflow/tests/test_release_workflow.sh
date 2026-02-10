@@ -53,24 +53,62 @@ on:
       - "v*"
 EOF
 
+cat > Cargo.toml <<'EOF'
+[workspace]
+members = []
+
+[workspace.package]
+version = "0.1.0"
+EOF
+
+mkdir -p crates/demo
+cat > crates/demo/Cargo.toml <<'EOF'
+[package]
+name = "demo"
+version.workspace = true
+edition = "2024"
+EOF
+
+mkdir -p workflows/open-project
+cat > workflows/open-project/workflow.toml <<'EOF'
+id = "open-project"
+name = "Open Project"
+bundle_id = "com.graysurf.open-project"
+version = "0.1.0"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+EOF
+
 echo "hello" > README.md
 git add -A
 git commit -q -m "init"
 git remote add origin "$remote_dir"
 git push -q -u origin HEAD:main
 
-"$entrypoint" v0.1.0 --dry-run >/dev/null
-if git rev-parse -q --verify refs/tags/v0.1.0 >/dev/null 2>&1; then
+"$entrypoint" v0.2.0 --dry-run >/dev/null
+if git rev-parse -q --verify refs/tags/v0.2.0 >/dev/null 2>&1; then
   echo "error: dry-run should not create local tags" >&2
   exit 1
 fi
+if ! rg -n '^version = "0.1.0"$' Cargo.toml workflows/open-project/workflow.toml >/dev/null; then
+  echo "error: dry-run should not mutate version files" >&2
+  exit 1
+fi
 
-"$entrypoint" v0.1.0 >/dev/null
-git rev-parse -q --verify refs/tags/v0.1.0 >/dev/null
-git ls-remote --exit-code --tags origin refs/tags/v0.1.0 >/dev/null
+"$entrypoint" v0.2.0 >/dev/null
+git rev-parse -q --verify refs/tags/v0.2.0 >/dev/null
+git ls-remote --exit-code --tags origin refs/tags/v0.2.0 >/dev/null
+rg -n '^version = "0.2.0"$' Cargo.toml workflows/open-project/workflow.toml >/dev/null
+git log -1 --pretty=%s | rg '^chore\(release\): bump version to 0.2.0$' >/dev/null
+local_head="$(git rev-parse HEAD)"
+remote_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+if [[ "$local_head" != "$remote_main" ]]; then
+  echo "error: expected version bump commit to be pushed to origin/main" >&2
+  exit 1
+fi
 
 set +e
-"$entrypoint" v0.1.0 >/dev/null 2>&1
+"$entrypoint" v0.2.0 >/dev/null 2>&1
 rc=$?
 set -e
 if [[ "$rc" -ne 3 ]]; then

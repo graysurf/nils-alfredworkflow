@@ -11,6 +11,7 @@ Prereqs:
 
 - Run inside this repository git work tree.
 - `git` available on `PATH`.
+- `semantic-commit` available on `PATH` (used for automated version-bump commit when needed).
 - Remote `origin` configured and reachable.
 - Release workflow listens on `v*` tags:
   - `.github/workflows/release.yml`
@@ -26,6 +27,11 @@ Inputs:
 
 Outputs:
 
+- Syncs version values to the provided input version (`vX.Y.Z` -> `X.Y.Z`) for:
+  - explicit `version = "..."` entries in tracked `Cargo.toml` files
+  - tracked `workflows/*/workflow.toml` manifests (excluding `_template`)
+- Creates a version-bump commit when sync changes are needed.
+- Pushes the version-bump commit to the current upstream branch.
 - Creates an annotated git tag (`Release <version>`).
 - Pushes tag to remote (`git push <remote> refs/tags/<version>`).
 - Prints release URL when remote is GitHub-compatible.
@@ -41,6 +47,7 @@ Failure modes:
 
 - Invalid version format (must start with `v`).
 - Working tree not clean.
+- Current branch has no upstream or is behind upstream.
 - Tag already exists locally or on remote.
 - `origin` (or provided remote) not configured.
 - Push failed due to auth/permissions/network.
@@ -51,8 +58,9 @@ Failure modes:
 
 ## Workflow
 
-1. Validate repository state (`git` repo, clean tree, remote exists).
+1. Validate repository state (`git` repo, clean tree, remote exists, upstream branch ready).
 2. Validate version format and tag uniqueness (local + remote).
-3. Create annotated tag `Release <version>`.
-4. Push tag to remote.
-5. Print success summary and release URL.
+3. Sync versions (`Cargo.toml` + workflow manifests) to input semver and commit/push when needed.
+4. Create annotated tag `Release <version>`.
+5. Push tag to remote.
+6. Print success summary and release URL.
