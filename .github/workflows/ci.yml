@@ -20,7 +20,7 @@ jobs:
       - name: Install system binaries
         run: |
           sudo apt-get update
-          sudo apt-get install -y git jq shellcheck shfmt zip unzip
+          sudo apt-get install -y git jq ripgrep shellcheck shfmt zip unzip
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
