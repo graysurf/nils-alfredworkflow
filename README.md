@@ -29,7 +29,7 @@ Alfred workflows for macOS users.
 | [YouTube Search](workflows/youtube-search/README.md) | `yt` | Search YouTube videos and open selected videos in browser. | `YOUTUBE_API_KEY` |
 | [Spotify Search](workflows/spotify-search/README.md) | `sp` | Search Spotify tracks and open selected results in Spotify app. | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |
 | [Wiki Search](workflows/wiki-search/README.md) | `wk` | Search Wikipedia articles and open selected page links. | No |
-| [Quote Feed](workflows/quote-feed/README.md) | `qq` | Show cached quotes, refresh in background, and copy a selected quote. | Optional tuning: `QUOTE_DISPLAY_COUNT`, `QUOTE_REFRESH_INTERVAL`, `QUOTE_FETCH_COUNT`, `QUOTE_MAX_ENTRIES` |
+| [Quote Feed](workflows/quote-feed/README.md) | `qq` | Show cached quotes, refresh in background, and copy a selected quote. | Optional tuning: `QUOTE_DISPLAY_COUNT`, `QUOTE_REFRESH_INTERVAL`, `QUOTE_FETCH_COUNT`, `QUOTE_MAX_ENTRIES`, `QUOTE_DATA_DIR` |
 | [Open Project](workflows/open-project/README.md) | `c`, `code`, `github` | Fuzzy-find local Git projects, open in editor, and jump to GitHub remotes. | Optional tuning: `OPEN_PROJECT_MAX_RESULTS` |
 | [Epoch Converter](workflows/epoch-converter/README.md) | `ts` | Convert epoch/datetime values and copy selected output. | No |
 | [Randomer](workflows/randomer/README.md) | `rr`, `rrv` | Generate random values by format and copy results. | No |

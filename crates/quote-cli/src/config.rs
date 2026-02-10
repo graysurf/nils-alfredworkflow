@@ -88,8 +88,8 @@ impl RuntimeConfig {
 
 fn parse_data_dir(env_map: &HashMap<String, String>) -> PathBuf {
     let selected = env_map
-        .get(ALFRED_WORKFLOW_DATA_ENV)
-        .or_else(|| env_map.get(QUOTE_DATA_DIR_ENV))
+        .get(QUOTE_DATA_DIR_ENV)
+        .or_else(|| env_map.get(ALFRED_WORKFLOW_DATA_ENV))
         .map(String::as_str)
         .map(str::trim)
         .filter(|value| !value.is_empty())
@@ -186,6 +186,17 @@ mod tests {
                 .expect("alfred data dir should parse");
 
         assert_eq!(config.data_dir, PathBuf::from("/tmp/alfred-quote-feed"));
+    }
+
+    #[test]
+    fn config_prefers_explicit_quote_data_dir_over_alfred_data_path() {
+        let config = RuntimeConfig::from_pairs(vec![
+            (ALFRED_WORKFLOW_DATA_ENV, "/tmp/alfred-quote-feed"),
+            (QUOTE_DATA_DIR_ENV, "/tmp/custom-quote-feed"),
+        ])
+        .expect("explicit quote data dir should parse");
+
+        assert_eq!(config.data_dir, PathBuf::from("/tmp/custom-quote-feed"));
     }
 
     #[test]

@@ -420,10 +420,12 @@ Use this when conversion output is incorrect or workflow is unstable.
    - `QUOTE_REFRESH_INTERVAL` (optional, default `1h`, format `<positive-int><s\|m\|h>`)
    - `QUOTE_FETCH_COUNT` (optional, default `5`)
    - `QUOTE_MAX_ENTRIES` (optional, default `100`)
+   - `QUOTE_DATA_DIR` (optional, default empty: overrides cache directory when set)
 3. Confirm script-filter contract output is JSON:
    - `bash workflows/quote-feed/scripts/script_filter.sh "" | jq -e '.items | type == "array"'`
 4. Confirm cache files are written to the workflow storage path:
-   - preferred: `$alfred_workflow_data/quotes.txt` and `$alfred_workflow_data/quotes.timestamp`
+   - preferred when set: `$QUOTE_DATA_DIR/quotes.txt` and `$QUOTE_DATA_DIR/quotes.timestamp`
+   - otherwise preferred: `$alfred_workflow_data/quotes.txt` and `$alfred_workflow_data/quotes.timestamp`
    - fallback: `${TMPDIR:-/tmp}/nils-quote-feed/quotes.txt` and `${TMPDIR:-/tmp}/nils-quote-feed/quotes.timestamp`
 
 ### Common failures and actions

@@ -16,6 +16,8 @@ QUOTE_REFRESH_INTERVAL = "1h"
 QUOTE_FETCH_COUNT = "5"
 # Optional: max retained quotes in local cache. Defaults to 100, clamped to 1..1000.
 QUOTE_MAX_ENTRIES = "100"
+# Optional: override quote cache directory. Empty means Alfred workflow data dir (or temp fallback).
+QUOTE_DATA_DIR = ""
 
 [alfred]
 min_alfred = "5"

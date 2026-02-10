@@ -23,6 +23,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | `QUOTE_REFRESH_INTERVAL` | No | `1h` | Refresh interval format: `<positive-int><s\|m\|h>`. |
 | `QUOTE_FETCH_COUNT` | No | `5` | Quotes fetched when refresh is due. Parsed as base-10 integer and clamped to `1..20`. |
 | `QUOTE_MAX_ENTRIES` | No | `100` | Max retained cached quotes. Parsed as base-10 integer and clamped to `1..1000`. |
+| `QUOTE_DATA_DIR` | No | `(empty)` | Override quote cache directory. If empty, uses Alfred workflow data dir; if unavailable, falls back to `${TMPDIR:-/tmp}/nils-quote-feed`. |
 
 ## Keyword
 

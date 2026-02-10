@@ -31,7 +31,8 @@ All `script_filter.sh` code paths must emit valid Alfred JSON:
 
 - Cache is local-first and served immediately from quote storage.
 - Runtime storage location:
-  - preferred: `$alfred_workflow_data/quotes.txt` and `$alfred_workflow_data/quotes.timestamp`
+  - preferred when set: `$QUOTE_DATA_DIR/quotes.txt` and `$QUOTE_DATA_DIR/quotes.timestamp`
+  - otherwise preferred: `$alfred_workflow_data/quotes.txt` and `$alfred_workflow_data/quotes.timestamp`
   - fallback: `${TMPDIR:-/tmp}/nils-quote-feed/quotes.txt` and `${TMPDIR:-/tmp}/nils-quote-feed/quotes.timestamp`
 - Refresh decision:
   - refresh runs only when `now - last_refresh > QUOTE_REFRESH_INTERVAL`.
@@ -51,8 +52,8 @@ Legacy storage definitions come from `/Users/terry/.config/zsh/bootstrap/quote-i
 
 | Storage concern | Legacy bootstrap storage | New quote-feed workflow storage |
 | --- | --- | --- |
-| Quotes file | `$ZDOTDIR/assets/quotes.txt` | preferred `$alfred_workflow_data/quotes.txt`; fallback `${TMPDIR:-/tmp}/nils-quote-feed/quotes.txt` |
-| Refresh timestamp | `$ZSH_CACHE_DIR/quotes.timestamp` | preferred `$alfred_workflow_data/quotes.timestamp`; fallback `${TMPDIR:-/tmp}/nils-quote-feed/quotes.timestamp` |
+| Quotes file | `$ZDOTDIR/assets/quotes.txt` | preferred `$QUOTE_DATA_DIR/quotes.txt` (when set), otherwise `$alfred_workflow_data/quotes.txt`; fallback `${TMPDIR:-/tmp}/nils-quote-feed/quotes.txt` |
+| Refresh timestamp | `$ZSH_CACHE_DIR/quotes.timestamp` | preferred `$QUOTE_DATA_DIR/quotes.timestamp` (when set), otherwise `$alfred_workflow_data/quotes.timestamp`; fallback `${TMPDIR:-/tmp}/nils-quote-feed/quotes.timestamp` |
 | Runtime trigger | Shell login init (`zsh`) | Alfred keyword runtime (`qq`) |
 
 Migration guidance:
@@ -75,6 +76,7 @@ Migration guidance:
 | `QUOTE_REFRESH_INTERVAL` | No | `1h` | required format: `<positive-int><s\|m\|h>` |
 | `QUOTE_FETCH_COUNT` | No | `5` | base-10 integer, clamped to `1..20` |
 | `QUOTE_MAX_ENTRIES` | No | `100` | base-10 integer, clamped to `1..1000` |
+| `QUOTE_DATA_DIR` | No | `(empty)` | non-empty path overrides quote cache directory |
 
 Advanced runtime override:
 - `QUOTE_CLI_BIN` (optional): absolute executable path override for local/debug runtime.
