@@ -60,3 +60,22 @@
   - `scripts/workflow-pack.sh --id open-project --install`
 - Pack all workflows:
   - `scripts/workflow-pack.sh --all`
+
+## macOS acceptance (Gatekeeper / quarantine)
+
+- For workflows that bundle executables (for example `youtube-search`), include a quarantine check during final acceptance on macOS.
+- Recommended one-time cleanup + smoke check for `youtube-search` after install:
+
+  ```bash
+  WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
+    [ -f "$p" ] || continue
+    bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
+    [ "$bid" = "com.graysurf.youtube-search" ] && dirname "$p"
+  done | head -n1)"
+
+  [ -n "$WORKFLOW_DIR" ] || { echo "youtube-search workflow not found"; exit 1; }
+  xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
+  "$WORKFLOW_DIR/scripts/script_filter.sh" "rust tutorial" | jq -e '.items | type == "array"'
+  ```
+
+- If Gatekeeper still blocks execution, follow `TROUBLESHOOTING.md` section `macOS Gatekeeper fix (youtube-search)`.

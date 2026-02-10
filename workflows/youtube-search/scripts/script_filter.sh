@@ -58,8 +58,26 @@ print_error_item() {
   emit_error_item "$title" "$subtitle"
 }
 
+clear_quarantine_if_needed() {
+  local cli_path="$1"
+
+  if [[ "$(uname -s 2>/dev/null || printf '')" != "Darwin" ]]; then
+    return 0
+  fi
+
+  if ! command -v xattr >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Release artifacts downloaded from GitHub may carry quarantine.
+  if xattr -p com.apple.quarantine "$cli_path" >/dev/null 2>&1; then
+    xattr -d com.apple.quarantine "$cli_path" >/dev/null 2>&1 || true
+  fi
+}
+
 resolve_youtube_cli() {
   if [[ -n "${YOUTUBE_CLI_BIN:-}" && -x "${YOUTUBE_CLI_BIN}" ]]; then
+    clear_quarantine_if_needed "${YOUTUBE_CLI_BIN}"
     printf '%s\n' "${YOUTUBE_CLI_BIN}"
     return 0
   fi
@@ -70,6 +88,7 @@ resolve_youtube_cli() {
   local packaged_cli
   packaged_cli="$script_dir/../bin/youtube-cli"
   if [[ -x "$packaged_cli" ]]; then
+    clear_quarantine_if_needed "$packaged_cli"
     printf '%s\n' "$packaged_cli"
     return 0
   fi
@@ -80,6 +99,7 @@ resolve_youtube_cli() {
   local release_cli
   release_cli="$repo_root/target/release/youtube-cli"
   if [[ -x "$release_cli" ]]; then
+    clear_quarantine_if_needed "$release_cli"
     printf '%s\n' "$release_cli"
     return 0
   fi
@@ -87,6 +107,7 @@ resolve_youtube_cli() {
   local debug_cli
   debug_cli="$repo_root/target/debug/youtube-cli"
   if [[ -x "$debug_cli" ]]; then
+    clear_quarantine_if_needed "$debug_cli"
     printf '%s\n' "$debug_cli"
     return 0
   fi
