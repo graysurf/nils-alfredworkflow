@@ -20,6 +20,7 @@ Alfred workflows for macOS users.
 - Browse and copy quotes: use **Quote Feed** (`qq`)
 - Find/open local projects: use **Open Project** (`c`, `code`, `github`)
 - Convert epoch and datetime values: use **Epoch Converter** (`ts`)
+- Show current time across timezones: use **Multi Timezone** (`tz`)
 - Generate random test/demo values: use **Randomer** (`rr`, `rrv`)
 
 ## Workflows
@@ -34,6 +35,7 @@ Alfred workflows for macOS users.
 | [Quote Feed](workflows/quote-feed/README.md) | `qq` | Show cached quotes, refresh in background, and copy a selected quote. | Optional tuning: `QUOTE_DISPLAY_COUNT`, `QUOTE_REFRESH_INTERVAL`, `QUOTE_FETCH_COUNT`, `QUOTE_MAX_ENTRIES`, `QUOTE_DATA_DIR` |
 | [Open Project](workflows/open-project/README.md) | `c`, `code`, `github` | Fuzzy-find local Git projects, open in editor, and jump to GitHub remotes. | Optional tuning: `OPEN_PROJECT_MAX_RESULTS` |
 | [Epoch Converter](workflows/epoch-converter/README.md) | `ts` | Convert epoch/datetime values and copy selected output. | No |
+| [Multi Timezone](workflows/multi-timezone/README.md) | `tz` | Show current time across one or more IANA timezones and copy selected output. | Optional tuning: `TIMEZONE_CLI_BIN`, `MULTI_TZ_ZONES`, `MULTI_TZ_LOCAL_OVERRIDE` |
 | [Randomer](workflows/randomer/README.md) | `rr`, `rrv` | Generate random values by format and copy results. | No |
 
 ## Troubleshooting

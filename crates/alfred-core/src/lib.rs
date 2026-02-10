@@ -19,6 +19,8 @@ impl Feedback {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Item {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uid: Option<String>,
     pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subtitle: Option<String>,
@@ -39,6 +41,7 @@ pub struct Item {
 impl Item {
     pub fn new(title: impl Into<String>) -> Self {
         Self {
+            uid: None,
             title: title.into(),
             subtitle: None,
             arg: None,
@@ -52,6 +55,11 @@ impl Item {
 
     pub fn with_subtitle(mut self, subtitle: impl Into<String>) -> Self {
         self.subtitle = Some(subtitle.into());
+        self
+    }
+
+    pub fn with_uid(mut self, uid: impl Into<String>) -> Self {
+        self.uid = Some(uid.into());
         self
     }
 
@@ -179,6 +187,7 @@ mod tests {
             !json.contains("subtitle"),
             "subtitle must be omitted when absent"
         );
+        assert!(!json.contains("uid"), "uid must be omitted when absent");
         assert!(
             !json.contains("autocomplete"),
             "autocomplete must be omitted when absent"

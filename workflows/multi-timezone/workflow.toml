@@ -1,0 +1,20 @@
+id = "multi-timezone"
+name = "Multi Timezone"
+bundle_id = "com.graysurf.multi-timezone"
+version = "1.0.2"
+script_filter = "script_filter.sh"
+action = "action_copy.sh"
+rust_binary = "timezone-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional override path for local/debug runtime.
+TIMEZONE_CLI_BIN = ""
+# Optional default timezone list (comma/newline separated IANA IDs).
+MULTI_TZ_ZONES = ""
+# Optional local-timezone override used when no zones are provided.
+MULTI_TZ_LOCAL_OVERRIDE = "Europe/London"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"
