@@ -146,6 +146,43 @@ Runtime checks:
 - API/network failures must return non-actionable error items.
 - Empty API results must return a clear `No articles found` guidance item.
 
+## Cambridge Dict workflow details
+
+`workflows/cambridge-dict` is a dedicated workflow that uses `cambridge-cli` plus a bundled
+Playwright scraper (`scripts/cambridge_scraper.mjs`) for Cambridge Dictionary lookups.
+
+### Environment variables
+
+- `CAMBRIDGE_DICT_MODE` (optional): `english` or `english-chinese-traditional`; default `english`.
+- `CAMBRIDGE_MAX_RESULTS` (optional): default `8`, clamped to `1..20`.
+- `CAMBRIDGE_TIMEOUT_MS` (optional): default `8000`, clamped to `1000..30000`.
+- `CAMBRIDGE_HEADLESS` (optional): `true` or `false`; default `true`.
+- `CAMBRIDGE_CLI_BIN` (optional): executable path override for `cambridge-cli`.
+
+### Alfred command flow
+
+- Keyword trigger: `cd`.
+- Script filter adapter: `workflows/cambridge-dict/scripts/script_filter.sh` ->
+  `cambridge-cli query --input "<query>"`.
+- Candidate stage emits `autocomplete` token `def::WORD`.
+- Detail stage is triggered by `def::WORD` and returns rows with URL `arg`.
+- Enter flow: `workflows/cambridge-dict/scripts/action_open.sh` opens selected URL.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `npm run test:cambridge-scraper`
+- `bash workflows/cambridge-dict/tests/smoke.sh`
+- `scripts/workflow-test.sh --id cambridge-dict`
+- `scripts/workflow-pack.sh --id cambridge-dict`
+
+Runtime checks:
+
+- Script filter must always return valid Alfred JSON fallback items on failure.
+- Missing Node/Playwright runtime must map to actionable non-crashing error items.
+- Smoke tests remain deterministic and offline by default (fixture/stub based, no live Cambridge request).
+
 ## Epoch Converter workflow details
 
 `workflows/epoch-converter` is a local conversion workflow that uses `epoch-cli` for epoch/datetime

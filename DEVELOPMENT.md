@@ -10,10 +10,15 @@
 
 - If Rust/cargo (or required cargo tools) are not installed yet, run:
   - `scripts/setup-rust-tooling.sh`
+- For Node + Playwright scraper tooling (`cambridge-dict`), run:
+  - `scripts/setup-node-playwright.sh`
+  - Add `--install-browser` only when you need live Playwright scraping checks.
 - Manual setup fallback:
   - Install Rust via rustup (stable toolchain).
   - Ensure `rustfmt` and `clippy` components are installed:
     - `rustup component add rustfmt clippy`
+  - Install Node.js (>=20) and run:
+    - `npm ci`
 
 ## Build and run
 
@@ -35,6 +40,10 @@
 - All commands in **Formatting and linting** must pass.
 - `cargo test --workspace`
 - `scripts/workflow-test.sh`
+- For changes under `workflows/cambridge-dict/scripts/` or `package.json`:
+  - `npm run test:cambridge-scraper`
+- For changes under `workflows/cambridge-dict/`:
+  - `bash workflows/cambridge-dict/tests/smoke.sh`
 
 ### CI-style test reporting (optional)
 

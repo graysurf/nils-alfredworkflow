@@ -1,0 +1,19 @@
+{
+  "name": "nils-alfredworkflow",
+  "private": true,
+  "version": "1.0.1",
+  "description": "Node tooling for nils-alfredworkflow Playwright scraper tests",
+  "license": "CC0-1.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "setup:playwright": "bash scripts/setup-node-playwright.sh",
+    "test:cambridge-scraper": "node --test workflows/cambridge-dict/scripts/tests/*.test.mjs",
+    "test:cambridge-smoke": "bash workflows/cambridge-dict/tests/smoke.sh",
+    "test:cambridge": "npm run test:cambridge-scraper && npm run test:cambridge-smoke"
+  },
+  "dependencies": {
+    "playwright": "^1.54.0"
+  }
+}

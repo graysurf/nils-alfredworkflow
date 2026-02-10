@@ -1,0 +1,22 @@
+id = "cambridge-dict"
+name = "Cambridge Dict"
+bundle_id = "com.graysurf.cambridge-dict"
+version = "1.0.1"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "cambridge-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional: dictionary mode. Allowed values: english, english-chinese-traditional.
+CAMBRIDGE_DICT_MODE = "english"
+# Optional: max candidate results returned by suggest stage. Effective range is clamped to 1..20.
+CAMBRIDGE_MAX_RESULTS = "8"
+# Optional: scraper timeout in milliseconds. Effective range is clamped to 1000..30000.
+CAMBRIDGE_TIMEOUT_MS = "8000"
+# Optional: Playwright headless mode flag. Allowed values: true or false.
+CAMBRIDGE_HEADLESS = "true"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"
