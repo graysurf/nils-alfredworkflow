@@ -1,0 +1,18 @@
+id = "market-expression"
+name = "Market Expression"
+bundle_id = "com.graysurf.market-expression"
+version = "1.0.2"
+script_filter = "script_filter.sh"
+action = "action_copy.sh"
+rust_binary = "market-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional executable path override for local/debug runtime.
+MARKET_CLI_BIN = ""
+# Default fiat used by market-cli expr when target fiat is omitted in query.
+MARKET_DEFAULT_FIAT = "USD"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"
