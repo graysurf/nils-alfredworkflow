@@ -1,7 +1,7 @@
 id = "youtube-search"
 name = "YouTube Search"
 bundle_id = "com.graysurf.youtube-search"
-version = "0.1.3"
+version = "0.1.4"
 script_filter = "script_filter.sh"
 action = "action_open.sh"
 rust_binary = "youtube-cli"
