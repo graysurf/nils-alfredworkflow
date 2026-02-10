@@ -125,6 +125,23 @@ collect_version_targets() {
   )
 }
 
+refresh_cargo_lock_if_present() {
+  local semver="$1"
+  local lock_file="Cargo.lock"
+
+  if ! git ls-files --error-unmatch "$lock_file" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  command -v cargo >/dev/null 2>&1 || fail 3 "cargo is required to refresh Cargo.lock"
+  cargo update --workspace >/dev/null
+
+  if ! git diff --quiet -- "$lock_file"; then
+    VERSION_TARGET_FILES+=("$lock_file")
+    VERSION_TARGET_DESC+=("$lock_file: sync workspace package versions to $semver")
+  fi
+}
+
 ensure_upstream_ready() {
   local remote="$1"
   local upstream_ref counts behind_count ahead_count upstream_remote
@@ -232,6 +249,8 @@ if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
     set_explicit_version "$target_file" "$semver"
   done
 
+  refresh_cargo_lock_if_present "$semver"
+
   if ! command -v semantic-commit >/dev/null 2>&1; then
     fail 3 "semantic-commit is required to commit version bump changes"
   fi
@@ -240,7 +259,8 @@ if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
   cat <<EOF | semantic-commit commit
 chore(release): bump version to ${semver}
 
-- Sync Cargo.toml and workflow manifest versions to ${semver}.
+- Sync Cargo and workflow manifest versions to ${semver}.
+- Refresh Cargo.lock workspace package versions when present.
 EOF
 
   git push "$remote" "HEAD:${RELEASE_UPSTREAM_BRANCH}"

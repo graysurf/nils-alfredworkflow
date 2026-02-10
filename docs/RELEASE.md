@@ -10,7 +10,8 @@ When using `.codex/skills/release-workflow/scripts/release-workflow.sh`, the scr
 
 1. Sync explicit `version = "..."` entries in tracked `Cargo.toml` files.
 2. Sync tracked `workflows/*/workflow.toml` versions (excluding `_template`).
-3. Commit/push version bumps (when needed), then create/push the release tag.
+3. Refresh tracked `Cargo.lock` workspace package versions (when present).
+4. Commit/push version bumps (when needed), then create/push the release tag.
 
 ## Local release dry run
 

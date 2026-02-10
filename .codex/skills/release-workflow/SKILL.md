@@ -30,6 +30,7 @@ Outputs:
 - Syncs version values to the provided input version (`vX.Y.Z` -> `X.Y.Z`) for:
   - explicit `version = "..."` entries in tracked `Cargo.toml` files
   - tracked `workflows/*/workflow.toml` manifests (excluding `_template`)
+- Refreshes tracked `Cargo.lock` workspace package versions when present.
 - Creates a version-bump commit when sync changes are needed.
 - Pushes the version-bump commit to the current upstream branch.
 - Creates an annotated git tag (`Release <version>`).

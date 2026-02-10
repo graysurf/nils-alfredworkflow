@@ -55,7 +55,8 @@ EOF
 
 cat > Cargo.toml <<'EOF'
 [workspace]
-members = []
+members = ["crates/demo"]
+resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
@@ -67,6 +68,12 @@ cat > crates/demo/Cargo.toml <<'EOF'
 name = "demo"
 version.workspace = true
 edition = "2024"
+EOF
+mkdir -p crates/demo/src
+cat > crates/demo/src/lib.rs <<'EOF'
+pub fn answer() -> u32 {
+    42
+}
 EOF
 
 mkdir -p workflows/open-project
@@ -80,6 +87,7 @@ action = "action_open.sh"
 EOF
 
 echo "hello" > README.md
+cargo check --workspace >/dev/null
 git add -A
 git commit -q -m "init"
 git remote add origin "$remote_dir"
@@ -90,7 +98,7 @@ if git rev-parse -q --verify refs/tags/v0.2.0 >/dev/null 2>&1; then
   echo "error: dry-run should not create local tags" >&2
   exit 1
 fi
-if ! rg -n '^version = "0.1.0"$' Cargo.toml workflows/open-project/workflow.toml >/dev/null; then
+if ! rg -n '^version = "0.1.0"$' Cargo.toml workflows/open-project/workflow.toml Cargo.lock >/dev/null; then
   echo "error: dry-run should not mutate version files" >&2
   exit 1
 fi
@@ -98,8 +106,12 @@ fi
 "$entrypoint" v0.2.0 >/dev/null
 git rev-parse -q --verify refs/tags/v0.2.0 >/dev/null
 git ls-remote --exit-code --tags origin refs/tags/v0.2.0 >/dev/null
-rg -n '^version = "0.2.0"$' Cargo.toml workflows/open-project/workflow.toml >/dev/null
+rg -n '^version = "0.2.0"$' Cargo.toml workflows/open-project/workflow.toml Cargo.lock >/dev/null
 git log -1 --pretty=%s | rg '^chore\(release\): bump version to 0.2.0$' >/dev/null
+if ! git diff-tree --no-commit-id --name-only -r HEAD | rg '^Cargo.lock$' >/dev/null; then
+  echo "error: expected release bump commit to include Cargo.lock" >&2
+  exit 1
+fi
 local_head="$(git rev-parse HEAD)"
 remote_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
 if [[ "$local_head" != "$remote_main" ]]; then
