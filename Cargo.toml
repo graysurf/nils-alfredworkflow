@@ -8,6 +8,7 @@ members = [
   "crates/workflow-cli",
   "crates/xtask",
   "crates/youtube-cli",
+  "crates/randomer-cli",
 ]
 resolver = "2"
 

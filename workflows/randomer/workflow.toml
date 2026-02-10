@@ -1,0 +1,24 @@
+id = "randomer"
+name = "Randomer"
+bundle_id = "com.graysurf.randomer"
+version = "0.1.1"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "randomer-cli"
+assets = [
+  "src/assets/icon.png",
+  "src/assets/icons/email.png",
+  "src/assets/icons/imei.png",
+  "src/assets/icons/unit.png",
+  "src/assets/icons/uuid.png",
+  "src/assets/icons/int.png",
+  "src/assets/icons/decimal.png",
+  "src/assets/icons/percent.png",
+  "src/assets/icons/currency.png",
+  "src/assets/icons/hex.png",
+  "src/assets/icons/otp.png",
+]
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"
