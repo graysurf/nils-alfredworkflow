@@ -39,12 +39,41 @@ test('extractDefineFromHtml parses english-chinese-traditional entry fields', as
 
   assert.equal(entry.headword, 'open');
   assert.equal(entry.partOfSpeech, 'adjective');
-  assert.ok(entry.definitions.includes('開著的'));
-  assert.ok(entry.definitions.includes('營業中的'));
+  assert.ok(entry.definitions.includes('not closed | 開著的'));
+  assert.ok(entry.definitions.includes('ready for business | 營業中的'));
   assert.equal(
     entry.url,
     'https://dictionary.cambridge.org/dictionary/english-chinese-traditional/open',
   );
+});
+
+test('extractDefineFromHtml suppresses translation-only overflow in traditional mode', () => {
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <title>open | Cambridge Dictionary</title>
+      </head>
+      <body>
+        <div class="entry-body">
+          <h1 class="di-title"><span class="hw">open</span></h1>
+          <div class="sense-body">
+            <div class="def">available for use</div>
+            <div class="trans">可供使用</div>
+            <div class="trans">額外翻譯列</div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const entry = extractDefineFromHtml({
+    html,
+    mode: 'english-chinese-traditional',
+    entry: 'open',
+  });
+
+  assert.deepEqual(entry.definitions, ['available for use | 可供使用']);
 });
 
 test('extractDefineFromHtml keeps full definition text and skips def-info tokens', () => {

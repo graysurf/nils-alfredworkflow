@@ -78,15 +78,26 @@ pub fn define_feedback(
             continue;
         };
 
-        let subtitle = row
+        let (title, translation) = split_bilingual_definition(&definition_text)
+            .unwrap_or_else(|| (definition_text.clone(), None));
+
+        let mut subtitle_parts = Vec::new();
+        if let Some(part) = row
             .part_of_speech
             .as_deref()
             .or(entry.part_of_speech.as_deref())
-            .map(|part| format!("{part} | {DEFINE_ROW_SUBTITLE_PREFIX} {}", idx + 1))
-            .unwrap_or_else(|| format!("{DEFINE_ROW_SUBTITLE_PREFIX} {}", idx + 1));
+            .and_then(normalize_text)
+        {
+            subtitle_parts.push(part);
+        }
+        subtitle_parts.push(format!("{DEFINE_ROW_SUBTITLE_PREFIX} {}", idx + 1));
+        if let Some(text) = translation {
+            subtitle_parts.push(text);
+        }
+        let subtitle = subtitle_parts.join(" | ");
 
         items.push(
-            Item::new(definition_text)
+            Item::new(title)
                 .with_subtitle(subtitle)
                 .with_arg(entry_url.clone())
                 .with_valid(true),
@@ -208,6 +219,17 @@ fn normalize_text(input: &str) -> Option<String> {
     } else {
         Some(trimmed.to_string())
     }
+}
+
+fn split_bilingual_definition(input: &str) -> Option<(String, Option<String>)> {
+    let normalized = normalize_text(input)?;
+    let Some((left, right)) = normalized.rsplit_once(" | ") else {
+        return Some((normalized, None));
+    };
+
+    let english = normalize_text(left)?;
+    let translation = normalize_text(right);
+    Some((english, translation))
 }
 
 #[cfg(test)]
@@ -367,6 +389,33 @@ mod tests {
                 "https://dictionary.cambridge.org/dictionary/english-chinese-traditional/open%20up"
             )
         );
+    }
+
+    #[test]
+    fn feedback_define_moves_translation_text_to_subtitle_for_bilingual_rows() {
+        let response = fixture_define_response(Entry {
+            headword: "ghost".to_string(),
+            part_of_speech: Some("noun".to_string()),
+            phonetics: None,
+            url: Some("https://example.com/ghost".to_string()),
+            definitions: vec![DefinitionLine {
+                text: "the spirit of a dead person | 鬼，幽靈".to_string(),
+                part_of_speech: None,
+            }],
+        });
+
+        let feedback = define_feedback(
+            &response,
+            "ghost",
+            DictionaryMode::EnglishChineseTraditional,
+        );
+
+        assert_eq!(feedback.items.len(), 2);
+        assert_eq!(feedback.items[1].title, "the spirit of a dead person");
+        let subtitle = feedback.items[1].subtitle.as_deref().expect("subtitle");
+        assert!(subtitle.contains("noun"));
+        assert!(subtitle.contains("Definition 1"));
+        assert!(subtitle.contains("鬼，幽靈"));
     }
 
     #[test]
