@@ -2,6 +2,10 @@
 
 Search Cambridge Dictionary from Alfred with a two-stage flow (candidate -> definition detail) and open the selected Cambridge page.
 
+## Screenshot
+
+![Cambridge Dict workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Trigger dictionary lookup with `cd <query>`.
