@@ -1,0 +1,35 @@
+# Google Search - Alfred Workflow
+
+Search web results from Alfred using Brave Search API and open selected links in your browser.
+
+## Features
+
+- Trigger web search with `gg <query>`.
+- Show result title and snippet directly in Alfred.
+- Open selected URL in your default browser with `Enter`.
+- Map common failures (missing API key, quota/rate limit, API unavailable, invalid config) to actionable Alfred messages.
+- Tune result count, safe search mode, and country bias through workflow variables.
+
+## Configuration
+
+Set these via Alfred's "Configure Workflow..." UI:
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `BRAVE_API_KEY` | Yes | (empty) | Brave Search API subscription token. |
+| `BRAVE_MAX_RESULTS` | No | `10` | Max results per query. Effective range is clamped to `1..20`. |
+| `BRAVE_SAFESEARCH` | No | `moderate` | Safe search mode: `strict`, `moderate`, or `off`. |
+| `BRAVE_COUNTRY` | No | (empty) | Optional uppercase ISO 3166-1 alpha-2 country code (for example `US`, `TW`, `JP`). |
+
+## Keyword
+
+| Keyword | Behavior |
+|---|---|
+| `gg <query>` | Search and list web results, then open selected URL. |
+
+## Advanced Runtime Parameters
+
+| Parameter | Description |
+|---|---|
+| `BRAVE_CLI_BIN` | Optional override path for `brave-cli` (useful for local debugging). |
+
