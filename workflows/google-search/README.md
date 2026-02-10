@@ -2,6 +2,10 @@
 
 Search web results from Alfred using Brave Search API and open selected links in your browser.
 
+## Screenshot
+
+![Google Search workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Trigger web search with `gg <query>`.
@@ -32,4 +36,3 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `BRAVE_CLI_BIN` | Optional override path for `brave-cli` (useful for local debugging). |
-

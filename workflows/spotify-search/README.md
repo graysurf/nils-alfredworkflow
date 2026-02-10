@@ -2,6 +2,10 @@
 
 Search Spotify tracks from Alfred and play selected results in Spotify app.
 
+## Screenshot
+
+![Spotify Search workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Trigger Spotify search with `sp <query>`.

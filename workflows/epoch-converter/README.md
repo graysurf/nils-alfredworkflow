@@ -2,6 +2,10 @@
 
 Convert between epoch timestamps and datetime values from Alfred, then copy any selected value to clipboard.
 
+## Screenshot
+
+![Epoch Converter workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Trigger conversion with `ts <value>`.

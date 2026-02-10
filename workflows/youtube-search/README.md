@@ -2,6 +2,10 @@
 
 Search YouTube videos from Alfred and open selected videos in your browser.
 
+## Screenshot
+
+![YouTube Search workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Trigger YouTube search with `yt <query>`.
@@ -31,4 +35,3 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `YOUTUBE_CLI_BIN` | Optional override path for `youtube-cli` (useful for local debugging). |
-

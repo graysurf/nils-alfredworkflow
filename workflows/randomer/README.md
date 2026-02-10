@@ -2,6 +2,10 @@
 
 Generate random values by format and copy them directly from Alfred.
 
+## Screenshot
+
+![Randomer workflow screenshot](./screenshot.png)
+
 ## Keywords
 
 - `rr`

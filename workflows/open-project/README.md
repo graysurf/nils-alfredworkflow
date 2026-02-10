@@ -2,6 +2,10 @@
 
 Fuzzy-find local Git projects from one or more base directories, open them in your editor, and jump to GitHub remotes from Alfred.
 
+## Screenshot
+
+![Open Project workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Scan comma-separated `PROJECT_DIRS` roots (supports `~` and `$HOME`) up to depth 3.
@@ -33,4 +37,3 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `WORKFLOW_CLI_BIN` | Optional override path for `workflow-cli` (useful for local debugging). |
-

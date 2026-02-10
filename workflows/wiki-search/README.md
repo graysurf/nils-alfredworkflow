@@ -2,6 +2,10 @@
 
 Search Wikipedia articles from Alfred and open selected pages in your browser.
 
+## Screenshot
+
+![Wiki Search workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Trigger wiki search with `wk <query>`.
