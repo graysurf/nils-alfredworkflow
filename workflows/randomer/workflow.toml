@@ -17,6 +17,7 @@ assets = [
   "src/assets/icons/currency.png",
   "src/assets/icons/hex.png",
   "src/assets/icons/otp.png",
+  "src/assets/icons/phone.png",
 ]
 
 [alfred]

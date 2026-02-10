@@ -120,7 +120,7 @@ mod tests {
             .and_then(Value::as_array)
             .expect("items should be present");
 
-        assert_eq!(items.len(), 10);
+        assert_eq!(items.len(), 11);
         assert!(
             items
                 .first()
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn list_formats_applies_case_insensitive_contains_filter() {
-        let cli = Cli::parse_from(["randomer-cli", "list-formats", "--query", "HE"]);
+        let cli = Cli::parse_from(["randomer-cli", "list-formats", "--query", "HEX"]);
         let output = run(cli).expect("list-formats should succeed");
         let json: Value = serde_json::from_str(&output).expect("output should be JSON");
         let items = json

@@ -94,7 +94,7 @@ for required in \
   assert_file "$workflow_dir/$required"
 done
 
-for format_icon in email imei unit uuid int decimal percent currency hex otp; do
+for format_icon in email imei unit uuid int decimal percent currency hex otp phone; do
   assert_file "$workflow_dir/src/assets/icons/${format_icon}.png"
 done
 
@@ -296,7 +296,7 @@ assert_file "$packaged_dir/bin/randomer-cli"
 assert_file "$artifact_path"
 assert_file "$artifact_sha_path"
 
-for format_icon in email imei unit uuid int decimal percent currency hex otp; do
+for format_icon in email imei unit uuid int decimal percent currency hex otp phone; do
   assert_file "$packaged_dir/assets/icons/${format_icon}.png"
 done
 

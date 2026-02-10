@@ -9,7 +9,7 @@ const UNIT_LETTER_VALUES: [u32; 26] = [
     37, 38,
 ];
 
-const ALL_FORMATS: [Format; 10] = [
+const ALL_FORMATS: [Format; 11] = [
     Format::Email,
     Format::Imei,
     Format::Unit,
@@ -20,6 +20,7 @@ const ALL_FORMATS: [Format; 10] = [
     Format::Currency,
     Format::Hex,
     Format::Otp,
+    Format::Phone,
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +35,7 @@ pub enum Format {
     Currency,
     Hex,
     Otp,
+    Phone,
 }
 
 impl Format {
@@ -61,6 +63,7 @@ impl Format {
             Self::Currency => "currency",
             Self::Hex => "hex",
             Self::Otp => "otp",
+            Self::Phone => "phone",
         }
     }
 
@@ -80,6 +83,7 @@ impl Format {
             Self::Currency => random_currency(rng),
             Self::Hex => random_hex(rng),
             Self::Otp => random_otp(rng),
+            Self::Phone => random_phone(rng),
         }
     }
 }
@@ -333,6 +337,13 @@ fn random_otp<R: Rng + ?Sized>(rng: &mut R) -> String {
     format!("{value:06}")
 }
 
+fn random_phone<R: Rng + ?Sized>(rng: &mut R) -> String {
+    let suffix: String = (0..8)
+        .map(|_| char::from(b'0' + rng.gen_range(0..=9u8)))
+        .collect();
+    format!("09{suffix}")
+}
+
 #[cfg(test)]
 mod tests {
     use rand::{SeedableRng, rngs::StdRng};
@@ -350,7 +361,7 @@ mod tests {
             keys,
             vec![
                 "email", "imei", "unit", "uuid", "int", "decimal", "percent", "currency", "hex",
-                "otp"
+                "otp", "phone"
             ]
         );
     }
@@ -361,6 +372,7 @@ mod tests {
         assert_eq!(Format::parse("IMEI"), Some(Format::Imei));
         assert_eq!(Format::parse("UnIt"), Some(Format::Unit));
         assert_eq!(Format::parse("otp"), Some(Format::Otp));
+        assert_eq!(Format::parse(" Phone "), Some(Format::Phone));
         assert_eq!(Format::parse("unknown"), None);
     }
 
@@ -594,6 +606,17 @@ mod tests {
         for _ in 0..100 {
             let value = Format::Otp.generate_with_rng(&mut rng);
             assert_eq!(value.len(), 6);
+            assert!(value.chars().all(|ch| ch.is_ascii_digit()));
+        }
+    }
+
+    #[test]
+    fn format_phone_is_taiwan_mobile_shape() {
+        let mut rng = seeded_rng();
+        for _ in 0..100 {
+            let value = Format::Phone.generate_with_rng(&mut rng);
+            assert_eq!(value.len(), 10);
+            assert!(value.starts_with("09"));
             assert!(value.chars().all(|ch| ch.is_ascii_digit()));
         }
     }

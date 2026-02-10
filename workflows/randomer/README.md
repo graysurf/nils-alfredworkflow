@@ -24,6 +24,7 @@ Generate random values by format and copy them directly from Alfred.
 | `unit` | 11-char unit code (`[A-Z]{3}[UJZ][0-9]{7}`) | `ABCU1234567` |
 | `uuid` | UUID v4 string | `550e8400-e29b-41d4-a716-446655440000` |
 | `int` | Digits-only integer | `736492` |
+| `phone` | Taiwan mobile number (`09` + 8 digits) | `0912345678` |
 | `decimal` | Fixed 2-decimal number | `128.45` |
 | `percent` | Percentage with `%` suffix | `73.20%` |
 | `currency` | USD-style value with separators | `$12,345.67` |
