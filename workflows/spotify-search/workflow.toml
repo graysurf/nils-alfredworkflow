@@ -1,0 +1,22 @@
+id = "spotify-search"
+name = "Spotify Search"
+bundle_id = "com.graysurf.spotify-search"
+version = "0.1.5"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "spotify-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Required: Spotify application client ID for Client Credentials flow.
+SPOTIFY_CLIENT_ID = ""
+# Required: Spotify application client secret for Client Credentials flow.
+SPOTIFY_CLIENT_SECRET = ""
+# Optional: defaults to 10; effective range is clamped by CLI to API-safe limits.
+SPOTIFY_MAX_RESULTS = "10"
+# Optional: uppercase ISO 3166-1 alpha-2 market code (for example US, TW, JP).
+SPOTIFY_MARKET = ""
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"
