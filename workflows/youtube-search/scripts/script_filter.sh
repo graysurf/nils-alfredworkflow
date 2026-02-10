@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+json_escape() {
+  local value="${1-}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/ }"
+  value="${value//$'\r'/ }"
+  printf '%s' "$value"
+}
+
+normalize_error_message() {
+  local value="${1-}"
+  value="$(printf '%s' "$value" | tr '\n\r' '  ' | sed 's/[[:space:]]\+/ /g; s/^[[:space:]]*//; s/[[:space:]]*$//')"
+  value="${value#error: }"
+  value="${value#Error: }"
+  printf '%s' "$value"
+}
+
+emit_error_item() {
+  local title="$1"
+  local subtitle="$2"
+  printf '{"items":[{"title":"%s","subtitle":"%s","valid":false}]}' \
+    "$(json_escape "$title")" \
+    "$(json_escape "$subtitle")"
+  printf '\n'
+}
+
+print_error_item() {
+  local raw_message="${1:-youtube-cli search failed}"
+  local message
+  message="$(normalize_error_message "$raw_message")"
+  [[ -n "$message" ]] || message="youtube-cli search failed"
+
+  local title="YouTube Search error"
+  local subtitle="$message"
+  local lower
+  lower="$(printf '%s' "$message" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ "$lower" == *"query must not be empty"* ]]; then
+    title="Enter a search query"
+    subtitle="Type keywords after yt to search YouTube."
+  elif [[ "$lower" == *"missing youtube_api_key"* ]]; then
+    title="YouTube API key is missing"
+    subtitle="Set YOUTUBE_API_KEY in workflow configuration and retry."
+  elif [[ "$lower" == *"quota"* || "$lower" == *"dailylimitexceeded"* ]]; then
+    title="YouTube quota exceeded"
+    subtitle="Daily quota is exhausted. Retry later or lower YOUTUBE_MAX_RESULTS."
+  elif [[ "$lower" == *"youtube api request failed"* || "$lower" == *"youtube api error (5"* || "$lower" == *"service unavailable"* || "$lower" == *"timed out"* || "$lower" == *"connection"* ]]; then
+    title="YouTube API unavailable"
+    subtitle="Cannot reach YouTube API now. Check network and retry."
+  elif [[ "$lower" == *"invalid youtube_max_results"* || "$lower" == *"invalid youtube_region_code"* ]]; then
+    title="Invalid YouTube workflow config"
+    subtitle="$message"
+  fi
+
+  emit_error_item "$title" "$subtitle"
+}
+
+resolve_youtube_cli() {
+  if [[ -n "${YOUTUBE_CLI_BIN:-}" && -x "${YOUTUBE_CLI_BIN}" ]]; then
+    printf '%s\n' "${YOUTUBE_CLI_BIN}"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  local packaged_cli
+  packaged_cli="$script_dir/../bin/youtube-cli"
+  if [[ -x "$packaged_cli" ]]; then
+    printf '%s\n' "$packaged_cli"
+    return 0
+  fi
+
+  local repo_root
+  repo_root="$(cd "$script_dir/../../.." && pwd)"
+
+  local release_cli
+  release_cli="$repo_root/target/release/youtube-cli"
+  if [[ -x "$release_cli" ]]; then
+    printf '%s\n' "$release_cli"
+    return 0
+  fi
+
+  local debug_cli
+  debug_cli="$repo_root/target/debug/youtube-cli"
+  if [[ -x "$debug_cli" ]]; then
+    printf '%s\n' "$debug_cli"
+    return 0
+  fi
+
+  echo "youtube-cli binary not found (checked package/release/debug paths)" >&2
+  return 1
+}
+
+query="${1:-}"
+err_file="${TMPDIR:-/tmp}/youtube-search-script-filter.err.$$"
+trap 'rm -f "$err_file"' EXIT
+
+youtube_cli=""
+if ! youtube_cli="$(resolve_youtube_cli 2>"$err_file")"; then
+  err_msg="$(cat "$err_file")"
+  print_error_item "$err_msg"
+  exit 0
+fi
+
+if json_output="$("$youtube_cli" search --query "$query" 2>"$err_file")"; then
+  printf '%s\n' "$json_output"
+  exit 0
+fi
+
+err_msg="$(cat "$err_file")"
+print_error_item "$err_msg"

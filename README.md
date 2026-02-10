@@ -26,6 +26,24 @@ Monorepo for Alfred workflows with shared Rust crates and thin Bash adapters.
 
 - `workflows/open-project`: parity port of `open-project-in-vscode`.
 - `workflows/_template`: scaffold template used by `scripts/workflow-new.sh`.
+- `workflows/youtube-search`: Alfred keyword search for YouTube videos (API-key based).
+
+## YouTube Search quick start
+
+1. Package + install:
+   - `cargo run -p xtask -- workflow pack --id youtube-search --install`
+2. In Alfred workflow variables, set:
+   - `YOUTUBE_API_KEY` (required)
+   - `YOUTUBE_MAX_RESULTS` (optional, default `10`, clamped to `1..25`)
+   - `YOUTUBE_REGION_CODE` (optional, 2-letter country code, e.g. `US`, `TW`)
+3. Use keyword in Alfred:
+   - `yt <query>`
+
+Operator notes:
+
+- Each `search.list` request consumes YouTube quota (high cost endpoint).
+- If you hit quota often, reduce `YOUTUBE_MAX_RESULTS` and avoid rapid repeated queries.
+- Contract and error mapping are defined in `docs/youtube-search-contract.md`.
 
 ## Open Project behavior contract
 

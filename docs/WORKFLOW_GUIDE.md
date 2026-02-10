@@ -44,6 +44,38 @@ Optional keys:
 - Enter flow: `action_record_usage.sh` -> `action_open.sh`.
 - Shift flow: `action_record_usage.sh` -> `action_open_github.sh`.
 
+## YouTube Search workflow details
+
+`workflows/youtube-search` is a dedicated workflow that uses `youtube-cli` for YouTube API-backed
+search feedback.
+
+### Environment variables
+
+- `YOUTUBE_API_KEY` (required): YouTube Data API v3 key.
+- `YOUTUBE_MAX_RESULTS` (optional): default `10`, clamped to `1..25`.
+- `YOUTUBE_REGION_CODE` (optional): 2-letter country code, uppercased before request.
+
+### Alfred command flow
+
+- Keyword trigger: `yt`.
+- Script filter adapter: `workflows/youtube-search/scripts/script_filter.sh` ->
+  `youtube-cli search --query "<query>"`.
+- Enter flow: `workflows/youtube-search/scripts/action_open.sh` opens selected `arg` URL.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/youtube-search/tests/smoke.sh`
+- `scripts/workflow-test.sh --id youtube-search`
+- `scripts/workflow-pack.sh --id youtube-search`
+
+Runtime checks:
+
+- Missing `YOUTUBE_API_KEY` must return an Alfred error item (not malformed JSON).
+- Quota/API failures must return non-actionable error items.
+- Empty API results must return a clear `No videos found` guidance item.
+
 ### Validation checklist
 
 Run these before packaging/release:

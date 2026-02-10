@@ -371,15 +371,15 @@ The data source is YouTube Data API v3 using an API key provided through workflo
 - **Location**:
   - `TROUBLESHOOTING.md`
   - `docs/plans/youtube-search-workflow-plan.md`
-- **Description**: Document actionable rollback sequence (revert workflow + crate + workspace member, rebuild package) and support checklist for first release window.
+- **Description**: Document actionable rollback sequence (revert workflow + crate + workspace member, rebuild package), first-release support checklist, and explicit disable triggers for sustained API failures.
 - **Dependencies**:
   - Task 4.4
 - **Complexity**: 3
 - **Acceptance criteria**:
   - Rollback steps are explicit, ordered, and executable.
-  - Support notes include signals for disabling workflow quickly if API failures spike.
+  - Support notes include objective signals for disabling workflow quickly if API failures spike.
 - **Validation**:
-  - `rg -n "rollback|revert|youtube-search|Cargo.toml" TROUBLESHOOTING.md docs/plans/youtube-search-workflow-plan.md`
+  - `rg -n "rollback|revert|youtube-search|Cargo.toml|disable|support" TROUBLESHOOTING.md docs/plans/youtube-search-workflow-plan.md`
 
 ## Testing Strategy
 - Unit: `youtube-cli` tests for env parsing, request building, response parsing, subtitle truncation, URL assembly, and error mapping.
@@ -394,15 +394,27 @@ The data source is YouTube Data API v3 using an API key provided through workflo
 - Live API schemas and error payloads can evolve; parser/error mapping must be defensive.
 - Network instability can degrade UX; fallback messaging should remain concise and actionable.
 
+## First-release support window (D0-D2)
+- Monitor failure classes separately: missing key, quota exceeded, API unavailable, and empty results.
+- Trigger emergency disable plan if either condition is met:
+  - API unavailable + quota failures together exceed 30% of sampled queries for 30 minutes.
+  - Script-filter failures produce malformed/non-JSON output at any time.
+- Keep operator response template ready:
+  - Current status (degraded/disabled)
+  - Scope (`youtube-search` only)
+  - Workaround (temporarily use browser/manual search)
+  - Next update time
+
 ## Rollback plan
-- Revert or remove the YouTube workflow and crate changeset:
+- Step 1: Pause distribution of new `youtube-search` workflow artifacts.
+- Step 2: Revert or remove the YouTube workflow and crate changeset:
   - `workflows/youtube-search/`
   - `crates/youtube-cli/`
   - related workspace entry in `Cargo.toml`
   - related docs updates
-- Run validation after rollback:
+- Step 3: Rebuild and run validation after rollback:
   - `scripts/workflow-lint.sh`
   - `scripts/workflow-test.sh`
   - `scripts/workflow-pack.sh --all`
-- Reinstall known-good artifacts (for unaffected workflows) using existing pack/install flow.
-- If already released, publish patch release notes indicating temporary removal of `youtube-search` and operator workaround.
+- Step 4: Reinstall known-good artifacts (for unaffected workflows) using existing pack/install flow.
+- Step 5: If already released, publish patch release notes indicating temporary removal of `youtube-search` and operator workaround.
