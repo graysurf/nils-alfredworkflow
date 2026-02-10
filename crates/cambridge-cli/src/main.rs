@@ -289,7 +289,11 @@ mod tests {
             .expect("items should be array");
 
         assert_eq!(items.len(), 2);
-        assert_eq!(items[0].get("valid").and_then(Value::as_bool), Some(false));
+        assert_eq!(items[0].get("valid").and_then(Value::as_bool), Some(true));
+        assert_eq!(
+            items[0].get("arg").and_then(Value::as_str),
+            Some("https://example.com/open")
+        );
         assert_eq!(items[1].get("valid").and_then(Value::as_bool), Some(true));
         assert_eq!(
             items[1].get("arg").and_then(Value::as_str),

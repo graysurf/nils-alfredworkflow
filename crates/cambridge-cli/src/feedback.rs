@@ -70,7 +70,7 @@ pub fn define_feedback(
         .unwrap_or_else(|| "entry".to_string());
     let entry_url = resolve_entry_url(entry, &headword, mode);
 
-    let mut items = vec![definition_header_item(entry, &headword)];
+    let mut items = vec![definition_header_item(entry, &headword, &entry_url)];
     let mut definition_count = 0usize;
 
     for (idx, row) in entry.definitions.iter().enumerate() {
@@ -123,7 +123,7 @@ fn suggest_item_to_feedback_item(item: &SuggestItem) -> Option<Item> {
     )
 }
 
-fn definition_header_item(entry: &Entry, headword: &str) -> Item {
+fn definition_header_item(entry: &Entry, headword: &str, entry_url: &str) -> Item {
     let mut details = Vec::new();
     if let Some(part) = entry.part_of_speech.as_deref().and_then(normalize_text) {
         details.push(part);
@@ -135,7 +135,8 @@ fn definition_header_item(entry: &Entry, headword: &str) -> Item {
 
     Item::new(format!("{headword} - Cambridge"))
         .with_subtitle(details.join(" | "))
-        .with_valid(false)
+        .with_arg(entry_url.to_string())
+        .with_valid(true)
 }
 
 fn single_invalid_item(title: &str, subtitle: &str) -> Feedback {
@@ -321,11 +322,15 @@ mod tests {
         assert_eq!(feedback.items.len(), 3);
         assert_eq!(
             feedback.items[0].valid,
-            Some(false),
-            "header should be invalid"
+            Some(true),
+            "header should be valid"
         );
         assert_eq!(feedback.items[1].valid, Some(true));
         assert_eq!(feedback.items[2].valid, Some(true));
+        assert_eq!(
+            feedback.items[0].arg.as_deref(),
+            Some("https://example.com/open")
+        );
         assert_eq!(
             feedback.items[1].arg.as_deref(),
             Some("https://example.com/open")

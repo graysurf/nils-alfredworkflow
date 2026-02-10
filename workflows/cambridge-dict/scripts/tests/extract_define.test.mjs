@@ -46,3 +46,36 @@ test('extractDefineFromHtml parses english-chinese-traditional entry fields', as
     'https://dictionary.cambridge.org/dictionary/english-chinese-traditional/open',
   );
 });
+
+test('extractDefineFromHtml keeps full definition text and skips def-info tokens', () => {
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <title>take | Cambridge Dictionary</title>
+        <link rel="canonical" href="https://dictionary.cambridge.org/dictionary/english/take" />
+      </head>
+      <body>
+        <div class="entry-body">
+          <h1 class="di-title"><span class="hw">take</span></h1>
+          <div class="posgram"><span class="pos">verb</span></div>
+          <div class="def-head"><span class="def-info">Add to word list</span></div>
+          <div class="def-block">
+            <div class="def ddef_d db">
+              to remove <span class="gram">something</span>, especially without permission
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const entry = extractDefineFromHtml({
+    html,
+    mode: 'english',
+    entry: 'take',
+  });
+
+  assert.deepEqual(entry.definitions, ['to remove something, especially without permission']);
+  assert.ok(!entry.definitions.includes('Add to word list'));
+});

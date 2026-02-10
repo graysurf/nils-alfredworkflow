@@ -22,6 +22,7 @@ function decodeHtmlEntities(value) {
 function normalizeText(value) {
   return decodeHtmlEntities(String(value ?? '').replace(/<[^>]+>/g, ' '))
     .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
     .trim();
 }
 
@@ -33,17 +34,85 @@ function primaryClassFromSelector(selector) {
   return classes[classes.length - 1];
 }
 
+const VOID_TAGS = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr',
+]);
+
+function hasExactClassToken(rawClassList, className) {
+  return String(rawClassList)
+    .split(/\s+/)
+    .some((token) => token === className);
+}
+
+function isSelfClosingOpenTag(openTag, tagName) {
+  return /\/\s*>$/.test(openTag) || VOID_TAGS.has(String(tagName).toLowerCase());
+}
+
+function findMatchingCloseIndex(html, tagName, contentStartIndex) {
+  const normalizedTagName = String(tagName).toLowerCase();
+  if (VOID_TAGS.has(normalizedTagName)) {
+    return contentStartIndex;
+  }
+
+  const pattern = new RegExp(`<\\/?${escapeRegExp(normalizedTagName)}\\b[^>]*>`, 'gi');
+  pattern.lastIndex = contentStartIndex;
+
+  let depth = 1;
+  let match;
+  while ((match = pattern.exec(html)) !== null) {
+    const token = match[0];
+    const isClosingTag = token.startsWith('</');
+    if (isClosingTag) {
+      depth -= 1;
+      if (depth === 0) {
+        return match.index;
+      }
+      continue;
+    }
+
+    if (!/\/\s*>$/.test(token)) {
+      depth += 1;
+    }
+  }
+
+  return -1;
+}
+
 function collectByClass(html, className) {
-  const pattern = new RegExp(
-    `<[^>]*class=(['"])` +
-      `[^'"]*\\b${escapeRegExp(className)}\\b[^'"]*` +
-      `\\1[^>]*>([\\s\\S]*?)<\\/[^>]+>`,
-    'gi',
-  );
+  const pattern = /<([a-zA-Z][\w:-]*)\b[^>]*\bclass=(['"])([^'"]+)\2[^>]*>/gi;
 
   const values = [];
   for (const match of html.matchAll(pattern)) {
-    const normalized = normalizeText(match[2]);
+    const openTag = match[0];
+    const tagName = String(match[1]).toLowerCase();
+    const rawClassList = match[3];
+    if (!hasExactClassToken(rawClassList, className)) {
+      continue;
+    }
+    if (isSelfClosingOpenTag(openTag, tagName)) {
+      continue;
+    }
+
+    const contentStartIndex = (match.index ?? 0) + openTag.length;
+    const contentEndIndex = findMatchingCloseIndex(html, tagName, contentStartIndex);
+    if (contentEndIndex < contentStartIndex) {
+      continue;
+    }
+
+    const normalized = normalizeText(html.slice(contentStartIndex, contentEndIndex));
     if (normalized) {
       values.push(normalized);
     }
