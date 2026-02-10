@@ -68,10 +68,10 @@ to_spotify_uri() {
 open_in_spotify() {
   local spotify_uri="$1"
 
-  if [[ "$(uname -s 2>/dev/null || printf '')" == "Darwin" ]]; then
-    if open -a Spotify "$spotify_uri"; then
-      return 0
-    fi
+  # Always attempt macOS-style app targeting first; non-macOS `open` commands
+  # will fail fast and we fallback to opening the URI directly.
+  if open -a Spotify "$spotify_uri" >/dev/null 2>&1; then
+    return 0
   fi
 
   open "$spotify_uri"
