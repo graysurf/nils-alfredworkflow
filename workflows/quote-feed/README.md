@@ -11,6 +11,7 @@ Show cached quotes in Alfred and copy one quickly, while refreshing from ZenQuot
 - Trigger quote list with `qq` (optional query filter supported).
 - Local-first output: cached quotes are shown immediately.
 - Automatic refresh from ZenQuotes when interval is due.
+- Long quotes are split across title/subtitle lines to improve readability.
 - Enter on a row copies the full quote text via `pbcopy`.
 
 ## Configuration
