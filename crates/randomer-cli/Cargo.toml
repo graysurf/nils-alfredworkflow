@@ -1,0 +1,14 @@
+[package]
+name = "randomer-cli"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+alfred-core = { path = "../alfred-core" }
+clap.workspace = true
+rand = "0.8"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+serde_json.workspace = true

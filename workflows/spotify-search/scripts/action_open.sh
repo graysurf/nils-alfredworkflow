@@ -20,15 +20,15 @@ to_spotify_uri() {
 
   local path=""
   case "$normalized" in
-    https://open.spotify.com/*)
-      path="${normalized#https://open.spotify.com/}"
-      ;;
-    http://open.spotify.com/*)
-      path="${normalized#http://open.spotify.com/}"
-      ;;
-    *)
-      return 1
-      ;;
+  https://open.spotify.com/*)
+    path="${normalized#https://open.spotify.com/}"
+    ;;
+  http://open.spotify.com/*)
+    path="${normalized#http://open.spotify.com/}"
+    ;;
+  *)
+    return 1
+    ;;
   esac
 
   # Locale-aware links may include an extra leading segment: intl-xx/...
@@ -46,16 +46,16 @@ to_spotify_uri() {
   local id=""
 
   case "$seg1" in
-    track | album | artist | playlist | show | episode)
-      kind="$seg1"
-      id="$seg2"
-      ;;
-    user)
-      if [[ "$seg3" == "playlist" ]]; then
-        kind="playlist"
-        id="$seg4"
-      fi
-      ;;
+  track | album | artist | playlist | show | episode)
+    kind="$seg1"
+    id="$seg2"
+    ;;
+  user)
+    if [[ "$seg3" == "playlist" ]]; then
+      kind="playlist"
+      id="$seg4"
+    fi
+    ;;
   esac
 
   if [[ -z "$kind" || -z "$id" ]]; then
@@ -68,10 +68,10 @@ to_spotify_uri() {
 open_in_spotify() {
   local spotify_uri="$1"
 
-  if [[ "$(uname -s 2>/dev/null || printf '')" == "Darwin" ]]; then
-    if open -a Spotify "$spotify_uri"; then
-      return 0
-    fi
+  # Always attempt macOS-style app targeting first; non-macOS `open` commands
+  # will fail fast and we fallback to opening the URI directly.
+  if open -a Spotify "$spotify_uri" >/dev/null 2>&1; then
+    return 0
   fi
 
   open "$spotify_uri"
