@@ -115,17 +115,17 @@ pub fn filter_formats(query: Option<&str>) -> Vec<Format> {
 }
 
 pub fn list_formats_feedback(query: Option<&str>) -> Feedback {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     list_formats_feedback_with_rng(query, &mut rng)
 }
 
 pub fn list_types_feedback(query: Option<&str>) -> Feedback {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     list_types_feedback_with_rng(query, &mut rng)
 }
 
 pub fn generate_feedback(format_name: &str, count: usize) -> Result<Feedback, RandomerError> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     generate_feedback_with_rng(format_name, count, &mut rng)
 }
 
@@ -200,7 +200,7 @@ fn random_alpha_string<R: Rng + ?Sized>(rng: &mut R, size: usize) -> String {
     const LETTERS: &[u8] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     (0..size)
         .map(|_| {
-            let index = rng.gen_range(0..LETTERS.len());
+            let index = rng.random_range(0..LETTERS.len());
             char::from(LETTERS[index])
         })
         .collect()
@@ -216,7 +216,9 @@ fn random_email<R: Rng + ?Sized>(rng: &mut R) -> String {
 }
 
 fn random_imei<R: Rng + ?Sized>(rng: &mut R) -> String {
-    let mut digits: Vec<u32> = (0..14).map(|_| u32::from(rng.gen_range(0..=9u8))).collect();
+    let mut digits: Vec<u32> = (0..14)
+        .map(|_| u32::from(rng.random_range(0..=9u8)))
+        .collect();
     let checksum = imei_checksum_for_body(&digits);
     digits.push(checksum);
 
@@ -240,7 +242,7 @@ fn imei_checksum_for_body(body: &[u32]) -> u32 {
 }
 
 fn random_uppercase_letter<R: Rng + ?Sized>(rng: &mut R) -> char {
-    char::from(b'A' + rng.gen_range(0..26u8))
+    char::from(b'A' + rng.random_range(0..26u8))
 }
 
 fn random_unit_number<R: Rng + ?Sized>(rng: &mut R) -> String {
@@ -251,9 +253,9 @@ fn random_unit_number<R: Rng + ?Sized>(rng: &mut R) -> String {
         for _ in 0..3 {
             candidate.push(random_uppercase_letter(rng));
         }
-        candidate.push(FOURTH_LETTERS[rng.gen_range(0..FOURTH_LETTERS.len())]);
+        candidate.push(FOURTH_LETTERS[rng.random_range(0..FOURTH_LETTERS.len())]);
         for _ in 0..6 {
-            candidate.push(char::from(b'0' + rng.gen_range(0..=9u8)));
+            candidate.push(char::from(b'0' + rng.random_range(0..=9u8)));
         }
 
         let checksum = unit_checksum(candidate.as_str());
@@ -295,23 +297,23 @@ fn random_uuid() -> String {
 }
 
 fn random_int<R: Rng + ?Sized>(rng: &mut R) -> String {
-    rng.gen_range(0u64..=9_999_999_999u64).to_string()
+    rng.random_range(0u64..=9_999_999_999u64).to_string()
 }
 
 fn random_decimal<R: Rng + ?Sized>(rng: &mut R) -> String {
-    let whole = rng.gen_range(0u64..=999_999u64);
-    let fraction = rng.gen_range(0u8..=99u8);
+    let whole = rng.random_range(0u64..=999_999u64);
+    let fraction = rng.random_range(0u8..=99u8);
     format!("{whole}.{fraction:02}")
 }
 
 fn random_percent<R: Rng + ?Sized>(rng: &mut R) -> String {
-    let basis_points = rng.gen_range(0u32..=10_000u32);
+    let basis_points = rng.random_range(0u32..=10_000u32);
     format!("{}.{:02}%", basis_points / 100, basis_points % 100)
 }
 
 fn random_currency<R: Rng + ?Sized>(rng: &mut R) -> String {
-    let dollars = rng.gen_range(0u64..=99_999_999u64);
-    let cents = rng.gen_range(0u8..=99u8);
+    let dollars = rng.random_range(0u64..=99_999_999u64);
+    let cents = rng.random_range(0u8..=99u8);
     format!("${}.{:02}", with_thousands_separators(dollars), cents)
 }
 
@@ -328,18 +330,18 @@ fn with_thousands_separators(value: u64) -> String {
 }
 
 fn random_hex<R: Rng + ?Sized>(rng: &mut R) -> String {
-    let value = rng.gen_range(0u32..=u32::MAX);
+    let value = rng.random_range(0u32..=u32::MAX);
     format!("0x{value:08X}")
 }
 
 fn random_otp<R: Rng + ?Sized>(rng: &mut R) -> String {
-    let value = rng.gen_range(0u32..=999_999u32);
+    let value = rng.random_range(0u32..=999_999u32);
     format!("{value:06}")
 }
 
 fn random_phone<R: Rng + ?Sized>(rng: &mut R) -> String {
     let suffix: String = (0..8)
-        .map(|_| char::from(b'0' + rng.gen_range(0..=9u8)))
+        .map(|_| char::from(b'0' + rng.random_range(0..=9u8)))
         .collect();
     format!("09{suffix}")
 }
