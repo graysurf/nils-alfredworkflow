@@ -1592,6 +1592,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wiki-cli"
+version = "0.1.5"
+dependencies = [
+ "alfred-core",
+ "clap",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "winapi-util"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -12,6 +12,7 @@ Alfred workflows for macOS users.
 
 - Find/open local projects: use **Open Project** (`c`, `code`, `github`)
 - Search the web: use **Google Search** (`gg`)
+- Search Wikipedia articles: use **Wiki Search** (`wk`)
 - Search YouTube videos: use **YouTube Search** (`yt`)
 - Search Spotify tracks: use **Spotify Search** (`sp`)
 - Convert epoch and datetime values: use **Epoch Converter** (`ts`)
@@ -23,6 +24,7 @@ Alfred workflows for macOS users.
 | --- | --- | --- | --- |
 | [Open Project](workflows/open-project/README.md) | `c`, `code`, `github` | Fuzzy-find local Git projects, open in editor, and jump to GitHub remotes. | No |
 | [Google Search](workflows/google-search/README.md) | `gg` | Search web results (Brave backend) and open selected links. | `BRAVE_API_KEY` |
+| [Wiki Search](workflows/wiki-search/README.md) | `wk` | Search Wikipedia articles and open selected page links. | No |
 | [YouTube Search](workflows/youtube-search/README.md) | `yt` | Search YouTube videos and open selected videos in browser. | `YOUTUBE_API_KEY` |
 | [Spotify Search](workflows/spotify-search/README.md) | `sp` | Search Spotify tracks and open selected results in Spotify app. | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |
 | [Epoch Converter](workflows/epoch-converter/README.md) | `ts` | Convert epoch/datetime values and copy selected output. | No |

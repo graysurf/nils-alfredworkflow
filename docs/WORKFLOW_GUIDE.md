@@ -114,6 +114,37 @@ Runtime checks:
 - Quota/rate-limit and API/network failures must return non-actionable error items.
 - Empty API results must return a clear `No results found` guidance item.
 
+## Wiki Search workflow details
+
+`workflows/wiki-search` is a dedicated workflow that uses `wiki-cli` for Wikipedia API-backed
+article search feedback.
+
+### Environment variables
+
+- `WIKI_LANGUAGE` (optional): lowercase Wikipedia language code; default `en`.
+- `WIKI_MAX_RESULTS` (optional): default `10`, clamped to `1..20`.
+
+### Alfred command flow
+
+- Keyword trigger: `wk`.
+- Script filter adapter: `workflows/wiki-search/scripts/script_filter.sh` ->
+  `wiki-cli search --query "<query>"`.
+- Enter flow: `workflows/wiki-search/scripts/action_open.sh` opens selected `arg` URL.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/wiki-search/tests/smoke.sh`
+- `scripts/workflow-test.sh --id wiki-search`
+- `scripts/workflow-pack.sh --id wiki-search`
+
+Runtime checks:
+
+- Invalid `WIKI_LANGUAGE`/`WIKI_MAX_RESULTS` must return an Alfred config error item.
+- API/network failures must return non-actionable error items.
+- Empty API results must return a clear `No articles found` guidance item.
+
 ## Epoch Converter workflow details
 
 `workflows/epoch-converter` is a local conversion workflow that uses `epoch-cli` for epoch/datetime
