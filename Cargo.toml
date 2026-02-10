@@ -5,6 +5,7 @@ members = [
   "crates/brave-cli",
   "crates/cambridge-cli",
   "crates/epoch-cli",
+  "crates/timezone-cli",
   "crates/spotify-cli",
   "crates/workflow-common",
   "crates/workflow-cli",

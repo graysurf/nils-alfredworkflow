@@ -213,6 +213,41 @@ Runtime checks:
 - Epoch input output should include `Local formatted (YYYY-MM-DD HH:MM:SS)` row.
 - Invalid input and missing `epoch-cli` should return non-actionable error items.
 
+## Multi Timezone workflow details
+
+`workflows/multi-timezone` is a dedicated workflow that uses `timezone-cli` for IANA timezone-based
+current-time lookup and copy-ready Alfred items.
+
+### Environment variables
+
+- `TIMEZONE_CLI_BIN` (optional): absolute executable path override for `timezone-cli`.
+- `MULTI_TZ_ZONES` (optional): default timezone list for empty query; supports comma/newline
+  separated IANA timezone IDs.
+- `MULTI_TZ_LOCAL_OVERRIDE` (optional, default `Europe/London`): local timezone override used when
+  query/config zones are both empty.
+
+### Alfred command flow
+
+- Keyword trigger: `tz`.
+- Script filter adapter: `workflows/multi-timezone/scripts/script_filter.sh` ->
+  `timezone-cli now --query "<query>" --config-zones "$MULTI_TZ_ZONES"`.
+- Enter flow: `workflows/multi-timezone/scripts/action_copy.sh` copies selected `arg` via `pbcopy`.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/multi-timezone/tests/smoke.sh`
+- `scripts/workflow-test.sh --id multi-timezone`
+- `scripts/workflow-pack.sh --id multi-timezone`
+
+Runtime checks:
+
+- Missing `timezone-cli` must return a non-actionable `timezone-cli binary not found` error item.
+- Invalid timezone input must return an `Invalid timezone` guidance item.
+- Empty query should use `MULTI_TZ_ZONES`; if empty, fallback to local timezone resolution in
+  `timezone-cli` (starting from default `MULTI_TZ_LOCAL_OVERRIDE=Europe/London`).
+
 ## Quote Feed workflow details
 
 `workflows/quote-feed` is a dedicated workflow that uses `quote-cli` for cached quote browsing
