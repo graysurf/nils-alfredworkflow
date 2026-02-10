@@ -76,6 +76,39 @@ Runtime checks:
 - Quota/API failures must return non-actionable error items.
 - Empty API results must return a clear `No videos found` guidance item.
 
+## Google Search workflow details
+
+`workflows/google-search` is a dedicated workflow that uses `brave-cli` for Brave API-backed
+web search feedback while keeping the Alfred workflow name/keyword oriented to Google-style usage.
+
+### Environment variables
+
+- `BRAVE_API_KEY` (required): Brave Search API subscription token.
+- `BRAVE_MAX_RESULTS` (optional): default `10`, clamped to `1..20`.
+- `BRAVE_SAFESEARCH` (optional): `strict`, `moderate`, or `off`; default `moderate`.
+- `BRAVE_COUNTRY` (optional): 2-letter country code, uppercased before request.
+
+### Alfred command flow
+
+- Keyword trigger: `gg`.
+- Script filter adapter: `workflows/google-search/scripts/script_filter.sh` ->
+  `brave-cli search --query "<query>"`.
+- Enter flow: `workflows/google-search/scripts/action_open.sh` opens selected `arg` URL.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/google-search/tests/smoke.sh`
+- `scripts/workflow-test.sh --id google-search`
+- `scripts/workflow-pack.sh --id google-search`
+
+Runtime checks:
+
+- Missing `BRAVE_API_KEY` must return an Alfred error item (not malformed JSON).
+- Quota/rate-limit and API/network failures must return non-actionable error items.
+- Empty API results must return a clear `No results found` guidance item.
+
 ### Validation checklist
 
 Run these before packaging/release:
