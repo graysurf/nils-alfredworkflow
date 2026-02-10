@@ -163,7 +163,7 @@ mod tests {
 
         assert_eq!(
             first.get("title").and_then(Value::as_str),
-            Some("📜 stay hungry")
+            Some("stay hungry")
         );
         assert_eq!(
             first.get("subtitle").and_then(Value::as_str),

@@ -1,7 +1,6 @@
 use alfred_core::{Feedback, Item};
 
 const ITEM_SUBTITLE: &str = "Press Enter to copy quote.";
-const QUOTE_PREFIX: &str = "📜 ";
 const EMPTY_CACHE_TITLE: &str = "No quotes cached yet";
 const EMPTY_CACHE_SUBTITLE: &str = "Refresh will run automatically; retry shortly.";
 const NO_MATCH_TITLE: &str = "No quotes match query";
@@ -34,7 +33,7 @@ pub fn quotes_to_feedback(
         let subtitle = author_name.unwrap_or(ITEM_SUBTITLE);
 
         items.push(
-            Item::new(format!("{QUOTE_PREFIX}{quote_text}"))
+            Item::new(quote_text)
                 .with_subtitle(subtitle)
                 .with_arg(quote_text)
                 .with_valid(true),
@@ -122,7 +121,7 @@ mod tests {
         let feedback = quotes_to_feedback(&fixture_quotes(), 2, "", None);
 
         assert_eq!(feedback.items.len(), 2);
-        assert_eq!(feedback.items[0].title, "📜 fortune favors the bold");
+        assert_eq!(feedback.items[0].title, "fortune favors the bold");
         assert_eq!(feedback.items[0].subtitle.as_deref(), Some("virgil"));
         assert_eq!(
             feedback.items[0].arg.as_deref(),
@@ -131,7 +130,7 @@ mod tests {
 
         assert_eq!(
             feedback.items[1].title,
-            "📜 simplicity is the soul of efficiency"
+            "simplicity is the soul of efficiency"
         );
         assert_eq!(
             feedback.items[1].subtitle.as_deref(),
@@ -148,7 +147,7 @@ mod tests {
         let feedback = quotes_to_feedback(&fixture_quotes(), 5, "FORTUNE", None);
 
         assert_eq!(feedback.items.len(), 1);
-        assert_eq!(feedback.items[0].title, "📜 fortune favors the bold");
+        assert_eq!(feedback.items[0].title, "fortune favors the bold");
         assert_eq!(feedback.items[0].subtitle.as_deref(), Some("virgil"));
     }
 
@@ -157,7 +156,7 @@ mod tests {
         let feedback = quotes_to_feedback(&["“hello world” — tester".to_string()], 5, "", None);
 
         assert_eq!(feedback.items.len(), 1);
-        assert_eq!(feedback.items[0].title, "📜 hello world");
+        assert_eq!(feedback.items[0].title, "hello world");
         assert_eq!(feedback.items[0].arg.as_deref(), Some("hello world"));
     }
 
@@ -166,7 +165,7 @@ mod tests {
         let feedback = quotes_to_feedback(&["quote only".to_string()], 5, "", None);
 
         assert_eq!(feedback.items.len(), 1);
-        assert_eq!(feedback.items[0].title, "📜 quote only");
+        assert_eq!(feedback.items[0].title, "quote only");
         assert_eq!(feedback.items[0].subtitle.as_deref(), Some(ITEM_SUBTITLE));
         assert_eq!(feedback.items[0].arg.as_deref(), Some("quote only"));
     }
