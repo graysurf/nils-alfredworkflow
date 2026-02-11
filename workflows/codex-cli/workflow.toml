@@ -1,0 +1,22 @@
+id = "codex-cli"
+name = "Codex CLI"
+bundle_id = "com.graysurf.codex-cli"
+version = "0.1.0"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+assets = ["src/assets/icon.png"]
+
+[env]
+# End users normally don't need this because codex-cli is bundled in package/bin.
+# Optional absolute path override for runtime debugging/fallback.
+CODEX_CLI_BIN = ""
+# Optional secret directory override for auth save/diag operations.
+# Leave empty to auto-fallback to $XDG_CONFIG_HOME/codex_secrets or ~/.config/codex_secrets.
+CODEX_SECRET_DIR = ""
+# Optional UI switch for showing assessment rows in script filter.
+# Default off to keep actionable items easy to select.
+CODEX_SHOW_ASSESSMENT = "0"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

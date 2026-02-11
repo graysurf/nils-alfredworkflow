@@ -19,6 +19,7 @@ This document lists required local tools for development, linting, testing, and 
 - Node dependency: `playwright` package (managed via root `package.json`)
 - Packaging/runtime helpers: `zip`, `unzip`, `open` (macOS install/runtime), `xdg-open` (Linux CI/local smoke compatibility)
 - Optional live scraper runtime: Playwright Chromium browser (`npx playwright install chromium`)
+- Codex CLI workflow packaging (release artifact): `codex-cli` v`0.3.2` available locally on macOS arm64, unless overridden via `CODEX_CLI_PACK_BIN`
 
 ## Install (macOS)
 

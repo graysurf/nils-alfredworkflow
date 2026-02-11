@@ -124,6 +124,12 @@ package_one() {
     cp "$workflow_root/src/assets/icon.png" "$stage_dir/icon.png"
   fi
 
+  local prepare_package_hook
+  prepare_package_hook="$workflow_root/scripts/prepare_package.sh"
+  if [[ -x "$prepare_package_hook" ]]; then
+    "$prepare_package_hook" --stage-dir "$stage_dir" --workflow-root "$workflow_root"
+  fi
+
   render_plist \
     "$workflow_root/src/info.plist.template" \
     "$stage_dir/info.plist" \

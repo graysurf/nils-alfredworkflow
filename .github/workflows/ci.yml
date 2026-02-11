@@ -54,4 +54,8 @@ jobs:
         run: scripts/workflow-test.sh
 
       - name: Package smoke
-        run: scripts/workflow-pack.sh --all
+        env:
+          CODEX_CLI_PACK_SKIP_ARCH_CHECK: "1"
+        run: |
+          cargo install nils-codex-cli --version 0.3.2 --locked
+          scripts/workflow-pack.sh --all
