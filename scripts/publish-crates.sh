@@ -105,7 +105,7 @@ append_crates_from_file() {
     trimmed="$(printf '%s' "$line" | sed -E 's/[[:space:]]*#.*$//; s/^[[:space:]]+//; s/[[:space:]]+$//')"
     [[ -n "$trimmed" ]] || continue
     selected_crates+=("$trimmed")
-  done < "$path"
+  done <"$path"
 }
 
 mode="dry-run"
@@ -117,53 +117,53 @@ declare -a selected_crates=()
 
 while [[ $# -gt 0 ]]; do
   case "${1:-}" in
-    --dry-run)
-      mode="dry-run"
-      shift
-      ;;
-    --publish)
-      mode="publish"
-      shift
-      ;;
-    --crate)
-      [[ $# -ge 2 ]] || die "--crate requires a value"
-      selected_crates+=("${2:-}")
-      shift 2
-      ;;
-    --crates)
-      [[ $# -ge 2 ]] || die "--crates requires a value"
-      append_crates_from_words "${2:-}"
-      shift 2
-      ;;
-    --list-file)
-      [[ $# -ge 2 ]] || die "--list-file requires a value"
-      list_file="${2:-}"
-      shift 2
-      ;;
-    --registry)
-      [[ $# -ge 2 ]] || die "--registry requires a value"
-      registry="${2:-}"
-      shift 2
-      ;;
-    --skip-existing)
-      skip_existing=1
-      shift
-      ;;
-    --no-skip-existing)
-      skip_existing=0
-      shift
-      ;;
-    --allow-dirty)
-      allow_dirty=1
-      shift
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      die "unknown argument: ${1:-}"
-      ;;
+  --dry-run)
+    mode="dry-run"
+    shift
+    ;;
+  --publish)
+    mode="publish"
+    shift
+    ;;
+  --crate)
+    [[ $# -ge 2 ]] || die "--crate requires a value"
+    selected_crates+=("${2:-}")
+    shift 2
+    ;;
+  --crates)
+    [[ $# -ge 2 ]] || die "--crates requires a value"
+    append_crates_from_words "${2:-}"
+    shift 2
+    ;;
+  --list-file)
+    [[ $# -ge 2 ]] || die "--list-file requires a value"
+    list_file="${2:-}"
+    shift 2
+    ;;
+  --registry)
+    [[ $# -ge 2 ]] || die "--registry requires a value"
+    registry="${2:-}"
+    shift 2
+    ;;
+  --skip-existing)
+    skip_existing=1
+    shift
+    ;;
+  --no-skip-existing)
+    skip_existing=0
+    shift
+    ;;
+  --allow-dirty)
+    allow_dirty=1
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    die "unknown argument: ${1:-}"
+    ;;
   esac
 done
 
@@ -188,7 +188,7 @@ selected_crates=("${deduped_crates[@]}")
 
 metadata_file="$(mktemp)"
 trap 'rm -f "$metadata_file"' EXIT
-cargo metadata --format-version 1 --no-deps > "$metadata_file"
+cargo metadata --format-version 1 --no-deps >"$metadata_file"
 
 python3 - "$metadata_file" "${selected_crates[@]}" <<'PY'
 from __future__ import annotations
@@ -256,8 +256,8 @@ fi
 if [[ "$mode" == "publish" ]]; then
   for crate in "${selected_crates[@]}"; do
     if [[ "$skip_existing" -eq 1 && -z "$registry" ]]; then
-      version="$(selected_crate_version "$metadata_file" "$crate")" \
-        || die "failed to resolve version for crate '$crate'"
+      version="$(selected_crate_version "$metadata_file" "$crate")" ||
+        die "failed to resolve version for crate '$crate'"
       if crate_version_exists_on_crates_io "$crate" "$version"; then
         note "[publish] skip ${crate} v${version} (already published on crates.io)"
         continue
