@@ -4,6 +4,7 @@ edition.workspace = true
 license.workspace = true
 version.workspace = true
 repository.workspace = true
+description = "Random value generation CLI for Alfred Randomer workflow."
 
 [lib]
 name = "randomer_cli"

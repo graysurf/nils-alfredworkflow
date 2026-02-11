@@ -135,7 +135,7 @@ if ! wiki_cli="$(resolve_wiki_cli 2>"$err_file")"; then
   exit 0
 fi
 
-if json_output="$("$wiki_cli" search --query "$query" 2>"$err_file")"; then
+if json_output="$("$wiki_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
   if [[ -z "$json_output" ]]; then
     print_error_item "wiki-cli returned empty response"
     exit 0

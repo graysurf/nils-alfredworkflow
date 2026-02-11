@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "FX and crypto market data CLI with Alfred expression output."
 
 [lib]
 name = "market_cli"

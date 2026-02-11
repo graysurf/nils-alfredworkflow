@@ -142,7 +142,7 @@ if ! youtube_cli="$(resolve_youtube_cli 2>"$err_file")"; then
   exit 0
 fi
 
-if json_output="$("$youtube_cli" search --query "$query" 2>"$err_file")"; then
+if json_output="$("$youtube_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
   printf '%s\n' "$json_output"
   exit 0
 fi

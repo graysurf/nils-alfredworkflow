@@ -31,15 +31,23 @@
 - Format check: `cargo fmt --all -- --check`
 - Format fix: `cargo fmt --all`
 - Lint: `cargo clippy --workspace --all-targets -- -D warnings`
-- Full lint entrypoint: `scripts/workflow-lint.sh`
+- CLI standards audit: `scripts/cli-standards-audit.sh`
+- Full lint entrypoint (includes `cli-standards-audit`): `scripts/workflow-lint.sh`
+
+### CLI standards audit
+
+- Hard-fail checks (must pass in CI): required standards docs, crate README presence, crate `description` metadata, and standards gate wiring.
+- Warning checks (migration tracking): explicit json-mode indicators, envelope key assertions, and README standards sections.
+- To enforce warnings as failures: `scripts/cli-standards-audit.sh --strict`
 
 ## Testing
 
 ### Required before committing
 
-- All commands in **Formatting and linting** must pass.
-- `cargo test --workspace`
-- `scripts/workflow-test.sh`
+- Recommended pre-commit sequence:
+  - `scripts/workflow-lint.sh`
+  - `cargo test --workspace`
+  - `scripts/workflow-test.sh`
 - For changes under `workflows/cambridge-dict/scripts/` or `package.json`:
   - `npm run test:cambridge-scraper`
 - For changes under `workflows/cambridge-dict/`:
@@ -56,6 +64,13 @@
 - Live endpoint sanity check script:
   - `bash scripts/market-cli-live-smoke.sh`
 - This is optional maintainer validation for `market-cli` provider freshness/contract behavior.
+- It is not required for commit gates or CI pass/fail.
+
+### Weather CLI live smoke (optional manual)
+
+- Live endpoint sanity check script:
+  - `bash scripts/weather-cli-live-smoke.sh`
+- This is optional maintainer validation for `weather-cli` provider/fallback/contract behavior.
 - It is not required for commit gates or CI pass/fail.
 
 ## Coverage (optional)
@@ -85,8 +100,10 @@
 
 ## Rust crate publishing (crates.io)
 
-- Dry-run publish checks:
+- Dry-run publish checks (all crates from `release/crates-io-publish-order.txt`):
   - `scripts/publish-crates.sh --dry-run`
+- Dry-run publish checks (single crate):
+  - `scripts/publish-crates.sh --dry-run --crates "nils-weather-cli"`
 - Publish all crates in dependency order:
   - `CARGO_REGISTRY_TOKEN=... scripts/publish-crates.sh --publish`
 - Publish a subset:

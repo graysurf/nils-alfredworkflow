@@ -1,4 +1,6 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use serde::Serialize;
+use serde_json::Value;
 
 use youtube_cli::{
     config::{ConfigError, RuntimeConfig},
@@ -20,7 +22,31 @@ enum Commands {
         /// Search query text.
         #[arg(long)]
         query: String,
+        /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
+        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
+        mode: OutputMode,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[value(rename_all = "kebab-case")]
+enum OutputMode {
+    ServiceJson,
+    Alfred,
+}
+
+impl Cli {
+    fn command_name(&self) -> &'static str {
+        match &self.command {
+            Commands::Search { .. } => "search",
+        }
+    }
+
+    fn output_mode(&self) -> OutputMode {
+        match &self.command {
+            Commands::Search { mode, .. } => *mode,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,17 +100,33 @@ impl AppError {
             ErrorKind::Runtime => 1,
         }
     }
+
+    fn code(&self) -> &'static str {
+        match self.kind {
+            ErrorKind::User => "youtube.user",
+            ErrorKind::Runtime => "youtube.runtime",
+        }
+    }
 }
 
 fn main() {
     let cli = Cli::parse();
+    let command = cli.command_name();
+    let mode = cli.output_mode();
 
     match run(cli) {
         Ok(output) => {
             println!("{output}");
         }
         Err(error) => {
-            eprintln!("error: {}", error.message);
+            match mode {
+                OutputMode::ServiceJson => {
+                    println!("{}", serialize_service_error(command, &error));
+                }
+                OutputMode::Alfred => {
+                    eprintln!("error: {}", error.message);
+                }
+            }
             std::process::exit(error.exit_code());
         }
     }
@@ -104,7 +146,7 @@ where
     SearchVideos: Fn(&RuntimeConfig, &str) -> Result<Vec<VideoSearchResult>, YouTubeApiError>,
 {
     match cli.command {
-        Commands::Search { query } => {
+        Commands::Search { query, mode } => {
             let query = query.trim();
             if query.is_empty() {
                 return Err(AppError::user("query must not be empty"));
@@ -114,11 +156,80 @@ where
             let videos = search_videos(&config, query).map_err(AppError::from_youtube_api)?;
 
             let payload = feedback::videos_to_feedback(&videos);
-            payload
-                .to_json()
-                .map_err(|err| AppError::runtime(format!("failed to serialize feedback: {err}")))
+            render_feedback(mode, "search", payload)
         }
     }
+}
+
+#[derive(Debug, Serialize)]
+struct ServiceErrorEnvelope {
+    code: &'static str,
+    message: String,
+    details: Option<Value>,
+}
+
+#[derive(Debug, Serialize)]
+struct ServiceEnvelope {
+    schema_version: &'static str,
+    command: &'static str,
+    ok: bool,
+    result: Option<Value>,
+    error: Option<ServiceErrorEnvelope>,
+}
+
+fn render_feedback(
+    mode: OutputMode,
+    command: &'static str,
+    payload: alfred_core::Feedback,
+) -> Result<String, AppError> {
+    match mode {
+        OutputMode::Alfred => payload
+            .to_json()
+            .map_err(|err| AppError::runtime(format!("failed to serialize feedback: {err}"))),
+        OutputMode::ServiceJson => {
+            let result = serde_json::to_value(payload)
+                .map_err(|err| AppError::runtime(format!("failed to serialize feedback: {err}")))?;
+            serde_json::to_string(&ServiceEnvelope {
+                schema_version: "v1",
+                command,
+                ok: true,
+                result: Some(result),
+                error: None,
+            })
+            .map_err(|err| {
+                AppError::runtime(format!("failed to serialize service envelope: {err}"))
+            })
+        }
+    }
+}
+
+fn serialize_service_error(command: &'static str, error: &AppError) -> String {
+    let envelope = ServiceEnvelope {
+        schema_version: "v1",
+        command,
+        ok: false,
+        result: None,
+        error: Some(ServiceErrorEnvelope {
+            code: error.code(),
+            message: error.message.clone(),
+            details: None,
+        }),
+    };
+
+    serde_json::to_string(&envelope).unwrap_or_else(|serialize_error| {
+        serde_json::json!({
+            "schema_version": "v1",
+            "command": command,
+            "ok": false,
+            "result": Value::Null,
+            "error": {
+                "code": "internal.serialize",
+                "message": format!("failed to serialize service error envelope: {serialize_error}"),
+                "details": Value::Null,
+            }
+        })
+        .to_string()
+    })
 }
 
 #[cfg(test)]
@@ -169,6 +280,45 @@ mod tests {
         assert_eq!(
             first_item.get("arg").and_then(Value::as_str),
             Some("https://www.youtube.com/watch?v=abc123")
+        );
+    }
+
+    #[test]
+    fn main_search_service_json_mode_wraps_result_in_v1_envelope() {
+        let cli = Cli::parse_from([
+            "youtube-cli",
+            "search",
+            "--query",
+            "rust",
+            "--mode",
+            "service-json",
+        ]);
+
+        let output = run_with(
+            cli,
+            || Ok(fixture_config()),
+            |_, _| {
+                Ok(vec![VideoSearchResult {
+                    video_id: "abc123".to_string(),
+                    title: "Rust Tutorial".to_string(),
+                    description: "Learn Rust quickly".to_string(),
+                }])
+            },
+        )
+        .expect("search should succeed");
+
+        let json: Value = serde_json::from_str(&output).expect("output must be JSON");
+        assert_eq!(
+            json.get("schema_version").and_then(Value::as_str),
+            Some("v1")
+        );
+        assert_eq!(json.get("command").and_then(Value::as_str), Some("search"));
+        assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
+        assert!(
+            json.get("result")
+                .and_then(|result| result.get("items"))
+                .and_then(Value::as_array)
+                .is_some()
         );
     }
 
@@ -228,5 +378,30 @@ mod tests {
             .expect_err("help should exit through clap error");
 
         assert_eq!(help.kind(), clap::error::ErrorKind::DisplayHelp);
+    }
+
+    #[test]
+    fn main_service_error_envelope_has_required_error_fields() {
+        let payload = serialize_service_error("search", &AppError::user("query must not be empty"));
+        let json: Value = serde_json::from_str(&payload).expect("service error should be json");
+
+        assert_eq!(
+            json.get("schema_version").and_then(Value::as_str),
+            Some("v1")
+        );
+        assert_eq!(json.get("command").and_then(Value::as_str), Some("search"));
+        assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
+        assert!(json.get("result").is_some());
+        assert_eq!(
+            json.get("error")
+                .and_then(|error| error.get("code"))
+                .and_then(Value::as_str),
+            Some("youtube.user")
+        );
+        assert!(
+            json.get("error")
+                .and_then(|error| error.get("details"))
+                .is_some()
+        );
     }
 }

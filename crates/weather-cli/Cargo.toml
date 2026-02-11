@@ -1,0 +1,26 @@
+[package]
+name = "nils-weather-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Weather forecast CLI with text and JSON output modes."
+
+[lib]
+name = "weather_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "weather-cli"
+path = "src/main.rs"
+
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

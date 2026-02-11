@@ -903,6 +903,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "nils-weather-cli"
+version = "1.0.3"
+dependencies = [
+ "chrono",
+ "clap",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "nils-wiki-cli"
 version = "1.0.3"
 dependencies = [

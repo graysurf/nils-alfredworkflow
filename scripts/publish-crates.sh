@@ -271,8 +271,8 @@ if [[ "$mode" == "publish" ]]; then
   note "publish finished for: ${selected_crates[*]}"
 else
   for crate in "${selected_crates[@]}"; do
-    note "[dry-run] cargo publish -p ${crate} --dry-run ${cargo_args[*]}"
-    cargo publish -p "$crate" --dry-run "${cargo_args[@]}"
+    note "[dry-run] cargo package -p ${crate} --list ${cargo_args[*]}"
+    cargo package -p "$crate" --list "${cargo_args[@]}"
   done
   note "dry-run finished for: ${selected_crates[*]}"
 fi
