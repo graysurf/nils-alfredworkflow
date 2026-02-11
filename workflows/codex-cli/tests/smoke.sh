@@ -339,6 +339,46 @@ exit 9
 EOS
 chmod +x "$tmp_dir/stubs/codex-cli-capture-secret-dir"
 
+cat >"$tmp_dir/stubs/codex-cli-save-requires-yes" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -n "${CODEX_STUB_LOG:-}" ]]; then
+  printf '%s\n' "$*" >>"$CODEX_STUB_LOG"
+fi
+if [[ "${1:-}" == "--version" ]]; then
+  echo "codex-cli 0.3.2"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "save" ]]; then
+  force_overwrite=0
+  secret="${3:-}"
+  if [[ "${3:-}" == "--yes" ]]; then
+    force_overwrite=1
+    secret="${4:-}"
+  fi
+  [[ -n "$secret" ]] || {
+    echo "missing secret name" >&2
+    exit 64
+  }
+  [[ -n "${CODEX_SECRET_DIR:-}" ]] || {
+    echo "missing CODEX_SECRET_DIR" >&2
+    exit 65
+  }
+  target_path="${CODEX_SECRET_DIR%/}/${secret}"
+  if [[ "$force_overwrite" -ne 1 && -f "$target_path" ]]; then
+    echo "secret exists: $secret (use --yes)" >&2
+    exit 73
+  fi
+  mkdir -p "${CODEX_SECRET_DIR%/}"
+  printf '{"saved":"%s"}\n' "$secret" >"$target_path"
+  echo "save ok"
+  exit 0
+fi
+echo "unexpected command: $*" >&2
+exit 9
+EOS
+chmod +x "$tmp_dir/stubs/codex-cli-save-requires-yes"
+
 cat >"$tmp_dir/stubs/codex-cli-diag-all-json" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -613,6 +653,23 @@ CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "save::team-alpha.json::1" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "auth save --yes team-alpha.json" ]] || fail "save --yes mapping mismatch"
+
+save_overwrite_secret_dir="$tmp_dir/save-overwrite-secrets"
+mkdir -p "$save_overwrite_secret_dir"
+printf '{"old":"value"}\n' >"$save_overwrite_secret_dir/team-alpha.json"
+CODEX_SECRET_DIR="$save_overwrite_secret_dir" CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-save-requires-yes" \
+  "$workflow_dir/scripts/action_open.sh" "save::team-alpha.json::0" >/dev/null
+[[ "$(tail -n1 "$action_log")" == "auth save --yes team-alpha.json" ]] || fail "save confirmation should promote existing file overwrite to --yes"
+if ! rg -n --fixed-strings '"saved":"team-alpha.json"' "$save_overwrite_secret_dir/team-alpha.json" >/dev/null; then
+  fail "save overwrite should update existing secret file after confirmation"
+fi
+
+CODEX_SECRET_DIR="$save_overwrite_secret_dir" CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-save-requires-yes" \
+  "$workflow_dir/scripts/action_open.sh" "save::team-new.json::0" >/dev/null
+[[ "$(tail -n1 "$action_log")" == "auth save team-new.json" ]] || fail "save for non-existing file should keep non-yes command"
+if ! rg -n --fixed-strings '"saved":"team-new.json"' "$save_overwrite_secret_dir/team-new.json" >/dev/null; then
+  fail "save should create new secret file without --yes when target does not exist"
+fi
 
 save_log_before="$(wc -l <"$action_log" | tr -d ' ')"
 set +e

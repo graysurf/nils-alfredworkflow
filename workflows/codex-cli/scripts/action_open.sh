@@ -613,7 +613,16 @@ save::*)
     exit 1
   fi
 
-  if [[ "$yes_flag" == "1" ]]; then
+  effective_yes_flag="$yes_flag"
+  target_secret_path="${CODEX_SECRET_DIR%/}/${secret}"
+  if [[ "$effective_yes_flag" != "1" && -f "$target_secret_path" ]]; then
+    # A confirmed save on an existing file should behave as overwrite.
+    if save_confirmation_enabled && command -v osascript >/dev/null 2>&1; then
+      effective_yes_flag="1"
+    fi
+  fi
+
+  if [[ "$effective_yes_flag" == "1" ]]; then
     run_codex_command "$codex_cli" "auth save --yes $secret" auth save --yes "$secret"
   else
     run_codex_command "$codex_cli" "auth save $secret" auth save "$secret"
