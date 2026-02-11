@@ -949,6 +949,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nils-workflow-readme-cli"
+version = "1.0.4"
+dependencies = [
+ "clap",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "nils-youtube-cli"
 version = "1.0.4"
 dependencies = [

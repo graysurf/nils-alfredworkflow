@@ -377,6 +377,10 @@ if [[ "\$#" -eq 2 && "\$1" == "test" && "\$2" == "--workspace" ]]; then
   exit 0
 fi
 
+if [[ "\$#" -ge 4 && "\$1" == "run" && "\$2" == "-p" && "\$3" == "nils-workflow-readme-cli" && "\$4" == "--" ]]; then
+  exit 0
+fi
+
 echo "unexpected cargo invocation: \$*" >&2
 exit 1
 EOS
