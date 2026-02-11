@@ -142,7 +142,7 @@ if ! brave_cli="$(resolve_brave_cli 2>"$err_file")"; then
   exit 0
 fi
 
-if json_output="$("$brave_cli" search --query "$query" 2>"$err_file")"; then
+if json_output="$("$brave_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
   if [[ -z "$json_output" ]]; then
     print_error_item "brave-cli returned empty response"
     exit 0

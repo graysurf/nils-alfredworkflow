@@ -124,7 +124,7 @@ if ! epoch_cli="$(resolve_epoch_cli 2>"$err_file")"; then
   exit 0
 fi
 
-if json_output="$("$epoch_cli" convert --query "$query" 2>"$err_file")"; then
+if json_output="$("$epoch_cli" convert --query "$query" --mode alfred 2>"$err_file")"; then
   if [[ -z "$json_output" ]]; then
     print_error_item "epoch-cli returned empty response"
     exit 0

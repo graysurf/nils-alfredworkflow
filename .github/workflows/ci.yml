@@ -44,7 +44,7 @@ jobs:
         with:
           tool: cargo-nextest
 
-      - name: Lint
+      - name: Lint (includes cli-standards-audit)
         run: scripts/workflow-lint.sh
 
       - name: Node scraper tests

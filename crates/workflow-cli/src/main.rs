@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand, ValueEnum};
 use workflow_common::{
-    RuntimeConfig, ScriptFilterMode, WorkflowError, build_script_filter_feedback_with_mode,
-    github_url_for_project, record_usage,
+    EnvelopePayloadKind, OutputMode, RuntimeConfig, ScriptFilterMode, WorkflowError,
+    build_error_details_json, build_error_envelope, build_script_filter_feedback_with_mode,
+    build_success_envelope, github_url_for_project, record_usage, select_output_mode,
 };
 
 #[derive(Debug, Parser)]
@@ -23,6 +24,12 @@ enum Commands {
         /// Display mode for icon treatment.
         #[arg(long, value_enum, default_value_t = ScriptFilterModeArg::Open)]
         mode: ScriptFilterModeArg,
+        /// Explicit output mode (`human`, `json`, `alfred-json`).
+        #[arg(long, value_enum)]
+        output: Option<OutputModeArg>,
+        /// Legacy compatibility flag for JSON service mode.
+        #[arg(long)]
+        json: bool,
     },
     /// Record usage timestamp for a selected project path.
     RecordUsage {
@@ -53,6 +60,23 @@ impl From<ScriptFilterModeArg> for ScriptFilterMode {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum OutputModeArg {
+    Human,
+    Json,
+    AlfredJson,
+}
+
+impl From<OutputModeArg> for OutputMode {
+    fn from(value: OutputModeArg) -> Self {
+        match value {
+            OutputModeArg::Human => OutputMode::Human,
+            OutputModeArg::Json => OutputMode::Json,
+            OutputModeArg::AlfredJson => OutputMode::AlfredJson,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ErrorKind {
     User,
@@ -62,20 +86,23 @@ enum ErrorKind {
 #[derive(Debug)]
 struct AppError {
     kind: ErrorKind,
+    code: &'static str,
     message: String,
 }
 
 impl AppError {
-    fn user(message: impl Into<String>) -> Self {
+    fn user(code: &'static str, message: impl Into<String>) -> Self {
         Self {
             kind: ErrorKind::User,
+            code,
             message: message.into(),
         }
     }
 
-    fn runtime(message: impl Into<String>) -> Self {
+    fn runtime(code: &'static str, message: impl Into<String>) -> Self {
         Self {
             kind: ErrorKind::Runtime,
+            code,
             message: message.into(),
         }
     }
@@ -88,15 +115,48 @@ impl AppError {
     }
 }
 
+const ERROR_CODE_USER_INVALID_PATH: &str = "user.invalid_path";
+const ERROR_CODE_USER_OUTPUT_MODE_CONFLICT: &str = "user.output_mode_conflict";
+const ERROR_CODE_RUNTIME_GIT: &str = "runtime.git_failed";
+const ERROR_CODE_RUNTIME_USAGE_WRITE: &str = "runtime.usage_persist_failed";
+const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
+
+impl Cli {
+    fn command_name(&self) -> &'static str {
+        match &self.command {
+            Commands::ScriptFilter { .. } => "workflow.script-filter",
+            Commands::RecordUsage { .. } => "workflow.record-usage",
+            Commands::GithubUrl { .. } => "workflow.github-url",
+        }
+    }
+
+    fn output_mode_hint(&self) -> OutputMode {
+        match &self.command {
+            Commands::ScriptFilter { output, json, .. } => {
+                if *json {
+                    OutputMode::Json
+                } else if let Some(mode) = output {
+                    (*mode).into()
+                } else {
+                    OutputMode::AlfredJson
+                }
+            }
+            Commands::RecordUsage { .. } | Commands::GithubUrl { .. } => OutputMode::Human,
+        }
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
+    let command = cli.command_name();
+    let output_mode = cli.output_mode_hint();
 
     match run(cli) {
         Ok(stdout) => {
             println!("{stdout}");
         }
         Err(err) => {
-            eprintln!("error: {}", err.message);
+            emit_error(command, output_mode, &err);
             std::process::exit(err.exit_code());
         }
     }
@@ -109,11 +169,33 @@ fn run(cli: Cli) -> Result<String, AppError> {
 
 fn run_with_config(cli: Cli, config: &RuntimeConfig) -> Result<String, AppError> {
     match cli.command {
-        Commands::ScriptFilter { query, mode } => {
+        Commands::ScriptFilter {
+            query,
+            mode,
+            output,
+            json,
+        } => {
+            let output_mode =
+                select_output_mode(output.map(Into::into), json, OutputMode::AlfredJson).map_err(
+                    |error| AppError::user(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()),
+                )?;
             let feedback = build_script_filter_feedback_with_mode(&query, config, mode.into());
-            feedback.to_json().map_err(|error| {
-                AppError::runtime(format!("failed to serialize Alfred feedback: {error}"))
-            })
+            let alfred_json = feedback.to_json().map_err(|error| {
+                AppError::runtime(
+                    ERROR_CODE_RUNTIME_SERIALIZE,
+                    format!("failed to serialize Alfred feedback: {error}"),
+                )
+            })?;
+
+            match output_mode {
+                OutputMode::AlfredJson => Ok(alfred_json),
+                OutputMode::Json => Ok(build_success_envelope(
+                    "workflow.script-filter",
+                    EnvelopePayloadKind::Result,
+                    &alfred_json,
+                )),
+                OutputMode::Human => Ok(render_script_filter_human(&feedback)),
+            }
         }
         Commands::RecordUsage { path } => {
             validate_project_path(&path)?;
@@ -127,19 +209,85 @@ fn run_with_config(cli: Cli, config: &RuntimeConfig) -> Result<String, AppError>
     }
 }
 
+fn render_script_filter_human(feedback: &workflow_common::Feedback) -> String {
+    if feedback.items.is_empty() {
+        return "No projects matched".to_string();
+    }
+
+    let mut lines = Vec::with_capacity(feedback.items.len());
+    for item in &feedback.items {
+        if let Some(subtitle) = &item.subtitle {
+            lines.push(format!("{} | {}", item.title, subtitle));
+        } else {
+            lines.push(item.title.clone());
+        }
+    }
+    lines.join("\n")
+}
+
+fn emit_error(command: &str, output_mode: OutputMode, error: &AppError) {
+    match output_mode {
+        OutputMode::Json => {
+            let details = build_error_details_json(error_kind_label(error.kind), error.exit_code());
+            println!(
+                "{}",
+                build_error_envelope(command, error.code, &error.message, Some(&details))
+            );
+        }
+        OutputMode::AlfredJson => {
+            let safe_message = workflow_common::redact_sensitive(&error.message);
+            println!(
+                "{{\"items\":[{{\"title\":\"Error [{}]\",\"subtitle\":\"{}\",\"valid\":false}}]}}",
+                error.code,
+                escape_for_alfred_json(&safe_message),
+            );
+        }
+        OutputMode::Human => {
+            eprintln!(
+                "error[{}]: {}",
+                error.code,
+                workflow_common::redact_sensitive(&error.message),
+            );
+        }
+    }
+}
+
+fn error_kind_label(kind: ErrorKind) -> &'static str {
+    match kind {
+        ErrorKind::User => "user",
+        ErrorKind::Runtime => "runtime",
+    }
+}
+
+fn escape_for_alfred_json(raw: &str) -> String {
+    let mut escaped = String::with_capacity(raw.len());
+    for ch in raw.chars() {
+        match ch {
+            '"' => escaped.push_str("\\\""),
+            '\\' => escaped.push_str("\\\\"),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            c if c < '\u{20}' => escaped.push_str(&format!("\\u{:04x}", c as u32)),
+            c => escaped.push(c),
+        }
+    }
+    escaped
+}
+
 fn validate_project_path(path: &Path) -> Result<(), AppError> {
     if !path.exists() {
-        return Err(AppError::user(format!(
-            "path does not exist: {}",
-            path.to_string_lossy()
-        )));
+        return Err(AppError::user(
+            ERROR_CODE_USER_INVALID_PATH,
+            format!("path does not exist: {}", path.to_string_lossy()),
+        ));
     }
 
     if !path.is_dir() {
-        return Err(AppError::user(format!(
-            "path is not a directory: {}",
-            path.to_string_lossy()
-        )));
+        return Err(AppError::user(
+            ERROR_CODE_USER_INVALID_PATH,
+            format!("path is not a directory: {}", path.to_string_lossy()),
+        ));
     }
 
     Ok(())
@@ -147,28 +295,36 @@ fn validate_project_path(path: &Path) -> Result<(), AppError> {
 
 fn map_workflow_error(error: WorkflowError) -> AppError {
     match error {
-        WorkflowError::MissingPath(path) => {
-            AppError::user(format!("path does not exist: {}", path.to_string_lossy()))
-        }
-        WorkflowError::NotDirectory(path) => AppError::user(format!(
-            "path is not a directory: {}",
-            path.to_string_lossy()
-        )),
-        WorkflowError::MissingOrigin(path) => AppError::runtime(format!(
-            "no remote 'origin' found in {}",
-            path.to_string_lossy()
-        )),
-        WorkflowError::UnsupportedRemote(remote) => {
-            AppError::runtime(format!("unsupported remote URL format: {remote}"))
-        }
-        WorkflowError::GitCommand { path, message } => AppError::runtime(format!(
-            "failed to execute git in {}: {message}",
-            path.to_string_lossy()
-        )),
-        WorkflowError::UsageWrite { path, source } => AppError::runtime(format!(
-            "failed to persist usage log at {}: {source}",
-            path.to_string_lossy()
-        )),
+        WorkflowError::MissingPath(path) => AppError::user(
+            ERROR_CODE_USER_INVALID_PATH,
+            format!("path does not exist: {}", path.to_string_lossy()),
+        ),
+        WorkflowError::NotDirectory(path) => AppError::user(
+            ERROR_CODE_USER_INVALID_PATH,
+            format!("path is not a directory: {}", path.to_string_lossy()),
+        ),
+        WorkflowError::MissingOrigin(path) => AppError::runtime(
+            ERROR_CODE_RUNTIME_GIT,
+            format!("no remote 'origin' found in {}", path.to_string_lossy()),
+        ),
+        WorkflowError::UnsupportedRemote(remote) => AppError::runtime(
+            ERROR_CODE_RUNTIME_GIT,
+            format!("unsupported remote URL format: {remote}"),
+        ),
+        WorkflowError::GitCommand { path, message } => AppError::runtime(
+            ERROR_CODE_RUNTIME_GIT,
+            format!(
+                "failed to execute git in {}: {message}",
+                path.to_string_lossy()
+            ),
+        ),
+        WorkflowError::UsageWrite { path, source } => AppError::runtime(
+            ERROR_CODE_RUNTIME_USAGE_WRITE,
+            format!(
+                "failed to persist usage log at {}: {source}",
+                path.to_string_lossy()
+            ),
+        ),
     }
 }
 
@@ -201,6 +357,8 @@ mod tests {
                 command: Commands::ScriptFilter {
                     query: String::new(),
                     mode: ScriptFilterModeArg::Open,
+                    output: Some(OutputModeArg::Json),
+                    json: false,
                 },
             },
             &config,
@@ -209,9 +367,18 @@ mod tests {
 
         let json: serde_json::Value =
             serde_json::from_str(&output).expect("script-filter output should be valid JSON");
+        assert_eq!(
+            json.get("schema_version").and_then(|x| x.as_str()),
+            Some("v1")
+        );
+        assert_eq!(
+            json.get("command").and_then(|x| x.as_str()),
+            Some("workflow.script-filter")
+        );
+        assert_eq!(json.get("ok").and_then(|x| x.as_bool()), Some(true));
         assert!(
-            json.get("items").is_some(),
-            "JSON output should contain items field"
+            json.get("result").is_some(),
+            "JSON output should contain result field"
         );
     }
 
@@ -293,6 +460,7 @@ mod tests {
             err.message.contains(missing.to_string_lossy().as_ref()),
             "error message should include offending path"
         );
+        assert_eq!(err.code, ERROR_CODE_USER_INVALID_PATH);
     }
 
     #[test]
@@ -314,6 +482,8 @@ mod tests {
                 command: Commands::ScriptFilter {
                     query: String::new(),
                     mode: ScriptFilterModeArg::Github,
+                    output: None,
+                    json: false,
                 },
             },
             &config,
@@ -331,6 +501,76 @@ mod tests {
             .expect("github mode should include primary icon path");
 
         assert_eq!(icon_path, "assets/icon-github.png");
+    }
+
+    #[test]
+    fn script_filter_default_mode_keeps_alfred_json_contract() {
+        let temp = tempdir().expect("create temp dir");
+        let root = temp.path().join("projects");
+        let repo = root.join("alpha");
+        init_repo(&repo);
+
+        let config = RuntimeConfig {
+            project_roots: vec![root],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 10,
+        };
+
+        let output = run_with_config(
+            Cli {
+                command: Commands::ScriptFilter {
+                    query: String::new(),
+                    mode: ScriptFilterModeArg::Open,
+                    output: None,
+                    json: false,
+                },
+            },
+            &config,
+        )
+        .expect("script-filter should succeed");
+
+        let json: serde_json::Value =
+            serde_json::from_str(&output).expect("script-filter output should be valid JSON");
+        assert!(json.get("items").is_some());
+    }
+
+    #[test]
+    fn script_filter_rejects_conflicting_json_flags() {
+        let temp = tempdir().expect("create temp dir");
+        let config = RuntimeConfig {
+            project_roots: vec![temp.path().join("projects")],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 10,
+        };
+
+        let err = run_with_config(
+            Cli {
+                command: Commands::ScriptFilter {
+                    query: String::new(),
+                    mode: ScriptFilterModeArg::Open,
+                    output: Some(OutputModeArg::Human),
+                    json: true,
+                },
+            },
+            &config,
+        )
+        .expect_err("must fail");
+
+        assert_eq!(err.kind, ErrorKind::User);
+        assert_eq!(err.code, ERROR_CODE_USER_OUTPUT_MODE_CONFLICT);
+    }
+
+    #[test]
+    fn script_filter_error_redaction_masks_sensitive_tokens() {
+        let redacted = workflow_common::redact_sensitive(
+            "Authorization: Bearer abc token=xyz client_secret=demo",
+        );
+        assert!(!redacted.contains("abc"));
+        assert!(!redacted.contains("xyz"));
+        assert!(!redacted.contains("demo"));
+        assert!(redacted.contains("Bearer [REDACTED]"));
     }
 
     fn init_repo(path: &Path) {

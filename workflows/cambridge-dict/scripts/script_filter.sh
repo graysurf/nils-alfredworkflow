@@ -144,7 +144,7 @@ if ! cambridge_cli="$(resolve_cambridge_cli 2>"$err_file")"; then
   exit 0
 fi
 
-if json_output="$("$cambridge_cli" query --input "$query" 2>"$err_file")"; then
+if json_output="$("$cambridge_cli" query --input "$query" --mode alfred 2>"$err_file")"; then
   if [[ -z "$json_output" ]]; then
     print_error_item "cambridge-cli returned empty response"
     exit 0

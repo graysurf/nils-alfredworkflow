@@ -1,4 +1,6 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use serde::Serialize;
+use serde_json::Value;
 
 use cambridge_cli::{
     config::{ConfigError, RuntimeConfig},
@@ -21,7 +23,31 @@ enum Commands {
         /// Query text from Alfred script filter.
         #[arg(long)]
         input: String,
+        /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
+        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
+        mode: OutputMode,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[value(rename_all = "kebab-case")]
+enum OutputMode {
+    ServiceJson,
+    Alfred,
+}
+
+impl Cli {
+    fn command_name(&self) -> &'static str {
+        match &self.command {
+            Commands::Query { .. } => "query",
+        }
+    }
+
+    fn output_mode(&self) -> OutputMode {
+        match &self.command {
+            Commands::Query { mode, .. } => *mode,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,17 +119,33 @@ impl AppError {
             ErrorKind::Runtime => 1,
         }
     }
+
+    fn code(&self) -> &'static str {
+        match self.kind {
+            ErrorKind::User => "cambridge.user",
+            ErrorKind::Runtime => "cambridge.runtime",
+        }
+    }
 }
 
 fn main() {
     let cli = Cli::parse();
+    let command = cli.command_name();
+    let mode = cli.output_mode();
 
     match run(cli) {
         Ok(output) => {
             println!("{output}");
         }
         Err(error) => {
-            eprintln!("error: {}", error.message);
+            match mode {
+                OutputMode::ServiceJson => {
+                    println!("{}", serialize_service_error(command, &error));
+                }
+                OutputMode::Alfred => {
+                    eprintln!("error: {}", error.message);
+                }
+            }
             std::process::exit(error.exit_code());
         }
     }
@@ -123,8 +165,8 @@ where
     RunScraper: Fn(&RuntimeConfig, ScraperStage, &str) -> Result<ScraperResponse, BridgeError>,
 {
     match cli.command {
-        Commands::Query { input } => {
-            let feedback = match token::parse_query_token(&input) {
+        Commands::Query { input, mode } => {
+            let feedback_payload = match token::parse_query_token(&input) {
                 QueryToken::Empty => feedback::empty_input_feedback(),
                 QueryToken::DefineMissingEntry => feedback::missing_define_target_feedback(),
                 QueryToken::Suggest { query } => {
@@ -141,11 +183,82 @@ where
                 }
             };
 
-            feedback.to_json().map_err(|error| {
+            render_feedback(mode, "query", feedback_payload)
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct ServiceErrorEnvelope {
+    code: &'static str,
+    message: String,
+    details: Option<Value>,
+}
+
+#[derive(Debug, Serialize)]
+struct ServiceEnvelope {
+    schema_version: &'static str,
+    command: &'static str,
+    ok: bool,
+    result: Option<Value>,
+    error: Option<ServiceErrorEnvelope>,
+}
+
+fn render_feedback(
+    mode: OutputMode,
+    command: &'static str,
+    payload: alfred_core::Feedback,
+) -> Result<String, AppError> {
+    match mode {
+        OutputMode::Alfred => payload
+            .to_json()
+            .map_err(|error| AppError::runtime(format!("failed to serialize feedback: {error}"))),
+        OutputMode::ServiceJson => {
+            let result = serde_json::to_value(payload).map_err(|error| {
                 AppError::runtime(format!("failed to serialize feedback: {error}"))
+            })?;
+
+            serde_json::to_string(&ServiceEnvelope {
+                schema_version: "v1",
+                command,
+                ok: true,
+                result: Some(result),
+                error: None,
+            })
+            .map_err(|error| {
+                AppError::runtime(format!("failed to serialize service envelope: {error}"))
             })
         }
     }
+}
+
+fn serialize_service_error(command: &'static str, error: &AppError) -> String {
+    let envelope = ServiceEnvelope {
+        schema_version: "v1",
+        command,
+        ok: false,
+        result: None,
+        error: Some(ServiceErrorEnvelope {
+            code: error.code(),
+            message: error.message.clone(),
+            details: None,
+        }),
+    };
+
+    serde_json::to_string(&envelope).unwrap_or_else(|serialize_error| {
+        serde_json::json!({
+            "schema_version": "v1",
+            "command": command,
+            "ok": false,
+            "result": Value::Null,
+            "error": {
+                "code": "internal.serialize",
+                "message": format!("failed to serialize service error envelope: {serialize_error}"),
+                "details": Value::Null,
+            }
+        })
+        .to_string()
+    })
 }
 
 #[cfg(test)]
@@ -237,6 +350,43 @@ mod tests {
         assert_eq!(item.get("valid").and_then(Value::as_bool), Some(false));
         assert!(!config_called.get(), "config should not be loaded");
         assert!(!bridge_called.get(), "bridge should not be called");
+    }
+
+    #[test]
+    fn main_query_service_json_mode_wraps_result_in_v1_envelope() {
+        let cli = Cli::parse_from([
+            "cambridge-cli",
+            "query",
+            "--input",
+            "open",
+            "--mode",
+            "service-json",
+        ]);
+
+        let output = run_with(
+            cli,
+            || Ok(fixture_config()),
+            |_, stage, term| {
+                assert_eq!(stage, ScraperStage::Suggest);
+                assert_eq!(term, "open");
+                Ok(fixture_suggest_response())
+            },
+        )
+        .expect("service-json query should succeed");
+
+        let json: Value = serde_json::from_str(&output).expect("output should be json");
+        assert_eq!(
+            json.get("schema_version").and_then(Value::as_str),
+            Some("v1")
+        );
+        assert_eq!(json.get("command").and_then(Value::as_str), Some("query"));
+        assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
+        assert!(
+            json.get("result")
+                .and_then(|result| result.get("items"))
+                .and_then(Value::as_array)
+                .is_some()
+        );
     }
 
     #[test]
@@ -377,6 +527,33 @@ mod tests {
             .expect_err("help should be surfaced by clap");
 
         assert_eq!(help.kind(), clap::error::ErrorKind::DisplayHelp);
+    }
+
+    #[test]
+    fn main_service_error_envelope_has_required_error_fields() {
+        let payload =
+            serialize_service_error("query", &AppError::user("missing CAMBRIDGE_SCRAPER_SCRIPT"));
+        let json: Value = serde_json::from_str(&payload).expect("service error should be json");
+
+        assert_eq!(
+            json.get("schema_version").and_then(Value::as_str),
+            Some("v1")
+        );
+        assert_eq!(json.get("command").and_then(Value::as_str), Some("query"));
+        assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
+        assert!(json.get("result").is_some());
+        assert_eq!(
+            json.get("error")
+                .and_then(|error| error.get("code"))
+                .and_then(Value::as_str),
+            Some("cambridge.user")
+        );
+        assert_eq!(
+            json.get("error")
+                .and_then(|error| error.get("details"))
+                .map(|_| true),
+            Some(true)
+        );
     }
 
     #[test]

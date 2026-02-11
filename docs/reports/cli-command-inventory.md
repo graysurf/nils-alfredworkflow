@@ -1,0 +1,45 @@
+# CLI Command Inventory (Sprint 1 Baseline)
+
+## Inventory Scope
+
+- Scope: all workspace CLI crates under `crates/*-cli`.
+- Baseline date: 2026-02-11.
+- Sources:
+  - `crates/*-cli/src/main.rs` command definitions.
+  - workflow consumer scripts under `workflows/*/scripts/*.sh`.
+
+## Command Surface + Consumer Mapping
+
+| Crate | Binary | Command | Key options | Current output mode | Target mode (migration) | Primary consumer mapping (workflow/script_filter) |
+| --- | --- | --- | --- | --- | --- | --- |
+| `nils-brave-cli` | `brave-cli` | `search` | `--query <text>` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + optional compatibility mode | `workflows/google-search/scripts/script_filter.sh` |
+| `nils-cambridge-cli` | `cambridge-cli` | `query` | `--input <text>` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + optional compatibility mode | `workflows/cambridge-dict/scripts/script_filter.sh` |
+| `nils-epoch-cli` | `epoch-cli` | `convert` | `--query <text>` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + optional compatibility mode | `workflows/epoch-converter/scripts/script_filter.sh` |
+| `nils-market-cli` | `market-cli` | `fx` | `--base --quote --amount` | JSON object (service payload, no envelope) | `human-readable` default + explicit `--json` envelope | Service-style callers and `scripts/market-cli-live-smoke.sh` |
+| `nils-market-cli` | `market-cli` | `crypto` | `--base --quote --amount` | JSON object (service payload, no envelope) | `human-readable` default + explicit `--json` envelope | Service-style callers and `scripts/market-cli-live-smoke.sh` |
+| `nils-market-cli` | `market-cli` | `expr` | `--query --default-fiat` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/market-expression/scripts/script_filter.sh` |
+| `nils-quote-cli` | `quote-cli` | `feed` | `--query` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/quote-feed/scripts/script_filter.sh` |
+| `nils-randomer-cli` | `randomer-cli` | `list-formats` | `--query` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/randomer/scripts/script_filter.sh` |
+| `nils-randomer-cli` | `randomer-cli` | `list-types` | `--query` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/randomer/scripts/script_filter_types.sh` |
+| `nils-randomer-cli` | `randomer-cli` | `generate` | `--format --count` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/randomer/scripts/script_filter_expand.sh` |
+| `nils-spotify-cli` | `spotify-cli` | `search` | `--query <text>` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/spotify-search/scripts/script_filter.sh` |
+| `nils-timezone-cli` | `timezone-cli` | `now` | `--query --config-zones` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/multi-timezone/scripts/script_filter.sh` |
+| `nils-weather-cli` | `weather-cli` | `today` | `--city/--lat/--lon`, `--json` | Text default; `--json` returns raw JSON payload (no envelope) | Keep text default; migrate `--json` to envelope v1 | No Alfred workflow consumer yet; exercised by `scripts/weather-cli-live-smoke.sh` |
+| `nils-weather-cli` | `weather-cli` | `week` | `--city/--lat/--lon`, `--json` | Text default; `--json` returns raw JSON payload (no envelope) | Keep text default; migrate `--json` to envelope v1 | No Alfred workflow consumer yet; exercised by `scripts/weather-cli-live-smoke.sh` |
+| `nils-wiki-cli` | `wiki-cli` | `search` | `--query <text>` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/wiki-search/scripts/script_filter.sh` |
+| `nils-workflow-cli` | `workflow-cli` | `script-filter` | `--query`, `--mode <open|github>` | Legacy Alfred JSON (top-level `items`) | Keep command for compatibility; add explicit standards JSON mode for service use | `workflows/open-project/scripts/script_filter.sh`, `workflows/open-project/scripts/script_filter_github.sh`, `workflows/_template/scripts/script_filter.sh` |
+| `nils-workflow-cli` | `workflow-cli` | `record-usage` | `--path <dir>` | Plain text (path echo) | Keep plain text action contract | `workflows/open-project/scripts/action_record_usage.sh` |
+| `nils-workflow-cli` | `workflow-cli` | `github-url` | `--path <dir>` | Plain text (URL) | Keep plain text action contract | `workflows/open-project/scripts/action_open_github.sh` |
+| `nils-youtube-cli` | `youtube-cli` | `search` | `--query <text>` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/youtube-search/scripts/script_filter.sh` |
+
+## Consumer Risk Notes
+
+- Highest migration sensitivity: all workflow `script_filter` and `script-filter` callers currently assume Alfred JSON by default.
+- `weather-cli` is currently less coupled to Alfred script filters but still requires envelope migration for service consumers.
+- `workflow-cli` must preserve action-command plain text behavior while adding explicit machine mode for structured integrations.
+
+## Migration Priority Hints
+
+1. Pilot crates: `weather-cli`, `market-cli` (already have partial mode separation or service-like JSON payloads).
+2. Then migrate JSON-first workflow-facing crates with explicit compatibility flags.
+3. Keep consumer script updates atomic with command-mode changes to avoid script_filter regressions.

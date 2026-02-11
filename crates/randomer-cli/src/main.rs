@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use randomer_cli::{RandomerError, generate_feedback, list_formats_feedback, list_types_feedback};
 
 #[derive(Debug, Parser)]
@@ -15,12 +15,18 @@ enum Commands {
         /// Optional case-insensitive filter against format keys.
         #[arg(long)]
         query: Option<String>,
+        /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
+        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
+        mode: OutputMode,
     },
     /// List type keys for selector flow in rrv mode.
     ListTypes {
         /// Optional case-insensitive filter against format keys.
         #[arg(long)]
         query: Option<String>,
+        /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
+        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
+        mode: OutputMode,
     },
     /// Generate values for a specific format.
     Generate {
@@ -30,7 +36,35 @@ enum Commands {
         /// Number of values to generate.
         #[arg(long, default_value_t = 1)]
         count: usize,
+        /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
+        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
+        mode: OutputMode,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[value(rename_all = "kebab-case")]
+enum OutputMode {
+    ServiceJson,
+    Alfred,
+}
+
+impl Cli {
+    fn command_name(&self) -> &'static str {
+        match &self.command {
+            Commands::ListFormats { .. } => "list-formats",
+            Commands::ListTypes { .. } => "list-types",
+            Commands::Generate { .. } => "generate",
+        }
+    }
+
+    fn output_mode(&self) -> OutputMode {
+        match &self.command {
+            Commands::ListFormats { mode, .. } => *mode,
+            Commands::ListTypes { mode, .. } => *mode,
+            Commands::Generate { mode, .. } => *mode,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,34 +108,107 @@ impl AppError {
             ErrorKind::Runtime => 1,
         }
     }
+
+    fn code(&self) -> &'static str {
+        match self.kind {
+            ErrorKind::User => "randomer.user",
+            ErrorKind::Runtime => "randomer.runtime",
+        }
+    }
 }
 
 fn main() {
     let cli = Cli::parse();
+    let command = cli.command_name();
+    let mode = cli.output_mode();
 
     match run(cli) {
         Ok(output) => {
             println!("{output}");
         }
         Err(error) => {
-            eprintln!("error: {}", error.message);
+            match mode {
+                OutputMode::ServiceJson => {
+                    println!("{}", serialize_service_error(command, &error));
+                }
+                OutputMode::Alfred => {
+                    eprintln!("error: {}", error.message);
+                }
+            }
             std::process::exit(error.exit_code());
         }
     }
 }
 
 fn run(cli: Cli) -> Result<String, AppError> {
-    let feedback = match cli.command {
-        Commands::ListFormats { query } => list_formats_feedback(query.as_deref()),
-        Commands::ListTypes { query } => list_types_feedback(query.as_deref()),
-        Commands::Generate { format, count } => {
-            generate_feedback(format.as_str(), count).map_err(AppError::from_randomer)?
+    match cli.command {
+        Commands::ListFormats { query, mode } => {
+            let payload = list_formats_feedback(query.as_deref());
+            render_feedback(mode, "list-formats", payload)
         }
-    };
+        Commands::ListTypes { query, mode } => {
+            let payload = list_types_feedback(query.as_deref());
+            render_feedback(mode, "list-types", payload)
+        }
+        Commands::Generate {
+            format,
+            count,
+            mode,
+        } => {
+            let payload =
+                generate_feedback(format.as_str(), count).map_err(AppError::from_randomer)?;
+            render_feedback(mode, "generate", payload)
+        }
+    }
+}
 
-    feedback
-        .to_json()
-        .map_err(|error| AppError::runtime(format!("failed to serialize Alfred feedback: {error}")))
+fn render_feedback(
+    mode: OutputMode,
+    command: &'static str,
+    payload: alfred_core::Feedback,
+) -> Result<String, AppError> {
+    match mode {
+        OutputMode::Alfred => payload.to_json().map_err(|error| {
+            AppError::runtime(format!("failed to serialize Alfred feedback: {error}"))
+        }),
+        OutputMode::ServiceJson => {
+            let result = payload.to_json().map_err(|error| {
+                AppError::runtime(format!("failed to serialize Alfred feedback: {error}"))
+            })?;
+            Ok(format!(
+                r#"{{"schema_version":"v1","command":"{command}","ok":true,"result":{result},"error":null}}"#
+            ))
+        }
+    }
+}
+
+fn serialize_service_error(command: &'static str, error: &AppError) -> String {
+    format!(
+        r#"{{"schema_version":"v1","command":"{command}","ok":false,"result":null,"error":{{"code":"{}","message":"{}","details":null}}}}"#,
+        error.code(),
+        escape_json(&error.message)
+    )
+}
+
+fn escape_json(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for ch in value.chars() {
+        match ch {
+            '\\' => escaped.push_str("\\\\"),
+            '"' => escaped.push_str("\\\""),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            control if control.is_control() => {
+                let _ = std::fmt::Write::write_fmt(
+                    &mut escaped,
+                    format_args!("\\u{:04x}", control as u32),
+                );
+            }
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
 }
 
 #[cfg(test)]
@@ -126,6 +233,29 @@ mod tests {
                 .first()
                 .and_then(|item| item.get("mods"))
                 .and_then(|mods| mods.get("cmd"))
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn list_formats_service_json_mode_wraps_result_in_v1_envelope() {
+        let cli = Cli::parse_from(["randomer-cli", "list-formats", "--mode", "service-json"]);
+        let output = run(cli).expect("list-formats should succeed");
+        let json: Value = serde_json::from_str(&output).expect("output should be JSON");
+
+        assert_eq!(
+            json.get("schema_version").and_then(Value::as_str),
+            Some("v1")
+        );
+        assert_eq!(
+            json.get("command").and_then(Value::as_str),
+            Some("list-formats")
+        );
+        assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
+        assert!(
+            json.get("result")
+                .and_then(|result| result.get("items"))
+                .and_then(Value::as_array)
                 .is_some()
         );
     }
@@ -210,5 +340,33 @@ mod tests {
         let help = Cli::try_parse_from(["randomer-cli", "--help"])
             .expect_err("help should exit through clap");
         assert_eq!(help.kind(), clap::error::ErrorKind::DisplayHelp);
+    }
+
+    #[test]
+    fn service_error_envelope_has_required_error_fields() {
+        let payload = serialize_service_error("generate", &AppError::user("unknown format: bad"));
+        let json: Value = serde_json::from_str(&payload).expect("service error should be json");
+
+        assert_eq!(
+            json.get("schema_version").and_then(Value::as_str),
+            Some("v1")
+        );
+        assert_eq!(
+            json.get("command").and_then(Value::as_str),
+            Some("generate")
+        );
+        assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
+        assert!(json.get("result").is_some());
+        assert_eq!(
+            json.get("error")
+                .and_then(|error| error.get("code"))
+                .and_then(Value::as_str),
+            Some("randomer.user")
+        );
+        assert!(
+            json.get("error")
+                .and_then(|error| error.get("details"))
+                .is_some()
+        );
     }
 }

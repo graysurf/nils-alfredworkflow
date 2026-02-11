@@ -117,7 +117,7 @@ if ! randomer_cli="$(resolve_randomer_cli 2>"$err_file")"; then
   exit 0
 fi
 
-if json_output="$("$randomer_cli" list-types --query "$query" 2>"$err_file")"; then
+if json_output="$("$randomer_cli" list-types --query "$query" --mode alfred 2>"$err_file")"; then
   if [[ -z "$json_output" ]]; then
     print_error_item "randomer-cli returned empty response"
     exit 0

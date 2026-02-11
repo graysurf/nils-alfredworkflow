@@ -9,6 +9,7 @@ nils-quote-cli
 nils-randomer-cli
 nils-spotify-cli
 nils-timezone-cli
+nils-weather-cli
 nils-wiki-cli
 nils-youtube-cli
 nils-workflow-cli

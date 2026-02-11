@@ -121,7 +121,7 @@ if ! quote_cli="$(resolve_quote_cli 2>"$err_file")"; then
   exit 0
 fi
 
-if json_output="$("$quote_cli" feed --query "$query" 2>"$err_file")"; then
+if json_output="$("$quote_cli" feed --query "$query" --mode alfred 2>"$err_file")"; then
   if [[ -z "$json_output" ]]; then
     print_error_item "quote-cli returned empty response"
     exit 0

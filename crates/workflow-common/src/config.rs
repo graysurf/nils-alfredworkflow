@@ -1,11 +1,15 @@
 use std::env;
 use std::path::PathBuf;
 
+use crate::output_contract::OutputMode;
+
 pub const DEFAULT_PROJECT_DIRS: &str = "$HOME/Project,$HOME/.config";
 pub const DEFAULT_USAGE_FILE: &str = "$HOME/.config/zsh/cache/.alfred_project_usage.log";
 pub const DEFAULT_VSCODE_PATH: &str =
     "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code";
 pub const DEFAULT_OPEN_PROJECT_MAX_RESULTS: usize = 30;
+pub const DEFAULT_OUTPUT_MODE: OutputMode = OutputMode::AlfredJson;
+pub const OUTPUT_MODE_ENV: &str = "WORKFLOW_OUTPUT_MODE";
 
 const PROJECT_DIRS_ENV: &str = "PROJECT_DIRS";
 const USAGE_FILE_ENV: &str = "USAGE_FILE";
@@ -96,6 +100,15 @@ pub fn expand_home_tokens(raw: &str, home: &str) -> String {
     expanded
 }
 
+pub fn parse_output_mode_env(raw: Option<&str>) -> OutputMode {
+    raw.and_then(OutputMode::parse)
+        .unwrap_or(DEFAULT_OUTPUT_MODE)
+}
+
+pub fn output_mode_from_env() -> OutputMode {
+    parse_output_mode_env(env::var(OUTPUT_MODE_ENV).ok().as_deref())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,5 +159,24 @@ mod tests {
             "9999",
         );
         assert_eq!(clamped_high.max_results, OPEN_PROJECT_MAX_RESULTS_MAX);
+    }
+
+    #[test]
+    fn output_mode_defaults_to_alfred_json() {
+        assert_eq!(parse_output_mode_env(None), OutputMode::AlfredJson);
+        assert_eq!(
+            parse_output_mode_env(Some("invalid")),
+            OutputMode::AlfredJson
+        );
+    }
+
+    #[test]
+    fn output_mode_env_parser_accepts_known_values() {
+        assert_eq!(parse_output_mode_env(Some("human")), OutputMode::Human);
+        assert_eq!(parse_output_mode_env(Some("json")), OutputMode::Json);
+        assert_eq!(
+            parse_output_mode_env(Some("alfred-json")),
+            OutputMode::AlfredJson
+        );
     }
 }

@@ -40,19 +40,11 @@ Alfred workflows for macOS users.
 | [Multi Timezone](workflows/multi-timezone/README.md) | `tz` | Show current time across one or more IANA timezones and copy selected output. | Optional tuning: `TIMEZONE_CLI_BIN`, `MULTI_TZ_ZONES`, `MULTI_TZ_LOCAL_OVERRIDE` |
 | [Randomer](workflows/randomer/README.md) | `rr`, `rrv` | Generate random values by format and copy results. | No |
 
-## Market CLI capability (backend only)
+## CLI Docs
 
-- `market-cli` powers the `market-expression` workflow and remains reusable for other workflows.
-- Command surface:
-  - `market-cli fx --base USD --quote JPY --amount 100`
-  - `market-cli crypto --base BTC --quote USD --amount 0.5`
-- Provider stack (no API key):
-  - FX: Frankfurter (`24h` TTL)
-  - Crypto: Coinbase primary + Kraken fallback (`5m` TTL)
-- Success output is deterministic JSON with freshness states:
-  - `live`
-  - `cache_fresh`
-  - `cache_stale_fallback`
+- Crate-level CLI docs are maintained under `crates/*-cli/README.md`.
+- Market CLI: `crates/market-cli/README.md`
+- Weather CLI: `crates/weather-cli/README.md`
 
 ## Publish Rust crates
 
