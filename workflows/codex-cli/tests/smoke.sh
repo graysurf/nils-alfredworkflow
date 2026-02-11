@@ -491,13 +491,13 @@ fi
 diag_all_json_menu_with_latest="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "diag all-json"; })"
 assert_jq_json "$diag_all_json_menu_with_latest" '.items | any(.title == "Diag result ready (all-json)")' "diag all-json menu should render latest result rows from cache"
 assert_jq_json "$diag_all_json_menu_with_latest" '.items | any(.title == "sym | 5h 76% | weekly 88%")' "diag all-json menu should include parsed account rows"
-assert_jq_json "$diag_all_json_menu_with_latest" '.items | map(.title) as $titles | ($titles | index("poies | 5h 48% | weekly 54%")) < ($titles | index("sym | 5h 76% | weekly 88%"))' "diag all-json menu should sort by earliest weekly reset first"
+assert_jq_json "$diag_all_json_menu_with_latest" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "diag all-json menu should sort by earliest weekly reset first"
 
 diag_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "diag result"; })"
 assert_jq_json "$diag_result_json" '.items[0].title | startswith("Diag result ready")' "diag result should show summary item"
 assert_jq_json "$diag_result_json" '.items | any(.title == "sym | 5h 76% | weekly 88%")' "diag result should include sym account row"
 assert_jq_json "$diag_result_json" '.items | any(.title == "poies | 5h 48% | weekly 54%")' "diag result should include poies account row"
-assert_jq_json "$diag_result_json" '.items | map(.title) as $titles | ($titles | index("poies | 5h 48% | weekly 54%")) < ($titles | index("sym | 5h 76% | weekly 88%"))' "diag result should sort by earliest weekly reset first"
+assert_jq_json "$diag_result_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "diag result should sort by earliest weekly reset first"
 assert_jq_json "$diag_result_json" '.items | any(.subtitle == "sym@example.com | reset 2026-02-18 02:19 +08:00 | source sym.json")' "diag result should include email/reset/source subtitle"
 
 alias_diag_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag.sh" "result"; })"
@@ -506,7 +506,7 @@ assert_jq_json "$alias_diag_result_json" '.items[0].title | startswith("Diag res
 alias_diag_all_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag_all.sh" "result"; })"
 assert_jq_json "$alias_diag_all_result_json" '.items[0].title == "Diag result ready (all-json)"' "cxda result should keep all-json mode summary"
 assert_jq_json "$alias_diag_all_result_json" '.items | any(.title == "sym | 5h 76% | weekly 88%")' "cxda result should parse per-account rows"
-assert_jq_json "$alias_diag_all_result_json" '.items | map(.title) as $titles | ($titles | index("poies | 5h 48% | weekly 54%")) < ($titles | index("sym | 5h 76% | weekly 88%"))' "cxda result should sort by earliest weekly reset first"
+assert_jq_json "$alias_diag_all_result_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "cxda result should sort by earliest weekly reset first"
 
 cat >"$tmp_dir/bin/open" <<'EOS'
 #!/usr/bin/env bash
