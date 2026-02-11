@@ -47,6 +47,19 @@
         <false/>
       </dict>
     </array>
+    <key>B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
     <key>C4A6E4D4-4C89-4F8E-B6F8-2F1A7A5E6D09</key>
     <array>
       <dict>
@@ -118,7 +131,7 @@
         <key>scriptfile</key>
         <string>./scripts/script_filter.sh</string>
         <key>subtext</key>
-        <string>Evaluate and run codex-cli login/save/diag actions</string>
+        <string>Evaluate and run codex-cli login/use/save/diag actions</string>
         <key>title</key>
         <string>Codex CLI</string>
         <key>type</key>
@@ -167,7 +180,7 @@
         <key>scriptfile</key>
         <string>./scripts/script_filter_auth.sh</string>
         <key>subtext</key>
-        <string>Alias of cx auth for login/save actions</string>
+        <string>Alias of cx auth for login/use/save actions</string>
         <key>title</key>
         <string>Codex CLI Auth</string>
         <key>type</key>
@@ -179,6 +192,55 @@
       <string>alfred.workflow.input.scriptfilter</string>
       <key>uid</key>
       <string>D927D71A-8CB2-4CE7-9D4D-4A57D2A7A8F1</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <false/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>cxau</string>
+        <key>queuedelaycustom</key>
+        <integer>3</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <true/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_auth_use.sh</string>
+        <key>subtext</key>
+        <string>Alias of cx auth use for selecting and switching secret JSON</string>
+        <key>title</key>
+        <string>Codex CLI Auth Use</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7</string>
       <key>version</key>
       <integer>3</integer>
     </dict>
@@ -354,7 +416,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keywords cx / cxa / cxd / cxs / cxda to run codex-cli auth and diagnostics commands from Alfred.</string>
+  <string>Use keywords cx / cxa / cxau / cxd / cxs / cxda to run codex-cli auth and diagnostics commands from Alfred.</string>
   <key>uidata</key>
   <dict>
     <key>1B2C2CF8-9C9E-4E5E-AE2D-6F911B3A9D63</key>
@@ -377,6 +439,13 @@
       <integer>230</integer>
       <key>ypos</key>
       <integer>460</integer>
+    </dict>
+    <key>B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>740</integer>
     </dict>
     <key>C4A6E4D4-4C89-4F8E-B6F8-2F1A7A5E6D09</key>
     <dict>
@@ -436,7 +505,7 @@
         <true/>
       </dict>
       <key>description</key>
-      <string>Optional secret directory override for auth save/diag operations. Leave empty to auto-fallback to $XDG_CONFIG_HOME/codex_secrets or ~/.config/codex_secrets.</string>
+      <string>Optional secret directory override for auth save/use/diag operations. Leave empty to auto-fallback to $XDG_CONFIG_HOME/codex_secrets or ~/.config/codex_secrets.</string>
       <key>label</key>
       <string>CODEX_SECRET_DIR</string>
       <key>type</key>
@@ -464,6 +533,27 @@
       <string>textfield</string>
       <key>variable</key>
       <string>CODEX_SHOW_ASSESSMENT</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string>300</string>
+        <key>placeholder</key>
+        <string>300</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Diag auto-refresh cache TTL in seconds for cxd/cxda. Default 300 (5 minutes). Set 0 to always refresh.</string>
+      <key>label</key>
+      <string>CODEX_DIAG_CACHE_TTL_SECONDS</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>CODEX_DIAG_CACHE_TTL_SECONDS</string>
     </dict>
   </array>
   <key>variablesdontexport</key>

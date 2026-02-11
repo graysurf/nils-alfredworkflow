@@ -76,6 +76,21 @@ assert_jq_json() {
   fi
 }
 
+wait_for_file_contains() {
+  local file="$1"
+  local pattern="$2"
+  local timeout_seconds="${3:-5}"
+  local waited=0
+  while [[ "$waited" -lt "$timeout_seconds" ]]; do
+    if [[ -f "$file" ]] && rg -n --fixed-strings "$pattern" "$file" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  return 1
+}
+
 for required in \
   workflow.toml \
   README.md \
@@ -83,6 +98,7 @@ for required in \
   src/assets/icon.png \
   scripts/script_filter.sh \
   scripts/script_filter_auth.sh \
+  scripts/script_filter_auth_use.sh \
   scripts/script_filter_diag.sh \
   scripts/script_filter_diag_all.sh \
   scripts/script_filter_save.sh \
@@ -95,6 +111,7 @@ done
 for executable in \
   scripts/script_filter.sh \
   scripts/script_filter_auth.sh \
+  scripts/script_filter_auth_use.sh \
   scripts/script_filter_diag.sh \
   scripts/script_filter_diag_all.sh \
   scripts/script_filter_save.sh \
@@ -122,6 +139,9 @@ if ! rg -n '^CODEX_SECRET_DIR[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null
 fi
 if ! rg -n '^CODEX_SHOW_ASSESSMENT[[:space:]]*=[[:space:]]*"0"' "$manifest" >/dev/null; then
   fail "CODEX_SHOW_ASSESSMENT default must be 0"
+fi
+if ! rg -n '^CODEX_DIAG_CACHE_TTL_SECONDS[[:space:]]*=[[:space:]]*"300"' "$manifest" >/dev/null; then
+  fail "CODEX_DIAG_CACHE_TTL_SECONDS default must be 300"
 fi
 
 tmp_dir="$(mktemp -d)"
@@ -182,8 +202,18 @@ auth)
   login)
     printf '{"ok":true,"cmd":"auth login","argv":"%s"}\n' "$*"
     ;;
+  current)
+    echo "codex: /tmp/auth.json matches beta.json"
+    ;;
   save)
     printf '{"ok":true,"cmd":"auth save","argv":"%s"}\n' "$*"
+    ;;
+  use)
+    [[ -n "${3:-}" ]] || {
+      echo "missing auth use target" >&2
+      exit 64
+    }
+    printf '{"ok":true,"cmd":"auth use","target":"%s","argv":"%s"}\n' "${3:-}" "$*"
     ;;
   *)
     echo "unexpected auth command: $*" >&2
@@ -325,10 +355,56 @@ if [[ "${1:-}" == "diag" && "${2:-}" == "rate-limits" && "${3:-}" == "--all" && 
 JSON
   exit 0
 fi
+if [[ "${1:-}" == "diag" && "${2:-}" == "rate-limits" && "${3:-}" == "--json" ]]; then
+  cat <<'JSON'
+{"schema_version":"1.0","command":"diag rate-limits --json","mode":"single","ok":true,"result":{"name":"auth","status":"ok","summary":{"non_weekly_label":"5h","non_weekly_remaining":61,"weekly_remaining":11,"weekly_reset_epoch":1771265976,"weekly_reset_local":"2026-02-17 02:19 +08:00"},"source":"network","raw_usage":{"email":"auth@example.com"}}}
+JSON
+  exit 0
+fi
 echo "unexpected command: $*" >&2
 exit 9
 EOS
 chmod +x "$tmp_dir/stubs/codex-cli-diag-all-json"
+
+cat >"$tmp_dir/stubs/codex-cli-current-nonzero" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  echo "codex-cli 0.3.2"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "current" ]]; then
+  echo "codex: /tmp/auth.json matches sym (identity; secret differs)"
+  exit 3
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "use" ]]; then
+  printf '{"ok":true,"cmd":"auth use","target":"%s","argv":"%s"}\n' "${3:-}" "$*"
+  exit 0
+fi
+echo "unexpected command: $*" >&2
+exit 9
+EOS
+chmod +x "$tmp_dir/stubs/codex-cli-current-nonzero"
+
+cat >"$tmp_dir/stubs/codex-cli-current-auth-file-only" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  echo "codex-cli 0.3.2"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "current" ]]; then
+  echo "codex: ${CODEX_AUTH_FILE:-/tmp/auth.json}"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "use" ]]; then
+  printf '{"ok":true,"cmd":"auth use","target":"%s","argv":"%s"}\n' "${3:-}" "$*"
+  exit 0
+fi
+echo "unexpected command: $*" >&2
+exit 9
+EOS
+chmod +x "$tmp_dir/stubs/codex-cli-current-auth-file-only"
 
 empty_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" ""; })"
 assert_jq_json "$empty_json" '.items | type == "array" and length >= 8' "empty query must return action items"
@@ -366,6 +442,41 @@ assert_jq_json "$save_yes_json" '.items[0].arg == "save::team-alpha.json::1"' "s
 save_yes_short_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "--yes team-alpha.json"; })"
 assert_jq_json "$save_yes_short_json" '.items[0].arg == "save::team-alpha.json::1"' "implicit --yes save mapping mismatch"
 
+use_secret_dir="$tmp_dir/secrets"
+mkdir -p "$use_secret_dir"
+printf '{"email":"alpha@example.com"}\n' >"$use_secret_dir/alpha.json"
+printf '{"email":"beta@example.com"}\n' >"$use_secret_dir/beta.json"
+
+auth_use_json="$({ CODEX_SECRET_DIR="$use_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "auth use"; })"
+assert_jq_json "$auth_use_json" '.items[0].title == "Current: beta.json"' "auth use should show current secret on first row"
+assert_jq_json "$auth_use_json" '.items[0].subtitle | contains("beta@example.com | reset -")' "auth use current row should include email and reset subtitle"
+assert_jq_json "$auth_use_json" '.items | any(.title == "alpha.json" and .arg == "use::alpha" and .valid == true)' "auth use should list alpha.json"
+assert_jq_json "$auth_use_json" '.items | any(.title == "beta.json" and .arg == "use::beta" and .valid == true)' "auth use should list beta.json"
+assert_jq_json "$auth_use_json" '.items | any(.title == "alpha.json" and (.subtitle | contains("alpha@example.com | reset -")))' "auth use list rows should include secret email and reset subtitle"
+
+auth_use_direct_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "auth use alpha"; })"
+assert_jq_json "$auth_use_direct_json" '.items[0].arg == "use::alpha"' "auth use alpha should map to use::alpha"
+assert_jq_json "$auth_use_direct_json" '.items[0].valid == true' "auth use alpha item must be valid"
+
+auth_use_nonzero_current_json="$({ CODEX_SECRET_DIR="$use_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-nonzero" "$workflow_dir/scripts/script_filter.sh" "auth use"; })"
+assert_jq_json "$auth_use_nonzero_current_json" '.items[0].title == "Current: sym.json"' "auth use should parse current secret even when auth current exits non-zero"
+
+auth_file_only_secret_dir="$tmp_dir/secrets-auth-file-only"
+mkdir -p "$auth_file_only_secret_dir"
+printf '{"email":"alpha-fallback@example.com","token":"a"}\n' >"$auth_file_only_secret_dir/alpha.json"
+printf '{"email":"beta-fallback@example.com","token":"b"}\n' >"$auth_file_only_secret_dir/beta.json"
+auth_file_only_path="$tmp_dir/auth.json"
+printf '{"email":"alpha-fallback@example.com","token":"live-rotated"}\n' >"$auth_file_only_path"
+auth_use_auth_file_only_json="$({ CODEX_SECRET_DIR="$auth_file_only_secret_dir" CODEX_AUTH_FILE="$auth_file_only_path" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter.sh" "auth use"; })"
+assert_jq_json "$auth_use_auth_file_only_json" '.items[0].title == "Current: alpha.json"' "auth use should resolve matched secret instead of showing auth.json"
+
+auth_only_home="$tmp_dir/home-auth-only"
+mkdir -p "$auth_only_home/.config/codex-kit"
+printf '{"email":"auth-only@example.com","token":"x"}\n' >"$auth_only_home/.config/codex-kit/auth.json"
+auth_use_without_secret_dir_json="$({ HOME="$auth_only_home" CODEX_SECRET_DIR="$tmp_dir/missing-secrets" CODEX_AUTH_FILE="$auth_only_home/.config/codex-kit/auth.json" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
+assert_jq_json "$auth_use_without_secret_dir_json" '.items[0].title == "Current: auth.json"' "cxau should show auth.json current row when no saved secrets directory"
+assert_jq_json "$auth_use_without_secret_dir_json" '.items[0].subtitle | contains("auth-only@example.com")' "cxau auth.json row should include auth email"
+
 invalid_save_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "save ../bad"; })"
 assert_jq_json "$invalid_save_json" '.items[0].title == "Invalid secret file name"' "invalid save file name should be rejected"
 assert_jq_json "$invalid_save_json" '.items[0].valid == false' "invalid save item must be invalid"
@@ -384,11 +495,65 @@ assert_jq_json "$diag_all_json_query_json" '.items | any(.title == "Latest diag 
 alias_auth_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_auth.sh" "login --device-code"; })"
 assert_jq_json "$alias_auth_json" '.items[0].arg == "login::device-code"' "cxa wrapper should map to auth login device-code"
 
+alias_auth_use_json="$({ CODEX_SECRET_DIR="$use_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
+assert_jq_json "$alias_auth_use_json" '.items[0].title == "Current: beta.json"' "cxau wrapper should show current secret first"
+assert_jq_json "$alias_auth_use_json" '.items | any(.arg == "use::alpha")' "cxau wrapper should list use::alpha selection"
+
+alias_auth_use_direct_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_auth_use.sh" "alpha"; })"
+assert_jq_json "$alias_auth_use_direct_json" '.items[0].arg == "use::alpha"' "cxau alpha should map to use::alpha"
+
 alias_diag_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag.sh" ""; })"
 assert_jq_json "$alias_diag_json" '.items[0].arg == "diag::default"' "cxd wrapper should map empty query to diag default"
 
 alias_diag_all_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag_all.sh" ""; })"
 assert_jq_json "$alias_diag_all_json" '.items[0].arg == "diag::all-json"' "cxda wrapper should map empty query to diag all-json"
+
+diag_auto_cache_dir="$tmp_dir/diag-auto-cache"
+diag_auto_log="$tmp_dir/diag-auto.log"
+rm -f "$diag_auto_log"
+
+CODEX_STUB_LOG="$diag_auto_log" ALFRED_WORKFLOW_CACHE="$diag_auto_cache_dir" CODEX_DIAG_CACHE_TTL_SECONDS=300 CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/script_filter_diag.sh" "" >/dev/null
+
+diag_auto_meta="$diag_auto_cache_dir/diag-rate-limits.last.meta"
+wait_for_file_contains "$diag_auto_meta" "mode=default" 5 || fail "cxd should auto-refresh default diag cache in background"
+wait_for_file_contains "$diag_auto_log" "diag rate-limits" 5 || fail "cxd auto-refresh should run diag rate-limits"
+
+diag_auto_diag_count_before="$(rg -c '^diag rate-limits$' "$diag_auto_log" 2>/dev/null || true)"
+CODEX_STUB_LOG="$diag_auto_log" ALFRED_WORKFLOW_CACHE="$diag_auto_cache_dir" CODEX_DIAG_CACHE_TTL_SECONDS=300 CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/script_filter_diag.sh" "" >/dev/null
+sleep 1
+diag_auto_diag_count_after="$(rg -c '^diag rate-limits$' "$diag_auto_log" 2>/dev/null || true)"
+[[ "$diag_auto_diag_count_after" == "$diag_auto_diag_count_before" ]] || fail "fresh cxd cache should skip repeated auto-refresh"
+
+diag_auto_all_cache_dir="$tmp_dir/diag-auto-all-cache"
+diag_auto_all_log="$tmp_dir/diag-auto-all.log"
+rm -f "$diag_auto_all_log"
+
+CODEX_SECRET_DIR="$use_secret_dir" CODEX_STUB_LOG="$diag_auto_all_log" ALFRED_WORKFLOW_CACHE="$diag_auto_all_cache_dir" CODEX_DIAG_CACHE_TTL_SECONDS=300 CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/script_filter_diag_all.sh" "" >/dev/null
+
+diag_auto_all_meta="$diag_auto_all_cache_dir/diag-rate-limits.last.meta"
+wait_for_file_contains "$diag_auto_all_meta" "mode=all-json" 5 || fail "cxda should auto-refresh all-json cache in background"
+wait_for_file_contains "$diag_auto_all_log" "diag rate-limits --all --json" 5 || fail "cxda auto-refresh should run diag rate-limits --all --json"
+
+diag_auto_all_fallback_cache_dir="$tmp_dir/diag-auto-all-fallback-cache"
+diag_auto_all_fallback_log="$tmp_dir/diag-auto-all-fallback.log"
+rm -f "$diag_auto_all_fallback_log"
+
+CODEX_SECRET_DIR="$tmp_dir/missing-secrets-for-diag" CODEX_STUB_LOG="$diag_auto_all_fallback_log" ALFRED_WORKFLOW_CACHE="$diag_auto_all_fallback_cache_dir" CODEX_DIAG_CACHE_TTL_SECONDS=300 CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-all-json" \
+  "$workflow_dir/scripts/script_filter_diag_all.sh" "" >/dev/null
+
+diag_auto_all_fallback_meta="$diag_auto_all_fallback_cache_dir/diag-rate-limits.last.meta"
+wait_for_file_contains "$diag_auto_all_fallback_meta" "command=diag rate-limits --json" 5 || fail "cxda auto-refresh should fallback to current-auth --json when no saved secrets"
+wait_for_file_contains "$diag_auto_all_fallback_log" "diag rate-limits --json" 5 || fail "cxda fallback should run diag rate-limits --json"
+
+auth_only_cache_home="$tmp_dir/home-auth-cache"
+mkdir -p "$auth_only_cache_home/.config/codex-kit"
+printf '{"token":"x"}\n' >"$auth_only_cache_home/.config/codex-kit/auth.json"
+auth_use_with_diag_cache_json="$({ HOME="$auth_only_cache_home" CODEX_SECRET_DIR="$tmp_dir/missing-secrets-for-diag" CODEX_AUTH_FILE="$auth_only_cache_home/.config/codex-kit/auth.json" ALFRED_WORKFLOW_CACHE="$diag_auto_all_fallback_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
+assert_jq_json "$auth_use_with_diag_cache_json" '.items[0].title == "Current: auth.json | 5h 61% | weekly 11%"' "cxau auth.json current row should include latest cached usage metrics"
+assert_jq_json "$auth_use_with_diag_cache_json" '.items[0].subtitle | contains("auth@example.com | reset 2026-02-17 02:19 +08:00")' "cxau auth.json current row should include latest cached email/reset"
 
 alias_save_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_save.sh" "team-alpha"; })"
 assert_jq_json "$alias_save_json" '.items[0].arg == "save::team-alpha.json::0"' "cxs wrapper should map to save command"
@@ -435,6 +600,10 @@ CODEX_API_KEY="sk-test-smoke-key" CODEX_STUB_LOG="$action_log" CODEX_STDIN_OUT="
 [[ "$(cat "$api_key_stdin_out")" == "sk-test-smoke-key" ]] || fail "api-key login must pass CODEX_API_KEY via stdin"
 
 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/action_open.sh" "use::alpha" >/dev/null
+[[ "$(tail -n1 "$action_log")" == "auth use alpha" ]] || fail "use mapping mismatch"
+
+CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "save::team-alpha.json::0" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "auth save team-alpha.json" ]] || fail "save without yes mapping mismatch"
 
@@ -466,13 +635,17 @@ CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_B
   "$workflow_dir/scripts/action_open.sh" "diag::cached" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "diag rate-limits --cached" ]] || fail "diag::cached mapping mismatch"
 
-CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+CODEX_SECRET_DIR="$use_secret_dir" CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "diag::async" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "diag rate-limits --all --async --jobs 4" ]] || fail "diag::async mapping mismatch"
 
-CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-all-json" \
+CODEX_SECRET_DIR="$use_secret_dir" CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-all-json" \
   "$workflow_dir/scripts/action_open.sh" "diag::all-json" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "diag rate-limits --all --json" ]] || fail "diag::all-json mapping mismatch"
+
+CODEX_SECRET_DIR="$tmp_dir/missing-secrets-action" CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$tmp_dir/cache-fallback" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-all-json" \
+  "$workflow_dir/scripts/action_open.sh" "diag::all-json" >/dev/null
+[[ "$(tail -n1 "$action_log")" == "diag rate-limits --json" ]] || fail "diag::all-json should fallback to current auth json when no saved secrets"
 
 diag_meta="$diag_cache_dir/diag-rate-limits.last.meta"
 diag_output="$diag_cache_dir/diag-rate-limits.last.out"
@@ -498,7 +671,7 @@ assert_jq_json "$diag_result_json" '.items[0].title | startswith("Diag result re
 assert_jq_json "$diag_result_json" '.items | any(.title == "sym | 5h 76% | weekly 88%")' "diag result should include sym account row"
 assert_jq_json "$diag_result_json" '.items | any(.title == "poies | 5h 48% | weekly 54%")' "diag result should include poies account row"
 assert_jq_json "$diag_result_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "diag result should sort by earliest weekly reset first"
-assert_jq_json "$diag_result_json" '.items | any(.subtitle == "sym@example.com | reset 2026-02-18 02:19 +08:00 | source sym.json")' "diag result should include email/reset/source subtitle"
+assert_jq_json "$diag_result_json" '.items | any(.subtitle == "sym@example.com | reset 2026-02-18 02:19 +08:00")' "diag result should include email/reset subtitle"
 
 alias_diag_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag.sh" "result"; })"
 assert_jq_json "$alias_diag_result_json" '.items[0].title | startswith("Diag result ready")' "cxd result should map to diag result view"
@@ -507,6 +680,20 @@ alias_diag_all_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CL
 assert_jq_json "$alias_diag_all_result_json" '.items[0].title == "Diag result ready (all-json)"' "cxda result should keep all-json mode summary"
 assert_jq_json "$alias_diag_all_result_json" '.items | any(.title == "sym | 5h 76% | weekly 88%")' "cxda result should parse per-account rows"
 assert_jq_json "$alias_diag_all_result_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "cxda result should sort by earliest weekly reset first"
+
+use_secret_dir_ranked="$tmp_dir/secrets-ranked"
+mkdir -p "$use_secret_dir_ranked"
+printf '{"email":"beta-ranked@example.com"}\n' >"$use_secret_dir_ranked/beta.json"
+printf '{"email":"poies-ranked@example.com"}\n' >"$use_secret_dir_ranked/poies.json"
+printf '{"email":"sym-ranked@example.com"}\n' >"$use_secret_dir_ranked/sym.json"
+
+alias_auth_use_ranked_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_SECRET_DIR="$use_secret_dir_ranked" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
+assert_jq_json "$alias_auth_use_ranked_json" '.items[0].title == "Current: beta.json"' "cxau should keep current auth summary row"
+assert_jq_json "$alias_auth_use_ranked_json" '.items[0].subtitle | contains("beta-ranked@example.com | reset -")' "cxau current row should include email and reset subtitle"
+assert_jq_json "$alias_auth_use_ranked_json" '.items | any(.title == "poies.json | 5h 48% | weekly 54%")' "cxau should show cxda-style usage metrics in title"
+assert_jq_json "$alias_auth_use_ranked_json" '.items | any(.title == "sym.json | 5h 76% | weekly 88%")' "cxau should show cxda-style usage metrics for sym"
+assert_jq_json "$alias_auth_use_ranked_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies.json | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym.json | 5h 76% | weekly 88%\"))" "cxau should sort secrets by earliest weekly reset from latest cxda result"
+assert_jq_json "$alias_auth_use_ranked_json" '.items | any(.title == "poies.json | 5h 48% | weekly 54%" and (.subtitle | contains("poies@example.com | reset 2026-02-17 02:19 +08:00")))' "cxau rows should show cached email and reset subtitle"
 
 cat >"$tmp_dir/bin/open" <<'EOS'
 #!/usr/bin/env bash
@@ -579,6 +766,7 @@ assert_file "$packaged_dir/icon.png"
 assert_file "$packaged_dir/assets/icon.png"
 assert_file "$packaged_dir/scripts/script_filter.sh"
 assert_file "$packaged_dir/scripts/script_filter_auth.sh"
+assert_file "$packaged_dir/scripts/script_filter_auth_use.sh"
 assert_file "$packaged_dir/scripts/script_filter_diag.sh"
 assert_file "$packaged_dir/scripts/script_filter_diag_all.sh"
 assert_file "$packaged_dir/scripts/script_filter_save.sh"
@@ -587,6 +775,7 @@ assert_file "$packaged_dir/scripts/prepare_package.sh"
 assert_file "$packaged_dir/bin/codex-cli"
 assert_exec "$packaged_dir/scripts/script_filter.sh"
 assert_exec "$packaged_dir/scripts/script_filter_auth.sh"
+assert_exec "$packaged_dir/scripts/script_filter_auth_use.sh"
 assert_exec "$packaged_dir/scripts/script_filter_diag.sh"
 assert_exec "$packaged_dir/scripts/script_filter_diag_all.sh"
 assert_exec "$packaged_dir/scripts/script_filter_save.sh"
@@ -601,18 +790,21 @@ fi
 packaged_json_file="$tmp_dir/packaged.json"
 plist_to_json "$packaged_plist" >"$packaged_json_file"
 
-assert_jq_file "$packaged_json_file" '.objects | length == 6' "plist must contain five script filters and one action object"
-assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter")] | length == 5' "plist must expose five script filter triggers"
-assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["cx","cxa","cxd","cxda","cxs"]' "workflow keywords must include cx/cxa/cxd/cxda/cxs"
-assert_jq_file "$packaged_json_file" '.connections | length == 5' "plist must include five scriptfilter-to-action connections"
-assert_jq_file "$packaged_json_file" '.userconfigurationconfig | length >= 3' "plist must expose codex workflow config variables"
+assert_jq_file "$packaged_json_file" '.objects | length == 7' "plist must contain six script filters and one action object"
+assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter")] | length == 6' "plist must expose six script filter triggers"
+assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["cx","cxa","cxau","cxd","cxda","cxs"]' "workflow keywords must include cx/cxa/cxau/cxd/cxda/cxs"
+assert_jq_file "$packaged_json_file" '.connections | length == 6' "plist must include six scriptfilter-to-action connections"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig | length >= 4' "plist must expose codex workflow config variables"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_CLI_BIN") | .config.default == ""' "CODEX_CLI_BIN config row missing"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_SECRET_DIR") | .config.default == ""' "CODEX_SECRET_DIR config row missing"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_SHOW_ASSESSMENT") | .config.default == "0"' "CODEX_SHOW_ASSESSMENT config row missing"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_DIAG_CACHE_TTL_SECONDS") | .config.default == "300"' "CODEX_DIAG_CACHE_TTL_SECONDS config row missing"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "cx"' "keyword trigger must be cx"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script filter wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D927D71A-8CB2-4CE7-9D4D-4A57D2A7A8F1") | .config.keyword == "cxa"' "keyword trigger must include cxa"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D927D71A-8CB2-4CE7-9D4D-4A57D2A7A8F1") | .config.scriptfile == "./scripts/script_filter_auth.sh"' "cxa script filter wiring mismatch"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7") | .config.keyword == "cxau"' "keyword trigger must include cxau"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7") | .config.scriptfile == "./scripts/script_filter_auth_use.sh"' "cxau script filter wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="1B2C2CF8-9C9E-4E5E-AE2D-6F911B3A9D63") | .config.keyword == "cxd"' "keyword trigger must include cxd"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="1B2C2CF8-9C9E-4E5E-AE2D-6F911B3A9D63") | .config.scriptfile == "./scripts/script_filter_diag.sh"' "cxd script filter wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="C4A6E4D4-4C89-4F8E-B6F8-2F1A7A5E6D09") | .config.keyword == "cxda"' "keyword trigger must include cxda"
@@ -620,6 +812,6 @@ assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="C4A6E4D4-4C89-4
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="A9F12D4E-1D99-4D7B-A950-6E84A583A9C2") | .config.keyword == "cxs"' "keyword trigger must include cxs"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="A9F12D4E-1D99-4D7B-A950-6E84A583A9C2") | .config.scriptfile == "./scripts/script_filter_save.sh"' "cxs script filter wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action wiring mismatch"
-assert_jq_file "$packaged_json_file" '.readme | contains("cx / cxa / cxd / cxs / cxda")' "readme should mention cx/cxa/cxd/cxs/cxda aliases"
+assert_jq_file "$packaged_json_file" '.readme | contains("cx / cxa / cxau / cxd / cxs / cxda")' "readme should mention cx/cxa/cxau/cxd/cxs/cxda aliases"
 
 echo "ok: codex-cli smoke test"
