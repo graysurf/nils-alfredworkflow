@@ -292,10 +292,12 @@ into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
 ### Environment variables
 
 - `CODEX_CLI_BIN` (optional): absolute executable path override for `codex-cli`.
-- `CODEX_SECRET_DIR` (optional): secret directory override for `auth save` / `diag` operations.
+- `CODEX_SECRET_DIR` (optional): secret directory override for `auth save` / `auth use` / `diag` operations.
   If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`.
 - `CODEX_SHOW_ASSESSMENT` (optional): default `0`; set to truthy value (`1/true/yes/on`) to show
   assessment rows by default in script filter results.
+- `CODEX_DIAG_CACHE_TTL_SECONDS` (optional): default `300`; cache TTL in seconds for background
+  diag auto-refresh on `cxd` / `cxda` (`0` means always refresh).
 - `CODEX_LOGIN_TIMEOUT_SECONDS` (optional): login timeout in seconds, default `60`
   (valid range `1..3600`).
 - `CODEX_API_KEY` (optional): API key source for `auth login --api-key`; if unset on macOS,
@@ -307,8 +309,9 @@ into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
 ### Alfred command flow
 
 - Keyword triggers:
-  - `cx`: command palette (auth/save/diag)
+  - `cx`: command palette (auth/use/save/diag)
   - `cxa`: auth-focused alias
+  - `cxau`: auth use-focused alias (current + all JSON picker)
   - `cxd`: diag-focused alias
   - `cxda`: diag all-accounts JSON-focused alias
   - `cxs`: save-focused alias
@@ -321,6 +324,7 @@ Supported actions in this workflow:
 - `auth login`
 - `auth login --api-key`
 - `auth login --device-code`
+- `auth use <secret>`
 - `auth save [--yes] <secret.json>`
 - `diag rate-limits` presets (`default`, `--cached`, `--one-line`, `--all`, `--all --json`,
   `--all --async --jobs 4`)
@@ -328,9 +332,24 @@ Supported actions in this workflow:
 Diag result behavior:
 
 - `cxd` / `cxda` menu shows latest cached diag result inline when cache exists.
+- `cxd` / `cxda` trigger background diag cache refresh when cache is missing or expired.
 - `cxda result` parses JSON output and renders one account per row.
 - `cxda result` rows are sorted by `weekly_reset_epoch` ascending (earliest reset first).
-- Parsed row subtitle format is `<email> | reset <weekly_reset_local> | source <source>`.
+- Parsed row subtitle format is `<email> | reset <weekly_reset_local>`.
+
+Auth use behavior:
+
+- `cxau` first row shows current secret JSON parsed from `codex-cli auth current` output.
+- Remaining rows list `*.json` files from `CODEX_SECRET_DIR` fallback path.
+- When no saved `*.json` exists, `cxau` still shows current `auth.json` info (for example email).
+- Selecting a row runs `codex-cli auth use <secret>`.
+- `cxau alpha` runs `codex-cli auth use alpha` directly.
+
+No `CODEX_SECRET_DIR` saved secrets behavior:
+
+- `cxda` falls back from `diag rate-limits --all --json` to `diag rate-limits --json`
+  (current auth diagnostic).
+- `cxd` / `cxda` menu still renders current auth hint rows before secret-directory setup.
 
 Runtime resolution order:
 
@@ -351,6 +370,7 @@ Runtime checks:
 - End-user import from release artifact should run without extra install.
 - Bundled runtime target is macOS arm64.
 - `save` secret file names must reject path traversal and invalid characters.
+- `use` secret names must reject path traversal and invalid characters.
 - `save` without `--yes` should require explicit confirmation unless `CODEX_SAVE_CONFIRM=0`.
 - Login actions should honor `CODEX_LOGIN_TIMEOUT_SECONDS` (default 60s).
 - `diag --all --json` parsed rows should be sorted by earliest weekly reset first.

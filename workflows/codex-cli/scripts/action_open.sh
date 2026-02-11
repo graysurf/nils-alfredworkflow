@@ -153,6 +153,32 @@ ensure_codex_secret_dir_exists() {
   return 1
 }
 
+secret_dir_has_saved_json() {
+  local secret_dir="${1:-}"
+  [[ -n "$secret_dir" ]] || return 1
+  [[ -d "$secret_dir" ]] || return 1
+
+  local any_file
+  any_file="$(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print -quit 2>/dev/null || true)"
+  [[ -n "$any_file" ]]
+}
+
+resolve_diag_scope_for_all() {
+  local secret_dir
+  secret_dir="$(ensure_codex_secret_dir_env || true)"
+  if secret_dir_has_saved_json "$secret_dir"; then
+    printf 'all\n'
+  else
+    printf 'current\n'
+  fi
+}
+
+validate_use_secret_name() {
+  local secret="$1"
+  [[ -n "$secret" ]] || return 1
+  [[ "$secret" =~ ^[A-Za-z0-9._@-]+$ ]]
+}
+
 resolve_workflow_cache_dir() {
   local candidate
   for candidate in \
@@ -557,6 +583,15 @@ login::device-code)
   run_codex_login_device_code "$codex_cli"
   exit $?
   ;;
+use::*)
+  secret="${action_token#use::}"
+  if ! validate_use_secret_name "$secret"; then
+    echo "invalid use action token: $action_token" >&2
+    exit 2
+  fi
+  run_codex_command "$codex_cli" "auth use $secret" auth use "$secret"
+  exit $?
+  ;;
 save::*)
   payload="${action_token#save::}"
   secret="${payload%::*}"
@@ -598,15 +633,27 @@ diag::one-line)
   exit $?
   ;;
 diag::all)
-  run_codex_diag_command "$codex_cli" "all" "diag rate-limits --all" "cxd result" diag rate-limits --all
+  if [[ "$(resolve_diag_scope_for_all)" == "all" ]]; then
+    run_codex_diag_command "$codex_cli" "all" "diag rate-limits --all" "cxd result" diag rate-limits --all
+  else
+    run_codex_diag_command "$codex_cli" "default" "diag rate-limits (auth.json fallback)" "cxd result" diag rate-limits
+  fi
   exit $?
   ;;
 diag::all-json)
-  run_codex_diag_command "$codex_cli" "all-json" "diag rate-limits --all --json" "cxda result" diag rate-limits --all --json
+  if [[ "$(resolve_diag_scope_for_all)" == "all" ]]; then
+    run_codex_diag_command "$codex_cli" "all-json" "diag rate-limits --all --json" "cxda result" diag rate-limits --all --json
+  else
+    run_codex_diag_command "$codex_cli" "all-json" "diag rate-limits --json (auth.json)" "cxda result" diag rate-limits --json
+  fi
   exit $?
   ;;
 diag::async)
-  run_codex_diag_command "$codex_cli" "async" "diag rate-limits --all --async --jobs 4" "cxd result" diag rate-limits --all --async --jobs 4
+  if [[ "$(resolve_diag_scope_for_all)" == "all" ]]; then
+    run_codex_diag_command "$codex_cli" "async" "diag rate-limits --all --async --jobs 4" "cxd result" diag rate-limits --all --async --jobs 4
+  else
+    run_codex_diag_command "$codex_cli" "default" "diag rate-limits (auth.json fallback)" "cxd result" diag rate-limits
+  fi
   exit $?
   ;;
 *)

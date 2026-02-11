@@ -10,12 +10,15 @@ assets = ["src/assets/icon.png"]
 # End users normally don't need this because codex-cli is bundled in package/bin.
 # Optional absolute path override for runtime debugging/fallback.
 CODEX_CLI_BIN = ""
-# Optional secret directory override for auth save/diag operations.
+# Optional secret directory override for auth save/use/diag operations.
 # Leave empty to auto-fallback to $XDG_CONFIG_HOME/codex_secrets or ~/.config/codex_secrets.
 CODEX_SECRET_DIR = ""
 # Optional UI switch for showing assessment rows in script filter.
 # Default off to keep actionable items easy to select.
 CODEX_SHOW_ASSESSMENT = "0"
+# Diag auto-refresh cache TTL (seconds) for cxd/cxda entry menus.
+# Default 300 seconds (5 minutes). Set 0 to always refresh.
+CODEX_DIAG_CACHE_TTL_SECONDS = "300"
 
 [alfred]
 min_alfred = "5"

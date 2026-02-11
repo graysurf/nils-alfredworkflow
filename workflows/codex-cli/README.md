@@ -11,6 +11,7 @@ Run core `nils-codex-cli@0.3.2` operations from Alfred.
 This workflow currently supports:
 
 - `auth login` (browser, `--api-key`, `--device-code`)
+- `auth use <secret>` (supports direct query and picker list)
 - `auth save [--yes] <secret.json>`
 - `diag rate-limits` presets:
   - default
@@ -23,9 +24,23 @@ This workflow currently supports:
 Diag result behavior:
 
 - `cxd` / `cxda` menu shows latest cached diag result inline (if available).
+- `cxd` / `cxda` auto-refresh cache in background when cache is missing/expired.
+- Auto-refresh TTL is controlled by `CODEX_DIAG_CACHE_TTL_SECONDS` (default `300` = 5 minutes).
 - `cxda result` parses JSON and renders one account per row.
 - `cxda result` rows are sorted by `weekly_reset_epoch` ascending (earliest reset first).
-- Parsed subtitle format: `<email> | reset <weekly_reset_local> | source <source>`.
+- Parsed subtitle format: `<email> | reset <weekly_reset_local>`.
+
+Auth use behavior:
+
+- `cxau` first row shows current secret JSON from `codex-cli auth current` (when parsable).
+- Following rows list all `*.json` files in `CODEX_SECRET_DIR` (or fallback config dir).
+- When no saved `*.json` exists, `cxau` still shows current `auth.json` info (for example email).
+- Press Enter on a row to run `codex-cli auth use <secret>`.
+
+No `CODEX_SECRET_DIR` saved secrets behavior:
+
+- `cxda` falls back from `diag rate-limits --all --json` to `diag rate-limits --json` (current auth).
+- `cxd` / `cxda` menu still shows current auth hint row even before saved-secret setup.
 
 ## Runtime Requirements
 
@@ -51,6 +66,7 @@ cargo install nils-codex-cli --version 0.3.2
 | `CODEX_CLI_BIN` | No | empty | Optional absolute path override for `codex-cli`. |
 | `CODEX_SECRET_DIR` | No | empty | Optional secret directory override. If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`. |
 | `CODEX_SHOW_ASSESSMENT` | No | `0` | Show assessment rows in Alfred list (`1/true/yes/on` to enable). |
+| `CODEX_DIAG_CACHE_TTL_SECONDS` | No | `300` | Background diag cache TTL for `cxd`/`cxda` in seconds (`0` means always refresh). |
 | `CODEX_LOGIN_TIMEOUT_SECONDS` | No | `60` | Login timeout in seconds (`1..3600`). |
 | `CODEX_API_KEY` | No | empty | API key source for `auth login --api-key` (otherwise prompt on macOS). |
 | `CODEX_SAVE_CONFIRM` | No | `1` | Require confirmation for `save` without `--yes` (`0` disables). |
@@ -61,6 +77,7 @@ cargo install nils-codex-cli --version 0.3.2
 |---|---|
 | `cx` | Command palette for auth/save/diag actions. |
 | `cxa` | Alias of `cx auth ...`. |
+| `cxau` | Alias of `cx auth use ...` (current + all JSON picker). |
 | `cxd` | Alias of `cx diag ...`. |
 | `cxda` | Alias of `cx diag all-json ...` (all-accounts JSON view). |
 | `cxs` | Alias of `cx save ...`. |
@@ -75,6 +92,9 @@ cargo install nils-codex-cli --version 0.3.2
 | `cx save team-alpha.json` | Run `codex-cli auth save team-alpha.json` (with confirmation) |
 | `cx save --yes team-alpha.json` | Run `codex-cli auth save --yes team-alpha.json` |
 | `cxs --yes team-alpha.json` | Alias of `cx save --yes team-alpha.json` |
+| `cx use alpha` | Run `codex-cli auth use alpha` |
+| `cxau` | Show current JSON + all JSON secrets, then select to use |
+| `cxau alpha` | Run `codex-cli auth use alpha` directly |
 | `cx diag` | Run `codex-cli diag rate-limits` |
 | `cx diag cached` | Run `codex-cli diag rate-limits --cached` |
 | `cx diag one-line` | Run `codex-cli diag rate-limits --one-line` |

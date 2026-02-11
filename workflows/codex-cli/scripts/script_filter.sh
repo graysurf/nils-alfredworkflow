@@ -55,6 +55,222 @@ diag_result_output_path() {
   printf '%s/diag-rate-limits.last.out\n' "$cache_dir"
 }
 
+diag_refresh_lock_path_for_mode() {
+  local mode="${1:-default}"
+  local cache_dir
+  cache_dir="$(resolve_workflow_cache_dir)"
+  mode="${mode//[^A-Za-z0-9._-]/_}"
+  printf '%s/diag-rate-limits.%s.refresh.lock\n' "$cache_dir" "$mode"
+}
+
+resolve_diag_cache_ttl_seconds() {
+  local raw="${CODEX_DIAG_CACHE_TTL_SECONDS:-300}"
+  if [[ "$raw" =~ ^[0-9]+$ ]] && [[ "$raw" -ge 0 ]] && [[ "$raw" -le 86400 ]]; then
+    printf '%s\n' "$raw"
+    return 0
+  fi
+  printf '300\n'
+}
+
+is_diag_cache_fresh_for_mode() {
+  local mode="$1"
+  local ttl_seconds="$2"
+
+  local meta_path
+  meta_path="$(diag_result_meta_path)"
+  local output_path
+  output_path="$(diag_result_output_path)"
+  [[ -f "$meta_path" && -f "$output_path" ]] || return 1
+
+  local cached_mode
+  cached_mode="$(read_meta_value "$meta_path" mode)"
+  [[ "$cached_mode" == "$mode" ]] || return 1
+
+  local timestamp
+  timestamp="$(read_meta_value "$meta_path" timestamp)"
+  [[ "$timestamp" =~ ^[0-9]+$ ]] || return 1
+
+  if [[ "$ttl_seconds" -eq 0 ]]; then
+    return 1
+  fi
+
+  local now age
+  now="$(date +%s)"
+  age=$((now - timestamp))
+  if [[ "$age" -lt 0 ]]; then
+    age=0
+  fi
+
+  [[ "$age" -le "$ttl_seconds" ]]
+}
+
+is_diag_refresh_running_for_mode() {
+  local mode="$1"
+  local lock_path
+  lock_path="$(diag_refresh_lock_path_for_mode "$mode")"
+  [[ -f "$lock_path" ]] || return 1
+
+  local lock_ts now age
+  lock_ts="$(read_meta_value "$lock_path" timestamp)"
+  if [[ ! "$lock_ts" =~ ^[0-9]+$ ]]; then
+    rm -f "$lock_path"
+    return 1
+  fi
+
+  now="$(date +%s)"
+  age=$((now - lock_ts))
+  if [[ "$age" -lt 0 ]]; then
+    age=0
+  fi
+
+  # stale lock fallback
+  if [[ "$age" -gt 600 ]]; then
+    rm -f "$lock_path"
+    return 1
+  fi
+
+  return 0
+}
+
+acquire_diag_refresh_lock_for_mode() {
+  local mode="$1"
+  local lock_path
+  lock_path="$(diag_refresh_lock_path_for_mode "$mode")"
+  mkdir -p "$(dirname "$lock_path")"
+
+  if is_diag_refresh_running_for_mode "$mode"; then
+    return 1
+  fi
+
+  local now
+  now="$(date +%s)"
+  if (
+    set -o noclobber
+    {
+      printf 'timestamp=%s\n' "$now"
+      printf 'pid=%s\n' "$$"
+      printf 'mode=%s\n' "$mode"
+    } >"$lock_path"
+  ) 2>/dev/null; then
+    printf '%s\n' "$lock_path"
+    return 0
+  fi
+
+  return 1
+}
+
+store_diag_result() {
+  local mode="$1"
+  local summary="$2"
+  local command="$3"
+  local rc="$4"
+  local output="$5"
+  local timestamp
+  timestamp="$(date +%s)"
+
+  local meta_path
+  meta_path="$(diag_result_meta_path)"
+  local output_path
+  output_path="$(diag_result_output_path)"
+  local output_dir
+  output_dir="$(dirname "$output_path")"
+
+  mkdir -p "$output_dir"
+  {
+    printf 'mode=%s\n' "$mode"
+    printf 'summary=%s\n' "$summary"
+    printf 'command=%s\n' "$command"
+    printf 'exit_code=%s\n' "$rc"
+    printf 'timestamp=%s\n' "$timestamp"
+  } >"$meta_path"
+  printf '%s\n' "$output" >"$output_path"
+}
+
+run_diag_cache_refresh_for_mode() {
+  local mode="$1"
+  local codex_cli
+  codex_cli="$(resolve_codex_cli_path || true)"
+  [[ -n "$codex_cli" ]] || return 0
+
+  local resolved_secret_dir
+  resolved_secret_dir="$(resolve_codex_secret_dir || true)"
+  if [[ -n "$resolved_secret_dir" ]]; then
+    export CODEX_SECRET_DIR="$resolved_secret_dir"
+  fi
+
+  local summary command output rc
+  output=""
+  rc=0
+
+  case "$mode" in
+  all-json)
+    if secret_dir_has_saved_json "$resolved_secret_dir"; then
+      summary="diag rate-limits --all --json"
+      command="diag rate-limits --all --json"
+      set +e
+      output="$("$codex_cli" diag rate-limits --all --json 2>&1)"
+      rc=$?
+      set -e
+    else
+      summary="diag rate-limits --json (auth.json)"
+      command="diag rate-limits --json"
+      set +e
+      output="$("$codex_cli" diag rate-limits --json 2>&1)"
+      rc=$?
+      set -e
+    fi
+    ;;
+  *)
+    summary="diag rate-limits"
+    command="diag rate-limits"
+    set +e
+    output="$("$codex_cli" diag rate-limits 2>&1)"
+    rc=$?
+    set -e
+    ;;
+  esac
+
+  store_diag_result "$mode" "$summary" "$command" "$rc" "$output"
+}
+
+resolve_diag_auto_refresh_mode_for_query() {
+  local lower_query="$1"
+  case "$lower_query" in
+  diag)
+    printf 'default\n'
+    return 0
+    ;;
+  diag\ all-json)
+    printf 'all-json\n'
+    return 0
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+}
+
+trigger_diag_auto_refresh_if_stale() {
+  local mode="$1"
+  local ttl_seconds
+  ttl_seconds="$(resolve_diag_cache_ttl_seconds)"
+
+  if is_diag_cache_fresh_for_mode "$mode" "$ttl_seconds"; then
+    return 0
+  fi
+
+  local lock_path
+  if ! lock_path="$(acquire_diag_refresh_lock_for_mode "$mode")"; then
+    return 0
+  fi
+
+  (
+    set -euo pipefail
+    trap 'rm -f "$lock_path"' EXIT
+    run_diag_cache_refresh_for_mode "$mode"
+  ) >/dev/null 2>&1 &
+}
+
 read_meta_value() {
   local file="$1"
   local key="$2"
@@ -89,7 +305,12 @@ emit_diag_all_json_account_items() {
     return 1
   fi
 
-  if ! jq -e '.results | type == "array"' "$output_path" >/dev/null 2>&1; then
+  local dataset_filter
+  if jq -e '.results | type == "array"' "$output_path" >/dev/null 2>&1; then
+    dataset_filter='.results // []'
+  elif jq -e '.result | type == "object"' "$output_path" >/dev/null 2>&1; then
+    dataset_filter='[.result]'
+  else
     return 1
   fi
 
@@ -108,13 +329,12 @@ emit_diag_all_json_account_items() {
       break
     fi
 
-    local name status label non_weekly weekly weekly_reset source email
-    IFS=$'\t' read -r name status label non_weekly weekly weekly_reset source email <<<"$row"
+    local name status label non_weekly weekly weekly_reset email
+    IFS=$'\t' read -r name status label non_weekly weekly weekly_reset email <<<"$row"
     [[ -n "$name" ]] || name="(unknown)"
     [[ -n "$status" ]] || status="unknown"
     [[ -n "$label" ]] || label="5h"
     [[ -n "$weekly_reset" ]] || weekly_reset="-"
-    [[ -n "$source" ]] || source="-"
     [[ -n "$email" ]] || email="-"
 
     if [[ "$status" == "ok" ]]; then
@@ -128,19 +348,19 @@ emit_diag_all_json_account_items() {
       fi
       emit_item \
         "${name} | ${non_weekly_text} | ${weekly_text}" \
-        "${email} | reset ${weekly_reset} | source ${source}" \
+        "${email} | reset ${weekly_reset}" \
         "" \
         false \
         ""
     else
       emit_item \
         "${name} | status=${status}" \
-        "${email} | source ${source}" \
+        "${email}" \
         "" \
         false \
         ""
     fi
-  done < <(jq -r '.results // [] | sort_by((.summary.weekly_reset_epoch // 9999999999), (.name // ""))[]? | [(.name // "(unknown)"), (.status // "unknown"), (.summary.non_weekly_label // "5h"), (.summary.non_weekly_remaining // "null"), (.summary.weekly_remaining // "null"), (.summary.weekly_reset_local // "-"), (.source // "-"), (.raw_usage.email // "-")] | @tsv' "$output_path")
+  done < <(jq -r "$dataset_filter | sort_by((.summary.weekly_reset_epoch // 9999999999), (.name // \"\"))[]? | [(.name // \"(current)\"), (.status // \"unknown\"), (.summary.non_weekly_label // \"5h\"), (.summary.non_weekly_remaining // \"null\"), (.summary.weekly_remaining // \"null\"), (.summary.weekly_reset_local // \"-\"), (.raw_usage.email // \"-\")] | @tsv" "$output_path")
 
   if [[ "$row_count" -eq 0 ]]; then
     emit_item \
@@ -397,8 +617,8 @@ emit_assessment_items() {
     false \
     ""
   emit_item \
-    "Implemented now: auth save" \
-    "Use save <secret> and optional --yes for non-interactive overwrite." \
+    "Implemented now: auth save/use" \
+    "Use save [--yes] <secret.json> and use <secret> (or cxau) from Alfred." \
     "" \
     false \
     ""
@@ -409,8 +629,8 @@ emit_assessment_items() {
     false \
     ""
   emit_item \
-    "Can be added next: auth use/refresh/current/sync" \
-    "0.3.2 already supports these auth commands; straightforward to map." \
+    "Can be added next: auth refresh/current/sync" \
+    "0.3.2 supports these auth helpers; straightforward to map next." \
     "" \
     false \
     ""
@@ -447,6 +667,12 @@ emit_auth_action_items() {
     "" \
     false \
     "save "
+  emit_item \
+    "auth use <secret>" \
+    "Type: use alpha (or open cxau to pick from saved JSON secrets)." \
+    "" \
+    false \
+    "use "
 }
 
 emit_diag_action_items() {
@@ -509,6 +735,737 @@ normalize_save_secret() {
   fi
 
   printf '%s\n' "$secret"
+}
+
+resolve_default_codex_secret_dir() {
+  if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+    printf '%s/codex_secrets\n' "${XDG_CONFIG_HOME%/}"
+    return 0
+  fi
+
+  if [[ -n "${HOME:-}" ]]; then
+    printf '%s/.config/codex_secrets\n' "${HOME%/}"
+    return 0
+  fi
+
+  return 1
+}
+
+resolve_codex_secret_dir() {
+  local configured="${CODEX_SECRET_DIR:-}"
+  configured="$(trim "$configured")"
+
+  if [[ -n "$configured" ]]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+
+  resolve_default_codex_secret_dir
+}
+
+secret_dir_has_saved_json() {
+  local secret_dir="${1:-}"
+  [[ -n "$secret_dir" ]] || return 1
+  [[ -d "$secret_dir" ]] || return 1
+
+  local any_file
+  any_file="$(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print -quit 2>/dev/null || true)"
+  [[ -n "$any_file" ]]
+}
+
+resolve_codex_auth_file() {
+  local clean_output="${1:-}"
+  local auth_file=""
+
+  if [[ -n "$clean_output" ]]; then
+    auth_file="$(printf '%s\n' "$clean_output" | sed -nE 's|^[^:]*:[[:space:]]*([^[:space:]]+/auth\.json).*|\1|p' | head -n1 || true)"
+  fi
+
+  if [[ -z "$auth_file" ]]; then
+    auth_file="${CODEX_AUTH_FILE:-}"
+  fi
+
+  if [[ -z "$auth_file" && -n "${HOME:-}" ]]; then
+    local auth_candidates=(
+      "${HOME%/}/.config/codex-kit/auth.json"
+      "${HOME%/}/.config/codex/auth.json"
+    )
+    local candidate_auth
+    for candidate_auth in "${auth_candidates[@]}"; do
+      if [[ -f "$candidate_auth" ]]; then
+        auth_file="$candidate_auth"
+        break
+      fi
+    done
+    if [[ -z "$auth_file" ]]; then
+      auth_file="${HOME%/}/.config/codex-kit/auth.json"
+    fi
+  fi
+
+  [[ -n "$auth_file" ]] || return 1
+  printf '%s\n' "$auth_file"
+}
+
+normalize_use_secret() {
+  local raw_secret="$1"
+  local secret
+  secret="$(trim "$raw_secret")"
+
+  if [[ -z "$secret" ]]; then
+    return 1
+  fi
+
+  if [[ "$secret" == */* ]]; then
+    return 1
+  fi
+
+  if [[ "$secret" == *.json ]]; then
+    secret="${secret%.json}"
+  fi
+
+  if [[ -z "$secret" ]]; then
+    return 1
+  fi
+
+  if [[ ! "$secret" =~ ^[A-Za-z0-9._@-]+$ ]]; then
+    return 1
+  fi
+
+  printf '%s\n' "$secret"
+}
+
+detect_current_secret_json() {
+  local codex_cli
+  if ! codex_cli="$(resolve_codex_cli_path)"; then
+    return 1
+  fi
+
+  local output
+  local rc=0
+  set +e
+  output="$("$codex_cli" auth current 2>&1)"
+  rc=$?
+  set -e
+
+  local clean_output
+  clean_output="$(
+    printf '%s\n' "$output" |
+      while IFS= read -r line || [[ -n "$line" ]]; do
+        strip_ansi "$line"
+        printf '\n'
+      done
+  )"
+
+  local current_json
+  current_json="$(printf '%s\n' "$clean_output" | sed -nE 's/.*matches[[:space:]]+([A-Za-z0-9._@-]+(\.json)?).*/\1/p' | head -n1 || true)"
+  if [[ -n "$current_json" ]]; then
+    if [[ "$current_json" != *.json ]]; then
+      current_json="${current_json}.json"
+    fi
+    if [[ "$current_json" != "auth.json" ]]; then
+      printf '%s\n' "$current_json"
+      return 0
+    fi
+  fi
+
+  current_json="$(printf '%s\n' "$clean_output" | grep -Eo '[A-Za-z0-9._@-]+\.json' | grep -vE '^auth\.json$' | tail -n1 || true)"
+  if [[ -n "$current_json" ]]; then
+    printf '%s\n' "$current_json"
+    return 0
+  fi
+
+  local secret_dir=""
+  secret_dir="$(resolve_codex_secret_dir || true)"
+  if [[ -n "$secret_dir" && -d "$secret_dir" ]]; then
+    local file
+    while IFS= read -r file; do
+      local base
+      base="${file%.json}"
+      if [[ "$clean_output" == *"$file"* || "$clean_output" == *"$base"* ]]; then
+        printf '%s\n' "$file"
+        return 0
+      fi
+    done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
+  fi
+
+  local auth_file=""
+  auth_file="$(resolve_codex_auth_file "$clean_output" || true)"
+
+  if [[ -n "$auth_file" && -f "$auth_file" && -n "$secret_dir" && -d "$secret_dir" ]]; then
+    local candidate
+    while IFS= read -r candidate; do
+      local candidate_path="${secret_dir%/}/$candidate"
+      if cmp -s "$auth_file" "$candidate_path"; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
+
+    # Fallback: codex-cli may refresh auth.json in-place (identity matches while secret differs),
+    # so byte-wise cmp can fail. Match by email identity to recover current secret selection.
+    local auth_email
+    auth_email="$(extract_secret_email_from_file "$auth_file" || true)"
+    if [[ -n "$auth_email" ]]; then
+      local auth_email_lower
+      auth_email_lower="$(to_lower "$auth_email")"
+      while IFS= read -r candidate; do
+        local candidate_path candidate_email candidate_email_lower
+        candidate_path="${secret_dir%/}/$candidate"
+        candidate_email="$(extract_secret_email_from_file "$candidate_path" || true)"
+        [[ -n "$candidate_email" ]] || continue
+        candidate_email_lower="$(to_lower "$candidate_email")"
+        if [[ "$candidate_email_lower" == "$auth_email_lower" ]]; then
+          printf '%s\n' "$candidate"
+          return 0
+        fi
+      done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
+    fi
+  fi
+
+  if [[ -n "$auth_file" && -f "$auth_file" ]]; then
+    printf 'auth.json\n'
+    return 0
+  fi
+
+  [[ "$rc" -eq 0 ]] || return 1
+  return 1
+}
+
+resolve_current_auth_info() {
+  local current_json auth_file auth_email
+  current_json="$(detect_current_secret_json || true)"
+  auth_file="$(resolve_codex_auth_file "" || true)"
+
+  if [[ -z "$current_json" && -n "$auth_file" && -f "$auth_file" ]]; then
+    current_json="auth.json"
+  fi
+  [[ -n "$current_json" ]] || return 1
+
+  auth_email="-"
+  if [[ -n "$auth_file" && -f "$auth_file" ]]; then
+    auth_email="$(extract_secret_email_from_file "$auth_file" || true)"
+  fi
+  [[ -n "$auth_email" ]] || auth_email="-"
+
+  printf '%s\t%s\t%s\n' "$current_json" "$auth_email" "$auth_file"
+}
+
+build_diag_account_lookup_map() {
+  if ! command -v jq >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local meta_path
+  meta_path="$(diag_result_meta_path)"
+  local output_path
+  output_path="$(diag_result_output_path)"
+  [[ -f "$meta_path" && -f "$output_path" ]] || return 1
+
+  local mode rc
+  mode="$(read_meta_value "$meta_path" mode)"
+  rc="$(read_meta_value "$meta_path" exit_code)"
+  [[ "$mode" == "all-json" && "$rc" == "0" ]] || return 1
+
+  if ! jq -e '.results | type == "array"' "$output_path" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local raw_file
+  raw_file="$(mktemp "${TMPDIR:-/tmp}/codex-cxau-sort.raw.XXXXXX")"
+  local map_file
+  map_file="$(mktemp "${TMPDIR:-/tmp}/codex-cxau-sort.map.XXXXXX")"
+
+  if ! jq -r '.results // [] | .[] | [(.source // ""), (.name // ""), (.summary.weekly_reset_epoch // 9999999999), (.raw_usage.email // ""), (.summary.weekly_reset_local // "-"), (.summary.non_weekly_label // "5h"), (.summary.non_weekly_remaining // "null"), (.summary.weekly_remaining // "null")] | @tsv' "$output_path" >"$raw_file"; then
+    rm -f "$raw_file" "$map_file"
+    return 1
+  fi
+
+  if [[ ! -s "$raw_file" ]]; then
+    rm -f "$raw_file" "$map_file"
+    return 1
+  fi
+
+  awk -F'\t' '
+    function normalize_json_key(v) {
+      gsub(/^.*\//, "", v)
+      if (v == "") return ""
+      if (v !~ /\.json$/) v = v ".json"
+      return v
+    }
+
+    function normalize_base(v) {
+      gsub(/^.*\//, "", v)
+      gsub(/\.json$/, "", v)
+      return v
+    }
+
+    function emit_key(k, epoch, email, weekly, label, non_weekly, weekly_remaining) {
+      if (k == "") return
+      if (epoch !~ /^[0-9]+$/) epoch = 9999999999
+      if (email == "") email = "-"
+      if (weekly == "") weekly = "-"
+      if (label == "") label = "5h"
+      if (non_weekly == "") non_weekly = "null"
+      if (weekly_remaining == "") weekly_remaining = "null"
+      print k "\t" epoch "\t" email "\t" weekly "\t" label "\t" non_weekly "\t" weekly_remaining
+    }
+
+    {
+      src=$1
+      name=$2
+      epoch=$3
+      email=$4
+      weekly=$5
+      label=$6
+      non_weekly=$7
+      weekly_remaining=$8
+
+      src_key=normalize_json_key(src)
+      emit_key(src_key, epoch, email, weekly, label, non_weekly, weekly_remaining)
+
+      name_key=normalize_json_key(name)
+      emit_key(name_key, epoch, email, weekly, label, non_weekly, weekly_remaining)
+
+      base_key=normalize_base(name)
+      if (base_key != "") {
+        emit_key(base_key ".json", epoch, email, weekly, label, non_weekly, weekly_remaining)
+      }
+    }
+  ' "$raw_file" |
+    LC_ALL=C sort -t$'\t' -k1,1 -k2,2n |
+    awk -F'\t' '!seen[$1]++ { print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 }' >"$map_file"
+  rm -f "$raw_file"
+
+  if [[ ! -s "$map_file" ]]; then
+    rm -f "$map_file"
+    return 1
+  fi
+
+  printf '%s\n' "$map_file"
+}
+
+lookup_diag_account_meta() {
+  local map_file="$1"
+  local key="$2"
+  [[ -n "$map_file" && -f "$map_file" ]] || return 1
+
+  awk -F'\t' -v key="$key" '$1 == key { print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7; exit }' "$map_file"
+}
+
+lookup_current_diag_meta() {
+  local current_json="${1:-}"
+  [[ -n "$current_json" ]] || return 1
+  if ! command -v jq >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local meta_path
+  meta_path="$(diag_result_meta_path)"
+  local output_path
+  output_path="$(diag_result_output_path)"
+  [[ -f "$meta_path" && -f "$output_path" ]] || return 1
+
+  local mode rc
+  mode="$(read_meta_value "$meta_path" mode)"
+  rc="$(read_meta_value "$meta_path" exit_code)"
+  [[ "$mode" == "all-json" && "$rc" == "0" ]] || return 1
+
+  local dataset_filter
+  if jq -e '.results | type == "array"' "$output_path" >/dev/null 2>&1; then
+    dataset_filter='.results // []'
+  elif jq -e '.result | type == "object"' "$output_path" >/dev/null 2>&1; then
+    dataset_filter='[.result]'
+  else
+    return 1
+  fi
+
+  local matched_meta
+  matched_meta="$(
+    jq -r --arg current_json "$current_json" '
+      '"$dataset_filter"' |
+      map(
+        . as $row |
+        (
+          ($row.source // "")
+          | tostring
+          | split("/")[-1]
+          | if . == "" then "" elif endswith(".json") then . else . + ".json" end
+        ) as $source_json |
+        (
+          ($row.name // "")
+          | tostring
+          | split("/")[-1]
+          | if . == "" then "" elif endswith(".json") then . else . + ".json" end
+        ) as $name_json |
+        {
+          key_candidates: [$source_json, $name_json],
+          weekly_reset_epoch: ($row.summary.weekly_reset_epoch // 9999999999),
+          email: ($row.raw_usage.email // "-"),
+          weekly_reset_local: ($row.summary.weekly_reset_local // "-"),
+          non_weekly_label: ($row.summary.non_weekly_label // "5h"),
+          non_weekly_remaining: ($row.summary.non_weekly_remaining // "null"),
+          weekly_remaining: ($row.summary.weekly_remaining // "null")
+        }
+      ) |
+      map(select(.key_candidates | index($current_json))) |
+      sort_by(.weekly_reset_epoch) |
+      .[0] // empty |
+      [
+        (.weekly_reset_epoch | tostring),
+        .email,
+        .weekly_reset_local,
+        .non_weekly_label,
+        (.non_weekly_remaining | tostring),
+        (.weekly_remaining | tostring)
+      ] |
+      @tsv
+    ' "$output_path" 2>/dev/null || true
+  )"
+
+  if [[ -n "$matched_meta" ]]; then
+    printf '%s\n' "$matched_meta"
+    return 0
+  fi
+
+  if [[ "$current_json" != "auth.json" ]]; then
+    return 1
+  fi
+
+  jq -r '
+    '"$dataset_filter"' |
+    sort_by((.summary.weekly_reset_epoch // 9999999999), (.name // "")) |
+    .[0] // empty |
+    [
+      ((.summary.weekly_reset_epoch // 9999999999) | tostring),
+      (.raw_usage.email // "-"),
+      (.summary.weekly_reset_local // "-"),
+      (.summary.non_weekly_label // "5h"),
+      ((.summary.non_weekly_remaining // "null") | tostring),
+      ((.summary.weekly_remaining // "null") | tostring)
+    ] |
+    @tsv
+  ' "$output_path" 2>/dev/null || true
+}
+
+extract_secret_email_from_file() {
+  local file_path="$1"
+  [[ -f "$file_path" ]] || return 1
+  if ! command -v jq >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local email
+  email="$(
+    jq -r '.. | objects | .email? // empty' "$file_path" 2>/dev/null |
+      grep -E -m1 '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' || true
+  )"
+  [[ -n "$email" ]] || return 1
+  printf '%s\n' "$email"
+}
+
+build_use_subtitle() {
+  local email="$1"
+  local weekly_reset="$2"
+  local command_hint="$3"
+
+  [[ -n "$email" ]] || email="-"
+  [[ -n "$weekly_reset" ]] || weekly_reset="-"
+  printf '%s | reset %s | %s\n' "$email" "$weekly_reset" "$command_hint"
+}
+
+build_use_usage_suffix() {
+  local label="$1"
+  local non_weekly="$2"
+  local weekly="$3"
+
+  [[ -n "$label" && "$label" != "-" ]] || label="5h"
+
+  local non_weekly_text="${label} n/a"
+  local weekly_text="weekly n/a"
+
+  if [[ -n "$non_weekly" && "$non_weekly" != "null" && "$non_weekly" != "-" ]]; then
+    non_weekly_text="${label} ${non_weekly}%"
+  fi
+  if [[ -n "$weekly" && "$weekly" != "null" && "$weekly" != "-" ]]; then
+    weekly_text="weekly ${weekly}%"
+  fi
+
+  printf '%s | %s\n' "$non_weekly_text" "$weekly_text"
+}
+
+build_use_title() {
+  local base="$1"
+  local label="${2:-}"
+  local non_weekly="${3:-}"
+  local weekly="${4:-}"
+
+  if [[ -z "$label" && -z "$non_weekly" && -z "$weekly" ]]; then
+    printf '%s\n' "$base"
+    return
+  fi
+
+  printf '%s | %s\n' "$base" "$(build_use_usage_suffix "$label" "$non_weekly" "$weekly")"
+}
+
+handle_use_query() {
+  local raw_query="$1"
+  local remainder
+  local secret=""
+  local token
+  local seen_extra=0
+
+  remainder="$(printf '%s' "$raw_query" | sed -E 's/^[[:space:]]*(auth[[:space:]]+)?use[[:space:]]*//I')"
+
+  # shellcheck disable=SC2206
+  local parts=($remainder)
+  for token in "${parts[@]}"; do
+    if [[ -z "$secret" ]]; then
+      secret="$token"
+    else
+      seen_extra=1
+    fi
+  done
+
+  if [[ "$seen_extra" -eq 1 ]]; then
+    emit_item \
+      "Invalid auth use arguments" \
+      "Usage: use <secret> (example: use alpha)" \
+      "" \
+      false \
+      "use "
+    return
+  fi
+
+  if [[ -n "$secret" ]]; then
+    local normalized_secret
+    if ! normalized_secret="$(normalize_use_secret "$secret")"; then
+      emit_item \
+        "Invalid secret name" \
+        "Use basename only, allowed chars: A-Z a-z 0-9 . _ @ - (optional .json suffix)." \
+        "" \
+        false \
+        "use "
+      return
+    fi
+
+    emit_item \
+      "Run auth use ${normalized_secret}" \
+      "Switch active auth to ${normalized_secret}.json" \
+      "use::${normalized_secret}" \
+      true \
+      "use ${normalized_secret}"
+    return
+  fi
+
+  local current_json=""
+  local current_auth_email="-"
+  local current_info
+  current_info="$(resolve_current_auth_info || true)"
+  if [[ -n "$current_info" ]]; then
+    IFS=$'\t' read -r current_json current_auth_email _ <<<"$current_info"
+  else
+    current_json="$(detect_current_secret_json || true)"
+  fi
+  [[ -n "$current_auth_email" ]] || current_auth_email="-"
+
+  local current_cached_email=""
+  local current_cached_weekly="-"
+  local current_cached_label=""
+  local current_cached_non_weekly=""
+  local current_cached_weekly_remaining=""
+  if [[ -n "$current_json" ]]; then
+    local current_cached_meta
+    current_cached_meta="$(lookup_current_diag_meta "$current_json" || true)"
+    if [[ -n "$current_cached_meta" ]]; then
+      IFS=$'\t' read -r _cached_epoch current_cached_email current_cached_weekly current_cached_label current_cached_non_weekly current_cached_weekly_remaining <<<"$current_cached_meta"
+    fi
+  fi
+  if [[ -z "$current_cached_email" || "$current_cached_email" == "-" ]]; then
+    current_cached_email="$current_auth_email"
+  fi
+
+  local secret_dir
+  if ! secret_dir="$(resolve_codex_secret_dir)"; then
+    if [[ -n "$current_json" ]]; then
+      local current_secret
+      current_secret="${current_json%.json}"
+      if [[ "$current_json" == "auth.json" ]]; then
+        emit_item \
+          "$(build_use_title "Current: ${current_json}" "${current_cached_label:-}" "${current_cached_non_weekly:-}" "${current_cached_weekly_remaining:-}")" \
+          "$(build_use_subtitle "${current_cached_email:-"-"}" "${current_cached_weekly:-"-"}" "Active auth file detected (no CODEX_SECRET_DIR list).")" \
+          "" \
+          false \
+          "use "
+      else
+        emit_item \
+          "$(build_use_title "Current: ${current_json}" "${current_cached_label:-}" "${current_cached_non_weekly:-}" "${current_cached_weekly_remaining:-}")" \
+          "$(build_use_subtitle "${current_cached_email:-"-"}" "${current_cached_weekly:-"-"}" "Press Enter to run codex-cli auth use ${current_secret}")" \
+          "use::${current_secret}" \
+          true \
+          "use ${current_secret}"
+      fi
+    else
+      emit_item \
+        "Current: unknown" \
+        "Unable to parse codex-cli auth current output." \
+        "" \
+        false \
+        "use "
+    fi
+
+    emit_item \
+      "No secret directory configured" \
+      "Set CODEX_SECRET_DIR or HOME/XDG_CONFIG_HOME to list *.json secrets." \
+      "" \
+      false \
+      "use "
+    return
+  fi
+
+  if [[ ! -d "$secret_dir" ]]; then
+    if [[ -n "$current_json" ]]; then
+      local current_secret
+      current_secret="${current_json%.json}"
+      if [[ "$current_json" == "auth.json" ]]; then
+        emit_item \
+          "$(build_use_title "Current: ${current_json}" "${current_cached_label:-}" "${current_cached_non_weekly:-}" "${current_cached_weekly_remaining:-}")" \
+          "$(build_use_subtitle "${current_cached_email:-"-"}" "${current_cached_weekly:-"-"}" "Active auth file detected (no saved secrets yet).")" \
+          "" \
+          false \
+          "use "
+      else
+        emit_item \
+          "$(build_use_title "Current: ${current_json}" "${current_cached_label:-}" "${current_cached_non_weekly:-}" "${current_cached_weekly_remaining:-}")" \
+          "$(build_use_subtitle "${current_cached_email:-"-"}" "${current_cached_weekly:-"-"}" "Press Enter to run codex-cli auth use ${current_secret}")" \
+          "use::${current_secret}" \
+          true \
+          "use ${current_secret}"
+      fi
+    else
+      emit_item \
+        "Current: unknown" \
+        "Unable to parse codex-cli auth current output." \
+        "" \
+        false \
+        "use "
+    fi
+
+    emit_item \
+      "No secret directory found: ${secret_dir}" \
+      "Create it and add *.json secrets (for example: cx save team-alpha.json)." \
+      "" \
+      false \
+      "use "
+    return
+  fi
+
+  local files=()
+  local file
+  while IFS= read -r file; do
+    files+=("$file")
+  done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
+
+  local account_lookup_file=""
+  account_lookup_file="$(build_diag_account_lookup_map || true)"
+
+  if [[ -n "$current_json" ]]; then
+    local current_secret current_meta current_email current_weekly current_label current_non_weekly current_weekly_remaining
+    current_secret="${current_json%.json}"
+    current_email="${current_cached_email:-"-"}"
+    current_weekly="${current_cached_weekly:-"-"}"
+    current_label="${current_cached_label:-}"
+    current_non_weekly="${current_cached_non_weekly:-}"
+    current_weekly_remaining="${current_cached_weekly_remaining:-}"
+    current_meta="$(lookup_diag_account_meta "$account_lookup_file" "$current_json" || true)"
+    if [[ -n "$current_meta" ]]; then
+      IFS=$'\t' read -r _current_epoch current_email current_weekly current_label current_non_weekly current_weekly_remaining <<<"$current_meta"
+    fi
+    if [[ "$current_json" != "auth.json" && (-z "${current_email:-}" || "$current_email" == "-") ]]; then
+      current_email="$(extract_secret_email_from_file "${secret_dir%/}/${current_json}" || true)"
+    fi
+    if [[ -z "${current_email:-}" ]]; then
+      current_email="${current_auth_email:-"-"}"
+    fi
+    if [[ "$current_json" == "auth.json" ]]; then
+      emit_item \
+        "$(build_use_title "Current: ${current_json}" "${current_label:-}" "${current_non_weekly:-}" "${current_weekly_remaining:-}")" \
+        "$(build_use_subtitle "${current_email:-"-"}" "${current_weekly:-"-"}" "Active auth file (not mapped to saved *.json).")" \
+        "" \
+        false \
+        "use "
+    else
+      emit_item \
+        "$(build_use_title "Current: ${current_json}" "${current_label:-}" "${current_non_weekly:-}" "${current_weekly_remaining:-}")" \
+        "$(build_use_subtitle "${current_email:-"-"}" "${current_weekly:-"-"}" "Press Enter to run codex-cli auth use ${current_secret}")" \
+        "use::${current_secret}" \
+        true \
+        "use ${current_secret}"
+    fi
+  else
+    emit_item \
+      "Current: unknown" \
+      "Unable to parse codex-cli auth current output." \
+      "" \
+      false \
+      "use "
+  fi
+
+  if [[ "${#files[@]}" -eq 0 ]]; then
+    if [[ -n "$account_lookup_file" && -f "$account_lookup_file" ]]; then
+      rm -f "$account_lookup_file"
+    fi
+    emit_item \
+      "No saved secrets (*.json)" \
+      "Use cx save <name>.json first, then choose with cxau." \
+      "" \
+      false \
+      "use "
+    return
+  fi
+
+  local sorted_files=()
+  if [[ -n "$account_lookup_file" && -f "$account_lookup_file" ]]; then
+    local ranking_file
+    ranking_file="$(mktemp "${TMPDIR:-/tmp}/codex-cxau-rank.XXXXXX")"
+    for file in "${files[@]}"; do
+      local meta epoch
+      meta="$(lookup_diag_account_meta "$account_lookup_file" "$file" || true)"
+      epoch="$(printf '%s\n' "$meta" | awk -F'\t' 'NR==1 { print $1 }')"
+      if [[ ! "$epoch" =~ ^[0-9]+$ ]]; then
+        epoch="9999999999"
+      fi
+      printf '%s\t%s\n' "$epoch" "$file" >>"$ranking_file"
+    done
+    while IFS=$'\t' read -r _ranked_epoch ranked_file || [[ -n "${ranked_file:-}" ]]; do
+      [[ -n "${ranked_file:-}" ]] || continue
+      sorted_files+=("$ranked_file")
+    done < <(LC_ALL=C sort -t$'\t' -k1,1n -k2,2 "$ranking_file")
+    rm -f "$ranking_file"
+  else
+    sorted_files=("${files[@]}")
+  fi
+
+  for file in "${sorted_files[@]}"; do
+    local use_secret account_meta account_email account_weekly account_label account_non_weekly account_weekly_remaining
+    use_secret="${file%.json}"
+    account_meta="$(lookup_diag_account_meta "$account_lookup_file" "$file" || true)"
+    if [[ -n "$account_meta" ]]; then
+      IFS=$'\t' read -r _account_epoch account_email account_weekly account_label account_non_weekly account_weekly_remaining <<<"$account_meta"
+    fi
+    if [[ -z "${account_email:-}" ]]; then
+      account_email="$(extract_secret_email_from_file "${secret_dir%/}/${file}" || true)"
+    fi
+    emit_item \
+      "$(build_use_title "$file" "${account_label:-}" "${account_non_weekly:-}" "${account_weekly_remaining:-}")" \
+      "$(build_use_subtitle "${account_email:-}" "${account_weekly:-}" "Run codex-cli auth use ${use_secret}")" \
+      "use::${use_secret}" \
+      true \
+      "use ${use_secret}"
+  done
+
+  if [[ -n "$account_lookup_file" && -f "$account_lookup_file" ]]; then
+    rm -f "$account_lookup_file"
+  fi
 }
 
 handle_login_query() {
@@ -646,12 +1603,23 @@ handle_save_query() {
 }
 
 emit_latest_diag_result_items_inline() {
+  local expected_mode="${1:-}"
   local meta_path
   meta_path="$(diag_result_meta_path)"
   local output_path
   output_path="$(diag_result_output_path)"
 
   if [[ ! -f "$meta_path" || ! -f "$output_path" ]]; then
+    if [[ -n "$expected_mode" ]] && is_diag_refresh_running_for_mode "$expected_mode"; then
+      emit_item \
+        "Refreshing diag cache (${expected_mode})" \
+        "Background refresh in progress. Reopen cxd/cxda shortly." \
+        "" \
+        false \
+        "diag result"
+      return
+    fi
+
     emit_item \
       "Latest diag result unavailable" \
       "Run cxd/cxda once, then open result again." \
@@ -664,12 +1632,50 @@ emit_latest_diag_result_items_inline() {
   local mode
   mode="$(read_meta_value "$meta_path" mode)"
   [[ -n "$mode" ]] || mode="unknown"
+
+  if [[ -n "$expected_mode" && "$mode" != "$expected_mode" ]]; then
+    if is_diag_refresh_running_for_mode "$expected_mode"; then
+      emit_item \
+        "Refreshing diag cache (${expected_mode})" \
+        "Latest cached mode is ${mode}; waiting for ${expected_mode} refresh." \
+        "" \
+        false \
+        "diag result"
+    else
+      emit_item \
+        "Latest diag result unavailable (${expected_mode})" \
+        "Latest cache mode is ${mode}. Reopen cxd/cxda to refresh." \
+        "" \
+        false \
+        "diag result"
+    fi
+    return
+  fi
+
   local preview_query="diag result"
   if [[ "$mode" == "all-json" ]]; then
     preview_query="diag result all-json"
   fi
 
   emit_diag_result_items "$preview_query"
+}
+
+emit_current_auth_hint_item() {
+  local current_info
+  current_info="$(resolve_current_auth_info || true)"
+  [[ -n "$current_info" ]] || return 0
+
+  local current_json current_email _current_auth_file
+  IFS=$'\t' read -r current_json current_email _current_auth_file <<<"$current_info"
+  [[ -n "$current_json" ]] || return 0
+  [[ -n "$current_email" ]] || current_email="-"
+
+  emit_item \
+    "Current auth: ${current_json}" \
+    "${current_email}" \
+    "" \
+    false \
+    ""
 }
 
 handle_diag_query() {
@@ -680,6 +1686,12 @@ handle_diag_query() {
   fi
 
   local mode="default"
+  local resolved_secret_dir=""
+  local has_saved_secrets=0
+  resolved_secret_dir="$(resolve_codex_secret_dir || true)"
+  if secret_dir_has_saved_json "$resolved_secret_dir"; then
+    has_saved_secrets=1
+  fi
 
   if [[ "$lower_query" == *"all-json"* || "$lower_query" == *"--all-json"* ]]; then
     mode="all-json"
@@ -693,14 +1705,26 @@ handle_diag_query() {
     mode="all"
   fi
 
+  local auto_refresh_mode=""
+  auto_refresh_mode="$(resolve_diag_auto_refresh_mode_for_query "$lower_query" || true)"
+
   case "$mode" in
   all-json)
-    emit_item \
-      "Run diag rate-limits --all --json (parsed)" \
-      "Parse JSON and render one row per account." \
-      "diag::all-json" \
-      true \
-      "diag all-json"
+    if [[ "$has_saved_secrets" -eq 1 ]]; then
+      emit_item \
+        "Run diag rate-limits --all --json (parsed)" \
+        "Parse JSON and render one row per account." \
+        "diag::all-json" \
+        true \
+        "diag all-json"
+    else
+      emit_item \
+        "Run diag rate-limits --json (parsed)" \
+        "No saved secrets; fallback to current auth.json diagnostics." \
+        "diag::all-json" \
+        true \
+        "diag all-json"
+    fi
     ;;
   cached)
     emit_item \
@@ -719,20 +1743,38 @@ handle_diag_query() {
       "diag one-line"
     ;;
   all)
-    emit_item \
-      "Run diag rate-limits --all" \
-      "Query all secrets under CODEX_SECRET_DIR." \
-      "diag::all" \
-      true \
-      "diag all"
+    if [[ "$has_saved_secrets" -eq 1 ]]; then
+      emit_item \
+        "Run diag rate-limits --all" \
+        "Query all secrets under CODEX_SECRET_DIR." \
+        "diag::all" \
+        true \
+        "diag all"
+    else
+      emit_item \
+        "Run diag rate-limits (auth.json fallback)" \
+        "No saved secrets; run diagnostics for current auth only." \
+        "diag::all" \
+        true \
+        "diag all"
+    fi
     ;;
   async)
-    emit_item \
-      "Run diag rate-limits --all --async --jobs 4" \
-      "Concurrent diagnostics across secrets." \
-      "diag::async" \
-      true \
-      "diag async"
+    if [[ "$has_saved_secrets" -eq 1 ]]; then
+      emit_item \
+        "Run diag rate-limits --all --async --jobs 4" \
+        "Concurrent diagnostics across secrets." \
+        "diag::async" \
+        true \
+        "diag async"
+    else
+      emit_item \
+        "Run diag rate-limits (auth.json fallback)" \
+        "No saved secrets; async all-account mode is unavailable." \
+        "diag::async" \
+        true \
+        "diag async"
+    fi
     ;;
   *)
     emit_item \
@@ -751,7 +1793,12 @@ handle_diag_query() {
     false \
     "diag "
 
-  emit_latest_diag_result_items_inline
+  emit_current_auth_hint_item
+  emit_latest_diag_result_items_inline "$auto_refresh_mode"
+
+  if [[ -n "$auto_refresh_mode" ]]; then
+    trigger_diag_auto_refresh_if_stale "$auto_refresh_mode"
+  fi
 }
 
 query="${1:-}"
@@ -803,6 +1850,12 @@ if [[ "$lower_query" == login* || "$lower_query" == auth\ login* ]]; then
   exit 0
 fi
 
+if [[ "$lower_query" == use* || "$lower_query" == auth\ use* ]]; then
+  handle_use_query "$trimmed_query"
+  end_items
+  exit 0
+fi
+
 if [[ "$lower_query" == save* || "$lower_query" == auth\ save* ]]; then
   handle_save_query "$trimmed_query"
   end_items
@@ -823,7 +1876,7 @@ fi
 
 emit_item \
   "Unknown command: ${trimmed_query}" \
-  "Try: login, save <secret.json>, diag, or type help (--assessment optional)." \
+  "Try: login, use <secret>, save <secret.json>, diag, or help (--assessment optional)." \
   "" \
   false \
   "help"
