@@ -43,6 +43,13 @@ resolve_workflow_cache_dir() {
   printf '%s\n' "${TMPDIR:-/tmp}/nils-codex-cli-workflow"
 }
 
+sanitize_diag_mode() {
+  local mode="${1:-default}"
+  mode="${mode//[^A-Za-z0-9._-]/_}"
+  [[ -n "$mode" ]] || mode="default"
+  printf '%s\n' "$mode"
+}
+
 diag_result_meta_path() {
   local cache_dir
   cache_dir="$(resolve_workflow_cache_dir)"
@@ -55,11 +62,54 @@ diag_result_output_path() {
   printf '%s/diag-rate-limits.last.out\n' "$cache_dir"
 }
 
-diag_refresh_lock_path_for_mode() {
-  local mode="${1:-default}"
+diag_result_meta_path_for_mode() {
+  local mode
+  mode="$(sanitize_diag_mode "${1:-default}")"
   local cache_dir
   cache_dir="$(resolve_workflow_cache_dir)"
-  mode="${mode//[^A-Za-z0-9._-]/_}"
+  printf '%s/diag-rate-limits.%s.meta\n' "$cache_dir" "$mode"
+}
+
+diag_result_output_path_for_mode() {
+  local mode
+  mode="$(sanitize_diag_mode "${1:-default}")"
+  local cache_dir
+  cache_dir="$(resolve_workflow_cache_dir)"
+  printf '%s/diag-rate-limits.%s.out\n' "$cache_dir" "$mode"
+}
+
+resolve_diag_result_cache_paths_for_mode() {
+  local expected_mode="${1:-}"
+
+  if [[ -n "$expected_mode" ]]; then
+    local mode_meta_path mode_output_path
+    mode_meta_path="$(diag_result_meta_path_for_mode "$expected_mode")"
+    mode_output_path="$(diag_result_output_path_for_mode "$expected_mode")"
+    if [[ -f "$mode_meta_path" && -f "$mode_output_path" ]]; then
+      printf '%s\t%s\n' "$mode_meta_path" "$mode_output_path"
+      return 0
+    fi
+  fi
+
+  local last_meta_path last_output_path
+  last_meta_path="$(diag_result_meta_path)"
+  last_output_path="$(diag_result_output_path)"
+  [[ -f "$last_meta_path" && -f "$last_output_path" ]] || return 1
+
+  if [[ -n "$expected_mode" ]]; then
+    local cached_mode
+    cached_mode="$(read_meta_value "$last_meta_path" mode)"
+    [[ "$cached_mode" == "$expected_mode" ]] || return 1
+  fi
+
+  printf '%s\t%s\n' "$last_meta_path" "$last_output_path"
+}
+
+diag_refresh_lock_path_for_mode() {
+  local mode
+  mode="$(sanitize_diag_mode "${1:-default}")"
+  local cache_dir
+  cache_dir="$(resolve_workflow_cache_dir)"
   printf '%s/diag-rate-limits.%s.refresh.lock\n' "$cache_dir" "$mode"
 }
 
@@ -76,11 +126,10 @@ is_diag_cache_fresh_for_mode() {
   local mode="$1"
   local ttl_seconds="$2"
 
-  local meta_path
-  meta_path="$(diag_result_meta_path)"
-  local output_path
-  output_path="$(diag_result_output_path)"
-  [[ -f "$meta_path" && -f "$output_path" ]] || return 1
+  local cache_paths meta_path output_path
+  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$mode" || true)"
+  [[ -n "$cache_paths" ]] || return 1
+  IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
   local cached_mode
   cached_mode="$(read_meta_value "$meta_path" mode)"
@@ -165,25 +214,38 @@ store_diag_result() {
   local command="$3"
   local rc="$4"
   local output="$5"
+  local normalized_mode
+  normalized_mode="$(sanitize_diag_mode "$mode")"
   local timestamp
   timestamp="$(date +%s)"
 
-  local meta_path
-  meta_path="$(diag_result_meta_path)"
-  local output_path
-  output_path="$(diag_result_output_path)"
-  local output_dir
-  output_dir="$(dirname "$output_path")"
+  local last_meta_path last_output_path mode_meta_path mode_output_path
+  last_meta_path="$(diag_result_meta_path)"
+  last_output_path="$(diag_result_output_path)"
+  mode_meta_path="$(diag_result_meta_path_for_mode "$normalized_mode")"
+  mode_output_path="$(diag_result_output_path_for_mode "$normalized_mode")"
+  local output_dir mode_output_dir
+  output_dir="$(dirname "$last_output_path")"
+  mode_output_dir="$(dirname "$mode_output_path")"
 
-  mkdir -p "$output_dir"
+  mkdir -p "$output_dir" "$mode_output_dir"
+
   {
-    printf 'mode=%s\n' "$mode"
+    printf 'mode=%s\n' "$normalized_mode"
     printf 'summary=%s\n' "$summary"
     printf 'command=%s\n' "$command"
     printf 'exit_code=%s\n' "$rc"
     printf 'timestamp=%s\n' "$timestamp"
-  } >"$meta_path"
-  printf '%s\n' "$output" >"$output_path"
+  } >"$last_meta_path"
+  {
+    printf 'mode=%s\n' "$normalized_mode"
+    printf 'summary=%s\n' "$summary"
+    printf 'command=%s\n' "$command"
+    printf 'exit_code=%s\n' "$rc"
+    printf 'timestamp=%s\n' "$timestamp"
+  } >"$mode_meta_path"
+  printf '%s\n' "$output" >"$last_output_path"
+  printf '%s\n' "$output" >"$mode_output_path"
 }
 
 run_diag_cache_refresh_for_mode() {
@@ -385,19 +447,19 @@ emit_diag_all_json_account_items() {
 
 emit_diag_result_items() {
   local lower_query="$1"
-  local meta_path
-  meta_path="$(diag_result_meta_path)"
-  local output_path
-  output_path="$(diag_result_output_path)"
+  local expected_mode=""
   local run_alias="cxd"
   local result_alias="cxd result"
 
   if [[ "$lower_query" == *"all-json"* || "$lower_query" == *"--all-json"* ]]; then
+    expected_mode="all-json"
     run_alias="cxda"
     result_alias="cxda result"
   fi
 
-  if [[ ! -f "$meta_path" || ! -f "$output_path" ]]; then
+  local cache_paths meta_path output_path
+  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$expected_mode" || true)"
+  if [[ -z "$cache_paths" ]]; then
     emit_item \
       "No diag result yet" \
       "Run ${run_alias} and press Enter once. Then use ${result_alias}." \
@@ -406,6 +468,7 @@ emit_diag_result_items() {
       "diag"
     return
   fi
+  IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
   local mode rc timestamp command summary
   mode="$(read_meta_value "$meta_path" mode)"
@@ -955,11 +1018,10 @@ build_diag_account_lookup_map() {
     return 1
   fi
 
-  local meta_path
-  meta_path="$(diag_result_meta_path)"
-  local output_path
-  output_path="$(diag_result_output_path)"
-  [[ -f "$meta_path" && -f "$output_path" ]] || return 1
+  local cache_paths meta_path output_path
+  cache_paths="$(resolve_diag_result_cache_paths_for_mode "all-json" || true)"
+  [[ -n "$cache_paths" ]] || return 1
+  IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
   local mode rc
   mode="$(read_meta_value "$meta_path" mode)"
@@ -1059,11 +1121,10 @@ lookup_current_diag_meta() {
     return 1
   fi
 
-  local meta_path
-  meta_path="$(diag_result_meta_path)"
-  local output_path
-  output_path="$(diag_result_output_path)"
-  [[ -f "$meta_path" && -f "$output_path" ]] || return 1
+  local cache_paths meta_path output_path
+  cache_paths="$(resolve_diag_result_cache_paths_for_mode "all-json" || true)"
+  [[ -n "$cache_paths" ]] || return 1
+  IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
   local mode rc
   mode="$(read_meta_value "$meta_path" mode)"
@@ -1604,12 +1665,10 @@ handle_save_query() {
 
 emit_latest_diag_result_items_inline() {
   local expected_mode="${1:-}"
-  local meta_path
-  meta_path="$(diag_result_meta_path)"
-  local output_path
-  output_path="$(diag_result_output_path)"
+  local cache_paths meta_path output_path
+  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$expected_mode" || true)"
 
-  if [[ ! -f "$meta_path" || ! -f "$output_path" ]]; then
+  if [[ -z "$cache_paths" ]]; then
     if [[ -n "$expected_mode" ]] && is_diag_refresh_running_for_mode "$expected_mode"; then
       emit_item \
         "Refreshing diag cache (${expected_mode})" \
@@ -1628,6 +1687,7 @@ emit_latest_diag_result_items_inline() {
       "diag result"
     return
   fi
+  IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
   local mode
   mode="$(read_meta_value "$meta_path" mode)"
@@ -1670,9 +1730,28 @@ emit_current_auth_hint_item() {
   [[ -n "$current_json" ]] || return 0
   [[ -n "$current_email" ]] || current_email="-"
 
+  local current_weekly_reset="-"
+  local current_cached_meta
+  current_cached_meta="$(lookup_current_diag_meta "$current_json" || true)"
+  if [[ -n "$current_cached_meta" ]]; then
+    local cached_email cached_weekly_reset
+    IFS=$'\t' read -r _cached_epoch cached_email cached_weekly_reset _cached_label _cached_non_weekly _cached_weekly_remaining <<<"$current_cached_meta"
+    if [[ -n "$cached_email" && "$cached_email" != "-" ]]; then
+      current_email="$cached_email"
+    fi
+    if [[ -n "$cached_weekly_reset" && "$cached_weekly_reset" != "-" ]]; then
+      current_weekly_reset="$cached_weekly_reset"
+    fi
+  fi
+
+  local subtitle="$current_email"
+  if [[ -n "$current_weekly_reset" && "$current_weekly_reset" != "-" ]]; then
+    subtitle="${current_email} | reset ${current_weekly_reset}"
+  fi
+
   emit_item \
     "Current auth: ${current_json}" \
-    "${current_email}" \
+    "${subtitle}" \
     "" \
     false \
     ""

@@ -555,6 +555,9 @@ auth_use_with_diag_cache_json="$({ HOME="$auth_only_cache_home" CODEX_SECRET_DIR
 assert_jq_json "$auth_use_with_diag_cache_json" '.items[0].title == "Current: auth.json | 5h 61% | weekly 11%"' "cxau auth.json current row should include latest cached usage metrics"
 assert_jq_json "$auth_use_with_diag_cache_json" '.items[0].subtitle | contains("auth@example.com | reset 2026-02-17 02:19 +08:00")' "cxau auth.json current row should include latest cached email/reset"
 
+diag_all_with_auth_cache_json="$({ HOME="$auth_only_cache_home" CODEX_SECRET_DIR="$tmp_dir/missing-secrets-for-diag" CODEX_AUTH_FILE="$auth_only_cache_home/.config/codex-kit/auth.json" ALFRED_WORKFLOW_CACHE="$diag_auto_all_fallback_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter_diag_all.sh" ""; })"
+assert_jq_json "$diag_all_with_auth_cache_json" '.items | any(.title == "Current auth: auth.json" and (.subtitle | contains("auth@example.com | reset 2026-02-17 02:19 +08:00")))' "cxda current auth row should include cached email/reset when auth.json lacks email"
+
 alias_save_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_save.sh" "team-alpha"; })"
 assert_jq_json "$alias_save_json" '.items[0].arg == "save::team-alpha.json::0"' "cxs wrapper should map to save command"
 assert_jq_json "$alias_save_json" '.items[1].arg == "save::team-alpha.json::1"' "cxs wrapper should expose --yes variant"
