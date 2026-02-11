@@ -269,7 +269,7 @@ assert_jq_json "$expand_failure_json" '.items[0].valid == false' "expand failure
 cat >"$tmp_dir/bin/cargo" <<EOS
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "\$#" -eq 4 && "\$1" == "build" && "\$2" == "--release" && "\$3" == "-p" && "\$4" == "randomer-cli" ]]; then
+if [[ "\$#" -eq 4 && "\$1" == "build" && "\$2" == "--release" && "\$3" == "-p" && "\$4" == "nils-randomer-cli" ]]; then
   mkdir -p "$repo_root/target/release"
   cat >"$repo_root/target/release/randomer-cli" <<'EOCLI'
 #!/usr/bin/env bash

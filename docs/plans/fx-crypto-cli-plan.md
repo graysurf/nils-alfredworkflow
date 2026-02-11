@@ -31,7 +31,7 @@ Existing workflows remain unchanged until a later integration plan consumes this
 - Crypto path falls back from Coinbase to Kraken on transport/HTTP/parse/unsupported-pair failure.
 - When live fetch fails and stale cache exists, CLI returns stale data with explicit freshness metadata instead of hard-failing.
 - Provider clients apply bounded retry/backoff for transient transport errors and 429/5xx responses.
-- `cargo test -p market-cli` passes with deterministic, network-independent tests.
+- `cargo test -p nils-market-cli` passes with deterministic, network-independent tests.
 
 ## Dependency & Parallelization Map
 - Critical path: `Task 1.1 -> Task 1.2 -> Task 1.3 -> Task 2.1 -> Task 2.4 -> Task 2.5 -> Task 2.6 -> Task 2.7 -> Task 3.1 -> Task 3.3`.
@@ -44,7 +44,7 @@ Existing workflows remain unchanged until a later integration plan consumes this
 ## Sprint 1: Contract and crate scaffold
 **Goal**: Freeze behavior and data contract so provider and cache implementation can proceed without interface churn.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/fx-crypto-cli-plan.md`, `cargo check -p market-cli`
+- Command(s): `plan-tooling validate --file docs/plans/fx-crypto-cli-plan.md`, `cargo check -p nils-market-cli`
 - Verify: Plan is valid, crate is scaffolded, and workspace compiles with placeholder command surface.
 
 ### Task 1.1: Define CLI and JSON contract for workflow-facing consumption
@@ -75,10 +75,10 @@ Existing workflows remain unchanged until a later integration plan consumes this
 - **Complexity**: 4
 - **Acceptance criteria**:
   - Workspace includes `crates/market-cli`.
-  - `cargo run -p market-cli -- --help` succeeds with declared subcommands.
+  - `cargo run -p nils-market-cli -- --help` succeeds with declared subcommands.
 - **Validation**:
-  - `cargo check -p market-cli`
-  - `cargo run -p market-cli -- --help`
+  - `cargo check -p nils-market-cli`
+  - `cargo run -p nils-market-cli -- --help`
 
 ### Task 1.3: Define domain model and command surface
 - **Location**:
@@ -94,8 +94,8 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Output model serializes deterministically and matches contract field names.
   - Runtime errors keep user errors separate via stable exit codes.
 - **Validation**:
-  - `cargo test -p market-cli -- --list | rg "main_|model_|error_"`
-  - `cargo test -p market-cli`
+  - `cargo test -p nils-market-cli -- --list | rg "main_|model_|error_"`
+  - `cargo test -p nils-market-cli`
 
 ### Task 1.4: Implement cache directory and TTL policy configuration
 - **Location**:
@@ -110,14 +110,14 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - TTL values are constants and not silently overridden at runtime.
   - Cache key strategy is explicit per market kind and pair.
 - **Validation**:
-  - `cargo test -p market-cli config`
-  - `cargo test -p market-cli cache`
+  - `cargo test -p nils-market-cli config`
+  - `cargo test -p nils-market-cli cache`
   - `rg -n "FX_TTL_SECS|CRYPTO_TTL_SECS|MARKET_CACHE_DIR|alfred_workflow_cache|alfred_workflow_data" crates/market-cli/src/config.rs crates/market-cli/src/cache.rs`
 
 ## Sprint 2: Provider clients, fallback chain, and cache orchestration
 **Goal**: Build production-grade fetch pipeline with deterministic parsing, fallback behavior, and cache freshness controls.
 **Demo/Validation**:
-- Command(s): `cargo test -p market-cli`, `cargo clippy -p market-cli --all-targets -- -D warnings`
+- Command(s): `cargo test -p nils-market-cli`, `cargo clippy -p nils-market-cli --all-targets -- -D warnings`
 - Verify: Provider parsing, fallback, and cache behavior all pass offline tests.
 
 ### Task 2.1: Implement cache read/write and freshness evaluation
@@ -134,8 +134,8 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Freshness evaluation distinguishes fresh vs stale based on market-specific TTL.
   - Corrupted cache payload does not panic and is treated as cache miss.
 - **Validation**:
-  - `cargo test -p market-cli cache_freshness_`
-  - `cargo test -p market-cli cache_handles_corrupt_payload_as_miss`
+  - `cargo test -p nils-market-cli cache_freshness_`
+  - `cargo test -p nils-market-cli cache_handles_corrupt_payload_as_miss`
 
 ### Task 2.2: Implement Frankfurter FX provider client and parser
 - **Location**:
@@ -150,8 +150,8 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Parser handles expected success payload and missing-rate response safely.
   - Transport/HTTP/parse failures map to typed provider errors.
 - **Validation**:
-  - `cargo test -p market-cli frankfurter_`
-  - `cargo test -p market-cli provider_error_mapping_`
+  - `cargo test -p nils-market-cli frankfurter_`
+  - `cargo test -p nils-market-cli provider_error_mapping_`
 
 ### Task 2.3: Implement Coinbase primary + Kraken fallback crypto providers
 - **Location**:
@@ -167,9 +167,9 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Kraken parser extracts ticker close price with symbol mapping support.
   - Pair mapping tests cover at least `BTC/USD`, `ETH/USD`, and one unsupported-pair failure case.
 - **Validation**:
-  - `cargo test -p market-cli coinbase_`
-  - `cargo test -p market-cli kraken_`
-  - `cargo test -p market-cli crypto_pair_mapping_`
+  - `cargo test -p nils-market-cli coinbase_`
+  - `cargo test -p nils-market-cli kraken_`
+  - `cargo test -p nils-market-cli crypto_pair_mapping_`
 
 ### Task 2.4: Implement market service orchestration and fresh-cache short-circuit
 - **Location**:
@@ -187,9 +187,9 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Live success writes/refreshes cache; fresh cache short-circuits network.
   - Cache write path persists provider and fetch timestamp metadata for future stale fallback decisions.
 - **Validation**:
-  - `cargo test -p market-cli service_crypto_falls_back_to_kraken`
-  - `cargo test -p market-cli service_short_circuits_on_fresh_cache`
-  - `cargo test -p market-cli service_writes_cache_after_live_success`
+  - `cargo test -p nils-market-cli service_crypto_falls_back_to_kraken`
+  - `cargo test -p nils-market-cli service_short_circuits_on_fresh_cache`
+  - `cargo test -p nils-market-cli service_writes_cache_after_live_success`
 
 ### Task 2.5: Implement stale-cache recovery and provider trace diagnostics
 - **Location**:
@@ -205,9 +205,9 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - When all providers fail and no cache exists, command fails with provider trace context.
   - Stale fallback preserves last-known unit price and provider identity in output.
 - **Validation**:
-  - `cargo test -p market-cli service_uses_stale_cache_on_provider_failure`
-  - `cargo test -p market-cli service_fails_without_cache_when_all_providers_fail`
-  - `cargo test -p market-cli service_stale_payload_preserves_provider_metadata`
+  - `cargo test -p nils-market-cli service_uses_stale_cache_on_provider_failure`
+  - `cargo test -p nils-market-cli service_fails_without_cache_when_all_providers_fail`
+  - `cargo test -p nils-market-cli service_stale_payload_preserves_provider_metadata`
 
 ### Task 2.6: Add transient failure retry/backoff policy for unauthenticated providers
 - **Location**:
@@ -225,8 +225,8 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Backoff strategy is documented in code comments and contract docs.
   - Non-retryable errors (for example malformed symbols and parse failures) fail fast without retry loops.
 - **Validation**:
-  - `cargo test -p market-cli provider_retries_transient_failures_with_backoff`
-  - `cargo test -p market-cli provider_does_not_retry_non_retryable_failures`
+  - `cargo test -p nils-market-cli provider_retries_transient_failures_with_backoff`
+  - `cargo test -p nils-market-cli provider_does_not_retry_non_retryable_failures`
 
 ### Task 2.7: Add numeric precision and conversion behavior tests
 - **Location**:
@@ -242,13 +242,13 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Serialization format is stable across runs and locale settings.
   - Amount and unit price validation rejects malformed numeric input.
 - **Validation**:
-  - `cargo test -p market-cli conversion_`
-  - `cargo test -p market-cli numeric_`
+  - `cargo test -p nils-market-cli conversion_`
+  - `cargo test -p nils-market-cli numeric_`
 
 ## Sprint 3: CLI UX, documentation, and future-workflow readiness
 **Goal**: Finalize command UX and provide reliable integration guidance for upcoming workflow implementation.
 **Demo/Validation**:
-- Command(s): `cargo test -p market-cli`, `cargo run -p market-cli -- fx --base USD --quote TWD --amount 100`, `cargo run -p market-cli -- crypto --base BTC --quote USD --amount 0.5`
+- Command(s): `cargo test -p nils-market-cli`, `cargo run -p nils-market-cli -- fx --base USD --quote TWD --amount 100`, `cargo run -p nils-market-cli -- crypto --base BTC --quote USD --amount 0.5`
 - Verify: Commands produce stable JSON contract and documented integration path for workflow scripts.
 
 ### Task 3.1: Finalize main command flow and output contract enforcement
@@ -265,11 +265,11 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - User input issues return exit code `2`; runtime/provider issues return exit code `1`.
   - Error messages are concise and actionable for future script adapters.
 - **Validation**:
-  - `cargo test -p market-cli main_`
-  - `cargo test -p market-cli main_outputs_fx_json_contract`
-  - `cargo test -p market-cli main_outputs_crypto_json_contract`
-  - `bash -c 'set -euo pipefail; cargo run -p market-cli -- fx --base USD --quote TWD --amount 100 >/dev/null'`
-  - `bash -c 'set -euo pipefail; cargo run -p market-cli -- crypto --base BTC --quote USD --amount 0.5 >/dev/null'`
+  - `cargo test -p nils-market-cli main_`
+  - `cargo test -p nils-market-cli main_outputs_fx_json_contract`
+  - `cargo test -p nils-market-cli main_outputs_crypto_json_contract`
+  - `bash -c 'set -euo pipefail; cargo run -p nils-market-cli -- fx --base USD --quote TWD --amount 100 >/dev/null'`
+  - `bash -c 'set -euo pipefail; cargo run -p nils-market-cli -- crypto --base BTC --quote USD --amount 0.5 >/dev/null'`
 
 ### Task 3.2: Document workflow adapter integration guide (without implementing workflow)
 - **Location**:
@@ -299,8 +299,8 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Contract tests verify freshness metadata states and provider name emission.
   - Contract tests verify invalid input and runtime failure exit behavior.
 - **Validation**:
-  - `cargo test -p market-cli cli_contract`
-  - `cargo test -p market-cli`
+  - `cargo test -p nils-market-cli cli_contract`
+  - `cargo test -p nils-market-cli`
 
 ### Task 3.4: Add optional live-smoke script for maintainers
 - **Location**:
@@ -320,7 +320,7 @@ Existing workflows remain unchanged until a later integration plan consumes this
 ## Testing Strategy
 - Unit: Provider parsing fixtures, pair normalization, config parsing, TTL freshness logic, conversion math, and error mapping.
 - Integration: Service-level tests with mocked provider/cache behaviors covering fresh-cache hit, live success write-through, Coinbase->Kraken fallback, and stale-cache recovery.
-- E2E/manual: Optional live-smoke script for real endpoint sanity checks, plus direct `cargo run -p market-cli` command invocations.
+- E2E/manual: Optional live-smoke script for real endpoint sanity checks, plus direct `cargo run -p nils-market-cli` command invocations.
 
 ## Risks & gotchas
 - Upstream unauthenticated API response schema can change without notice; parser tests must isolate shape assumptions and fail clearly.

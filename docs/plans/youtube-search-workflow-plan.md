@@ -38,7 +38,7 @@ The data source is YouTube Data API v3 using an API key provided through workflo
 ## Sprint 1: Contract and scaffold
 **Goal**: Define runtime contract and scaffold workflow/crate surfaces so implementation can proceed without rework.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/youtube-search-workflow-plan.md`, `test -d workflows/youtube-search`, `cargo check -p youtube-cli`
+- Command(s): `plan-tooling validate --file docs/plans/youtube-search-workflow-plan.md`, `test -d workflows/youtube-search`, `cargo check -p nils-youtube-cli`
 - Verify: Workflow skeleton exists, contract and env keys are documented, and workspace remains buildable.
 
 ### Task 1.1: Define workflow behavior contract
@@ -88,10 +88,10 @@ The data source is YouTube Data API v3 using an API key provided through workflo
 - **Complexity**: 5
 - **Acceptance criteria**:
   - Workspace includes `crates/youtube-cli`.
-  - `cargo run -p youtube-cli -- --help` succeeds and exposes placeholder command surface.
+  - `cargo run -p nils-youtube-cli -- --help` succeeds and exposes placeholder command surface.
 - **Validation**:
-  - `cargo check -p youtube-cli`
-  - `cargo run -p youtube-cli -- --help`
+  - `cargo check -p nils-youtube-cli`
+  - `cargo run -p nils-youtube-cli -- --help`
 
 ### Task 1.4: Define workflow runtime env variables
 - **Location**:
@@ -111,7 +111,7 @@ The data source is YouTube Data API v3 using an API key provided through workflo
 ## Sprint 2: API and JSON pipeline
 **Goal**: Implement API client + CLI pipeline that returns Alfred JSON items for query input.
 **Demo/Validation**:
-- Command(s): `cargo test -p youtube-cli`, `cargo run -p youtube-cli -- search --query "rust tutorial"`
+- Command(s): `cargo test -p nils-youtube-cli`, `cargo run -p nils-youtube-cli -- search --query "rust tutorial"`
 - Verify: CLI emits valid Alfred JSON with multiple items in success case and deterministic fallback items in error cases.
 
 ### Task 2.1: Implement config parsing and guardrails
@@ -127,9 +127,9 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Missing key is detected before network call.
   - Invalid numeric config falls back predictably or returns actionable user error.
 - **Validation**:
-  - `cargo test -p youtube-cli`
-  - `cargo test -p youtube-cli -- --list | rg "config_"`
-  - `env -u YOUTUBE_API_KEY cargo run -p youtube-cli -- search --query "test"`
+  - `cargo test -p nils-youtube-cli`
+  - `cargo test -p nils-youtube-cli -- --list | rg "config_"`
+  - `env -u YOUTUBE_API_KEY cargo run -p nils-youtube-cli -- search --query "test"`
 
 ### Task 2.2: Implement YouTube Data API client
 - **Location**:
@@ -144,9 +144,9 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Response parser extracts `videoId`, `title`, and `description`.
   - HTTP/API errors are mapped to typed internal errors.
 - **Validation**:
-  - `cargo test -p youtube-cli`
-  - `cargo test -p youtube-cli -- --list | rg "youtube_api_"`
-  - `cargo clippy -p youtube-cli --all-targets -- -D warnings`
+  - `cargo test -p nils-youtube-cli`
+  - `cargo test -p nils-youtube-cli -- --list | rg "youtube_api_"`
+  - `cargo clippy -p nils-youtube-cli --all-targets -- -D warnings`
 
 ### Task 2.3: Implement Alfred feedback mapping
 - **Location**:
@@ -160,8 +160,8 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Subtitle truncation is deterministic and avoids multiline output noise.
   - `arg` values always use canonical watch URLs built from API-returned video IDs.
 - **Validation**:
-  - `cargo test -p youtube-cli`
-  - `cargo test -p youtube-cli -- --list | rg "feedback_|watch_url_"`
+  - `cargo test -p nils-youtube-cli`
+  - `cargo test -p nils-youtube-cli -- --list | rg "feedback_|watch_url_"`
 
 ### Task 2.4: Implement CLI command and stdout contract
 - **Location**:
@@ -175,10 +175,10 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Success path prints only JSON payload.
   - Invalid input and runtime failures return non-zero with concise error text.
 - **Validation**:
-  - `cargo test -p youtube-cli`
-  - `cargo test -p youtube-cli -- --list | rg "main_"`
-  - `cargo run -p youtube-cli -- search --query "lofi hip hop" | jq -e '.items | type == "array"'`
-  - `bash -c 'set +e; env -u YOUTUBE_API_KEY cargo run -p youtube-cli -- search --query "lofi hip hop" >/dev/null 2>&1; test $? -ne 0'`
+  - `cargo test -p nils-youtube-cli`
+  - `cargo test -p nils-youtube-cli -- --list | rg "main_"`
+  - `cargo run -p nils-youtube-cli -- search --query "lofi hip hop" | jq -e '.items | type == "array"'`
+  - `bash -c 'set +e; env -u YOUTUBE_API_KEY cargo run -p nils-youtube-cli -- search --query "lofi hip hop" >/dev/null 2>&1; test $? -ne 0'`
 
 ### Task 2.5: Add failure-mode rendering for Alfred UX
 - **Location**:
@@ -192,8 +192,8 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Script filter never returns malformed JSON.
   - Error subtitles help user recover (set key, reduce frequency, retry later).
 - **Validation**:
-  - `cargo test -p youtube-cli`
-  - `cargo test -p youtube-cli -- --list | rg "error_feedback_"`
+  - `cargo test -p nils-youtube-cli`
+  - `cargo test -p nils-youtube-cli -- --list | rg "error_feedback_"`
   - `bash workflows/youtube-search/scripts/script_filter.sh "test" | jq -e '.items | length >= 1'`
 
 ## Sprint 3: Alfred wiring and package integration
@@ -313,8 +313,8 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Config and API request behavior is covered without live-network dependence.
   - Tests assert key guardrails (required key, max results clamp, parameter completeness).
 - **Validation**:
-  - `cargo test -p youtube-cli`
-  - `cargo test -p youtube-cli -- --list | rg "config_|youtube_api_"`
+  - `cargo test -p nils-youtube-cli`
+  - `cargo test -p nils-youtube-cli -- --list | rg "config_|youtube_api_"`
 
 ### Task 4.2: Add feedback and CLI contract Rust tests
 - **Location**:
@@ -328,8 +328,8 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Feedback rendering and CLI contract are covered without live API calls.
   - Tests explicitly verify JSON-on-stdout and non-zero error exit-code paths.
 - **Validation**:
-  - `cargo test -p youtube-cli`
-  - `cargo test -p youtube-cli -- --list | rg "feedback_|main_|watch_url_|error_feedback_"`
+  - `cargo test -p nils-youtube-cli`
+  - `cargo test -p nils-youtube-cli -- --list | rg "feedback_|main_|watch_url_|error_feedback_"`
 
 ### Task 4.3: Document workflow usage and operator setup
 - **Location**:

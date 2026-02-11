@@ -52,7 +52,7 @@ The design keeps local-first UX: results are served from local cache immediately
 ## Sprint 1: Contract and scaffolding
 **Goal**: Freeze behavior contract and scaffold workflow/crate surfaces aligned to repository conventions.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/quote-init-workflow-plan.md`, `test -d workflows/quote-feed`, `cargo check -p quote-cli`
+- Command(s): `plan-tooling validate --file docs/plans/quote-init-workflow-plan.md`, `test -d workflows/quote-feed`, `cargo check -p nils-quote-cli`
 - Verify: Contract and skeleton exist, defaults are explicit, workspace resolves new members.
 
 ### Task 1.1: Write quote workflow contract and parameter spec
@@ -104,10 +104,10 @@ The design keeps local-first UX: results are served from local cache immediately
 - **Complexity**: 5
 - **Acceptance criteria**:
   - Workspace includes `crates/quote-cli`.
-  - `cargo run -p quote-cli -- --help` succeeds.
+  - `cargo run -p nils-quote-cli -- --help` succeeds.
 - **Validation**:
-  - `cargo check -p quote-cli`
-  - `cargo run -p quote-cli -- --help`
+  - `cargo check -p nils-quote-cli`
+  - `cargo run -p nils-quote-cli -- --help`
 
 ### Task 1.4: Define workflow env variables and defaults in manifest/plist
 - **Location**:
@@ -129,7 +129,7 @@ The design keeps local-first UX: results are served from local cache immediately
 ## Sprint 2: Quote domain logic and refresh pipeline
 **Goal**: Implement robust config/store/fetch logic that preserves local-first UX and bounded updates.
 **Demo/Validation**:
-- Command(s): `cargo test -p quote-cli`, `cargo run -p quote-cli -- feed --query "" | jq -e '.items | type == "array"'`
+- Command(s): `cargo test -p nils-quote-cli`, `cargo run -p nils-quote-cli -- feed --query "" | jq -e '.items | type == "array"'`
 - Verify: CLI returns valid Alfred JSON and refresh behavior obeys configured defaults and limits.
 
 ### Task 2.1: Implement config parsing and guardrails
@@ -146,9 +146,9 @@ The design keeps local-first UX: results are served from local cache immediately
   - Invalid values return actionable config errors or safe clamped values per contract.
   - Interval parser supports `s`, `m`, `h` suffixes.
 - **Validation**:
-  - `cargo test -p quote-cli`
-  - `cargo test -p quote-cli -- --list | rg "config_|duration_|defaults_"`
-  - `bash -c 'set +e; out="$(env QUOTE_REFRESH_INTERVAL=90x cargo run -p quote-cli -- feed --query "" 2>&1)"; code=$?; test $code -ne 0; printf "%s" "$out" | rg -qi "invalid|interval|refresh|error"'`
+  - `cargo test -p nils-quote-cli`
+  - `cargo test -p nils-quote-cli -- --list | rg "config_|duration_|defaults_"`
+  - `bash -c 'set +e; out="$(env QUOTE_REFRESH_INTERVAL=90x cargo run -p nils-quote-cli -- feed --query "" 2>&1)"; code=$?; test $code -ne 0; printf "%s" "$out" | rg -qi "invalid|interval|refresh|error"'`
 
 ### Task 2.2: Implement quote store and retention trim
 - **Location**:
@@ -163,9 +163,9 @@ The design keeps local-first UX: results are served from local cache immediately
   - Appending new quotes trims persisted data to configured max entries.
   - Timestamp updates are atomic enough to avoid partial writes.
 - **Validation**:
-  - `cargo test -p quote-cli`
-  - `cargo test -p quote-cli -- --list | rg "store_|trim_|dedupe_|timestamp_"`
-  - `cargo test -p quote-cli store::tests::retains_only_max_entries`
+  - `cargo test -p nils-quote-cli`
+  - `cargo test -p nils-quote-cli -- --list | rg "store_|trim_|dedupe_|timestamp_"`
+  - `cargo test -p nils-quote-cli store::tests::retains_only_max_entries`
 
 ### Task 2.3: Implement ZenQuotes fetch client with bounded latency
 - **Location**:
@@ -180,9 +180,9 @@ The design keeps local-first UX: results are served from local cache immediately
   - Invalid payloads are dropped safely and do not poison cache.
   - Timeout/network errors are typed and handled by caller.
 - **Validation**:
-  - `cargo test -p quote-cli`
-  - `cargo test -p quote-cli -- --list | rg "zenquotes_|http_|parse_"`
-  - `cargo clippy -p quote-cli --all-targets -- -D warnings`
+  - `cargo test -p nils-quote-cli`
+  - `cargo test -p nils-quote-cli -- --list | rg "zenquotes_|http_|parse_"`
+  - `cargo clippy -p nils-quote-cli --all-targets -- -D warnings`
 
 ### Task 2.4: Implement refresh policy (`stale` check + update flow)
 - **Location**:
@@ -198,9 +198,9 @@ The design keeps local-first UX: results are served from local cache immediately
   - Stale path fetches up to configured batch size and updates timestamp only on successful store update.
   - Failures keep previous cache intact.
 - **Validation**:
-  - `cargo test -p quote-cli`
-  - `cargo test -p quote-cli refresh::tests::skips_fetch_when_interval_not_elapsed`
-  - `cargo test -p quote-cli refresh::tests::fetches_and_updates_when_stale`
+  - `cargo test -p nils-quote-cli`
+  - `cargo test -p nils-quote-cli refresh::tests::skips_fetch_when_interval_not_elapsed`
+  - `cargo test -p nils-quote-cli refresh::tests::fetches_and_updates_when_stale`
 
 ### Task 2.5: Implement Alfred feedback mapping for display count
 - **Location**:
@@ -215,9 +215,9 @@ The design keeps local-first UX: results are served from local cache immediately
   - Item count obeys `QUOTE_DISPLAY_COUNT`.
   - `arg` contains the full quote text for copy action.
 - **Validation**:
-  - `cargo test -p quote-cli`
-  - `cargo run -p quote-cli -- feed --query "" | jq -e '.items | type == "array"'`
-  - `cargo test -p quote-cli feedback::tests::respects_display_count`
+  - `cargo test -p nils-quote-cli`
+  - `cargo run -p nils-quote-cli -- feed --query "" | jq -e '.items | type == "array"'`
+  - `cargo test -p nils-quote-cli feedback::tests::respects_display_count`
 
 ### Task 2.6: Finalize CLI command contract
 - **Location**:
@@ -231,9 +231,9 @@ The design keeps local-first UX: results are served from local cache immediately
   - Success path prints valid Alfred JSON only.
   - Hard failures return non-zero and actionable stderr message.
 - **Validation**:
-  - `cargo run -p quote-cli -- --help`
-  - `cargo run -p quote-cli -- feed --query "" | jq -e '.items | type == "array"'`
-  - `bash -c 'set +e; out="$(cargo run -p quote-cli -- feed 2>&1)"; code=$?; test $code -ne 0; printf "%s" "$out" | rg -qi "error|usage|query"'`
+  - `cargo run -p nils-quote-cli -- --help`
+  - `cargo run -p nils-quote-cli -- feed --query "" | jq -e '.items | type == "array"'`
+  - `bash -c 'set +e; out="$(cargo run -p nils-quote-cli -- feed 2>&1)"; code=$?; test $code -ne 0; printf "%s" "$out" | rg -qi "error|usage|query"'`
 
 ## Sprint 3: Alfred integration and packaging hardening
 **Goal**: Wire script adapters/plist to `quote-cli` and ensure deterministic smoke coverage.
@@ -343,8 +343,8 @@ The design keeps local-first UX: results are served from local cache immediately
   - Edge cases around `0`, negative-like strings, and oversized values are covered.
   - Refresh tests prove no cache corruption on fetch failure.
 - **Validation**:
-  - `cargo test -p quote-cli`
-  - `cargo test -p quote-cli -- --list | rg "config_|store_|refresh_"`
+  - `cargo test -p nils-quote-cli`
+  - `cargo test -p nils-quote-cli -- --list | rg "config_|store_|refresh_"`
 
 ### Task 4.2: Document workflow usage and parameter semantics
 - **Location**:

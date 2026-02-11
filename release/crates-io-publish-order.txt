@@ -1,0 +1,14 @@
+nils-alfred-core
+nils-alfred-plist
+nils-workflow-common
+nils-brave-cli
+nils-cambridge-cli
+nils-epoch-cli
+nils-market-cli
+nils-quote-cli
+nils-randomer-cli
+nils-spotify-cli
+nils-timezone-cli
+nils-wiki-cli
+nils-youtube-cli
+nils-workflow-cli

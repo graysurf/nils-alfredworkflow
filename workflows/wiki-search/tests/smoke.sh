@@ -291,7 +291,7 @@ run_layout_check debug debug-cli
 cat >"$tmp_dir/bin/cargo" <<EOS
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "\$#" -eq 4 && "\$1" == "build" && "\$2" == "--release" && "\$3" == "-p" && "\$4" == "wiki-cli" ]]; then
+if [[ "\$#" -eq 4 && "\$1" == "build" && "\$2" == "--release" && "\$3" == "-p" && "\$4" == "nils-wiki-cli" ]]; then
   mkdir -p "$repo_root/target/release"
   cat >"$repo_root/target/release/wiki-cli" <<'EOCLI'
 #!/usr/bin/env bash

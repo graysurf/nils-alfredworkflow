@@ -1,11 +1,20 @@
 [package]
-name = "timezone-cli"
+name = "nils-timezone-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "timezone_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "timezone-cli"
+path = "src/main.rs"
 
 [dependencies]
-alfred-core = { path = "../alfred-core" }
+alfred-core = { package = "nils-alfred-core", path = "../alfred-core", version = "1.0.3" }
 chrono.workspace = true
 clap.workspace = true
 thiserror.workspace = true

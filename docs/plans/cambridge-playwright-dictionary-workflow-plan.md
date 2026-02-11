@@ -42,7 +42,7 @@ Implementation follows existing repository architecture: domain logic in Rust, t
 ## Sprint 1: Contract and scaffolding
 **Goal**: Freeze behavior contract, mode parameter semantics, and repository skeleton for new workflow/crate.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/cambridge-playwright-dictionary-workflow-plan.md`, `test -d workflows/cambridge-dict`, `cargo check -p cambridge-cli`
+- Command(s): `plan-tooling validate --file docs/plans/cambridge-playwright-dictionary-workflow-plan.md`, `test -d workflows/cambridge-dict`, `cargo check -p nils-cambridge-cli`
 - Verify: Workflow skeleton exists, mode contract is explicit, and workspace resolves new crate.
 
 ### Task 1.1: Define Cambridge workflow behavior contract
@@ -112,10 +112,10 @@ Implementation follows existing repository architecture: domain logic in Rust, t
 - **Complexity**: 5
 - **Acceptance criteria**:
   - Workspace includes `crates/cambridge-cli`.
-  - `cargo run -p cambridge-cli -- --help` succeeds with placeholder command surface.
+  - `cargo run -p nils-cambridge-cli -- --help` succeeds with placeholder command surface.
 - **Validation**:
-  - `cargo check -p cambridge-cli`
-  - `cargo run -p cambridge-cli -- --help`
+  - `cargo check -p nils-cambridge-cli`
+  - `cargo run -p nils-cambridge-cli -- --help`
 
 ### Task 1.5: Add Node/Playwright dependency and bootstrap guidance
 - **Location**:
@@ -239,7 +239,7 @@ Implementation follows existing repository architecture: domain logic in Rust, t
 ## Sprint 3: Rust bridge and Alfred UX wiring
 **Goal**: Bridge scraper outputs to Alfred-friendly JSON and finalize two-stage interactive behavior.
 **Demo/Validation**:
-- Command(s): `cargo test -p cambridge-cli`, `bash workflows/cambridge-dict/scripts/script_filter.sh "open"`
+- Command(s): `cargo test -p nils-cambridge-cli`, `bash workflows/cambridge-dict/scripts/script_filter.sh "open"`
 - Verify: Script Filter returns valid Alfred JSON for search and detail stages.
 
 ### Task 3.1: Implement `cambridge-cli` config parsing and guardrails
@@ -255,8 +255,8 @@ Implementation follows existing repository architecture: domain logic in Rust, t
   - Invalid mode and invalid numeric values return actionable config errors.
   - Defaults match contract for all optional env variables.
 - **Validation**:
-  - `cargo test -p cambridge-cli`
-  - `cargo test -p cambridge-cli -- --list | rg "config_|mode_|token_"`
+  - `cargo test -p nils-cambridge-cli`
+  - `cargo test -p nils-cambridge-cli -- --list | rg "config_|mode_|token_"`
 
 ### Task 3.2: Implement Node scraper subprocess bridge
 - **Location**:
@@ -271,9 +271,9 @@ Implementation follows existing repository architecture: domain logic in Rust, t
   - Bridge handles missing `node`, non-zero exit, malformed JSON, and timeout paths.
   - Suggest/define subcommands are routed correctly based on query token grammar.
 - **Validation**:
-  - `cargo test -p cambridge-cli`
-  - `cargo test -p cambridge-cli -- --list | rg "bridge_|scraper_|timeout_"`
-  - `bash -c 'set +e; CAMBRIDGE_NODE_BIN=/nonexistent cargo run -p cambridge-cli -- query --input "open" >/dev/null 2>&1; test $? -ne 0'`
+  - `cargo test -p nils-cambridge-cli`
+  - `cargo test -p nils-cambridge-cli -- --list | rg "bridge_|scraper_|timeout_"`
+  - `bash -c 'set +e; CAMBRIDGE_NODE_BIN=/nonexistent cargo run -p nils-cambridge-cli -- query --input "open" >/dev/null 2>&1; test $? -ne 0'`
 
 ### Task 3.3: Implement Alfred feedback mapping for two-stage UX
 - **Location**:
@@ -287,8 +287,8 @@ Implementation follows existing repository architecture: domain logic in Rust, t
   - Suggest items include stable title/subtitle and detail transition token (`def::WORD`).
   - Detail rows remain readable and non-actionable when appropriate.
 - **Validation**:
-  - `cargo test -p cambridge-cli`
-  - `cargo test -p cambridge-cli -- --list | rg "feedback_|autocomplete_|detail_"`
+  - `cargo test -p nils-cambridge-cli`
+  - `cargo test -p nils-cambridge-cli -- --list | rg "feedback_|autocomplete_|detail_"`
 
 ### Task 3.4: Implement CLI command surface and stdout contract
 - **Location**:
@@ -301,8 +301,8 @@ Implementation follows existing repository architecture: domain logic in Rust, t
   - Success path emits Alfred JSON only.
   - Failure path uses non-zero exit and actionable single-line errors.
 - **Validation**:
-  - `cargo test -p cambridge-cli`
-  - `cargo run -p cambridge-cli -- query --input "open" | jq -e '.items | type == "array"'`
+  - `cargo test -p nils-cambridge-cli`
+  - `cargo run -p nils-cambridge-cli -- query --input "open" | jq -e '.items | type == "array"'`
 
 ### Task 3.5: Implement script filter and open-action adapters
 - **Location**:

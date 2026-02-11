@@ -1,11 +1,16 @@
 [package]
-name = "workflow-common"
+name = "nils-workflow-common"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "workflow_common"
+path = "src/lib.rs"
 
 [dependencies]
-alfred-core = { path = "../alfred-core" }
+alfred-core = { package = "nils-alfred-core", path = "../alfred-core", version = "1.0.3" }
 chrono.workspace = true
 thiserror.workspace = true
 walkdir.workspace = true

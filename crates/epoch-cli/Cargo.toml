@@ -1,11 +1,20 @@
 [package]
-name = "epoch-cli"
+name = "nils-epoch-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "epoch_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "epoch-cli"
+path = "src/main.rs"
 
 [dependencies]
-alfred-core = { path = "../alfred-core" }
+alfred-core = { package = "nils-alfred-core", path = "../alfred-core", version = "1.0.3" }
 chrono.workspace = true
 clap.workspace = true
 thiserror.workspace = true

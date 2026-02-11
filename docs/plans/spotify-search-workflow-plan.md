@@ -39,7 +39,7 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
 ## Sprint 1: Contract and scaffold
 **Goal**: Lock the MVP contract and scaffold workflow/crate surfaces with naming and env conventions aligned to existing workflows.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/spotify-search-workflow-plan.md`, `test -d workflows/spotify-search`, `cargo check -p spotify-cli`
+- Command(s): `plan-tooling validate --file docs/plans/spotify-search-workflow-plan.md`, `test -d workflows/spotify-search`, `cargo check -p nils-spotify-cli`
 - Verify: Skeleton and contract exist, and workspace can resolve the new crate.
 
 ### Task 1.1: Define Spotify workflow behavior contract
@@ -92,10 +92,10 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
 - **Complexity**: 5
 - **Acceptance criteria**:
   - Workspace includes `crates/spotify-cli` member.
-  - `cargo run -p spotify-cli -- --help` succeeds.
+  - `cargo run -p nils-spotify-cli -- --help` succeeds.
 - **Validation**:
-  - `cargo check -p spotify-cli`
-  - `cargo run -p spotify-cli -- --help`
+  - `cargo check -p nils-spotify-cli`
+  - `cargo run -p nils-spotify-cli -- --help`
 
 ### Task 1.4: Define env variable contract in manifest + plist UI
 - **Location**:
@@ -119,7 +119,7 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
 ## Sprint 2: Spotify API and CLI pipeline
 **Goal**: Implement a deterministic Rust pipeline for config + auth + search + Alfred feedback JSON.
 **Demo/Validation**:
-- Command(s): `cargo test -p spotify-cli`, `cargo run -p spotify-cli -- search --query "daft punk"`
+- Command(s): `cargo test -p nils-spotify-cli`, `cargo run -p nils-spotify-cli -- search --query "daft punk"`
 - Verify: CLI prints valid Alfred JSON on success and deterministic errors on failure.
 
 ### Task 2.1: Implement runtime config parsing and guardrails
@@ -135,9 +135,9 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Missing credentials fail before network call.
   - Invalid `SPOTIFY_MAX_RESULTS` and `SPOTIFY_MARKET` produce actionable config errors.
 - **Validation**:
-  - `cargo test -p spotify-cli`
-  - `cargo test -p spotify-cli -- --list | rg "config_"`
-  - `env -u SPOTIFY_CLIENT_ID -u SPOTIFY_CLIENT_SECRET cargo run -p spotify-cli -- search --query "test"`
+  - `cargo test -p nils-spotify-cli`
+  - `cargo test -p nils-spotify-cli -- --list | rg "config_"`
+  - `env -u SPOTIFY_CLIENT_ID -u SPOTIFY_CLIENT_SECRET cargo run -p nils-spotify-cli -- search --query "test"`
 
 ### Task 2.2: Implement Spotify token client (Client Credentials)
 - **Location**:
@@ -151,9 +151,9 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Auth client returns token payload on 2xx and structured errors otherwise.
   - Credential values are never logged to stdout/stderr.
 - **Validation**:
-  - `cargo test -p spotify-cli`
-  - `cargo test -p spotify-cli -- --list | rg "spotify_auth_"`
-  - `cargo clippy -p spotify-cli --all-targets -- -D warnings`
+  - `cargo test -p nils-spotify-cli`
+  - `cargo test -p nils-spotify-cli -- --list | rg "spotify_auth_"`
+  - `cargo clippy -p nils-spotify-cli --all-targets -- -D warnings`
 
 ### Task 2.3: Implement Spotify search API client (track search only)
 - **Location**:
@@ -167,9 +167,9 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Parser extracts canonical external URL and human-readable subtitle components.
   - Empty API response maps to empty result vector without process failure.
 - **Validation**:
-  - `cargo test -p spotify-cli`
-  - `cargo test -p spotify-cli -- --list | rg "spotify_api_"`
-  - `cargo clippy -p spotify-cli --all-targets -- -D warnings`
+  - `cargo test -p nils-spotify-cli`
+  - `cargo test -p nils-spotify-cli -- --list | rg "spotify_api_"`
+  - `cargo clippy -p nils-spotify-cli --all-targets -- -D warnings`
 
 ### Task 2.4: Implement Alfred feedback mapping for tracks
 - **Location**:
@@ -184,8 +184,8 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Overlong subtitles are truncated consistently and remain single-line.
   - Empty result set returns one non-actionable fallback item.
 - **Validation**:
-  - `cargo test -p spotify-cli`
-  - `cargo test -p spotify-cli -- --list | rg "feedback_|track_url_|subtitle_"`
+  - `cargo test -p nils-spotify-cli`
+  - `cargo test -p nils-spotify-cli -- --list | rg "feedback_|track_url_|subtitle_"`
 
 ### Task 2.5: Implement CLI command and output contract
 - **Location**:
@@ -200,10 +200,10 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Success emits valid Alfred JSON payload only.
   - Runtime errors are mapped to predictable message classes for shell adapter mapping.
 - **Validation**:
-  - `cargo test -p spotify-cli`
-  - `cargo test -p spotify-cli -- --list | rg "main_"`
-  - `cargo run -p spotify-cli -- search --query "chill" | jq -e '.items | type == "array"'`
-  - `bash -c 'set +e; env -u SPOTIFY_CLIENT_ID -u SPOTIFY_CLIENT_SECRET cargo run -p spotify-cli -- search --query "chill" >/dev/null 2>&1; test $? -ne 0'`
+  - `cargo test -p nils-spotify-cli`
+  - `cargo test -p nils-spotify-cli -- --list | rg "main_"`
+  - `cargo run -p nils-spotify-cli -- search --query "chill" | jq -e '.items | type == "array"'`
+  - `bash -c 'set +e; env -u SPOTIFY_CLIENT_ID -u SPOTIFY_CLIENT_SECRET cargo run -p nils-spotify-cli -- search --query "chill" >/dev/null 2>&1; test $? -ne 0'`
 
 ### Task 2.6: Add focused unit tests for error classification
 - **Location**:
@@ -218,8 +218,8 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Missing credentials map to user error class.
   - HTTP 429 and 5xx scenarios map to runtime class with deterministic wording.
 - **Validation**:
-  - `cargo test -p spotify-cli`
-  - `cargo test -p spotify-cli -- --list | rg "error|runtime|config"`
+  - `cargo test -p nils-spotify-cli`
+  - `cargo test -p nils-spotify-cli -- --list | rg "error|runtime|config"`
 
 ## Sprint 3: Alfred wiring and smoke test hardening
 **Goal**: Wire Alfred runtime scripts/plist and ship deterministic smoke coverage for MVP behavior.

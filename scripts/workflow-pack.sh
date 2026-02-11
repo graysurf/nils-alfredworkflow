@@ -73,7 +73,7 @@ package_one() {
     return 1
   }
 
-  local name bundle_id version rust_binary
+  local name bundle_id version rust_binary rust_package
   name="$(toml_string "$manifest" name)"
   bundle_id="$(toml_string "$manifest" bundle_id)"
   version="$(toml_string "$manifest" version)"
@@ -93,7 +93,11 @@ package_one() {
   }
 
   if [[ -n "$rust_binary" ]]; then
-    cargo build --release -p "$rust_binary"
+    rust_package="$rust_binary"
+    if [[ "$rust_package" != nils-* ]]; then
+      rust_package="nils-$rust_package"
+    fi
+    cargo build --release -p "$rust_package"
   fi
 
   local stage_dir="$repo_root/build/workflows/$id/pkg"

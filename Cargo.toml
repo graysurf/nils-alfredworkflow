@@ -22,6 +22,7 @@ resolver = "2"
 # Keep new crates aligned with the workspace Rust edition.
 edition = "2024"
 license = "CC0-1.0"
+repository = "https://github.com/graysurf/nils-alfredworkflow"
 version = "1.0.3"
 
 [workspace.dependencies]

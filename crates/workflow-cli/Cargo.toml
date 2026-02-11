@@ -1,12 +1,17 @@
 [package]
-name = "workflow-cli"
+name = "nils-workflow-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "workflow-cli"
+path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
-workflow-common = { path = "../workflow-common" }
+workflow-common = { package = "nils-workflow-common", path = "../workflow-common", version = "1.0.3" }
 
 [dev-dependencies]
 serde_json.workspace = true

@@ -1,11 +1,20 @@
 [package]
-name = "market-cli"
+name = "nils-market-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "market_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "market-cli"
+path = "src/main.rs"
 
 [dependencies]
-alfred-core = { path = "../alfred-core" }
+alfred-core = { package = "nils-alfred-core", path = "../alfred-core", version = "1.0.3" }
 chrono.workspace = true
 clap.workspace = true
 reqwest.workspace = true

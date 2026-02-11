@@ -39,7 +39,7 @@ The data source is Brave Search API using credentials provided through workflow 
 ## Sprint 1: Contract and scaffold
 **Goal**: Define runtime contract and scaffold workflow/crate surfaces to minimize downstream rework.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/google-search-workflow-plan.md`, `test -d workflows/google-search`, `cargo check -p brave-cli`
+- Command(s): `plan-tooling validate --file docs/plans/google-search-workflow-plan.md`, `test -d workflows/google-search`, `cargo check -p nils-brave-cli`
 - Verify: Workflow skeleton exists, env contract is explicit, and workspace remains buildable.
 
 ### Task 1.1: Define Google workflow behavior contract (Brave backend)
@@ -90,10 +90,10 @@ The data source is Brave Search API using credentials provided through workflow 
 - **Complexity**: 5
 - **Acceptance criteria**:
   - Workspace includes `crates/brave-cli` member.
-  - `cargo run -p brave-cli -- --help` succeeds with placeholder command surface.
+  - `cargo run -p nils-brave-cli -- --help` succeeds with placeholder command surface.
 - **Validation**:
-  - `cargo check -p brave-cli`
-  - `cargo run -p brave-cli -- --help`
+  - `cargo check -p nils-brave-cli`
+  - `cargo run -p nils-brave-cli -- --help`
 
 ### Task 1.4: Define workflow runtime env variables
 - **Location**:
@@ -113,7 +113,7 @@ The data source is Brave Search API using credentials provided through workflow 
 ## Sprint 2: API and JSON pipeline
 **Goal**: Implement API client and CLI pipeline that returns Alfred JSON from query input.
 **Demo/Validation**:
-- Command(s): `cargo test -p brave-cli`, `cargo run -p brave-cli -- search --query "rust language"`
+- Command(s): `cargo test -p nils-brave-cli`, `cargo run -p nils-brave-cli -- search --query "rust language"`
 - Verify: CLI emits valid Alfred JSON on success and deterministic fallback items on failures.
 
 ### Task 2.1: Implement config parsing and guardrails
@@ -129,9 +129,9 @@ The data source is Brave Search API using credentials provided through workflow 
   - Missing credentials are detected before network call.
   - Invalid numeric/safe-search config returns actionable errors.
 - **Validation**:
-  - `cargo test -p brave-cli`
-  - `cargo test -p brave-cli -- --list | rg "config_"`
-  - `env -u BRAVE_API_KEY cargo run -p brave-cli -- search --query "test"`
+  - `cargo test -p nils-brave-cli`
+  - `cargo test -p nils-brave-cli -- --list | rg "config_"`
+  - `env -u BRAVE_API_KEY cargo run -p nils-brave-cli -- search --query "test"`
 
 ### Task 2.2: Implement Brave Web Search API client
 - **Location**:
@@ -146,9 +146,9 @@ The data source is Brave Search API using credentials provided through workflow 
   - Response parser extracts `title`, `url`, and `description` safely.
   - HTTP/API errors are mapped to typed internal errors.
 - **Validation**:
-  - `cargo test -p brave-cli`
-  - `cargo test -p brave-cli -- --list | rg "brave_api_"`
-  - `cargo clippy -p brave-cli --all-targets -- -D warnings`
+  - `cargo test -p nils-brave-cli`
+  - `cargo test -p nils-brave-cli -- --list | rg "brave_api_"`
+  - `cargo clippy -p nils-brave-cli --all-targets -- -D warnings`
 
 ### Task 2.3: Implement Alfred feedback mapping
 - **Location**:
@@ -162,10 +162,10 @@ The data source is Brave Search API using credentials provided through workflow 
   - Subtitle normalization and truncation are deterministic.
   - Result items always contain valid `arg` URLs for open action.
 - **Validation**:
-  - `cargo test -p brave-cli`
-  - `cargo test -p brave-cli -- --list | rg "feedback_|snippet_"`
-  - `cargo test -p brave-cli feedback::tests::maps_search_result_to_alfred_item`
-  - `cargo test -p brave-cli feedback::tests::truncates_long_snippet_deterministically`
+  - `cargo test -p nils-brave-cli`
+  - `cargo test -p nils-brave-cli -- --list | rg "feedback_|snippet_"`
+  - `cargo test -p nils-brave-cli feedback::tests::maps_search_result_to_alfred_item`
+  - `cargo test -p nils-brave-cli feedback::tests::truncates_long_snippet_deterministically`
 
 ### Task 2.4: Implement CLI command and stdout contract
 - **Location**:
@@ -179,10 +179,10 @@ The data source is Brave Search API using credentials provided through workflow 
   - Success path prints JSON payload only.
   - Invalid input/runtime failures return non-zero with concise error messages.
 - **Validation**:
-  - `cargo test -p brave-cli`
-  - `cargo test -p brave-cli -- --list | rg "main_"`
-  - `cargo run -p brave-cli -- search --query "rust" | jq -e '.items | type == "array"'`
-  - `bash -c 'set +e; env -u BRAVE_API_KEY cargo run -p brave-cli -- search --query "rust" >/dev/null 2>&1; test $? -ne 0'`
+  - `cargo test -p nils-brave-cli`
+  - `cargo test -p nils-brave-cli -- --list | rg "main_"`
+  - `cargo run -p nils-brave-cli -- search --query "rust" | jq -e '.items | type == "array"'`
+  - `bash -c 'set +e; env -u BRAVE_API_KEY cargo run -p nils-brave-cli -- search --query "rust" >/dev/null 2>&1; test $? -ne 0'`
 
 ### Task 2.5: Add failure-mode rendering for Alfred UX
 - **Location**:
@@ -196,8 +196,8 @@ The data source is Brave Search API using credentials provided through workflow 
   - Script filter never emits malformed JSON.
   - Error subtitles provide direct recovery guidance.
 - **Validation**:
-  - `cargo test -p brave-cli`
-  - `cargo test -p brave-cli -- --list | rg "error_feedback_"`
+  - `cargo test -p nils-brave-cli`
+  - `cargo test -p nils-brave-cli -- --list | rg "error_feedback_"`
   - `bash workflows/google-search/scripts/script_filter.sh "test" | jq -e '.items | length >= 1'`
 
 ## Sprint 3: Alfred wiring and package integration
@@ -321,8 +321,8 @@ The data source is Brave Search API using credentials provided through workflow 
   - Config and request behavior are covered without live network calls.
   - Tests assert required credentials and API parameter bounds.
 - **Validation**:
-  - `cargo test -p brave-cli`
-  - `cargo test -p brave-cli -- --list | rg "config_|brave_api_"`
+  - `cargo test -p nils-brave-cli`
+  - `cargo test -p nils-brave-cli -- --list | rg "config_|brave_api_"`
 
 ### Task 4.2: Add feedback and CLI contract Rust tests
 - **Location**:
@@ -336,8 +336,8 @@ The data source is Brave Search API using credentials provided through workflow 
   - Feedback and CLI contract are covered without live API calls.
   - Tests explicitly verify JSON-on-stdout and non-zero failure paths.
 - **Validation**:
-  - `cargo test -p brave-cli`
-  - `cargo test -p brave-cli -- --list | rg "feedback_|main_|snippet_|error_feedback_"`
+  - `cargo test -p nils-brave-cli`
+  - `cargo test -p nils-brave-cli -- --list | rg "feedback_|main_|snippet_|error_feedback_"`
 
 ### Task 4.3: Document workflow usage and operator setup
 - **Location**:

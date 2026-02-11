@@ -1,0 +1,64 @@
+name: Publish Crates
+
+on:
+  workflow_dispatch:
+    inputs:
+      crates:
+        description: "Space/comma separated crate list (publish order)"
+        required: true
+        default: "nils-alfred-core nils-workflow-common"
+        type: string
+      mode:
+        description: "Run dry-run only or perform real publish"
+        required: true
+        default: "dry-run"
+        type: choice
+        options:
+          - dry-run
+          - publish
+      registry:
+        description: "Optional cargo registry name (blank = crates.io)"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Publish selected crates
+        env:
+          PUBLISH_MODE: ${{ inputs.mode }}
+          PUBLISH_CRATES: ${{ inputs.crates }}
+          PUBLISH_REGISTRY: ${{ inputs.registry }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          args=(--crates "$PUBLISH_CRATES")
+          if [[ "$PUBLISH_MODE" == "publish" ]]; then
+            if [[ -z "${CARGO_REGISTRY_TOKEN:-}" ]]; then
+              echo "error: CARGO_REGISTRY_TOKEN secret is required when mode=publish" >&2
+              exit 1
+            fi
+            args+=(--publish)
+          else
+            args+=(--dry-run)
+          fi
+
+          if [[ -n "$PUBLISH_REGISTRY" ]]; then
+            args+=(--registry "$PUBLISH_REGISTRY")
+          fi
+
+          scripts/publish-crates.sh "${args[@]}"

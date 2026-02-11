@@ -54,6 +54,20 @@ Alfred workflows for macOS users.
   - `cache_fresh`
   - `cache_stale_fallback`
 
+## Publish Rust crates
+
+- Public crates use the `nils-*` package prefix.
+- Use `release/crates-io-publish-order.txt` as the default publish order.
+- Dry-run all publishable crates:
+  - `scripts/publish-crates.sh --dry-run`
+- Publish all crates in order:
+  - `CARGO_REGISTRY_TOKEN=... scripts/publish-crates.sh --publish`
+- Publish selected crates only:
+  - `scripts/publish-crates.sh --publish --crates "nils-alfred-core nils-workflow-common"`
+- GitHub Actions manual publish entrypoint:
+  - `.github/workflows/publish-crates.yml`
+  - set repository secret `CARGO_REGISTRY_TOKEN` before `mode=publish`
+
 ## Troubleshooting
 
 - If a workflow opens but does not run correctly, check [TROUBLESHOOTING.md](TROUBLESHOOTING.md).

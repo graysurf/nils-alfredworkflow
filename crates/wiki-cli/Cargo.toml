@@ -1,11 +1,20 @@
 [package]
-name = "wiki-cli"
+name = "nils-wiki-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "wiki_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wiki-cli"
+path = "src/main.rs"
 
 [dependencies]
-alfred-core = { path = "../alfred-core" }
+alfred-core = { package = "nils-alfred-core", path = "../alfred-core", version = "1.0.3" }
 clap.workspace = true
 reqwest.workspace = true
 serde.workspace = true

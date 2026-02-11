@@ -40,7 +40,7 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
 ## Sprint 1: Contract, scaffold, and interface freeze
 **Goal**: Lock behavior and scaffold workflow/crate structure with explicit input and ordering contracts.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/multi-timezone-workflow-plan.md`, `test -d workflows/multi-timezone`, `cargo check -p timezone-cli`
+- Command(s): `plan-tooling validate --file docs/plans/multi-timezone-workflow-plan.md`, `test -d workflows/multi-timezone`, `cargo check -p nils-timezone-cli`
 - Verify: Repo contains scaffolded workflow and crate paths with agreed behavior contract documented.
 
 ### Task 1.1: Capture product contract and input precedence
@@ -97,8 +97,8 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - CLI help and command parsing run successfully.
   - Required dependencies for timezone operations are declared.
 - **Validation**:
-  - `cargo check -p timezone-cli`
-  - `cargo run -p timezone-cli -- --help`
+  - `cargo check -p nils-timezone-cli`
+  - `cargo run -p nils-timezone-cli -- --help`
 
 ### Task 1.4: Freeze output schema and copy payload format
 - **Location**:
@@ -121,7 +121,7 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
 ## Sprint 2: Timezone engine and local detection fallback chain
 **Goal**: Implement robust timezone parsing/detection logic and deterministic row rendering for current time.
 **Demo/Validation**:
-- Command(s): `cargo test -p timezone-cli`, `cargo run -p timezone-cli -- now --query "" --config-zones "" | jq -e '.items | type == "array"'`
+- Command(s): `cargo test -p nils-timezone-cli`, `cargo run -p nils-timezone-cli -- now --query "" --config-zones "" | jq -e '.items | type == "array"'`
 - Verify: CLI returns valid Alfred JSON and follows ordering plus fallback rules.
 
 ### Task 2.1: Implement timezone-list parser with stable order
@@ -138,8 +138,8 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - Parser preserves original token order after trimming.
   - Parser surfaces token-level errors for invalid timezone IDs.
 - **Validation**:
-  - `cargo test -p timezone-cli -- --list | rg "parser_|timezone_list_|order_"`
-  - `cargo test -p timezone-cli parser`
+  - `cargo test -p nils-timezone-cli -- --list | rg "parser_|timezone_list_|order_"`
+  - `cargo test -p nils-timezone-cli parser`
 
 ### Task 2.2: Implement local-timezone detection with multi-step fallback
 - **Location**:
@@ -155,9 +155,9 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - Failed probes do not crash CLI and continue to next fallback.
   - Final fallback returns `UTC` with explicit diagnostic context in logs or debug messages.
 - **Validation**:
-  - `cargo test -p timezone-cli local_tz_fallback_chain_order`
-  - `cargo test -p timezone-cli local_tz_terminal_utc_when_all_probes_fail`
-  - `MULTI_TZ_LOCAL_OVERRIDE="Asia/Taipei" cargo run -p timezone-cli -- now --query "" --config-zones "" | jq -e '.items[0].uid == "Asia/Taipei"'`
+  - `cargo test -p nils-timezone-cli local_tz_fallback_chain_order`
+  - `cargo test -p nils-timezone-cli local_tz_terminal_utc_when_all_probes_fail`
+  - `MULTI_TZ_LOCAL_OVERRIDE="Asia/Taipei" cargo run -p nils-timezone-cli -- now --query "" --config-zones "" | jq -e '.items[0].uid == "Asia/Taipei"'`
 
 ### Task 2.3: Implement current-time rendering for requested timezone list
 - **Location**:
@@ -174,10 +174,10 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - Query input overrides configured timezone list when query is non-empty.
   - Subtitle includes timezone ID and UTC offset for readability.
 - **Validation**:
-  - `cargo test -p timezone-cli -- --list | rg "render_now_|order_preserved_|local_default_"`
-  - `cargo test -p timezone-cli render`
-  - `cargo run -p timezone-cli -- now --query "" --config-zones $'Asia/Taipei\nAmerica/New_York,Europe/London' | jq -e '[.items[].uid] == ["Asia/Taipei","America/New_York","Europe/London"]'`
-  - `cargo run -p timezone-cli -- now --query "Europe/London,Asia/Tokyo" --config-zones "Asia/Taipei,America/New_York" | jq -e '[.items[].uid] == ["Europe/London","Asia/Tokyo"]'`
+  - `cargo test -p nils-timezone-cli -- --list | rg "render_now_|order_preserved_|local_default_"`
+  - `cargo test -p nils-timezone-cli render`
+  - `cargo run -p nils-timezone-cli -- now --query "" --config-zones $'Asia/Taipei\nAmerica/New_York,Europe/London' | jq -e '[.items[].uid] == ["Asia/Taipei","America/New_York","Europe/London"]'`
+  - `cargo run -p nils-timezone-cli -- now --query "Europe/London,Asia/Tokyo" --config-zones "Asia/Taipei,America/New_York" | jq -e '[.items[].uid] == ["Europe/London","Asia/Tokyo"]'`
 
 ### Task 2.4: Implement CLI command surface and error contract
 - **Location**:
@@ -192,9 +192,9 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - User input errors and runtime errors map to distinct non-zero exit codes.
   - Empty query plus empty config still succeeds via local fallback.
 - **Validation**:
-  - `cargo test -p timezone-cli -- --list | rg "main_|error_kind|exit_code"`
-  - `cargo test -p timezone-cli`
-  - `cargo run -p timezone-cli -- now --query "" --config-zones "" | jq -e '.items | length == 1'`
+  - `cargo test -p nils-timezone-cli -- --list | rg "main_|error_kind|exit_code"`
+  - `cargo test -p nils-timezone-cli`
+  - `cargo run -p nils-timezone-cli -- now --query "" --config-zones "" | jq -e '.items | length == 1'`
 
 ### Task 2.5: Add regression tests for ordering, invalid IDs, and fallback transitions
 - **Location**:
@@ -210,9 +210,9 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - Tests cover at least one failure path per fallback stage.
   - Tests verify `UTC` terminal fallback when all probes fail.
 - **Validation**:
-  - `cargo test -p timezone-cli order_preserved_for_config_list`
-  - `cargo test -p timezone-cli query_overrides_config_list`
-  - `cargo test -p timezone-cli local_tz_terminal_utc_when_all_probes_fail`
+  - `cargo test -p nils-timezone-cli order_preserved_for_config_list`
+  - `cargo test -p nils-timezone-cli query_overrides_config_list`
+  - `cargo test -p nils-timezone-cli local_tz_terminal_utc_when_all_probes_fail`
 
 ## Sprint 3: Alfred runtime adapter and smoke coverage
 **Goal**: Wire the new CLI into Alfred scripts/plist and provide deterministic smoke tests.
@@ -379,4 +379,4 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
 1. Disable `multi-timezone` workflow in Alfred and remove custom env field values.
 2. Reinstall previous stable artifact from the previous version directory under `dist/multi-timezone/`.
 3. Revert `multi-timezone` workflow and `timezone-cli` crate changes in git if regression is code-level.
-4. Re-run `scripts/workflow-test.sh --id multi-timezone` and `cargo test -p timezone-cli` on the rollback revision before republishing.
+4. Re-run `scripts/workflow-test.sh --id multi-timezone` and `cargo test -p nils-timezone-cli` on the rollback revision before republishing.

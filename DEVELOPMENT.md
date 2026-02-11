@@ -23,7 +23,7 @@
 ## Build and run
 
 - Build workspace: `cargo build`
-- Run shared workflow CLI: `cargo run -p workflow-cli -- --help`
+- Run shared workflow CLI: `cargo run -p nils-workflow-cli -- --help`
 - List workflows: `cargo run -p xtask -- workflow list`
 
 ## Formatting and linting
@@ -82,6 +82,15 @@
   - `scripts/workflow-pack.sh --id open-project --install`
 - Pack all workflows:
   - `scripts/workflow-pack.sh --all`
+
+## Rust crate publishing (crates.io)
+
+- Dry-run publish checks:
+  - `scripts/publish-crates.sh --dry-run`
+- Publish all crates in dependency order:
+  - `CARGO_REGISTRY_TOKEN=... scripts/publish-crates.sh --publish`
+- Publish a subset:
+  - `scripts/publish-crates.sh --publish --crates "nils-alfred-core nils-workflow-common"`
 
 ## macOS acceptance (Gatekeeper / quarantine)
 

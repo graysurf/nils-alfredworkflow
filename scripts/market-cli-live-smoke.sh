@@ -169,8 +169,8 @@ run_check() {
   results+=("FAIL ${label}: command failed (exit=${rc}; ${note})")
 }
 
-run_check "fx" "fx" cargo run -p market-cli -- fx --base USD --quote JPY --amount 100
-run_check "crypto" "crypto" cargo run -p market-cli -- crypto --base BTC --quote USD --amount 0.5
+run_check "fx" "fx" cargo run -p nils-market-cli -- fx --base USD --quote JPY --amount 100
+run_check "crypto" "crypto" cargo run -p nils-market-cli -- crypto --base BTC --quote USD --amount 0.5
 
 for line in "${results[@]}"; do
   echo "$line"

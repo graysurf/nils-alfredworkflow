@@ -30,7 +30,7 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
 ## Sprint 1: Define parity contract and data model
 **Goal**: Convert reference workflow behavior into explicit, testable requirements and extend core Alfred/Rust models to support those requirements.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/port-open-project-workflow-plan.md`, `cargo test -p alfred-core`
+- Command(s): `plan-tooling validate --file docs/plans/port-open-project-workflow-plan.md`, `cargo test -p nils-alfred-core`
 - Verify: Parity contract doc is complete; `alfred-core` supports fields needed by ported script-filter payload.
 
 ### Task 1.1: Write parity contract from reference workflow
@@ -58,8 +58,8 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - `Item` and related structs serialize parity-required fields only when present.
   - Existing uses of `Feedback::new` and `Item::new` continue to compile without call-site breakage.
 - **Validation**:
-  - `cargo test -p alfred-core`
-  - `cargo clippy -p alfred-core --all-targets -- -D warnings`
+  - `cargo test -p nils-alfred-core`
+  - `cargo clippy -p nils-alfred-core --all-targets -- -D warnings`
 
 ### Task 1.3: Define workflow-common module boundaries
 - **Location**:
@@ -72,13 +72,13 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - Public API surface in `workflow-common` is organized around reusable functions instead of one placeholder builder.
   - Module boundaries are documented via top-level rustdoc comments.
 - **Validation**:
-  - `cargo check -p workflow-common`
-  - `cargo test -p workflow-common`
+  - `cargo check -p nils-workflow-common`
+  - `cargo test -p nils-workflow-common`
 
 ## Sprint 2: Implement Rust core parity logic
 **Goal**: Implement feature parity in Rust for scanning/filtering/sorting plus usage and GitHub URL logic.
 **Demo/Validation**:
-- Command(s): `cargo test -p workflow-common`, `cargo run -p workflow-cli -- --query ""`
+- Command(s): `cargo test -p nils-workflow-common`, `cargo run -p nils-workflow-cli -- --query ""`
 - Verify: CLI outputs deterministic Alfred JSON with parity fields and ordering.
 
 ### Task 2.1: Implement project scan and filter pipeline
@@ -93,8 +93,8 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - Filtering behavior matches contract for empty and non-empty queries.
   - No-project case returns a non-valid Alfred item instead of process failure.
 - **Validation**:
-  - `cargo test -p workflow-common project_scan`
-  - `cargo test -p workflow-common query_filter`
+  - `cargo test -p nils-workflow-common project_scan`
+  - `cargo test -p nils-workflow-common query_filter`
 
 ### Task 2.2: Implement usage log + git metadata + sort assembly
 - **Location**:
@@ -108,9 +108,9 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - Subtitle format matches contract for both available and missing commit/usage values.
   - Duplicate usage entries are resolved according to contract precedence.
 - **Validation**:
-  - `cargo test -p workflow-common usage_log`
-  - `cargo test -p workflow-common subtitle_format`
-  - `cargo test -p workflow-common sort_order`
+  - `cargo test -p nils-workflow-common usage_log`
+  - `cargo test -p nils-workflow-common subtitle_format`
+  - `cargo test -p nils-workflow-common sort_order`
 
 ### Task 2.3: Implement GitHub remote normalization helper
 - **Location**:
@@ -123,8 +123,8 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - Supported remote formats produce canonical URLs like `https://github.com/owner/repo`.
   - Unsupported remotes and missing `origin` return explicit errors for shell adapters.
 - **Validation**:
-  - `cargo test -p workflow-common github_remote`
-  - `cargo clippy -p workflow-common --all-targets -- -D warnings`
+  - `cargo test -p nils-workflow-common github_remote`
+  - `cargo clippy -p nils-workflow-common --all-targets -- -D warnings`
 
 ### Task 2.4: Expand workflow-cli subcommands for Alfred actions
 - **Location**:
@@ -138,9 +138,9 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - CLI returns JSON only for script-filter command and plain path/URL output for action-oriented commands.
   - Exit codes cleanly separate success, user error, and runtime error.
 - **Validation**:
-  - `cargo test -p workflow-cli`
-  - `cargo run -p workflow-cli -- script-filter --query ""`
-  - `cargo run -p workflow-cli -- record-usage --path "$PWD"`
+  - `cargo test -p nils-workflow-cli`
+  - `cargo run -p nils-workflow-cli -- script-filter --query ""`
+  - `cargo run -p nils-workflow-cli -- record-usage --path "$PWD"`
 
 ## Sprint 3: Wire Alfred workflow assets and packaging
 **Goal**: Replace skeleton glue/template with working Alfred workflow wiring that uses new Rust core behaviors.
@@ -214,8 +214,8 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - Each parity-sensitive rule from `docs/open-project-port-parity.md` has at least one direct unit test.
   - Failing cases include helpful assertion messages for fast diagnosis.
 - **Validation**:
-  - `cargo test -p workflow-common`
-  - `cargo test -p workflow-cli`
+  - `cargo test -p nils-workflow-common`
+  - `cargo test -p nils-workflow-cli`
 
 ### Task 4.2: Upgrade workflow smoke test to assert runtime contract
 - **Location**:

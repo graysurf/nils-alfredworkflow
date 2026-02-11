@@ -288,8 +288,8 @@ Runtime checks:
 
 Run these before packaging/release:
 
-- `cargo test -p workflow-common`
-- `cargo test -p workflow-cli`
+- `cargo test -p nils-workflow-common`
+- `cargo test -p nils-workflow-cli`
 - `bash workflows/open-project/tests/smoke.sh`
 - `scripts/workflow-test.sh --id open-project`
 - `scripts/workflow-pack.sh --id open-project`

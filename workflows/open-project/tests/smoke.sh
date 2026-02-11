@@ -59,7 +59,7 @@ PY
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
-cargo build -p workflow-cli >/dev/null
+cargo build -p nils-workflow-cli >/dev/null
 
 project_root="$tmp_dir/projects"
 repo_path="$project_root/alpha-repo"

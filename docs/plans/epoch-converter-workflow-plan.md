@@ -42,7 +42,7 @@ Implementation emphasizes deterministic local execution without external API dep
 ## Sprint 1: Contract capture and scaffold
 **Goal**: Freeze behavior parity against the installed workflow and create skeleton files aligned to this repository.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/epoch-converter-workflow-plan.md`, `test -d workflows/epoch-converter`, `cargo check -p epoch-cli`
+- Command(s): `plan-tooling validate --file docs/plans/epoch-converter-workflow-plan.md`, `test -d workflows/epoch-converter`, `cargo check -p nils-epoch-cli`
 - Verify: Contract and scaffold are committed, and workspace resolves new crate/workflow paths.
 
 ### Task 1.1: Document source workflow behavior and delta requirements
@@ -98,8 +98,8 @@ Implementation emphasizes deterministic local execution without external API dep
   - Workspace members include `crates/epoch-cli`.
   - CLI help command is available and exits successfully.
 - **Validation**:
-  - `cargo check -p epoch-cli`
-  - `cargo run -p epoch-cli -- --help`
+  - `cargo check -p nils-epoch-cli`
+  - `cargo run -p nils-epoch-cli -- --help`
 
 ### Task 1.4: Define output schema and formatted-row contract
 - **Location**:
@@ -120,7 +120,7 @@ Implementation emphasizes deterministic local execution without external API dep
 ## Sprint 2: Conversion engine and CLI behavior
 **Goal**: Build deterministic Rust conversion logic covering all supported input modes and output rows.
 **Demo/Validation**:
-- Command(s): `cargo test -p epoch-cli`, `cargo run -p epoch-cli -- convert --query "1700000000" | jq -e '.items | type == "array"'`
+- Command(s): `cargo test -p nils-epoch-cli`, `cargo run -p nils-epoch-cli -- convert --query "1700000000" | jq -e '.items | type == "array"'`
 - Verify: CLI emits valid Alfred JSON and includes required conversion rows.
 
 ### Task 2.1: Implement input parser and precision inference
@@ -137,8 +137,8 @@ Implementation emphasizes deterministic local execution without external API dep
   - Datetime parser supports both space and `T` separators.
   - Invalid input returns structured user-facing parse errors without panic.
 - **Validation**:
-  - `cargo test -p epoch-cli -- --list | rg "parser_|precision_|datetime_"`
-  - `cargo test -p epoch-cli parser`
+  - `cargo test -p nils-epoch-cli -- --list | rg "parser_|precision_|datetime_"`
+  - `cargo test -p nils-epoch-cli parser`
 
 ### Task 2.2: Implement epoch-to-datetime conversion outputs
 - **Location**:
@@ -153,9 +153,9 @@ Implementation emphasizes deterministic local execution without external API dep
   - Additional formatted row is always present for valid epoch input and follows exact format.
   - Subsecond suffix is preserved when input carries subsecond precision.
 - **Validation**:
-  - `cargo test -p epoch-cli -- --list | rg "epoch_to_datetime|formatted_row|subsecond"`
-  - `cargo test -p epoch-cli epoch_to_datetime`
-  - `cargo run -p epoch-cli -- convert --query "1700000000123" | jq -e '.items[] | select(.subtitle | contains("Formatted"))'`
+  - `cargo test -p nils-epoch-cli -- --list | rg "epoch_to_datetime|formatted_row|subsecond"`
+  - `cargo test -p nils-epoch-cli epoch_to_datetime`
+  - `cargo run -p nils-epoch-cli -- convert --query "1700000000123" | jq -e '.items[] | select(.subtitle | contains("Formatted"))'`
 
 ### Task 2.3: Implement datetime-to-epoch conversion outputs
 - **Location**:
@@ -170,9 +170,9 @@ Implementation emphasizes deterministic local execution without external API dep
   - Time-only input resolves against current local date deterministically.
   - Conversion logic handles leap-second-unsafe inputs by returning parse errors instead of silent corruption.
 - **Validation**:
-  - `cargo test -p epoch-cli -- --list | rg "datetime_to_epoch|timezone_|precision_rows"`
-  - `cargo test -p epoch-cli datetime_to_epoch`
-  - `cargo run -p epoch-cli -- convert --query "2025-01-02 03:04:05" | jq -e '.items | length >= 8'`
+  - `cargo test -p nils-epoch-cli -- --list | rg "datetime_to_epoch|timezone_|precision_rows"`
+  - `cargo test -p nils-epoch-cli datetime_to_epoch`
+  - `cargo run -p nils-epoch-cli -- convert --query "2025-01-02 03:04:05" | jq -e '.items | length >= 8'`
 
 ### Task 2.4: Implement clipboard and current timestamp item generation
 - **Location**:
@@ -188,8 +188,8 @@ Implementation emphasizes deterministic local execution without external API dep
   - Clipboard conversion rows are prefixed and distinguishable from query-based rows.
   - Clipboard read failures degrade gracefully.
 - **Validation**:
-  - `cargo test -p epoch-cli -- --list | rg "clipboard_|current_timestamp_|empty_query"`
-  - `cargo test -p epoch-cli empty_query`
+  - `cargo test -p nils-epoch-cli -- --list | rg "clipboard_|current_timestamp_|empty_query"`
+  - `cargo test -p nils-epoch-cli empty_query`
 
 ### Task 2.5: Implement CLI command surface and exit-code contract
 - **Location**:
@@ -206,11 +206,11 @@ Implementation emphasizes deterministic local execution without external API dep
   - User input errors and runtime errors are distinguishable for shell adapter mapping.
   - CLI remains deterministic for smoke test stubbing.
 - **Validation**:
-  - `cargo test -p epoch-cli -- --list | rg "main_|error_kind|exit_code"`
-  - `cargo test -p epoch-cli`
-  - `cargo run -p epoch-cli -- convert --query "1700000000" | jq -e '.items | type == "array"'`
-  - `bash -c 'tmp=\"$(mktemp -d)\"; cargo run -p epoch-cli -- convert --query "1700000000" >"$tmp/out.json" 2>"$tmp/err.log"; rc=$?; test $rc -eq 0; test ! -s "$tmp/err.log"; jq -e ".items | type == \"array\"" "$tmp/out.json" >/dev/null; rm -rf "$tmp"'`
-  - `bash -c 'set +e; cargo run -p epoch-cli -- convert --query "not-a-date" >/tmp/epoch-cli-invalid.out 2>/tmp/epoch-cli-invalid.err; rc=$?; set -e; test $rc -ne 0; test -s /tmp/epoch-cli-invalid.err; rm -f /tmp/epoch-cli-invalid.out /tmp/epoch-cli-invalid.err'`
+  - `cargo test -p nils-epoch-cli -- --list | rg "main_|error_kind|exit_code"`
+  - `cargo test -p nils-epoch-cli`
+  - `cargo run -p nils-epoch-cli -- convert --query "1700000000" | jq -e '.items | type == "array"'`
+  - `bash -c 'tmp=\"$(mktemp -d)\"; cargo run -p nils-epoch-cli -- convert --query "1700000000" >"$tmp/out.json" 2>"$tmp/err.log"; rc=$?; test $rc -eq 0; test ! -s "$tmp/err.log"; jq -e ".items | type == \"array\"" "$tmp/out.json" >/dev/null; rm -rf "$tmp"'`
+  - `bash -c 'set +e; cargo run -p nils-epoch-cli -- convert --query "not-a-date" >/tmp/epoch-cli-invalid.out 2>/tmp/epoch-cli-invalid.err; rc=$?; set -e; test $rc -ne 0; test -s /tmp/epoch-cli-invalid.err; rm -f /tmp/epoch-cli-invalid.out /tmp/epoch-cli-invalid.err'`
 
 ### Task 2.6: Add focused unit tests for edge cases and regression locks
 - **Location**:
@@ -226,8 +226,8 @@ Implementation emphasizes deterministic local execution without external API dep
   - Tests explicitly assert the additional formatted row behavior.
   - Core conversion modules achieve meaningful branch coverage for error and success paths.
 - **Validation**:
-  - `cargo test -p epoch-cli`
-  - `cargo test -p epoch-cli -- --nocapture`
+  - `cargo test -p nils-epoch-cli`
+  - `cargo test -p nils-epoch-cli -- --nocapture`
 
 ## Sprint 3: Alfred adapter wiring and deterministic smoke coverage
 **Goal**: Wire workflow scripts/plist for Alfred runtime and ensure packaging artifacts remain valid.
@@ -394,4 +394,4 @@ Implementation emphasizes deterministic local execution without external API dep
 1. Disable/remove `epoch-converter` workflow package from Alfred and re-enable original `snooze92.epoch.converter`.
 2. Reinstall previous stable artifact for this repo from `dist/epoch-converter/<previous-version>/`.
 3. Revert workflow-specific files and crate membership commit if regression is code-level.
-4. Run `scripts/workflow-test.sh --id epoch-converter` and `cargo test -p epoch-cli` on the rolled-back revision before re-publishing.
+4. Run `scripts/workflow-test.sh --id epoch-converter` and `cargo test -p nils-epoch-cli` on the rolled-back revision before re-publishing.

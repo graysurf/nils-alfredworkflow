@@ -39,7 +39,7 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
 ## Sprint 1: Contract and scaffold
 **Goal**: Define runtime contract and scaffold workflow/crate surfaces to minimize downstream rework.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/wiki-search-workflow-plan.md`, `test -d workflows/wiki-search`, `cargo check -p wiki-cli`
+- Command(s): `plan-tooling validate --file docs/plans/wiki-search-workflow-plan.md`, `test -d workflows/wiki-search`, `cargo check -p nils-wiki-cli`
 - Verify: Workflow skeleton exists, env contract is explicit, and workspace remains buildable.
 
 ### Task 1.1: Define wiki workflow behavior contract
@@ -91,10 +91,10 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
 - **Complexity**: 5
 - **Acceptance criteria**:
   - Workspace includes `crates/wiki-cli` member.
-  - `cargo run -p wiki-cli -- --help` succeeds with placeholder command surface.
+  - `cargo run -p nils-wiki-cli -- --help` succeeds with placeholder command surface.
 - **Validation**:
-  - `cargo check -p wiki-cli`
-  - `cargo run -p wiki-cli -- --help`
+  - `cargo check -p nils-wiki-cli`
+  - `cargo run -p nils-wiki-cli -- --help`
 
 ### Task 1.4: Define workflow runtime env variables
 - **Location**:
@@ -115,7 +115,7 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
 ## Sprint 2: API and JSON pipeline
 **Goal**: Implement API client and CLI pipeline that returns Alfred JSON from query input.
 **Demo/Validation**:
-- Command(s): `cargo test -p wiki-cli`, `cargo run -p wiki-cli -- search --query "rust"`
+- Command(s): `cargo test -p nils-wiki-cli`, `cargo run -p nils-wiki-cli -- search --query "rust"`
 - Verify: CLI emits valid Alfred JSON on success and deterministic fallback items on failures.
 
 ### Task 2.1: Implement config parsing and guardrails
@@ -131,9 +131,9 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Invalid language or numeric config returns actionable config errors.
   - Default config is deterministic when env vars are absent.
 - **Validation**:
-  - `cargo test -p wiki-cli`
-  - `cargo test -p wiki-cli -- --list | rg "config_"`
-  - `env WIKI_LANGUAGE='EN-US!' cargo run -p wiki-cli -- search --query "rust" >/dev/null`
+  - `cargo test -p nils-wiki-cli`
+  - `cargo test -p nils-wiki-cli -- --list | rg "config_"`
+  - `env WIKI_LANGUAGE='EN-US!' cargo run -p nils-wiki-cli -- search --query "rust" >/dev/null`
 
 ### Task 2.2: Implement MediaWiki search API client
 - **Location**:
@@ -148,9 +148,9 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Response parser extracts required fields robustly.
   - HTTP/API errors are mapped to typed internal errors.
 - **Validation**:
-  - `cargo test -p wiki-cli`
-  - `cargo test -p wiki-cli -- --list | rg "wiki_api_"`
-  - `cargo clippy -p wiki-cli --all-targets -- -D warnings`
+  - `cargo test -p nils-wiki-cli`
+  - `cargo test -p nils-wiki-cli -- --list | rg "wiki_api_"`
+  - `cargo clippy -p nils-wiki-cli --all-targets -- -D warnings`
 
 ### Task 2.3: Implement Alfred feedback mapping
 - **Location**:
@@ -165,10 +165,10 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Snippet cleanup removes markup artifacts and multiline noise.
   - `arg` always points to canonical article URL using selected language host.
 - **Validation**:
-  - `cargo test -p wiki-cli`
-  - `cargo test -p wiki-cli -- --list | rg "feedback_|snippet_|url_"`
-  - `cargo test -p wiki-cli feedback::tests::maps_result_to_alfred_item`
-  - `cargo test -p wiki-cli feedback::tests::strips_html_tags_and_truncates`
+  - `cargo test -p nils-wiki-cli`
+  - `cargo test -p nils-wiki-cli -- --list | rg "feedback_|snippet_|url_"`
+  - `cargo test -p nils-wiki-cli feedback::tests::maps_result_to_alfred_item`
+  - `cargo test -p nils-wiki-cli feedback::tests::strips_html_tags_and_truncates`
 
 ### Task 2.4: Implement CLI command and stdout contract
 - **Location**:
@@ -182,10 +182,10 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Success path prints JSON payload only.
   - Invalid input/runtime failures return non-zero with actionable text.
 - **Validation**:
-  - `cargo test -p wiki-cli`
-  - `cargo test -p wiki-cli -- --list | rg "main_"`
-  - `cargo run -p wiki-cli -- search --query "rust" | jq -e '.items | type == "array"'`
-  - `bash -c 'set +e; cargo run -p wiki-cli -- search --query "" >/dev/null 2>&1; test $? -ne 0'`
+  - `cargo test -p nils-wiki-cli`
+  - `cargo test -p nils-wiki-cli -- --list | rg "main_"`
+  - `cargo run -p nils-wiki-cli -- search --query "rust" | jq -e '.items | type == "array"'`
+  - `bash -c 'set +e; cargo run -p nils-wiki-cli -- search --query "" >/dev/null 2>&1; test $? -ne 0'`
 
 ### Task 2.5: Add failure-mode rendering for Alfred UX
 - **Location**:
@@ -199,8 +199,8 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Script filter never emits malformed JSON.
   - Error subtitles explain what user can do next.
 - **Validation**:
-  - `cargo test -p wiki-cli`
-  - `cargo test -p wiki-cli -- --list | rg "error_feedback_"`
+  - `cargo test -p nils-wiki-cli`
+  - `cargo test -p nils-wiki-cli -- --list | rg "error_feedback_"`
   - `bash workflows/wiki-search/scripts/script_filter.sh "test" | jq -e '.items | length >= 1'`
 
 ## Sprint 3: Alfred wiring and package integration
@@ -324,8 +324,8 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Config and API behavior are covered without live network calls.
   - Tests assert language normalization and result-limit bounds.
 - **Validation**:
-  - `cargo test -p wiki-cli`
-  - `cargo test -p wiki-cli -- --list | rg "config_|wiki_api_"`
+  - `cargo test -p nils-wiki-cli`
+  - `cargo test -p nils-wiki-cli -- --list | rg "config_|wiki_api_"`
 
 ### Task 4.2: Add feedback and CLI contract Rust tests
 - **Location**:
@@ -339,8 +339,8 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Feedback and CLI contract are covered without live API calls.
   - Tests explicitly verify JSON-on-stdout and non-zero failure paths.
 - **Validation**:
-  - `cargo test -p wiki-cli`
-  - `cargo test -p wiki-cli -- --list | rg "feedback_|main_|snippet_|error_feedback_"`
+  - `cargo test -p nils-wiki-cli`
+  - `cargo test -p nils-wiki-cli -- --list | rg "feedback_|main_|snippet_|error_feedback_"`
 
 ### Task 4.3: Document workflow usage and operator setup
 - **Location**:

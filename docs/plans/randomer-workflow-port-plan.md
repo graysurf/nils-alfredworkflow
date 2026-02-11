@@ -47,7 +47,7 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
 ## Sprint 1: Contract capture and scaffold
 **Goal**: Lock behavior parity and scaffold workflow/crate surfaces with repository conventions.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/randomer-workflow-port-plan.md`, `test -d workflows/randomer`, `cargo check -p randomer-cli`
+- Command(s): `plan-tooling validate --file docs/plans/randomer-workflow-port-plan.md`, `test -d workflows/randomer`, `cargo check -p nils-randomer-cli`
 - Verify: Contract + skeleton are committed and workspace resolves new crate/workflow layout.
 
 ### Task 1.1: Write Randomer parity + extension contract
@@ -100,10 +100,10 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
 - **Complexity**: 5
 - **Acceptance criteria**:
   - Workspace includes `crates/randomer-cli`.
-  - `cargo run -p randomer-cli -- --help` succeeds.
+  - `cargo run -p nils-randomer-cli -- --help` succeeds.
 - **Validation**:
-  - `cargo check -p randomer-cli`
-  - `cargo run -p randomer-cli -- --help`
+  - `cargo check -p nils-randomer-cli`
+  - `cargo run -p nils-randomer-cli -- --help`
 
 ### Task 1.4: Freeze parity fixtures from installed Randomer behavior
 - **Location**:
@@ -118,13 +118,13 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - At least one parity test exists for each legacy generator.
   - Tests validate structure/checksum rules, not specific random values.
 - **Validation**:
-  - `cargo test -p randomer-cli --test parity`
-  - `cargo test -p randomer-cli -- --list | rg "parity_|imei|unit|uuid|email"`
+  - `cargo test -p nils-randomer-cli --test parity`
+  - `cargo test -p nils-randomer-cli -- --list | rg "parity_|imei|unit|uuid|email"`
 
 ## Sprint 2: Randomer CLI implementation
 **Goal**: Implement query routing + generators + Alfred feedback contract in `randomer-cli`.
 **Demo/Validation**:
-- Command(s): `cargo test -p randomer-cli`, `cargo run -p randomer-cli -- generate --query "imei"`
+- Command(s): `cargo test -p nils-randomer-cli`, `cargo run -p nils-randomer-cli -- generate --query "imei"`
 - Verify: CLI emits valid Alfred JSON and generation rules satisfy parity + new format contracts.
 
 ### Task 2.1: Implement query parser and type routing
@@ -140,8 +140,8 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - Query parsing is case-insensitive and trims whitespace.
   - Exact supported type yields 5 generated rows; unknown query yields full type list.
 - **Validation**:
-  - `cargo test -p randomer-cli`
-  - `cargo test -p randomer-cli -- --list | rg "query_|routing_|case_insensitive"`
+  - `cargo test -p nils-randomer-cli`
+  - `cargo test -p nils-randomer-cli -- --list | rg "query_|routing_|case_insensitive"`
 
 ### Task 2.2: Port legacy generators (`email`, `imei`, `unit`, `uuid`)
 - **Location**:
@@ -155,11 +155,11 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - `unit` output matches expected length/prefix/checksum constraints.
   - `uuid` output parses as RFC-4122 UUID.
 - **Validation**:
-  - `cargo test -p randomer-cli`
-  - `cargo test -p randomer-cli imei_checksum_is_valid`
-  - `cargo test -p randomer-cli unit_checksum_is_valid`
-  - `cargo test -p randomer-cli uuid_is_rfc4122`
-  - `cargo test -p randomer-cli email_shape_is_lowercase_local_at_domain`
+  - `cargo test -p nils-randomer-cli`
+  - `cargo test -p nils-randomer-cli imei_checksum_is_valid`
+  - `cargo test -p nils-randomer-cli unit_checksum_is_valid`
+  - `cargo test -p nils-randomer-cli uuid_is_rfc4122`
+  - `cargo test -p nils-randomer-cli email_shape_is_lowercase_local_at_domain`
 
 ### Task 2.3: Add numeric format generators (`int`, `decimal`, `percent`, `currency`, `hex`, `otp`)
 - **Location**:
@@ -177,13 +177,13 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - `hex` has `0x` prefix and fixed-width uppercase hex digits.
   - `otp` is zero-padded 6-digit string.
 - **Validation**:
-  - `cargo test -p randomer-cli`
-  - `cargo test -p randomer-cli format_int_is_digits_only`
-  - `cargo test -p randomer-cli format_decimal_has_fixed_scale_2`
-  - `cargo test -p randomer-cli format_percent_has_suffix_and_range`
-  - `cargo test -p randomer-cli format_currency_has_symbol_grouping_and_scale_2`
-  - `cargo test -p randomer-cli format_hex_has_prefix_and_fixed_width`
-  - `cargo test -p randomer-cli format_otp_is_six_digits_zero_padded`
+  - `cargo test -p nils-randomer-cli`
+  - `cargo test -p nils-randomer-cli format_int_is_digits_only`
+  - `cargo test -p nils-randomer-cli format_decimal_has_fixed_scale_2`
+  - `cargo test -p nils-randomer-cli format_percent_has_suffix_and_range`
+  - `cargo test -p nils-randomer-cli format_currency_has_symbol_grouping_and_scale_2`
+  - `cargo test -p nils-randomer-cli format_hex_has_prefix_and_fixed_width`
+  - `cargo test -p nils-randomer-cli format_otp_is_six_digits_zero_padded`
   - `rg -n "int|decimal|percent|currency|hex|otp" docs/randomer-contract.md`
 
 ### Task 2.4: Implement Alfred feedback mapping
@@ -199,11 +199,11 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - Fallback list ordering is stable across runs.
   - Every item is actionable for copy flow (`valid=true`, has `arg`).
 - **Validation**:
-  - `cargo test -p randomer-cli`
-  - `cargo run -p randomer-cli -- generate --query "" | jq -e '.items | length == 10'`
-  - `cargo run -p randomer-cli -- generate --query "unknown" | jq -e '.items | type == "array" and length >= 10'`
-  - `cargo run -p randomer-cli -- generate --query "uuid" | jq -e '.items | length == 5 and all(.[]; .arg != null and (.valid == null or .valid == true))'`
-  - `cargo run -p randomer-cli -- generate --query "uuid" | jq -e 'all(.items[]; .subtitle == "uuid")'`
+  - `cargo test -p nils-randomer-cli`
+  - `cargo run -p nils-randomer-cli -- generate --query "" | jq -e '.items | length == 10'`
+  - `cargo run -p nils-randomer-cli -- generate --query "unknown" | jq -e '.items | type == "array" and length >= 10'`
+  - `cargo run -p nils-randomer-cli -- generate --query "uuid" | jq -e '.items | length == 5 and all(.[]; .arg != null and (.valid == null or .valid == true))'`
+  - `cargo run -p nils-randomer-cli -- generate --query "uuid" | jq -e 'all(.items[]; .subtitle == "uuid")'`
 
 ### Task 2.5: Finalize CLI surface and error handling
 - **Location**:
@@ -216,9 +216,9 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - `--help` and invalid command paths are stable.
   - Runtime execution prints valid JSON without extra log noise.
 - **Validation**:
-  - `cargo run -p randomer-cli -- --help`
-  - `cargo run -p randomer-cli -- generate --query "imei" | jq -e '.items | length == 5'`
-  - `bash -c 'set +e; cargo run -p randomer-cli -- generate >/dev/null 2>&1; test $? -ne 0'`
+  - `cargo run -p nils-randomer-cli -- --help`
+  - `cargo run -p nils-randomer-cli -- generate --query "imei" | jq -e '.items | length == 5'`
+  - `bash -c 'set +e; cargo run -p nils-randomer-cli -- generate >/dev/null 2>&1; test $? -ne 0'`
 
 ### Task 2.6: Add generator contract tests for all formats
 - **Location**:
@@ -233,10 +233,10 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - Each supported type has at least one direct contract test.
   - Tests avoid flaky expectations based on specific random values.
 - **Validation**:
-  - `cargo test -p randomer-cli`
-  - `cargo test -p randomer-cli parity_`
-  - `cargo test -p randomer-cli format_`
-  - `cargo test -p randomer-cli query_routing_`
+  - `cargo test -p nils-randomer-cli`
+  - `cargo test -p nils-randomer-cli parity_`
+  - `cargo test -p nils-randomer-cli format_`
+  - `cargo test -p nils-randomer-cli query_routing_`
 
 ## Sprint 3: Alfred integration and smoke hardening
 **Goal**: Wire workflow scripts/plist for copy-centric UX and ensure deterministic smoke validation.
