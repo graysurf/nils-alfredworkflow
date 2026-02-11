@@ -31,6 +31,21 @@ Optional keys:
 
 - `rust_binary`
 - `assets`
+- `readme_source`
+
+## README sync during packaging
+
+- `scripts/workflow-pack.sh` auto-syncs workflow README into packaged `info.plist` readme when
+  `workflows/<id>/README.md` exists.
+- `readme_source` can optionally override the source path (relative to workflow root) when README is
+  not at the default location.
+- Pack runs `nils-workflow-readme-cli convert` to copy README content into packaged `info.plist`.
+- Markdown table blocks are normalized during sync (table downgrade), so packaged Alfred readme
+  should not contain separators such as `|---|`.
+- If the README references local images (for example `./screenshot.png`), keep those files in the
+  workflow root so packaging can stage them into `build/workflows/<id>/pkg/`.
+- Validation command:
+  `bash -c 'scripts/workflow-pack.sh --id codex-cli && plutil -convert json -o - build/workflows/codex-cli/pkg/info.plist | jq -r ".readme" | rg -n "# Codex CLI - Alfred Workflow|\\|---\\|"'`
 
 ## Open Project workflow details
 

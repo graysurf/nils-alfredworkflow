@@ -73,11 +73,12 @@ package_one() {
     return 1
   }
 
-  local name bundle_id version rust_binary rust_package
+  local name bundle_id version rust_binary rust_package readme_source effective_readme_source
   name="$(toml_string "$manifest" name)"
   bundle_id="$(toml_string "$manifest" bundle_id)"
   version="$(toml_string "$manifest" version)"
   rust_binary="$(toml_string "$manifest" rust_binary)"
+  readme_source="$(toml_string "$manifest" readme_source)"
 
   [[ -n "$name" ]] || {
     echo "error: missing name in $manifest" >&2
@@ -136,6 +137,20 @@ package_one() {
     "$bundle_id" \
     "$name" \
     "$version"
+
+  effective_readme_source="$readme_source"
+  if [[ -z "$effective_readme_source" && -f "$workflow_root/README.md" ]]; then
+    effective_readme_source="README.md"
+  fi
+
+  if [[ -n "$effective_readme_source" ]]; then
+    cargo run -p nils-workflow-readme-cli -- \
+      convert \
+      --workflow-root "$workflow_root" \
+      --readme-source "$effective_readme_source" \
+      --stage-dir "$stage_dir" \
+      --plist "$stage_dir/info.plist"
+  fi
 
   if [[ -n "$rust_binary" && -f "$repo_root/target/release/$rust_binary" ]]; then
     mkdir -p "$stage_dir/bin"

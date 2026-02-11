@@ -1,0 +1,22 @@
+[package]
+name = "nils-workflow-readme-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Convert workflow README markdown for Alfred and inject into plist."
+
+[lib]
+name = "workflow_readme_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "workflow-readme-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
