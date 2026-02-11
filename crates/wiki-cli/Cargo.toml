@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Wikipedia search CLI for Alfred script-filter workflow."
+description = "Wikipedia search CLI for structured result output."
 
 [lib]
 name = "wiki_cli"

@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Spotify search CLI for Alfred script-filter workflow."
+description = "Spotify search CLI for track discovery workflows."
 
 [lib]
 name = "spotify_cli"

@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Multi-timezone conversion CLI for Alfred script-filter workflow."
+description = "Multi-timezone conversion CLI for current time queries."
 
 [lib]
 name = "timezone_cli"

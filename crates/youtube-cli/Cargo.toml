@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "YouTube search CLI for Alfred script-filter workflow."
+description = "YouTube search CLI for video discovery workflows."
 
 [lib]
 name = "youtube_cli"
