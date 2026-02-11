@@ -284,6 +284,78 @@ Runtime checks:
 - ZenQuotes/network refresh failures must return `Quote refresh unavailable`; cached quotes should
   still be shown when available.
 
+## Codex CLI workflow details
+
+`workflows/codex-cli` bundles `codex-cli` from crate `nils-codex-cli@0.3.2`
+into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
+
+### Environment variables
+
+- `CODEX_CLI_BIN` (optional): absolute executable path override for `codex-cli`.
+- `CODEX_SECRET_DIR` (optional): secret directory override for `auth save` / `diag` operations.
+  If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`.
+- `CODEX_SHOW_ASSESSMENT` (optional): default `0`; set to truthy value (`1/true/yes/on`) to show
+  assessment rows by default in script filter results.
+- `CODEX_LOGIN_TIMEOUT_SECONDS` (optional): login timeout in seconds, default `60`
+  (valid range `1..3600`).
+- `CODEX_API_KEY` (optional): API key source for `auth login --api-key`; if unset on macOS,
+  action script prompts via AppleScript dialog.
+- `CODEX_SAVE_CONFIRM` (optional): default enabled (`1`); when enabled and `--yes` is not set,
+  save action asks confirmation before writing.
+- `CODEX_CLI_PACK_BIN` (packaging only, optional): explicit source binary path for bundling.
+
+### Alfred command flow
+
+- Keyword triggers:
+  - `cx`: command palette (auth/save/diag)
+  - `cxa`: auth-focused alias
+  - `cxd`: diag-focused alias
+  - `cxda`: diag all-accounts JSON-focused alias
+  - `cxs`: save-focused alias
+- Script filter adapter: `workflows/codex-cli/scripts/script_filter.sh` provides command
+  assessment + executable items, plus cached diag result rendering.
+- Enter flow: `workflows/codex-cli/scripts/action_open.sh` runs mapped command tokens.
+
+Supported actions in this workflow:
+
+- `auth login`
+- `auth login --api-key`
+- `auth login --device-code`
+- `auth save [--yes] <secret.json>`
+- `diag rate-limits` presets (`default`, `--cached`, `--one-line`, `--all`, `--all --json`,
+  `--all --async --jobs 4`)
+
+Diag result behavior:
+
+- `cxd` / `cxda` menu shows latest cached diag result inline when cache exists.
+- `cxda result` parses JSON output and renders one account per row.
+- `cxda result` rows are sorted by `weekly_reset_epoch` ascending (earliest reset first).
+- Parsed row subtitle format is `<email> | reset <weekly_reset_local> | source <source>`.
+
+Runtime resolution order:
+
+1. `CODEX_CLI_BIN`
+2. bundled `./bin/codex-cli`
+3. `PATH` `codex-cli` fallback
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/codex-cli/tests/smoke.sh`
+- `scripts/workflow-test.sh --id codex-cli`
+- `scripts/workflow-pack.sh --id codex-cli`
+
+Runtime checks:
+
+- End-user import from release artifact should run without extra install.
+- Bundled runtime target is macOS arm64.
+- `save` secret file names must reject path traversal and invalid characters.
+- `save` without `--yes` should require explicit confirmation unless `CODEX_SAVE_CONFIRM=0`.
+- Login actions should honor `CODEX_LOGIN_TIMEOUT_SECONDS` (default 60s).
+- `diag --all --json` parsed rows should be sorted by earliest weekly reset first.
+- Action script must preserve non-zero exit status when `codex-cli` fails.
+
 ### Validation checklist
 
 Run these before packaging/release:
