@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use memo_workflow_cli::{
-    ADD_TOKEN_PREFIX, AppError, RuntimeConfig, build_script_filter, execute_add, execute_db_init,
+    ADD_TOKEN_PREFIX, AppError, ListResult, RuntimeConfig, build_script_filter, execute_add,
+    execute_db_init, execute_list,
 };
 use serde::Serialize;
 
@@ -38,6 +39,21 @@ enum Command {
     },
     /// Initialize memo sqlite schema.
     DbInit {
+        /// Override sqlite DB path for this call.
+        #[arg(long)]
+        db: Option<PathBuf>,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = ResultMode::Text)]
+        mode: ResultMode,
+    },
+    /// List memo records in newest-first order.
+    List {
+        /// Max rows to return.
+        #[arg(long, default_value_t = 8)]
+        limit: usize,
+        /// Row offset for paging.
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
         /// Override sqlite DB path for this call.
         #[arg(long)]
         db: Option<PathBuf>,
@@ -90,7 +106,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
 
     match cli.command {
         Command::ScriptFilter { query } => {
-            let feedback = build_script_filter(&query, &config);
+            let feedback = build_script_filter(&query, &config)?;
             let json = feedback.to_json().map_err(|error| {
                 AppError::Runtime(format!("failed to serialize feedback: {error}"))
             })?;
@@ -110,6 +126,15 @@ fn run(cli: Cli) -> Result<(), AppError> {
         Command::DbInit { db, mode } => {
             let result = execute_db_init(db, &config)?;
             emit(mode, result, |res| format!("initialized {}", res.db_path))?;
+        }
+        Command::List {
+            limit,
+            offset,
+            db,
+            mode,
+        } => {
+            let result = execute_list(db, limit, offset, &config)?;
+            emit(mode, result, render_list_text)?;
         }
         Command::Action {
             token,
@@ -139,10 +164,26 @@ fn run(cli: Cli) -> Result<(), AppError> {
     Ok(())
 }
 
+fn render_list_text(rows: &Vec<ListResult>) -> String {
+    if rows.is_empty() {
+        return "no memo records".to_string();
+    }
+
+    let mut lines = Vec::with_capacity(rows.len());
+    for row in rows {
+        lines.push(format!(
+            "{} {} [{}] {}",
+            row.item_id, row.created_at, row.state, row.text_preview
+        ));
+    }
+
+    lines.join("\n")
+}
+
 fn emit<T, F>(mode: ResultMode, result: T, text_renderer: F) -> Result<(), AppError>
 where
     T: Serialize,
-    F: FnOnce(&T) -> String,
+    F: Fn(&T) -> String,
 {
     match mode {
         ResultMode::Text => println!("{}", text_renderer(&result)),

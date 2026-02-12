@@ -22,6 +22,34 @@ fn script_filter_returns_items_array() {
 }
 
 #[test]
+fn script_filter_empty_query_includes_db_init_row() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+
+    let output = Command::new(bin())
+        .args(["script-filter", "--query", ""])
+        .env("MEMO_DB_PATH", db.to_str().expect("db path"))
+        .output()
+        .expect("script-filter should run");
+
+    assert!(output.status.success(), "script-filter must exit 0");
+
+    let payload: Value =
+        serde_json::from_slice(&output.stdout).expect("script-filter stdout must be JSON");
+    let has_db_init = payload
+        .get("items")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .any(|item| item.get("arg").and_then(Value::as_str) == Some("db-init"))
+        })
+        .unwrap_or(false);
+
+    assert!(has_db_init, "empty query should include db-init action row");
+}
+
+#[test]
 fn db_init_creates_database() {
     let dir = tempdir().expect("temp dir");
     let db = dir.path().join("memo.db");
@@ -82,4 +110,45 @@ fn add_rejects_empty_text() {
         .expect("add should run");
 
     assert_eq!(output.status.code(), Some(2));
+}
+
+#[test]
+fn list_returns_latest_first() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let first = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "first memo"])
+        .output()
+        .expect("first add should run");
+    assert!(first.status.success(), "first add should succeed");
+
+    let second = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "second memo"])
+        .output()
+        .expect("second add should run");
+    assert!(second.status.success(), "second add should succeed");
+
+    let list = Command::new(bin())
+        .args(["list", "--db", db_path, "--limit", "2", "--mode", "json"])
+        .output()
+        .expect("list should run");
+    assert!(list.status.success(), "list should exit 0");
+
+    let payload: Value = serde_json::from_slice(&list.stdout).expect("list stdout must be JSON");
+    let rows = payload
+        .get("result")
+        .and_then(Value::as_array)
+        .expect("result must be an array");
+    assert_eq!(rows.len(), 2, "list should return two rows");
+
+    let first_preview = rows[0]
+        .get("text_preview")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        first_preview.contains("second memo"),
+        "newest row should be listed first"
+    );
 }

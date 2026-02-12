@@ -25,7 +25,7 @@
   <key>createdby</key>
   <string>graysurf</string>
   <key>description</key>
-  <string>Add memos quickly via nils-memo-cli with optional db init action.</string>
+  <string>Add memos quickly via nils-memo-cli with optional db init and recent list preview.</string>
   <key>disabled</key>
   <false/>
   <key>name</key>
@@ -66,7 +66,7 @@
         <key>scriptfile</key>
         <string>./scripts/script_filter.sh</string>
         <key>subtext</key>
-        <string>Add memo text or run db init</string>
+        <string>Add memo text, run db init, or inspect recent memos</string>
         <key>title</key>
         <string>Memo Add</string>
         <key>type</key>
@@ -106,7 +106,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword mm to add memo text quickly. Empty query exposes database init action.</string>
+  <string>Use keyword mm to add memo text quickly. Empty query exposes database init and recent memo rows.</string>
   <key>uidata</key>
   <dict>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>
@@ -209,6 +209,27 @@
       <string>textfield</string>
       <key>variable</key>
       <string>MEMO_MAX_INPUT_BYTES</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string>8</string>
+        <key>placeholder</key>
+        <string>8</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional number of recent memo rows shown for empty query. Range 1..50.</string>
+      <key>label</key>
+      <string>MEMO_RECENT_LIMIT</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>MEMO_RECENT_LIMIT</string>
     </dict>
     <dict>
       <key>config</key>

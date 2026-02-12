@@ -6,9 +6,10 @@ Workflow adapter CLI for Alfred memo capture actions backed by `nils-memo-cli@0.
 
 | Command | Options | Description |
 | --- | --- | --- |
-| `memo-workflow-cli script-filter` | `--query <TEXT>` | Render Alfred script-filter JSON items for add/db-init actions. |
+| `memo-workflow-cli script-filter` | `--query <TEXT>` | Render Alfred script-filter JSON items for add/db-init/recent-list rows. |
 | `memo-workflow-cli action` | `--token <TOKEN> [--mode <text|json>]` | Execute an Alfred action token (`db-init` or `add::<text>`). |
 | `memo-workflow-cli add` | `--text <TEXT> [--db <PATH>] [--source <LABEL>] [--mode <text|json>]` | Add one memo row directly. |
+| `memo-workflow-cli list` | `[--db <PATH>] [--limit <N>] [--offset <N>] [--mode <text|json>]` | List memo rows in newest-first order. |
 | `memo-workflow-cli db-init` | `[--db <PATH>] [--mode <text|json>]` | Initialize sqlite storage and migrations. |
 
 ## Environment Variables
@@ -17,6 +18,7 @@ Workflow adapter CLI for Alfred memo capture actions backed by `nils-memo-cli@0.
 - `MEMO_SOURCE`
 - `MEMO_REQUIRE_CONFIRM`
 - `MEMO_MAX_INPUT_BYTES`
+- `MEMO_RECENT_LIMIT`
 
 ## Output Contract
 
