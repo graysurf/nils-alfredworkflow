@@ -32,6 +32,10 @@ where
         }
     };
     let path = cache_path(&config.cache_dir, request.period, &cache_key);
+    let output_context = OutputContext {
+        cache_key: cache_key.clone(),
+        ttl_secs: config.cache_ttl_secs,
+    };
 
     let cached = read_cache(&path).map_err(|error| AppError::runtime(error.to_string()))?;
     let cached_state = cached.as_ref().map(|record| {
@@ -50,8 +54,7 @@ where
             request,
             FreshnessStatus::CacheFresh,
             *age_secs,
-            cache_key,
-            config.cache_ttl_secs,
+            &output_context,
         ));
     }
 
@@ -78,8 +81,7 @@ where
                 forecast,
                 "open_meteo",
                 trace,
-                cache_key.clone(),
-                config.cache_ttl_secs,
+                &output_context,
             );
         }
         Err(error) => trace.push(format!("open_meteo: {error}")),
@@ -97,19 +99,11 @@ where
             forecast,
             "met_no",
             trace,
-            cache_key.clone(),
-            config.cache_ttl_secs,
+            &output_context,
         ),
         Err(error) => {
             trace.push(format!("met_no: {error}"));
-            fallback_or_error(
-                cached_state,
-                &location,
-                request,
-                trace,
-                cache_key,
-                config.cache_ttl_secs,
-            )
+            fallback_or_error(cached_state, &location, request, trace, &output_context)
         }
     }
 }
@@ -138,8 +132,7 @@ fn build_live_output(
     provider_forecast: ProviderForecast,
     source: &str,
     source_trace: Vec<String>,
-    cache_key: String,
-    ttl_secs: u64,
+    output_context: &OutputContext,
 ) -> Result<ForecastOutput, AppError> {
     let ProviderForecast {
         timezone: provider_timezone,
@@ -171,8 +164,7 @@ fn build_live_output(
         request,
         FreshnessStatus::Live,
         0,
-        cache_key,
-        ttl_secs,
+        output_context,
     ))
 }
 
@@ -181,8 +173,7 @@ fn fallback_or_error(
     location: &ResolvedLocation,
     request: &ForecastRequest,
     trace: Vec<String>,
-    cache_key: String,
-    ttl_secs: u64,
+    output_context: &OutputContext,
 ) -> Result<ForecastOutput, AppError> {
     if let Some((record, age_secs, false)) = cached_state {
         return Ok(build_output_from_record(
@@ -191,8 +182,7 @@ fn fallback_or_error(
             request,
             FreshnessStatus::CacheStaleFallback,
             age_secs,
-            cache_key,
-            ttl_secs,
+            output_context,
         ));
     }
 
@@ -208,8 +198,7 @@ fn build_output_from_record(
     request: &ForecastRequest,
     freshness_status: FreshnessStatus,
     age_secs: u64,
-    cache_key: String,
-    ttl_secs: u64,
+    output_context: &OutputContext,
 ) -> ForecastOutput {
     let fetched_at = parse_fetched_at(record)
         .unwrap_or_else(Utc::now)
@@ -225,11 +214,17 @@ fn build_output_from_record(
         fetched_at,
         freshness: CacheMetadata {
             status: freshness_status,
-            key: cache_key,
-            ttl_secs,
+            key: output_context.cache_key.clone(),
+            ttl_secs: output_context.ttl_secs,
             age_secs,
         },
     }
+}
+
+#[derive(Debug, Clone)]
+struct OutputContext {
+    cache_key: String,
+    ttl_secs: u64,
 }
 
 fn resolved_location_from_record(record: &CacheRecord) -> ResolvedLocation {

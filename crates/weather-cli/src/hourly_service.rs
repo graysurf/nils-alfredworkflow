@@ -59,6 +59,12 @@ where
         }
     };
     let path = crate::cache::cache_path(&config.cache_dir, ForecastPeriod::Hourly, &cache_key);
+    let output_context = OutputContext {
+        cache_key: cache_key.clone(),
+        requested_hours,
+        now,
+        ttl_secs: config.cache_ttl_secs,
+    };
 
     let cached = read_hourly_cache(&path).map_err(|error| AppError::runtime(error.to_string()))?;
     let cached_state = cached.as_ref().map(|record| {
@@ -76,10 +82,7 @@ where
             &location,
             FreshnessStatus::CacheFresh,
             *age_secs,
-            cache_key,
-            requested_hours,
-            now,
-            config.cache_ttl_secs,
+            &output_context,
         ));
     }
 
@@ -97,27 +100,10 @@ where
         location.longitude,
         MAX_HOURLY_COUNT,
     ) {
-        Ok(forecast) => build_live_output(
-            &path,
-            &location,
-            forecast,
-            trace,
-            cache_key,
-            requested_hours,
-            now,
-            config.cache_ttl_secs,
-        ),
+        Ok(forecast) => build_live_output(&path, &location, forecast, trace, &output_context),
         Err(error) => {
             trace.push(format!("open_meteo: {error}"));
-            fallback_or_error(
-                cached_state,
-                &location,
-                trace,
-                cache_key,
-                requested_hours,
-                now,
-                config.cache_ttl_secs,
-            )
+            fallback_or_error(cached_state, &location, trace, &output_context)
         }
     }
 }
@@ -151,10 +137,7 @@ fn build_live_output(
     location: &ResolvedLocation,
     provider_forecast: ProviderHourlyForecast,
     source_trace: Vec<String>,
-    cache_key: String,
-    requested_hours: usize,
-    now: DateTime<Utc>,
-    ttl_secs: u64,
+    output_context: &OutputContext,
 ) -> Result<HourlyForecastOutput, AppError> {
     let ProviderHourlyForecast {
         timezone: provider_timezone,
@@ -186,10 +169,7 @@ fn build_live_output(
         location,
         FreshnessStatus::Live,
         0,
-        cache_key,
-        requested_hours,
-        now,
-        ttl_secs,
+        output_context,
     ))
 }
 
@@ -197,10 +177,7 @@ fn fallback_or_error(
     cached_state: Option<(HourlyCacheRecord, u64, bool)>,
     location: &ResolvedLocation,
     trace: Vec<String>,
-    cache_key: String,
-    requested_hours: usize,
-    now: DateTime<Utc>,
-    ttl_secs: u64,
+    output_context: &OutputContext,
 ) -> Result<HourlyForecastOutput, AppError> {
     if let Some((record, age_secs, false)) = cached_state {
         return Ok(build_output_from_record(
@@ -208,10 +185,7 @@ fn fallback_or_error(
             location,
             FreshnessStatus::CacheStaleFallback,
             age_secs,
-            cache_key,
-            requested_hours,
-            now,
-            ttl_secs,
+            output_context,
         ));
     }
 
@@ -226,10 +200,7 @@ fn build_output_from_record(
     location: &ResolvedLocation,
     freshness_status: FreshnessStatus,
     age_secs: u64,
-    cache_key: String,
-    requested_hours: usize,
-    now: DateTime<Utc>,
-    ttl_secs: u64,
+    output_context: &OutputContext,
 ) -> HourlyForecastOutput {
     let fetched_at = parse_fetched_at(record)
         .unwrap_or_else(Utc::now)
@@ -240,8 +211,8 @@ fn build_output_from_record(
         timezone: record.timezone.clone(),
         hourly: take_current_hours(
             &record.hourly,
-            requested_hours,
-            now,
+            output_context.requested_hours,
+            output_context.now,
             record.utc_offset_seconds,
         ),
         source: record.source.clone(),
@@ -255,11 +226,19 @@ fn build_output_from_record(
                     crate::model::FreshnessStatus::CacheStaleFallback
                 }
             },
-            key: cache_key,
-            ttl_secs,
+            key: output_context.cache_key.clone(),
+            ttl_secs: output_context.ttl_secs,
             age_secs,
         },
     }
+}
+
+#[derive(Debug, Clone)]
+struct OutputContext {
+    cache_key: String,
+    requested_hours: usize,
+    now: DateTime<Utc>,
+    ttl_secs: u64,
 }
 
 fn normalize_hour_count(hour_count: usize) -> usize {
