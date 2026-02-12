@@ -1739,18 +1739,20 @@ handle_use_query() {
   account_lookup_file="$(build_diag_account_lookup_map || true)"
 
   if [[ -n "$current_json" ]]; then
-    local current_secret current_meta current_email current_weekly current_label current_non_weekly current_weekly_remaining current_weekly_epoch current_non_weekly_reset_epoch
+    local current_secret current_meta current_email current_weekly
+    local _current_weekly_epoch _current_label _current_non_weekly
+    local _current_weekly_remaining _current_non_weekly_reset_epoch
     current_secret="${current_json%.json}"
     current_email="${current_cached_email:-"-"}"
     current_weekly="${current_cached_weekly:-"-"}"
-    current_label="${current_cached_label:-}"
-    current_non_weekly="${current_cached_non_weekly:-}"
-    current_weekly_remaining="${current_cached_weekly_remaining:-}"
-    current_weekly_epoch="${current_cached_weekly_epoch:-}"
-    current_non_weekly_reset_epoch="${current_cached_non_weekly_reset_epoch:-}"
+    _current_label="${current_cached_label:-}"
+    _current_non_weekly="${current_cached_non_weekly:-}"
+    _current_weekly_remaining="${current_cached_weekly_remaining:-}"
+    _current_weekly_epoch="${current_cached_weekly_epoch:-}"
+    _current_non_weekly_reset_epoch="${current_cached_non_weekly_reset_epoch:-}"
     current_meta="$(lookup_diag_account_meta "$account_lookup_file" "$current_json" || true)"
     if [[ -n "$current_meta" ]]; then
-      IFS=$'\t' read -r current_weekly_epoch current_email current_weekly current_label current_non_weekly current_weekly_remaining current_non_weekly_reset_epoch <<<"$current_meta"
+      IFS=$'\t' read -r _current_weekly_epoch current_email current_weekly _current_label _current_non_weekly _current_weekly_remaining _current_non_weekly_reset_epoch <<<"$current_meta"
     fi
     if [[ "$current_json" != "auth.json" && (-z "${current_email:-}" || "$current_email" == "-") ]]; then
       current_email="$(extract_secret_email_from_file "${secret_dir%/}/${current_json}" || true)"

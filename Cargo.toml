@@ -17,6 +17,7 @@ members = [
   "crates/youtube-cli",
   "crates/randomer-cli",
   "crates/quote-cli",
+  "crates/memo-workflow-cli",
 ]
 resolver = "2"
 

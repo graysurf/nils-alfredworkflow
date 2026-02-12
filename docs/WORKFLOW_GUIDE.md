@@ -299,6 +299,42 @@ Runtime checks:
 - ZenQuotes/network refresh failures must return `Quote refresh unavailable`; cached quotes should
   still be shown when available.
 
+## Memo Add workflow details
+
+`workflows/memo-add` is a dedicated workflow that uses `memo-workflow-cli` and
+`nils-memo-cli@0.3.3` storage primitives for fast memo capture.
+
+### Environment variables
+
+- `MEMO_DB_PATH` (optional): sqlite path override; default empty (auto-resolve).
+- `MEMO_SOURCE` (optional): source label for new memo rows; default `alfred`.
+- `MEMO_REQUIRE_CONFIRM` (optional): confirmation gate flag; default `0`.
+- `MEMO_MAX_INPUT_BYTES` (optional): default `4096`, valid `1..=1048576`.
+- `MEMO_WORKFLOW_CLI_BIN` (optional): absolute executable path override for `memo-workflow-cli`.
+
+### Alfred command flow
+
+- Keyword trigger: `mm`.
+- Script filter adapter: `workflows/memo-add/scripts/script_filter.sh` ->
+  `memo-workflow-cli script-filter --query "<query>"`.
+- Enter flow: `workflows/memo-add/scripts/action_run.sh` ->
+  `memo-workflow-cli action --token "<token>"`.
+- Empty query returns guidance + `db-init` row; non-empty query returns add action row.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/memo-add/tests/smoke.sh`
+- `scripts/workflow-test.sh --id memo-add`
+- `scripts/workflow-pack.sh --id memo-add`
+
+Runtime checks:
+
+- Empty query must include one actionable `db init` row.
+- Invalid `MEMO_*` values must return a non-actionable config error item.
+- Add action must persist one row and return success text from action script.
+
 ## Codex CLI workflow details
 
 `workflows/codex-cli` bundles `codex-cli` from crate `nils-codex-cli@0.3.2`
