@@ -50,6 +50,16 @@ sanitize_diag_mode() {
   printf '%s\n' "$mode"
 }
 
+canonical_diag_cache_mode() {
+  local mode
+  mode="$(sanitize_diag_mode "${1:-default}")"
+  if [[ "$mode" == "all-json" ]]; then
+    printf 'all-json\n'
+    return 0
+  fi
+  printf 'default\n'
+}
+
 diag_result_meta_path() {
   local cache_dir
   cache_dir="$(resolve_workflow_cache_dir)"
@@ -62,29 +72,29 @@ diag_result_output_path() {
   printf '%s/diag-rate-limits.last.out\n' "$cache_dir"
 }
 
-diag_result_meta_path_for_mode() {
-  local mode
-  mode="$(sanitize_diag_mode "${1:-default}")"
+diag_result_meta_path_all_json() {
   local cache_dir
   cache_dir="$(resolve_workflow_cache_dir)"
-  printf '%s/diag-rate-limits.%s.meta\n' "$cache_dir" "$mode"
+  printf '%s/diag-rate-limits.all-json.meta\n' "$cache_dir"
 }
 
-diag_result_output_path_for_mode() {
-  local mode
-  mode="$(sanitize_diag_mode "${1:-default}")"
+diag_result_output_path_all_json() {
   local cache_dir
   cache_dir="$(resolve_workflow_cache_dir)"
-  printf '%s/diag-rate-limits.%s.out\n' "$cache_dir" "$mode"
+  printf '%s/diag-rate-limits.all-json.out\n' "$cache_dir"
 }
 
 resolve_diag_result_cache_paths_for_mode() {
   local expected_mode="${1:-}"
-
+  local canonical_mode=""
   if [[ -n "$expected_mode" ]]; then
+    canonical_mode="$(canonical_diag_cache_mode "$expected_mode")"
+  fi
+
+  if [[ "$canonical_mode" == "all-json" ]]; then
     local mode_meta_path mode_output_path
-    mode_meta_path="$(diag_result_meta_path_for_mode "$expected_mode")"
-    mode_output_path="$(diag_result_output_path_for_mode "$expected_mode")"
+    mode_meta_path="$(diag_result_meta_path_all_json)"
+    mode_output_path="$(diag_result_output_path_all_json)"
     if [[ -f "$mode_meta_path" && -f "$mode_output_path" ]]; then
       printf '%s\t%s\n' "$mode_meta_path" "$mode_output_path"
       return 0
@@ -99,7 +109,7 @@ resolve_diag_result_cache_paths_for_mode() {
   if [[ -n "$expected_mode" ]]; then
     local cached_mode
     cached_mode="$(read_meta_value "$last_meta_path" mode)"
-    [[ "$cached_mode" == "$expected_mode" ]] || return 1
+    [[ "$cached_mode" == "$canonical_mode" ]] || return 1
   fi
 
   printf '%s\t%s\n' "$last_meta_path" "$last_output_path"
@@ -107,7 +117,7 @@ resolve_diag_result_cache_paths_for_mode() {
 
 diag_refresh_lock_path_for_mode() {
   local mode
-  mode="$(sanitize_diag_mode "${1:-default}")"
+  mode="$(canonical_diag_cache_mode "${1:-default}")"
   local cache_dir
   cache_dir="$(resolve_workflow_cache_dir)"
   printf '%s/diag-rate-limits.%s.refresh.lock\n' "$cache_dir" "$mode"
@@ -125,15 +135,17 @@ resolve_diag_cache_ttl_seconds() {
 is_diag_cache_fresh_for_mode() {
   local mode="$1"
   local ttl_seconds="$2"
+  local canonical_mode
+  canonical_mode="$(canonical_diag_cache_mode "$mode")"
 
   local cache_paths meta_path output_path
-  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$mode" || true)"
+  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$canonical_mode" || true)"
   [[ -n "$cache_paths" ]] || return 1
   IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
   local cached_mode
   cached_mode="$(read_meta_value "$meta_path" mode)"
-  [[ "$cached_mode" == "$mode" ]] || return 1
+  [[ "$cached_mode" == "$canonical_mode" ]] || return 1
 
   local timestamp
   timestamp="$(read_meta_value "$meta_path" timestamp)"
@@ -155,8 +167,10 @@ is_diag_cache_fresh_for_mode() {
 
 is_diag_refresh_running_for_mode() {
   local mode="$1"
+  local canonical_mode
+  canonical_mode="$(canonical_diag_cache_mode "$mode")"
   local lock_path
-  lock_path="$(diag_refresh_lock_path_for_mode "$mode")"
+  lock_path="$(diag_refresh_lock_path_for_mode "$canonical_mode")"
   [[ -f "$lock_path" ]] || return 1
 
   local lock_ts now age
@@ -183,11 +197,13 @@ is_diag_refresh_running_for_mode() {
 
 acquire_diag_refresh_lock_for_mode() {
   local mode="$1"
+  local canonical_mode
+  canonical_mode="$(canonical_diag_cache_mode "$mode")"
   local lock_path
-  lock_path="$(diag_refresh_lock_path_for_mode "$mode")"
+  lock_path="$(diag_refresh_lock_path_for_mode "$canonical_mode")"
   mkdir -p "$(dirname "$lock_path")"
 
-  if is_diag_refresh_running_for_mode "$mode"; then
+  if is_diag_refresh_running_for_mode "$canonical_mode"; then
     return 1
   fi
 
@@ -198,7 +214,7 @@ acquire_diag_refresh_lock_for_mode() {
     {
       printf 'timestamp=%s\n' "$now"
       printf 'pid=%s\n' "$$"
-      printf 'mode=%s\n' "$mode"
+      printf 'mode=%s\n' "$canonical_mode"
     } >"$lock_path"
   ) 2>/dev/null; then
     printf '%s\n' "$lock_path"
@@ -219,16 +235,13 @@ store_diag_result() {
   local timestamp
   timestamp="$(date +%s)"
 
-  local last_meta_path last_output_path mode_meta_path mode_output_path
+  local last_meta_path last_output_path
   last_meta_path="$(diag_result_meta_path)"
   last_output_path="$(diag_result_output_path)"
-  mode_meta_path="$(diag_result_meta_path_for_mode "$normalized_mode")"
-  mode_output_path="$(diag_result_output_path_for_mode "$normalized_mode")"
-  local output_dir mode_output_dir
+  local output_dir
   output_dir="$(dirname "$last_output_path")"
-  mode_output_dir="$(dirname "$mode_output_path")"
 
-  mkdir -p "$output_dir" "$mode_output_dir"
+  mkdir -p "$output_dir"
 
   {
     printf 'mode=%s\n' "$normalized_mode"
@@ -237,15 +250,22 @@ store_diag_result() {
     printf 'exit_code=%s\n' "$rc"
     printf 'timestamp=%s\n' "$timestamp"
   } >"$last_meta_path"
-  {
-    printf 'mode=%s\n' "$normalized_mode"
-    printf 'summary=%s\n' "$summary"
-    printf 'command=%s\n' "$command"
-    printf 'exit_code=%s\n' "$rc"
-    printf 'timestamp=%s\n' "$timestamp"
-  } >"$mode_meta_path"
   printf '%s\n' "$output" >"$last_output_path"
-  printf '%s\n' "$output" >"$mode_output_path"
+
+  if [[ "$normalized_mode" == "all-json" ]]; then
+    local all_meta_path all_output_path
+    all_meta_path="$(diag_result_meta_path_all_json)"
+    all_output_path="$(diag_result_output_path_all_json)"
+    mkdir -p "$(dirname "$all_output_path")"
+    {
+      printf 'mode=%s\n' "$normalized_mode"
+      printf 'summary=%s\n' "$summary"
+      printf 'command=%s\n' "$command"
+      printf 'exit_code=%s\n' "$rc"
+      printf 'timestamp=%s\n' "$timestamp"
+    } >"$all_meta_path"
+    printf '%s\n' "$output" >"$all_output_path"
+  fi
 }
 
 run_diag_cache_refresh_for_mode() {
@@ -314,22 +334,24 @@ resolve_diag_auto_refresh_mode_for_query() {
 
 trigger_diag_auto_refresh_if_stale() {
   local mode="$1"
+  local canonical_mode
+  canonical_mode="$(canonical_diag_cache_mode "$mode")"
   local ttl_seconds
   ttl_seconds="$(resolve_diag_cache_ttl_seconds)"
 
-  if is_diag_cache_fresh_for_mode "$mode" "$ttl_seconds"; then
+  if is_diag_cache_fresh_for_mode "$canonical_mode" "$ttl_seconds"; then
     return 0
   fi
 
   local lock_path
-  if ! lock_path="$(acquire_diag_refresh_lock_for_mode "$mode")"; then
+  if ! lock_path="$(acquire_diag_refresh_lock_for_mode "$canonical_mode")"; then
     return 0
   fi
 
   (
     set -euo pipefail
     trap 'rm -f "$lock_path"' EXIT
-    run_diag_cache_refresh_for_mode "$mode"
+    run_diag_cache_refresh_for_mode "$canonical_mode"
   ) >/dev/null 2>&1 &
 }
 
@@ -919,42 +941,54 @@ detect_current_secret_json() {
       done
   )"
 
-  local current_json
-  current_json="$(printf '%s\n' "$clean_output" | sed -nE 's/.*matches[[:space:]]+([A-Za-z0-9._@-]+(\.json)?).*/\1/p' | head -n1 || true)"
-  if [[ -n "$current_json" ]]; then
-    if [[ "$current_json" != *.json ]]; then
-      current_json="${current_json}.json"
-    fi
-    if [[ "$current_json" != "auth.json" ]]; then
-      printf '%s\n' "$current_json"
-      return 0
-    fi
+  local reported_json=""
+  reported_json="$(printf '%s\n' "$clean_output" | sed -nE 's/.*matches[[:space:]]+([A-Za-z0-9._@-]+(\.json)?).*/\1/p' | head -n1 || true)"
+  if [[ -n "$reported_json" && "$reported_json" != *.json ]]; then
+    reported_json="${reported_json}.json"
+  fi
+  if [[ "$reported_json" == "auth.json" ]]; then
+    reported_json=""
   fi
 
-  current_json="$(printf '%s\n' "$clean_output" | grep -Eo '[A-Za-z0-9._@-]+\.json' | grep -vE '^auth\.json$' | tail -n1 || true)"
-  if [[ -n "$current_json" ]]; then
-    printf '%s\n' "$current_json"
-    return 0
-  fi
+  local hinted_json=""
+  hinted_json="$(printf '%s\n' "$clean_output" | grep -Eo '[A-Za-z0-9._@-]+\.json' | grep -vE '^auth\.json$' | tail -n1 || true)"
 
   local secret_dir=""
   secret_dir="$(resolve_codex_secret_dir || true)"
-  if [[ -n "$secret_dir" && -d "$secret_dir" ]]; then
-    local file
-    while IFS= read -r file; do
-      local base
-      base="${file%.json}"
-      if [[ "$clean_output" == *"$file"* || "$clean_output" == *"$base"* ]]; then
-        printf '%s\n' "$file"
-        return 0
-      fi
-    done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
-  fi
 
   local auth_file=""
   auth_file="$(resolve_codex_auth_file "$clean_output" || true)"
+  if [[ (-z "$auth_file" || ! -f "$auth_file") && -n "${CODEX_AUTH_FILE:-}" && -f "${CODEX_AUTH_FILE}" ]]; then
+    auth_file="${CODEX_AUTH_FILE}"
+  fi
 
   if [[ -n "$auth_file" && -f "$auth_file" && -n "$secret_dir" && -d "$secret_dir" ]]; then
+    # Prefer account_id mapping from auth.json because codex-cli "matches <name>"
+    # can be stale after token refresh.
+    local auth_account_id
+    auth_account_id="$(extract_secret_account_id_from_file "$auth_file" || true)"
+    if [[ -n "$auth_account_id" ]]; then
+      local matched_account_json=""
+      local matched_account_count=0
+      local candidate
+      while IFS= read -r candidate; do
+        local candidate_path candidate_account_id
+        candidate_path="${secret_dir%/}/$candidate"
+        candidate_account_id="$(extract_secret_account_id_from_file "$candidate_path" || true)"
+        [[ -n "$candidate_account_id" ]] || continue
+        if [[ "$candidate_account_id" == "$auth_account_id" ]]; then
+          matched_account_count=$((matched_account_count + 1))
+          if [[ "$matched_account_count" -eq 1 ]]; then
+            matched_account_json="$candidate"
+          fi
+        fi
+      done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
+      if [[ "$matched_account_count" -eq 1 && -n "$matched_account_json" ]]; then
+        printf '%s\n' "$matched_account_json"
+        return 0
+      fi
+    fi
+
     local candidate
     while IFS= read -r candidate; do
       local candidate_path="${secret_dir%/}/$candidate"
@@ -983,6 +1017,28 @@ detect_current_secret_json() {
         fi
       done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
     fi
+  fi
+
+  if [[ -n "$secret_dir" && -d "$secret_dir" ]]; then
+    local file
+    while IFS= read -r file; do
+      local base
+      base="${file%.json}"
+      if [[ "$clean_output" == *"$file"* || "$clean_output" == *"$base"* ]]; then
+        printf '%s\n' "$file"
+        return 0
+      fi
+    done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
+  fi
+
+  if [[ -n "$reported_json" ]]; then
+    printf '%s\n' "$reported_json"
+    return 0
+  fi
+
+  if [[ -n "$hinted_json" ]]; then
+    printf '%s\n' "$hinted_json"
+    return 0
   fi
 
   if [[ -n "$auth_file" && -f "$auth_file" ]]; then
@@ -1224,6 +1280,19 @@ extract_secret_email_from_file() {
   printf '%s\n' "$email"
 }
 
+extract_secret_account_id_from_file() {
+  local file_path="$1"
+  [[ -f "$file_path" ]] || return 1
+  if ! command -v jq >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local account_id
+  account_id="$(jq -r '.tokens.account_id // empty' "$file_path" 2>/dev/null || true)"
+  [[ -n "$account_id" ]] || return 1
+  printf '%s\n' "$account_id"
+}
+
 build_use_subtitle() {
   local email="$1"
   local weekly_reset="$2"
@@ -1317,6 +1386,8 @@ handle_use_query() {
       "use ${normalized_secret}"
     return
   fi
+
+  trigger_diag_auto_refresh_if_stale "all-json"
 
   local current_json=""
   local current_auth_email="-"

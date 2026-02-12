@@ -195,6 +195,13 @@ resolve_workflow_cache_dir() {
   printf '%s\n' "${TMPDIR:-/tmp}/nils-codex-cli-workflow"
 }
 
+sanitize_diag_mode() {
+  local mode="${1:-default}"
+  mode="${mode//[^A-Za-z0-9._-]/_}"
+  [[ -n "$mode" ]] || mode="default"
+  printf '%s\n' "$mode"
+}
+
 diag_result_meta_path() {
   local cache_dir
   cache_dir="$(resolve_workflow_cache_dir)"
@@ -207,31 +214,57 @@ diag_result_output_path() {
   printf '%s/diag-rate-limits.last.out\n' "$cache_dir"
 }
 
+diag_result_meta_path_all_json() {
+  local cache_dir
+  cache_dir="$(resolve_workflow_cache_dir)"
+  printf '%s/diag-rate-limits.all-json.meta\n' "$cache_dir"
+}
+
+diag_result_output_path_all_json() {
+  local cache_dir
+  cache_dir="$(resolve_workflow_cache_dir)"
+  printf '%s/diag-rate-limits.all-json.out\n' "$cache_dir"
+}
+
 store_diag_result() {
   local mode="$1"
   local summary="$2"
   local command="$3"
   local rc="$4"
   local output="$5"
+  local normalized_mode
+  normalized_mode="$(sanitize_diag_mode "$mode")"
   local timestamp
   timestamp="$(date +%s)"
 
-  local meta_path
-  meta_path="$(diag_result_meta_path)"
-  local output_path
-  output_path="$(diag_result_output_path)"
-  local output_dir
-  output_dir="$(dirname "$output_path")"
+  local last_meta_path last_output_path
+  last_meta_path="$(diag_result_meta_path)"
+  last_output_path="$(diag_result_output_path)"
 
-  mkdir -p "$output_dir"
+  mkdir -p "$(dirname "$last_output_path")"
   {
-    printf 'mode=%s\n' "$mode"
+    printf 'mode=%s\n' "$normalized_mode"
     printf 'summary=%s\n' "$summary"
     printf 'command=%s\n' "$command"
     printf 'exit_code=%s\n' "$rc"
     printf 'timestamp=%s\n' "$timestamp"
-  } >"$meta_path"
-  printf '%s\n' "$output" >"$output_path"
+  } >"$last_meta_path"
+  printf '%s\n' "$output" >"$last_output_path"
+
+  if [[ "$normalized_mode" == "all-json" ]]; then
+    local all_meta_path all_output_path
+    all_meta_path="$(diag_result_meta_path_all_json)"
+    all_output_path="$(diag_result_output_path_all_json)"
+    mkdir -p "$(dirname "$all_output_path")"
+    {
+      printf 'mode=%s\n' "$normalized_mode"
+      printf 'summary=%s\n' "$summary"
+      printf 'command=%s\n' "$command"
+      printf 'exit_code=%s\n' "$rc"
+      printf 'timestamp=%s\n' "$timestamp"
+    } >"$all_meta_path"
+    printf '%s\n' "$output" >"$all_output_path"
+  fi
 }
 
 open_alfred_search_best_effort() {

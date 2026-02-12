@@ -426,6 +426,30 @@ exit 9
 EOS
 chmod +x "$tmp_dir/stubs/codex-cli-current-nonzero"
 
+cat >"$tmp_dir/stubs/codex-cli-current-mismatch" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  echo "codex-cli 0.3.2"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "current" ]]; then
+  echo "codex: /tmp/auth.json matches sym (identity; secret differs)"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "use" ]]; then
+  printf '{"ok":true,"cmd":"auth use","target":"%s","argv":"%s"}\n' "${3:-}" "$*"
+  exit 0
+fi
+if [[ "${1:-}" == "diag" && "${2:-}" == "rate-limits" ]]; then
+  printf '{"ok":true,"cmd":"diag rate-limits","argv":"%s"}\n' "$*"
+  exit 0
+fi
+echo "unexpected command: $*" >&2
+exit 9
+EOS
+chmod +x "$tmp_dir/stubs/codex-cli-current-mismatch"
+
 cat >"$tmp_dir/stubs/codex-cli-current-auth-file-only" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -500,6 +524,15 @@ assert_jq_json "$auth_use_direct_json" '.items[0].valid == true' "auth use alpha
 
 auth_use_nonzero_current_json="$({ CODEX_SECRET_DIR="$use_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-nonzero" "$workflow_dir/scripts/script_filter.sh" "auth use"; })"
 assert_jq_json "$auth_use_nonzero_current_json" '.items[0].title == "Current: sym.json"' "auth use should parse current secret even when auth current exits non-zero"
+
+account_match_secret_dir="$tmp_dir/secrets-account-match"
+mkdir -p "$account_match_secret_dir"
+printf '{"tokens":{"account_id":"account-plus"}}\n' >"$account_match_secret_dir/plus.json"
+printf '{"tokens":{"account_id":"account-sym"}}\n' >"$account_match_secret_dir/sym.json"
+account_match_auth_file="$tmp_dir/auth-account-match.json"
+printf '{"tokens":{"account_id":"account-plus"}}\n' >"$account_match_auth_file"
+auth_use_account_match_json="$({ CODEX_SECRET_DIR="$account_match_secret_dir" CODEX_AUTH_FILE="$account_match_auth_file" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-mismatch" "$workflow_dir/scripts/script_filter.sh" "auth use"; })"
+assert_jq_json "$auth_use_account_match_json" '.items[0].title == "Current: plus.json"' "auth use should prefer account_id match over stale auth current label"
 
 auth_file_only_secret_dir="$tmp_dir/secrets-auth-file-only"
 mkdir -p "$auth_file_only_secret_dir"
@@ -709,8 +742,16 @@ CODEX_SECRET_DIR="$tmp_dir/missing-secrets-action" CODEX_STUB_LOG="$action_log" 
 
 diag_meta="$diag_cache_dir/diag-rate-limits.last.meta"
 diag_output="$diag_cache_dir/diag-rate-limits.last.out"
+diag_all_json_meta="$diag_cache_dir/diag-rate-limits.all-json.meta"
+diag_all_json_output="$diag_cache_dir/diag-rate-limits.all-json.out"
+diag_cached_meta="$diag_cache_dir/diag-rate-limits.cached.meta"
+diag_default_meta="$diag_cache_dir/diag-rate-limits.default.meta"
 [[ -f "$diag_meta" ]] || fail "diag action should write result metadata"
 [[ -f "$diag_output" ]] || fail "diag action should write result output"
+[[ -f "$diag_all_json_meta" ]] || fail "diag action should write all-json metadata cache"
+[[ -f "$diag_all_json_output" ]] || fail "diag action should write all-json output cache"
+[[ ! -f "$diag_cached_meta" ]] || fail "diag action should not persist cached mode-specific metadata"
+[[ ! -f "$diag_default_meta" ]] || fail "diag action should not persist default mode-specific metadata"
 if ! rg -n '^mode=all-json$' "$diag_meta" >/dev/null; then
   fail "diag metadata should track latest mode"
 fi
@@ -732,6 +773,11 @@ assert_jq_json "$diag_result_json" '.items | any(.title == "sym | 5h 76% | weekl
 assert_jq_json "$diag_result_json" '.items | any(.title == "poies | 5h 48% | weekly 54%")' "diag result should include poies account row"
 assert_jq_json "$diag_result_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "diag result should sort by earliest weekly reset first"
 assert_jq_json "$diag_result_json" '.items | any(.subtitle == "sym@example.com | reset 2026-02-18 02:19 +08:00")' "diag result should include email/reset subtitle"
+
+CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/action_open.sh" "diag::default" >/dev/null
+[[ "$(tail -n1 "$action_log")" == "diag rate-limits" ]] || fail "diag::default mapping mismatch"
+[[ ! -f "$diag_default_meta" ]] || fail "diag default action should keep cache in last.meta only"
 
 alias_diag_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag.sh" "result"; })"
 assert_jq_json "$alias_diag_result_json" '.items[0].title | startswith("Diag result ready")' "cxd result should map to diag result view"
