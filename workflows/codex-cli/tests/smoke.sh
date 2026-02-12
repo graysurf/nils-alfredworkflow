@@ -606,7 +606,11 @@ if [[ "${1:-}" == "--version" ]]; then
   exit 0
 fi
 preferred_auth="${HOME}/.config/codex-kit/auth.json"
-expected_secret_dir="${HOME}/.config/codex_secrets"
+if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+  expected_secret_dir="${XDG_CONFIG_HOME%/}/codex_secrets"
+else
+  expected_secret_dir="${HOME}/.config/codex_secrets"
+fi
 auth_file="${CODEX_AUTH_FILE:-$preferred_auth}"
 if [[ "${1:-}" == "auth" && "${2:-}" == "current" && "${3:-}" == "--json" ]]; then
   if [[ "$auth_file" == "$preferred_auth" && "${CODEX_SECRET_DIR:-}" == "$expected_secret_dir" ]]; then
