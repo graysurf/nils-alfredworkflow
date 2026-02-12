@@ -8,6 +8,7 @@ CLI backend for one-day and seven-day weather forecast retrieval.
 | --- | --- | --- |
 | `weather-cli today` | `--city <CITY>` or `--lat <LAT> --lon <LON>` `[--json]` `[--output <human|json|alfred-json>]` `[--lang <en|zh>]` | Today weather forecast. |
 | `weather-cli week` | `--city <CITY>` or `--lat <LAT> --lon <LON>` `[--json]` `[--output <human|json|alfred-json>]` `[--lang <en|zh>]` | 7-day weather forecast. |
+| `weather-cli hourly` | `--city <CITY>` or `--lat <LAT> --lon <LON>` `[--json]` `[--output <human|json|alfred-json>]` `[--lang <en|zh>]` `[--hours <1..48>]` | Hourly weather forecast from current hour (24h default). |
 
 ## Environment Variables
 
@@ -39,4 +40,5 @@ CLI backend for one-day and seven-day weather forecast retrieval.
 - `cargo run -p nils-weather-cli -- --help`
 - `cargo run -p nils-weather-cli -- today --help`
 - `cargo run -p nils-weather-cli -- week --help`
+- `cargo run -p nils-weather-cli -- hourly --help`
 - `cargo test -p nils-weather-cli`

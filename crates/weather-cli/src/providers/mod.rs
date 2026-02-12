@@ -26,6 +26,22 @@ pub struct ProviderForecast {
     pub days: Vec<ProviderForecastDay>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProviderForecastHour {
+    pub datetime: String,
+    pub weather_code: i32,
+    pub temp_c: f64,
+    pub precip_prob_pct: u8,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProviderHourlyForecast {
+    pub timezone: String,
+    pub utc_offset_seconds: i32,
+    pub fetched_at: DateTime<Utc>,
+    pub hours: Vec<ProviderForecastHour>,
+}
+
 pub trait ProviderApi {
     fn geocode_city(&self, city: &str) -> Result<ResolvedLocation, ProviderError>;
     fn fetch_open_meteo_forecast(
@@ -34,6 +50,12 @@ pub trait ProviderApi {
         lon: f64,
         forecast_days: usize,
     ) -> Result<ProviderForecast, ProviderError>;
+    fn fetch_open_meteo_hourly_forecast(
+        &self,
+        lat: f64,
+        lon: f64,
+        forecast_hours: usize,
+    ) -> Result<ProviderHourlyForecast, ProviderError>;
     fn fetch_met_no_forecast(
         &self,
         lat: f64,
@@ -80,6 +102,15 @@ impl ProviderApi for HttpProviders {
         forecast_days: usize,
     ) -> Result<ProviderForecast, ProviderError> {
         open_meteo::fetch_forecast(&self.client, lat, lon, forecast_days, self.retry_policy)
+    }
+
+    fn fetch_open_meteo_hourly_forecast(
+        &self,
+        lat: f64,
+        lon: f64,
+        forecast_hours: usize,
+    ) -> Result<ProviderHourlyForecast, ProviderError> {
+        open_meteo::fetch_hourly_forecast(&self.client, lat, lon, forecast_hours, self.retry_policy)
     }
 
     fn fetch_met_no_forecast(

@@ -320,6 +320,15 @@ mod tests {
             self.open_meteo_result.clone()
         }
 
+        fn fetch_open_meteo_hourly_forecast(
+            &self,
+            _lat: f64,
+            _lon: f64,
+            _forecast_days: usize,
+        ) -> Result<crate::providers::ProviderHourlyForecast, ProviderError> {
+            Err(ProviderError::Transport("unused".to_string()))
+        }
+
         fn fetch_met_no_forecast(
             &self,
             _lat: f64,

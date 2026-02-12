@@ -34,6 +34,9 @@ period_title() {
   week)
     printf '7-Day'
     ;;
+  hourly)
+    printf 'Hourly'
+    ;;
   *)
     printf 'Weather'
     ;;
@@ -187,6 +190,35 @@ normalize_alfred_items() {
   fi
 
   jq -ce '
+    def icon_name($summary):
+      if $summary == "clear sky" or $summary == "晴朗" then
+        "clear"
+      elif $summary == "mainly clear" or $summary == "大致晴朗" then
+        "mainly-clear"
+      elif $summary == "partly cloudy" or $summary == "晴時多雲" then
+        "partly-cloudy"
+      elif $summary == "cloudy" or $summary == "陰天" then
+        "cloudy"
+      elif $summary == "fog" or $summary == "有霧" then
+        "fog"
+      elif $summary == "drizzle" or $summary == "毛毛雨" then
+        "drizzle"
+      elif $summary == "rain" or $summary == "降雨" then
+        "rain"
+      elif $summary == "snow" or $summary == "降雪" then
+        "snow"
+      elif $summary == "rain showers" or $summary == "陣雨" then
+        "rain-showers"
+      elif $summary == "snow showers" or $summary == "陣雪" then
+        "snow-showers"
+      elif $summary == "thunderstorm" or $summary == "雷雨" then
+        "thunderstorm"
+      elif $summary == "unknown weather" or $summary == "天氣狀態未知" then
+        "unknown"
+      else
+        "unknown"
+      end;
+
     if (.items | type != "array") then
       error("missing items array")
     else
@@ -198,68 +230,65 @@ normalize_alfred_items() {
           }
         )
       else
-        (try ((.items[0].title // "") | capture("^(?<location>.+) \\((?<timezone>[^)]+)\\)$")) catch null) as $header
+        (if ((.items[0].title // "") | test("^.+ \\([^)]+\\)$"))
+         then ((.items[0].title // "") | capture("^(?<location>.+) \\((?<timezone>[^)]+)\\)$"))
+         else null
+         end) as $header
         | ($header.location // ((.items[0].title // "") | sub(" \\([^)]*\\)$"; ""))) as $location
         | ($header.timezone // "UTC") as $timezone
-        | (try ((.items[0].subtitle // "") | capture("lat=(?<lat>-?[0-9]+(?:\\.[0-9]+)?) lon=(?<lon>-?[0-9]+(?:\\.[0-9]+)?)")) catch null) as $coords
+        | (if ((.items[0].subtitle // "") | test("lat=-?[0-9]+(?:\\.[0-9]+)? lon=-?[0-9]+(?:\\.[0-9]+)?"))
+           then ((.items[0].subtitle // "") | capture("lat=(?<lat>-?[0-9]+(?:\\.[0-9]+)?) lon=(?<lon>-?[0-9]+(?:\\.[0-9]+)?)"))
+           else null
+           end) as $coords
         | ($coords.lat // "?") as $lat
         | ($coords.lon // "?") as $lon
         | .items = (
             .items[1:]
-	            | map(
-	                (.title // "") as $title
-	                | (.subtitle // "") as $subtitle
-	                | (try ($title | capture("^(?<date>[^ ]+) (?<summary>.+) (?<min>-?[0-9]+(?:\\.[0-9]+)?)~(?<max>-?[0-9]+(?:\\.[0-9]+)?)°C$")) catch null) as $parts
-	                | (try ($subtitle | capture("(?<rain>[0-9]+)%")) catch null) as $rain
-	                | if $parts == null then
-	                    {
-	                      "title": ($location + " " + $title),
+            | map(
+                (.title // "") as $title
+                | (.subtitle // "") as $subtitle
+                | (if ($title | test("^(?<date>[^ ]+) (?<summary>.+) (?<min>-?[0-9]+(?:\\.[0-9]+)?)~(?<max>-?[0-9]+(?:\\.[0-9]+)?)°C$"))
+                   then ($title | capture("^(?<date>[^ ]+) (?<summary>.+) (?<min>-?[0-9]+(?:\\.[0-9]+)?)~(?<max>-?[0-9]+(?:\\.[0-9]+)?)°C$"))
+                   else null
+                   end) as $daily
+                | (if ($title | test("^(?<date>[^ ]+)[ T](?<time>[0-9]{2}:[0-9]{2}) (?<summary>.+) (?<temp>-?[0-9]+(?:\\.[0-9]+)?)°C$"))
+                   then ($title | capture("^(?<date>[^ ]+)[ T](?<time>[0-9]{2}:[0-9]{2}) (?<summary>.+) (?<temp>-?[0-9]+(?:\\.[0-9]+)?)°C$"))
+                   else null
+                   end) as $hourly
+                | (if ($subtitle | test("[0-9]+%"))
+                   then ($subtitle | capture("(?<rain>[0-9]+)%"))
+                   else null
+                   end) as $rain
+                | if $daily != null then
+                    ($daily.summary | if test("^[A-Za-z ]+$") then ascii_downcase else . end) as $summary
+                    | {
+                        "title": ($location + " " + $daily.min + "~" + $daily.max + "°C " + $summary + " " + (($rain.rain // "?") + "%")),
+                        "subtitle": ($daily.date + " " + $timezone + " " + $lat + "," + $lon),
+                        "arg": (if ((.arg // "") | length) == 0 then $daily.date else .arg end),
+                        "valid": true,
+                        "icon": {
+                          "path": ("assets/icons/weather/" + icon_name($summary) + ".png")
+                        }
+                      }
+                  elif $hourly != null then
+                    ($hourly.summary | if test("^[A-Za-z ]+$") then ascii_downcase else . end) as $summary
+                    | {
+                        "title": ($location + " " + $hourly.time + " " + $hourly.temp + "°C " + $summary + " " + (($rain.rain // "?") + "%")),
+                        "subtitle": ($hourly.date + " " + $timezone + " " + $lat + "," + $lon),
+                        "arg": (if ((.arg // "") | length) == 0 then ($hourly.date + " " + $hourly.time) else .arg end),
+                        "valid": true,
+                        "icon": {
+                          "path": ("assets/icons/weather/" + icon_name($summary) + ".png")
+                        }
+                      }
+                  else
+                    {
+                      "title": ($location + " " + $title),
                       "subtitle": ($timezone + " " + $lat + "," + $lon),
                       "arg": (if ((.arg // "") | length) == 0 then $title else .arg end),
                       "valid": true,
                       "icon": {
                         "path": "assets/icons/weather/unknown.png"
-                      }
-                    }
-	                  else
-	                    ($parts.summary | if test("^[A-Za-z ]+$") then ascii_downcase else . end) as $summary
-	                    | (
-	                        if $summary == "clear sky" or $summary == "晴朗" then
-	                          "clear"
-                        elif $summary == "mainly clear" or $summary == "大致晴朗" then
-                          "mainly-clear"
-                        elif $summary == "partly cloudy" or $summary == "晴時多雲" then
-                          "partly-cloudy"
-                        elif $summary == "cloudy" or $summary == "陰天" then
-                          "cloudy"
-                        elif $summary == "fog" or $summary == "有霧" then
-                          "fog"
-                        elif $summary == "drizzle" or $summary == "毛毛雨" then
-                          "drizzle"
-                        elif $summary == "rain" or $summary == "降雨" then
-                          "rain"
-                        elif $summary == "snow" or $summary == "降雪" then
-                          "snow"
-                        elif $summary == "rain showers" or $summary == "陣雨" then
-                          "rain-showers"
-                        elif $summary == "snow showers" or $summary == "陣雪" then
-                          "snow-showers"
-                        elif $summary == "thunderstorm" or $summary == "雷雨" then
-                          "thunderstorm"
-                        elif $summary == "unknown weather" or $summary == "天氣狀態未知" then
-                          "unknown"
-                        else
-                          "unknown"
-                        end
-	                      ) as $icon_name
-	                    |
-	                    {
-	                      "title": ($location + " " + $parts.min + "~" + $parts.max + "°C " + $summary + " " + (($rain.rain // "?") + "%")),
-	                      "subtitle": ($parts.date + " " + $timezone + " " + $lat + "," + $lon),
-	                      "arg": (if ((.arg // "") | length) == 0 then $parts.date else .arg end),
-	                      "valid": true,
-                      "icon": {
-                        "path": ("assets/icons/weather/" + $icon_name + ".png")
                       }
                     }
                   end
@@ -274,7 +303,7 @@ period="${1:-}"
 query="${2:-}"
 
 case "$period" in
-today | week) ;;
+today | week | hourly) ;;
 *)
   emit_single_item "Weather workflow error" "Invalid period: $period" false
   exit 0

@@ -5,7 +5,11 @@ use serde_json::json;
 use weather_cli::{
     config::RuntimeConfig,
     error::AppError,
-    model::{ForecastPeriod, ForecastRequest, OutputMode as RequestOutputMode},
+    hourly_service::{self, DEFAULT_HOURLY_COUNT},
+    model::{
+        ForecastPeriod, ForecastRequest, HourlyForecastOutput, LocationQuery,
+        OutputMode as RequestOutputMode,
+    },
     providers::{HttpProviders, ProviderApi},
     service,
 };
@@ -13,7 +17,10 @@ use weather_cli::{
 #[cfg(test)]
 use weather_cli::{
     geocoding::ResolvedLocation,
-    providers::{ProviderError, ProviderForecast, ProviderForecastDay},
+    providers::{
+        ProviderError, ProviderForecast, ProviderForecastDay, ProviderForecastHour,
+        ProviderHourlyForecast,
+    },
 };
 
 #[derive(Debug, Parser)]
@@ -54,6 +61,23 @@ enum Commands {
         json: bool,
         #[arg(long, value_enum)]
         lang: Option<LanguageArg>,
+    },
+    /// Hourly weather forecast (next 24h by default).
+    Hourly {
+        #[arg(long)]
+        city: Option<String>,
+        #[arg(long)]
+        lat: Option<f64>,
+        #[arg(long)]
+        lon: Option<f64>,
+        #[arg(long, value_enum)]
+        output: Option<OutputModeArg>,
+        #[arg(long)]
+        json: bool,
+        #[arg(long, value_enum)]
+        lang: Option<LanguageArg>,
+        #[arg(long, default_value_t = DEFAULT_HOURLY_COUNT)]
+        hours: usize,
     },
 }
 
@@ -145,12 +169,15 @@ impl Cli {
         match &self.command {
             Commands::Today { .. } => "weather.today",
             Commands::Week { .. } => "weather.week",
+            Commands::Hourly { .. } => "weather.hourly",
         }
     }
 
     fn output_mode_hint(&self) -> CliOutputMode {
         match &self.command {
-            Commands::Today { output, json, .. } | Commands::Week { output, json, .. } => {
+            Commands::Today { output, json, .. }
+            | Commands::Week { output, json, .. }
+            | Commands::Hourly { output, json, .. } => {
                 if *json {
                     CliOutputMode::Json
                 } else if let Some(explicit) = output {
@@ -238,6 +265,29 @@ where
                 lang,
             },
         ),
+        Commands::Hourly {
+            city,
+            lat,
+            lon,
+            output,
+            json,
+            lang,
+            hours,
+        } => run_hourly_command(
+            config,
+            providers,
+            now_fn,
+            HourlyCommandArgs {
+                command: "weather.hourly",
+                city: city.as_deref(),
+                lat,
+                lon,
+                output,
+                json,
+                lang,
+                hours,
+            },
+        ),
     }
 }
 
@@ -251,6 +301,18 @@ struct CommandArgs<'a> {
     output: Option<OutputModeArg>,
     json: bool,
     lang: Option<LanguageArg>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct HourlyCommandArgs<'a> {
+    command: &'static str,
+    city: Option<&'a str>,
+    lat: Option<f64>,
+    lon: Option<f64>,
+    output: Option<OutputModeArg>,
+    json: bool,
+    lang: Option<LanguageArg>,
+    hours: usize,
 }
 
 fn run_command<P, N>(
@@ -281,6 +343,46 @@ where
     }
 }
 
+fn run_hourly_command<P, N>(
+    config: &RuntimeConfig,
+    providers: &P,
+    now_fn: N,
+    args: HourlyCommandArgs<'_>,
+) -> Result<String, CliError>
+where
+    P: ProviderApi,
+    N: Fn() -> DateTime<Utc>,
+{
+    let output_mode = resolve_output_mode(args.output, args.json, CliOutputMode::Human)?;
+    let output_language = args.lang.map(Into::into).unwrap_or(OutputLanguage::En);
+    let location = resolve_location_query(args.city, args.lat, args.lon)?;
+    let output =
+        hourly_service::resolve_hourly_forecast(config, providers, now_fn, &location, args.hours)
+            .map_err(map_app_error)?;
+
+    match output_mode {
+        CliOutputMode::Json => render_hourly_json_envelope(args.command, &output),
+        CliOutputMode::Human => Ok(format_hourly_text_output(&output, output_language)),
+        CliOutputMode::AlfredJson => render_hourly_alfred_json(&output, output_language),
+    }
+}
+
+fn resolve_location_query(
+    city: Option<&str>,
+    lat: Option<f64>,
+    lon: Option<f64>,
+) -> Result<LocationQuery, CliError> {
+    let request = ForecastRequest::new(
+        ForecastPeriod::Hourly,
+        city,
+        lat,
+        lon,
+        RequestOutputMode::Json,
+    )
+    .map_err(user_invalid_input)?;
+    Ok(request.location)
+}
+
 fn resolve_output_mode(
     output: Option<OutputModeArg>,
     json_flag: bool,
@@ -303,6 +405,30 @@ fn resolve_output_mode(
 fn render_service_json_envelope(
     command: &str,
     output: &weather_cli::model::ForecastOutput,
+) -> Result<String, CliError> {
+    let result = serde_json::to_value(output).map_err(|error| {
+        runtime_error(
+            ERROR_CODE_RUNTIME_SERIALIZE,
+            format!("failed to serialize output: {error}"),
+        )
+    })?;
+    serde_json::to_string(&json!({
+        "schema_version": ENVELOPE_SCHEMA_VERSION,
+        "command": command,
+        "ok": true,
+        "result": result,
+    }))
+    .map_err(|error| {
+        runtime_error(
+            ERROR_CODE_RUNTIME_SERIALIZE,
+            format!("failed to serialize output envelope: {error}"),
+        )
+    })
+}
+
+fn render_hourly_json_envelope(
+    command: &str,
+    output: &HourlyForecastOutput,
 ) -> Result<String, CliError> {
     let result = serde_json::to_value(output).map_err(|error| {
         runtime_error(
@@ -351,6 +477,47 @@ fn render_alfred_json(
             ),
             "subtitle": format!("{}:{}%", precip_label(language), day.precip_prob_max_pct),
             "arg": day.date,
+            "valid": false,
+        }));
+    }
+
+    serde_json::to_string(&json!({ "items": items })).map_err(|error| {
+        runtime_error(
+            ERROR_CODE_RUNTIME_SERIALIZE,
+            format!("failed to serialize Alfred output: {error}"),
+        )
+    })
+}
+
+fn render_hourly_alfred_json(
+    output: &HourlyForecastOutput,
+    language: OutputLanguage,
+) -> Result<String, CliError> {
+    let mut items = Vec::with_capacity(output.hourly.len() + 1);
+    items.push(json!({
+        "title": format!("{} ({})", output.location.name, output.timezone),
+        "subtitle": format!(
+            "source={} freshness={} lat={:.4} lon={:.4}",
+            output.source,
+            freshness_label(output.freshness.status),
+            output.location.latitude,
+            output.location.longitude
+        ),
+        "arg": output.location.name,
+        "valid": false,
+    }));
+
+    for hour in &output.hourly {
+        let summary = localized_summary_by_code(hour.weather_code, language);
+        items.push(json!({
+            "title": format!(
+                "{} {} {:.1}°C",
+                display_hour_label(&hour.datetime),
+                summary,
+                hour.temp_c
+            ),
+            "subtitle": format!("{}:{}%", precip_label(language), hour.precip_prob_pct),
+            "arg": hour.datetime,
             "valid": false,
         }));
     }
@@ -588,11 +755,43 @@ fn format_text_output(
     lines.join("\n")
 }
 
-fn localized_summary(day: &weather_cli::model::ForecastDay, language: OutputLanguage) -> String {
-    match language {
-        OutputLanguage::En => weather_cli::weather_code::summary_en(day.weather_code).to_string(),
-        OutputLanguage::Zh => day.summary_zh.clone(),
+fn format_hourly_text_output(output: &HourlyForecastOutput, language: OutputLanguage) -> String {
+    let mut lines = vec![format!(
+        "{} ({}) | source={} | freshness={}",
+        output.location.name,
+        output.timezone,
+        output.source,
+        freshness_label(output.freshness.status)
+    )];
+
+    for hour in &output.hourly {
+        let summary = localized_summary_by_code(hour.weather_code, language);
+        lines.push(format!(
+            "{} {} {:.1}°C {}:{}%",
+            display_hour_label(&hour.datetime),
+            summary,
+            hour.temp_c,
+            precip_label(language),
+            hour.precip_prob_pct
+        ));
     }
+
+    lines.join("\n")
+}
+
+fn localized_summary(day: &weather_cli::model::ForecastDay, language: OutputLanguage) -> String {
+    localized_summary_by_code(day.weather_code, language)
+}
+
+fn localized_summary_by_code(weather_code: i32, language: OutputLanguage) -> String {
+    match language {
+        OutputLanguage::En => weather_cli::weather_code::summary_en(weather_code).to_string(),
+        OutputLanguage::Zh => weather_cli::weather_code::summary_zh(weather_code).to_string(),
+    }
+}
+
+fn display_hour_label(datetime: &str) -> String {
+    datetime.replace('T', " ")
 }
 
 fn precip_label(language: OutputLanguage) -> &'static str {
@@ -620,6 +819,7 @@ mod tests {
     struct FakeProviders {
         geocode_result: Result<ResolvedLocation, ProviderError>,
         open_meteo_result: Result<ProviderForecast, ProviderError>,
+        open_meteo_hourly_result: Result<ProviderHourlyForecast, ProviderError>,
         met_no_result: Result<ProviderForecast, ProviderError>,
     }
 
@@ -646,6 +846,17 @@ mod tests {
                         temp_min_c: 14.5,
                         temp_max_c: 20.1,
                         precip_prob_max_pct: 20,
+                    }],
+                }),
+                open_meteo_hourly_result: Ok(ProviderHourlyForecast {
+                    timezone: "Asia/Taipei".to_string(),
+                    utc_offset_seconds: 0,
+                    fetched_at: now,
+                    hours: vec![ProviderForecastHour {
+                        datetime: "2026-02-11T00:00".to_string(),
+                        weather_code: 3,
+                        temp_c: 16.1,
+                        precip_prob_pct: 20,
                     }],
                 }),
                 met_no_result: Ok(ProviderForecast {
@@ -675,6 +886,15 @@ mod tests {
             _forecast_days: usize,
         ) -> Result<ProviderForecast, ProviderError> {
             self.open_meteo_result.clone()
+        }
+
+        fn fetch_open_meteo_hourly_forecast(
+            &self,
+            _lat: f64,
+            _lon: f64,
+            _forecast_days: usize,
+        ) -> Result<ProviderHourlyForecast, ProviderError> {
+            self.open_meteo_hourly_result.clone()
         }
 
         fn fetch_met_no_forecast(
@@ -782,6 +1002,31 @@ mod tests {
                 .and_then(Value::as_array)
                 .map(Vec::len),
             Some(7)
+        );
+    }
+
+    #[test]
+    fn main_outputs_hourly_json_contract() {
+        let cli = Cli::parse_from(["weather-cli", "hourly", "--city", "Tokyo", "--json"]);
+
+        let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
+            .expect("hourly should pass");
+        let json: Value = serde_json::from_str(&output).expect("json");
+
+        assert_eq!(
+            json.get("schema_version").and_then(Value::as_str),
+            Some("v1")
+        );
+        assert_eq!(
+            json.get("command").and_then(Value::as_str),
+            Some("weather.hourly")
+        );
+        assert_eq!(
+            json.get("result")
+                .and_then(|result| result.get("hourly"))
+                .and_then(Value::as_array)
+                .map(Vec::len),
+            Some(1)
         );
     }
 
@@ -909,6 +1154,32 @@ mod tests {
             .and_then(|item| item.get("title"))
             .and_then(Value::as_str);
         assert_eq!(second_item_title, Some("2026-02-11 陰天 14.5~20.1°C"));
+    }
+
+    #[test]
+    fn main_outputs_hourly_alfred_json_mode_when_requested() {
+        let cli = Cli::parse_from([
+            "weather-cli",
+            "hourly",
+            "--city",
+            "Tokyo",
+            "--output",
+            "alfred-json",
+            "--hours",
+            "1",
+        ]);
+
+        let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
+            .expect("hourly alfred mode");
+        let json: Value = serde_json::from_str(&output).expect("json");
+
+        let second_item_title = json
+            .get("items")
+            .and_then(Value::as_array)
+            .and_then(|items| items.get(1))
+            .and_then(|item| item.get("title"))
+            .and_then(Value::as_str);
+        assert_eq!(second_item_title, Some("2026-02-11 00:00 Cloudy 16.1°C"));
     }
 
     #[test]

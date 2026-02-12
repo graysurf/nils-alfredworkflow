@@ -6,13 +6,17 @@ use serde_json::Value;
 use crate::config::RetryPolicy;
 use crate::geocoding::ResolvedLocation;
 
-use super::{ProviderError, ProviderForecast, ProviderForecastDay, execute_with_retry};
+use super::{
+    ProviderError, ProviderForecast, ProviderForecastDay, ProviderForecastHour,
+    ProviderHourlyForecast, execute_with_retry,
+};
 
 const PROVIDER_NAME: &str = "open_meteo";
 const GEOCODE_ENDPOINT: &str = "https://geocoding-api.open-meteo.com/v1/search";
 const FORECAST_ENDPOINT: &str = "https://api.open-meteo.com/v1/forecast";
 const FORECAST_DAILY_FIELDS: &str =
     "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max";
+const FORECAST_HOURLY_FIELDS: &str = "weather_code,temperature_2m,precipitation_probability";
 
 #[derive(Debug, Serialize)]
 struct GeocodeQuery<'a> {
@@ -45,10 +49,26 @@ struct ForecastQuery<'a> {
     daily: &'a str,
 }
 
+#[derive(Debug, Serialize)]
+struct ForecastHourlyQuery<'a> {
+    latitude: f64,
+    longitude: f64,
+    timezone: &'a str,
+    forecast_hours: usize,
+    hourly: &'a str,
+}
+
 #[derive(Debug, Deserialize)]
 struct ForecastResponse {
     timezone: Option<String>,
     daily: Option<ForecastDaily>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ForecastHourlyResponse {
+    timezone: Option<String>,
+    utc_offset_seconds: Option<i32>,
+    hourly: Option<ForecastHourly>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,6 +83,18 @@ struct ForecastDaily {
     temperature_2m_min: Vec<f64>,
     #[serde(default)]
     precipitation_probability_max: Vec<Option<f64>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ForecastHourly {
+    #[serde(default)]
+    time: Vec<String>,
+    #[serde(default)]
+    weather_code: Vec<i32>,
+    #[serde(default)]
+    temperature_2m: Vec<f64>,
+    #[serde(default)]
+    precipitation_probability: Vec<Option<f64>>,
 }
 
 pub fn fetch_geocode(
@@ -89,6 +121,21 @@ pub fn fetch_forecast(
         PROVIDER_NAME,
         retry_policy,
         || fetch_forecast_once(client, lat, lon, forecast_days),
+        std::thread::sleep,
+    )
+}
+
+pub fn fetch_hourly_forecast(
+    client: &Client,
+    lat: f64,
+    lon: f64,
+    forecast_hours: usize,
+    retry_policy: RetryPolicy,
+) -> Result<ProviderHourlyForecast, ProviderError> {
+    execute_with_retry(
+        PROVIDER_NAME,
+        retry_policy,
+        || fetch_hourly_forecast_once(client, lat, lon, forecast_hours),
         std::thread::sleep,
     )
 }
@@ -121,6 +168,24 @@ fn fetch_forecast_once(
 
     let body = execute_request(client.get(FORECAST_ENDPOINT).query(&query))?;
     parse_forecast_response(&body)
+}
+
+fn fetch_hourly_forecast_once(
+    client: &Client,
+    lat: f64,
+    lon: f64,
+    forecast_hours: usize,
+) -> Result<ProviderHourlyForecast, ProviderError> {
+    let query = ForecastHourlyQuery {
+        latitude: lat,
+        longitude: lon,
+        timezone: "auto",
+        forecast_hours,
+        hourly: FORECAST_HOURLY_FIELDS,
+    };
+
+    let body = execute_request(client.get(FORECAST_ENDPOINT).query(&query))?;
+    parse_hourly_response(&body)
 }
 
 fn execute_request(request: RequestBuilder) -> Result<String, ProviderError> {
@@ -204,6 +269,32 @@ fn parse_forecast_response(body: &str) -> Result<ProviderForecast, ProviderError
     })
 }
 
+fn parse_hourly_response(body: &str) -> Result<ProviderHourlyForecast, ProviderError> {
+    let payload: ForecastHourlyResponse = serde_json::from_str(body)
+        .map_err(|error| ProviderError::InvalidResponse(format!("hourly payload: {error}")))?;
+
+    let timezone = payload
+        .timezone
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            ProviderError::InvalidResponse("hourly payload: missing timezone".to_string())
+        })?;
+
+    let hourly = payload
+        .hourly
+        .ok_or_else(|| ProviderError::InvalidResponse("hourly payload: missing hourly".into()))?;
+
+    let hours = build_forecast_hours(hourly)?;
+
+    Ok(ProviderHourlyForecast {
+        timezone,
+        utc_offset_seconds: payload.utc_offset_seconds.unwrap_or(0),
+        fetched_at: Utc::now(),
+        hours,
+    })
+}
+
 fn build_forecast_days(daily: ForecastDaily) -> Result<Vec<ProviderForecastDay>, ProviderError> {
     let length = daily.time.len();
 
@@ -237,6 +328,41 @@ fn build_forecast_days(daily: ForecastDaily) -> Result<Vec<ProviderForecastDay>,
     }
 
     Ok(days)
+}
+
+fn build_forecast_hours(
+    hourly: ForecastHourly,
+) -> Result<Vec<ProviderForecastHour>, ProviderError> {
+    let length = hourly.time.len();
+
+    if hourly.weather_code.len() != length
+        || hourly.temperature_2m.len() != length
+        || hourly.precipitation_probability.len() != length
+    {
+        return Err(ProviderError::InvalidResponse(
+            "hourly payload: hourly arrays length mismatch".to_string(),
+        ));
+    }
+
+    let mut hours = Vec::with_capacity(length);
+    for index in 0..length {
+        let datetime = hourly.time[index].trim().to_string();
+        if datetime.is_empty() {
+            return Err(ProviderError::InvalidResponse(
+                "hourly payload: empty datetime in hourly.time".to_string(),
+            ));
+        }
+
+        let precip = hourly.precipitation_probability[index].unwrap_or(0.0);
+        hours.push(ProviderForecastHour {
+            datetime,
+            weather_code: hourly.weather_code[index],
+            temp_c: hourly.temperature_2m[index],
+            precip_prob_pct: clamp_percentage(precip),
+        });
+    }
+
+    Ok(hours)
 }
 
 fn clamp_percentage(value: f64) -> u8 {
@@ -341,6 +467,45 @@ mod tests {
         }"#;
 
         let error = parse_forecast_response(body).expect_err("must fail");
+        assert!(
+            matches!(error, ProviderError::InvalidResponse(message) if message.contains("length mismatch"))
+        );
+    }
+
+    #[test]
+    fn open_meteo_hourly_builds_hours_and_clamps_precip() {
+        let body = r#"{
+            "timezone": "Asia/Tokyo",
+            "utc_offset_seconds": 32400,
+            "hourly": {
+                "time": ["2026-02-12T00:00", "2026-02-12T01:00"],
+                "weather_code": [3, 61],
+                "temperature_2m": [4.4, 3.8],
+                "precipitation_probability": [125, -5]
+            }
+        }"#;
+
+        let forecast = parse_hourly_response(body).expect("hourly");
+        assert_eq!(forecast.timezone, "Asia/Tokyo");
+        assert_eq!(forecast.utc_offset_seconds, 32400);
+        assert_eq!(forecast.hours.len(), 2);
+        assert_eq!(forecast.hours[0].precip_prob_pct, 100);
+        assert_eq!(forecast.hours[1].precip_prob_pct, 0);
+    }
+
+    #[test]
+    fn open_meteo_hourly_rejects_mismatched_lengths() {
+        let body = r#"{
+            "timezone": "Asia/Tokyo",
+            "hourly": {
+                "time": ["2026-02-12T00:00", "2026-02-12T01:00"],
+                "weather_code": [3],
+                "temperature_2m": [4.4, 3.8],
+                "precipitation_probability": [20, 30]
+            }
+        }"#;
+
+        let error = parse_hourly_response(body).expect_err("must fail");
         assert!(
             matches!(error, ProviderError::InvalidResponse(message) if message.contains("length mismatch"))
         );

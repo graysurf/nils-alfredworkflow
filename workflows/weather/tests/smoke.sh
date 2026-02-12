@@ -301,6 +301,37 @@ elif [[ -n "$city" ]]; then
   esac
 fi
 
+if [[ "$period" == "hourly" ]]; then
+  jq -nc \
+    --arg location "$location" \
+    --arg timezone "$timezone" \
+    --arg lat "$lat_out" \
+    --arg lon "$lon_out" \
+    --arg summary "$summary" \
+    --arg rain_label "$rain_label" \
+    '{
+      items: (
+        [
+          {
+            title: ($location + " (" + $timezone + ")"),
+            subtitle: ("source=open_meteo freshness=live lat=" + $lat + " lon=" + $lon),
+            arg: $location,
+            valid: false
+          }
+        ]
+        + [
+          range(0; 4) | {
+            title: ("2026-02-12 " + ((if . < 10 then "0" else "" end) + (tostring) + ":00") + " " + $summary + " 12.0°C"),
+            subtitle: ($rain_label + ":10%"),
+            arg: ("2026-02-12T" + (if . < 10 then "0" else "" end) + (tostring) + ":00"),
+            valid: false
+          }
+        ]
+      )
+    }'
+  exit 0
+fi
+
 if [[ "$period" == "week" ]]; then
   jq -nc \
     --arg location "$location" \
@@ -333,8 +364,13 @@ if [[ "$period" == "week" ]]; then
   exit 0
 fi
 
-printf '{"items":[{"title":"%s (%s)","subtitle":"source=open_meteo freshness=live lat=%s lon=%s","arg":"%s","valid":false},{"title":"2026-02-12 %s 12.0~18.0°C","subtitle":"%s:10%%","arg":"%s forecast","valid":false}]}' "$location" "$timezone" "$lat_out" "$lon_out" "$location" "$summary" "$rain_label" "$period"
-printf '\n'
+if [[ "$period" == "today" ]]; then
+  printf '{"items":[{"title":"%s (%s)","subtitle":"source=open_meteo freshness=live lat=%s lon=%s","arg":"%s","valid":false},{"title":"2026-02-12 %s 12.0~18.0°C","subtitle":"%s:10%%","arg":"%s forecast","valid":false}]}' "$location" "$timezone" "$lat_out" "$lon_out" "$location" "$summary" "$rain_label" "$period"
+  printf '\n'
+  exit 0
+fi
+
+exit 9
 EOS
 chmod +x "$tmp_dir/stubs/weather-cli-ok"
 
@@ -361,18 +397,29 @@ printf '{"bad":"shape"}\n'
 EOS
 chmod +x "$tmp_dir/stubs/weather-cli-malformed"
 
-today_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" "$workflow_dir/scripts/script_filter_today.sh" "Taipei"; })"
-assert_jq_json "$today_json" '.items | type == "array" and length == 1' "today output must be single-line Alfred item"
-assert_jq_json "$today_json" '.items[0].valid == true' "forecast item should be actionable"
-assert_jq_json "$today_json" '.items[0].arg == "today forecast"' "forecast row must keep actionable arg"
-assert_jq_json "$today_json" '.items[0].title == "Taipei 12.0~18.0°C cloudy 10%"' "title format should match city temp summary and rain pct"
-assert_jq_json "$today_json" '.items[0].subtitle == "2026-02-12 Asia/Taipei 25.0330,121.5654"' "subtitle should show date timezone and coordinates"
-assert_jq_json "$today_json" '.items[0].icon.path == "assets/icons/weather/cloudy.png"' "cloudy row should map to cloudy icon"
+today_stage_one_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" "$workflow_dir/scripts/script_filter_today.sh" "Taipei"; })"
+assert_jq_json "$today_stage_one_json" '.items | type == "array" and length == 1' "today stage one should keep original single-row display"
+assert_jq_json "$today_stage_one_json" '.items[0].title == "Taipei 12.0~18.0°C cloudy 10%"' "today stage one should keep original today row title"
+assert_jq_json "$today_stage_one_json" '.items[0].subtitle == "2026-02-12 Asia/Taipei 25.0330,121.5654"' "today stage one should keep original subtitle format"
+assert_jq_json "$today_stage_one_json" '.items[0].icon.path == "assets/icons/weather/cloudy.png"' "today stage one should keep weather icon mapping"
+assert_jq_json "$today_stage_one_json" '.items[0].valid == false' "today stage one row must be non-actionable for stage two transition"
+assert_jq_json "$today_stage_one_json" '.items[0].autocomplete == "city::Taipei"' "today stage one should add city token for stage two"
 
-today_zh_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" WEATHER_LOCALE="zh" "$workflow_dir/scripts/script_filter_today.sh" "Taipei"; })"
-assert_jq_json "$today_zh_json" '.items[0].title == "Taipei 12.0~18.0°C 陰天 10%"' "zh locale should use chinese summary in new title order"
-assert_jq_json "$today_zh_json" '.items[0].subtitle == "2026-02-12 Asia/Taipei 25.0330,121.5654"' "zh locale subtitle should show date timezone and coordinates"
-assert_jq_json "$today_zh_json" '.items[0].icon.path == "assets/icons/weather/cloudy.png"' "zh cloudy row should map to same cloudy icon"
+today_stage_two_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" "$workflow_dir/scripts/script_filter_today.sh" "city::Taipei"; })"
+assert_jq_json "$today_stage_two_json" '.items | type == "array" and length == 4' "today stage two must return hourly rows"
+assert_jq_json "$today_stage_two_json" '.items[0].title == "Taipei 00:00 12.0°C cloudy 10%"' "today stage two should render normalized hourly row"
+assert_jq_json "$today_stage_two_json" '.items[0].subtitle == "2026-02-12 Asia/Taipei 25.0330,121.5654"' "today stage two subtitle should show date timezone and coordinates"
+assert_jq_json "$today_stage_two_json" '.items[0].icon.path == "assets/icons/weather/cloudy.png"' "today hourly row should map to weather icon"
+assert_jq_json "$today_stage_two_json" '.items[3].title == "Taipei 03:00 12.0°C cloudy 10%"' "today stage two should keep later hourly rows"
+
+today_zh_stage_two_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" WEATHER_LOCALE="zh" "$workflow_dir/scripts/script_filter_today.sh" "city::Taipei"; })"
+assert_jq_json "$today_zh_stage_two_json" '.items[0].title == "Taipei 00:00 12.0°C 陰天 10%"' "zh locale should use chinese summary for hourly rows"
+assert_jq_json "$today_zh_stage_two_json" '.items[0].subtitle == "2026-02-12 Asia/Taipei 25.0330,121.5654"' "zh locale hourly subtitle should show date timezone and coordinates"
+assert_jq_json "$today_zh_stage_two_json" '.items[0].icon.path == "assets/icons/weather/cloudy.png"' "zh hourly row should map to same cloudy icon"
+
+today_zh_stage_one_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" WEATHER_LOCALE="zh" "$workflow_dir/scripts/script_filter_today.sh" "Taipei"; })"
+assert_jq_json "$today_zh_stage_one_json" '.items[0].title == "Taipei 12.0~18.0°C 陰天 10%"' "today stage one zh should keep original localized title"
+assert_jq_json "$today_zh_stage_one_json" '.items[0].autocomplete == "city::Taipei"' "today stage one zh should still allow stage two"
 
 week_city_picker_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" "$workflow_dir/scripts/script_filter_week.sh" "Taipei"; })"
 assert_jq_json "$week_city_picker_json" '.items | type == "array" and length >= 1' "week stage one should list city candidates"
@@ -398,27 +445,33 @@ assert_jq_json "$week_coordinate_stage_two_json" '.items[0].title == "25.03,121.
 assert_jq_json "$week_coordinate_stage_two_json" '.items[0].subtitle == "2026-02-12 UTC 25.03,121.56"' "week coordinate stage two subtitle should show UTC coordinates"
 
 empty_today_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" "$workflow_dir/scripts/script_filter_today.sh" "  "; })"
-assert_jq_json "$empty_today_json" '.items[0].title == "Tokyo 12.0~18.0°C cloudy 10%"' "empty today query should use Tokyo default"
-assert_jq_json "$empty_today_json" '.items[0].subtitle == "2026-02-12 Asia/Tokyo 35.6762,139.6503"' "empty today subtitle should show date timezone and coordinates"
+assert_jq_json "$empty_today_json" '.items | type == "array" and length == 1' "empty today query should keep original today result count"
+assert_jq_json "$empty_today_json" '.items[0].title == "Tokyo 12.0~18.0°C cloudy 10%"' "empty today query should keep original Tokyo row"
+assert_jq_json "$empty_today_json" '.items[0].autocomplete == "city::Tokyo"' "empty today query should add city token for stage two"
 
 empty_today_multi_default_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" WEATHER_DEFAULT_CITIES="Tokyo,Osaka" "$workflow_dir/scripts/script_filter_today.sh" "  "; })"
-assert_jq_json "$empty_today_multi_default_json" '.items | type == "array" and length == 2' "multi default cities should return one row per city"
-assert_jq_json "$empty_today_multi_default_json" 'any(.items[]; .title == "Tokyo 12.0~18.0°C cloudy 10%")' "multi default should include Tokyo row"
-assert_jq_json "$empty_today_multi_default_json" 'any(.items[]; .title == "Osaka 12.0~18.0°C cloudy 10%")' "multi default should include Osaka row"
+assert_jq_json "$empty_today_multi_default_json" '.items | type == "array" and length == 2' "multi default cities should keep original row-per-city today display"
+assert_jq_json "$empty_today_multi_default_json" 'any(.items[]; .title == "Tokyo 12.0~18.0°C cloudy 10%")' "multi default should include Tokyo today row"
+assert_jq_json "$empty_today_multi_default_json" 'any(.items[]; .title == "Osaka 12.0~18.0°C cloudy 10%")' "multi default should include Osaka today row"
 
 multi_city_query_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" "$workflow_dir/scripts/script_filter_today.sh" "Taipei,Tokyo"; })"
-assert_jq_json "$multi_city_query_json" '.items | type == "array" and length == 2' "multi-city query should return one row per city"
-assert_jq_json "$multi_city_query_json" 'any(.items[]; .title == "Taipei 12.0~18.0°C cloudy 10%")' "multi-city query should include Taipei row"
-assert_jq_json "$multi_city_query_json" 'any(.items[]; .title == "Tokyo 12.0~18.0°C cloudy 10%")' "multi-city query should include Tokyo row"
+assert_jq_json "$multi_city_query_json" '.items | type == "array" and length == 2' "multi-city query should keep original row-per-city today display"
+assert_jq_json "$multi_city_query_json" 'any(.items[]; .title == "Taipei 12.0~18.0°C cloudy 10%")' "multi-city query should include Taipei today row"
+assert_jq_json "$multi_city_query_json" 'any(.items[]; .title == "Tokyo 12.0~18.0°C cloudy 10%")' "multi-city query should include Tokyo today row"
 
-invalid_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-invalid" "$workflow_dir/scripts/script_filter_today.sh" "Taipei"; })"
+today_coordinate_stage_two_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-ok" "$workflow_dir/scripts/script_filter_today.sh" "city::25.03,121.56"; })"
+assert_jq_json "$today_coordinate_stage_two_json" '.items | type == "array" and length == 4' "today coordinate city token should still produce hourly rows"
+assert_jq_json "$today_coordinate_stage_two_json" '.items[0].title == "25.03,121.56 00:00 12.0°C cloudy 10%"' "today coordinate stage two should include coordinate location in title"
+assert_jq_json "$today_coordinate_stage_two_json" '.items[0].subtitle == "2026-02-12 UTC 25.03,121.56"' "today coordinate stage two subtitle should show UTC coordinates"
+
+invalid_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-invalid" "$workflow_dir/scripts/script_filter_today.sh" "city::Taipei"; })"
 assert_jq_json "$invalid_json" '.items[0].title == "Invalid location input"' "invalid input title mapping mismatch"
 assert_jq_json "$invalid_json" '.items[0].valid == false' "invalid fallback item must be invalid"
 
 runtime_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-runtime" "$workflow_dir/scripts/script_filter_week.sh" "city::Taipei"; })"
 assert_jq_json "$runtime_json" '.items[0].title == "Weather provider unavailable"' "runtime failure title mapping mismatch"
 
-malformed_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-malformed" "$workflow_dir/scripts/script_filter_today.sh" "Taipei"; })"
+malformed_json="$({ WEATHER_CLI_BIN="$tmp_dir/stubs/weather-cli-malformed" "$workflow_dir/scripts/script_filter_today.sh" "city::Taipei"; })"
 assert_jq_json "$malformed_json" '.items[0].title == "Weather output format error"' "malformed output title mapping mismatch"
 
 missing_layout="$tmp_dir/layout-missing"
@@ -429,7 +482,7 @@ cp "$workflow_dir/scripts/script_filter_week.sh" "$missing_layout/workflows/weat
 chmod +x "$missing_layout/workflows/weather/scripts/script_filter_common.sh"
 chmod +x "$missing_layout/workflows/weather/scripts/script_filter_today.sh"
 chmod +x "$missing_layout/workflows/weather/scripts/script_filter_week.sh"
-missing_binary_json="$({ WEATHER_CLI_BIN="$missing_layout/does-not-exist/weather-cli" "$missing_layout/workflows/weather/scripts/script_filter_today.sh" "Taipei"; })"
+missing_binary_json="$({ WEATHER_CLI_BIN="$missing_layout/does-not-exist/weather-cli" "$missing_layout/workflows/weather/scripts/script_filter_today.sh" "city::Taipei"; })"
 assert_jq_json "$missing_binary_json" '.items[0].title == "weather-cli binary not found"' "missing binary title mismatch"
 
 make_layout_cli() {
@@ -474,7 +527,7 @@ run_layout_check() {
   esac
 
   local output
-  output="$("$layout"/workflows/weather/scripts/script_filter_today.sh "Taipei")"
+  output="$("$layout"/workflows/weather/scripts/script_filter_today.sh "city::Taipei")"
   assert_jq_json "$output" ".items[0].title == \"$marker\"" "script_filter failed to resolve $mode weather-cli path"
 }
 

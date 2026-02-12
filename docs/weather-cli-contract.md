@@ -11,6 +11,8 @@ Primary source is Open-Meteo, fallback source is MET Norway.
 - `weather-cli today --lat <f64> --lon <f64> [--json] [--lang <en|zh>]`
 - `weather-cli week --city <name> [--json] [--lang <en|zh>]`
 - `weather-cli week --lat <f64> --lon <f64> [--json] [--lang <en|zh>]`
+- `weather-cli hourly --city <name> [--json] [--lang <en|zh>] [--hours <1..48>]`
+- `weather-cli hourly --lat <f64> --lon <f64> [--json] [--lang <en|zh>] [--hours <1..48>]`
 
 Location input rules:
 
@@ -18,8 +20,11 @@ Location input rules:
 - `--lat` and `--lon` must be provided together.
 - `--city` cannot be empty.
 - `--lang` affects human/Alfred text labels only; JSON payload fields stay stable.
+- `hourly` output starts from current local hour (for example, `10:30` shows from `10:00`).
 
 ## Output schema (JSON mode)
+
+Daily (`today` / `week`) JSON payload:
 
 ```json
 {
@@ -52,12 +57,43 @@ Location input rules:
 }
 ```
 
+Hourly (`hourly`) JSON payload:
+
+```json
+{
+  "location": {
+    "name": "Tokyo",
+    "latitude": 35.6762,
+    "longitude": 139.6503
+  },
+  "timezone": "Asia/Tokyo",
+  "hourly": [
+    {
+      "datetime": "2026-02-12T00:00",
+      "weather_code": 3,
+      "temp_c": 1.2,
+      "precip_prob_pct": 10
+    }
+  ],
+  "source": "open_meteo",
+  "source_trace": [],
+  "fetched_at": "2026-02-12T00:00:00Z",
+  "freshness": {
+    "status": "live|cache_fresh|cache_stale_fallback",
+    "key": "hourly-city-tokyo",
+    "ttl_secs": 1800,
+    "age_secs": 0
+  }
+}
+```
+
 ## Provider policy
 
 - No token required for all command paths.
 - Forecast order:
   1. Open-Meteo (primary)
   2. MET Norway (fallback)
+- Hourly command currently uses Open-Meteo only (with cache stale fallback on upstream error).
 - If both providers fail and stale cache exists, return stale cache with `freshness.status=cache_stale_fallback`.
 - If all fail and no cache exists, command exits with runtime error.
 

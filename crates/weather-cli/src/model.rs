@@ -6,6 +6,7 @@ use thiserror::Error;
 pub enum ForecastPeriod {
     Today,
     Week,
+    Hourly,
 }
 
 impl ForecastPeriod {
@@ -13,6 +14,7 @@ impl ForecastPeriod {
         match self {
             Self::Today => "today",
             Self::Week => "week",
+            Self::Hourly => "hourly",
         }
     }
 
@@ -20,6 +22,7 @@ impl ForecastPeriod {
         match self {
             Self::Today => 1,
             Self::Week => 7,
+            Self::Hourly => 1,
         }
     }
 }
@@ -63,6 +66,26 @@ pub struct ForecastOutput {
     pub location: ForecastLocation,
     pub timezone: String,
     pub forecast: Vec<ForecastDay>,
+    pub source: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub source_trace: Vec<String>,
+    pub fetched_at: String,
+    pub freshness: CacheMetadata,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HourlyForecastPoint {
+    pub datetime: String,
+    pub weather_code: i32,
+    pub temp_c: f64,
+    pub precip_prob_pct: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HourlyForecastOutput {
+    pub location: ForecastLocation,
+    pub timezone: String,
+    pub hourly: Vec<HourlyForecastPoint>,
     pub source: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub source_trace: Vec<String>,

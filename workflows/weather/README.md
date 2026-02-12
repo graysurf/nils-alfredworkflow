@@ -10,7 +10,7 @@ Show weather forecasts from `weather-cli` with separate keywords for today and w
 
 | Keyword | Behavior |
 | --- | --- |
-| `wt` | Show today's forecast. |
+| `wt` | Show today rows first, then select a row to open hourly forecast. |
 | `ww` | Pick city, then show 7-day forecast. |
 
 ## Query Format
@@ -18,6 +18,9 @@ Show weather forecasts from `weather-cli` with separate keywords for today and w
 - City name: `wt Taipei`
 - Multi-city by comma: `wt Tokyo,Osaka,Taipei`
 - Coordinates: `wt 25.03,121.56`
+- Today view is two-stage:
+  1. `wt <query>` shows today forecast rows (same display format as before).
+  2. Select a today row to show hourly forecast rows for that city.
 - Week view is two-stage:
   1. `ww <query>` to pick a city.
   2. Select a city row to show fixed 7-day forecast rows.
@@ -35,13 +38,14 @@ Set these via Alfred's `Configure Workflow...` UI:
 
 ## Notes
 
-- Result row format: `City min~max°C Summary x%` (single-line title).
+- `wt` row format: `City HH:MM Temp°C Summary x%` (single-line title).
+- `ww` row format: `City min~max°C Summary x%` (single-line title).
 - Subtitle shows `Date Timezone Latitude,Longitude`.
 - Result rows map weather type to icon under `assets/icons/weather/*.png` (shared visual style).
-- `wt` returns all normalized rows, so Alfred can scroll through long lists.
+- `wt` keeps original today-row display as stage one, then opens hourly rows as stage two.
 - `ww` uses city-picker stage first, then returns fixed 7-day rows for the selected city.
 - Enter on result rows copies the selected row argument.
-- The workflow calls `weather-cli` with `--output alfred-json --lang <locale>`.
+- The workflow calls `weather-cli` with `--output alfred-json --lang <locale>` (`hourly` for `wt`, `week` for `ww`).
 
 ## Local Validation
 

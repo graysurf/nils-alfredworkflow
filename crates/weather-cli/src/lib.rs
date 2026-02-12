@@ -2,6 +2,7 @@ pub mod cache;
 pub mod config;
 pub mod error;
 pub mod geocoding;
+pub mod hourly_service;
 pub mod model;
 pub mod providers;
 pub mod service;
