@@ -310,6 +310,7 @@ Runtime checks:
 - `MEMO_SOURCE` (optional): source label for new memo rows; default `alfred`.
 - `MEMO_REQUIRE_CONFIRM` (optional): confirmation gate flag; default `0`.
 - `MEMO_MAX_INPUT_BYTES` (optional): default `4096`, valid `1..=1048576`.
+- `MEMO_RECENT_LIMIT` (optional): default `8`, valid `1..=50`, controls empty-query recent row count.
 - `MEMO_WORKFLOW_CLI_BIN` (optional): absolute executable path override for `memo-workflow-cli`.
 
 ### Alfred command flow
@@ -319,7 +320,8 @@ Runtime checks:
   `memo-workflow-cli script-filter --query "<query>"`.
 - Enter flow: `workflows/memo-add/scripts/action_run.sh` ->
   `memo-workflow-cli action --token "<token>"`.
-- Empty query returns guidance + `db-init` row; non-empty query returns add action row.
+- Empty query returns guidance + `db-init` row + latest memo rows (newest first).
+- Non-empty query returns add action row.
 
 ### Operator validation checklist
 
@@ -331,7 +333,7 @@ Run these before packaging/release:
 
 Runtime checks:
 
-- Empty query must include one actionable `db init` row.
+- Empty query must include one actionable `db init` row and recent list rows.
 - Invalid `MEMO_*` values must return a non-actionable config error item.
 - Add action must persist one row and return success text from action script.
 

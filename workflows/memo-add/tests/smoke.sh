@@ -71,13 +71,14 @@ manifest="$workflow_dir/workflow.toml"
 [[ "$(toml_string "$manifest" script_filter)" == "script_filter.sh" ]] || fail "script_filter mismatch"
 [[ "$(toml_string "$manifest" action)" == "action_run.sh" ]] || fail "action mismatch"
 
-for variable in MEMO_DB_PATH MEMO_SOURCE MEMO_REQUIRE_CONFIRM MEMO_MAX_INPUT_BYTES MEMO_WORKFLOW_CLI_BIN; do
+for variable in MEMO_DB_PATH MEMO_SOURCE MEMO_REQUIRE_CONFIRM MEMO_MAX_INPUT_BYTES MEMO_RECENT_LIMIT MEMO_WORKFLOW_CLI_BIN; do
   rg -n "^${variable}[[:space:]]*=" "$manifest" >/dev/null || fail "missing env var: $variable"
 done
 
 rg -n '^MEMO_SOURCE[[:space:]]*=[[:space:]]*"alfred"' "$manifest" >/dev/null || fail "MEMO_SOURCE default mismatch"
 rg -n '^MEMO_REQUIRE_CONFIRM[[:space:]]*=[[:space:]]*"0"' "$manifest" >/dev/null || fail "MEMO_REQUIRE_CONFIRM default mismatch"
 rg -n '^MEMO_MAX_INPUT_BYTES[[:space:]]*=[[:space:]]*"4096"' "$manifest" >/dev/null || fail "MEMO_MAX_INPUT_BYTES default mismatch"
+rg -n '^MEMO_RECENT_LIMIT[[:space:]]*=[[:space:]]*"8"' "$manifest" >/dev/null || fail "MEMO_RECENT_LIMIT default mismatch"
 
 set +e
 "$workflow_dir/scripts/action_run.sh" >/dev/null 2>&1
@@ -168,7 +169,8 @@ PY
 fi
 
 assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.keyword == "mm"' "keyword wiring mismatch"
-assert_jq_json "$packaged_json" '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]' "plist variable list mismatch"
+assert_jq_json "$packaged_json" '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]' "plist variable list mismatch"
 assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_MAX_INPUT_BYTES") | .config.default == "4096"' "plist default mismatch"
+assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_RECENT_LIMIT") | .config.default == "8"' "plist recent limit default mismatch"
 
 echo "ok: memo-add smoke test"

@@ -3,8 +3,7 @@ use std::path::PathBuf;
 
 use alfred_core::{Feedback, Item};
 use memo_cli::output::format_item_id;
-use memo_cli::storage::Storage;
-use memo_cli::storage::repository;
+use memo_cli::storage::{Storage, repository};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -12,7 +11,10 @@ pub const DB_INIT_TOKEN: &str = "db-init";
 pub const ADD_TOKEN_PREFIX: &str = "add::";
 pub const DEFAULT_SOURCE: &str = "alfred";
 pub const DEFAULT_MAX_INPUT_BYTES: usize = 4096;
+pub const DEFAULT_RECENT_LIMIT: usize = 8;
 const MAX_INPUT_BYTES_LIMIT: usize = 1024 * 1024;
+const MAX_RECENT_LIMIT: usize = 50;
+const MAX_LIST_LIMIT: usize = 200;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
@@ -20,6 +22,7 @@ pub struct RuntimeConfig {
     pub source: String,
     pub require_confirm: bool,
     pub max_input_bytes: usize,
+    pub recent_limit: usize,
 }
 
 impl RuntimeConfig {
@@ -28,12 +31,14 @@ impl RuntimeConfig {
         let source = resolve_source()?;
         let require_confirm = resolve_require_confirm()?;
         let max_input_bytes = resolve_max_input_bytes()?;
+        let recent_limit = resolve_recent_limit()?;
 
         Ok(Self {
             db_path,
             source,
             require_confirm,
             max_input_bytes,
+            recent_limit,
         })
     }
 }
@@ -74,14 +79,22 @@ pub struct InitResult {
     pub db_path: String,
 }
 
-pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Feedback {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ListResult {
+    pub item_id: String,
+    pub created_at: String,
+    pub state: String,
+    pub text_preview: String,
+}
+
+pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
     let normalized = query.trim();
     if normalized.is_empty() {
         return build_empty_query_feedback(config);
     }
 
     if normalized.len() > config.max_input_bytes {
-        return Feedback::new(vec![
+        return Ok(Feedback::new(vec![
             Item::new("Input exceeds MEMO_MAX_INPUT_BYTES")
                 .with_subtitle(format!(
                     "Current {} bytes, limit {} bytes.",
@@ -89,14 +102,14 @@ pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Feedback {
                     config.max_input_bytes
                 ))
                 .with_valid(false),
-        ]);
+        ]));
     }
 
     let preview = truncate_title(normalized, 64);
     let add_token = build_add_token(normalized);
 
     if config.require_confirm {
-        return Feedback::new(vec![
+        return Ok(Feedback::new(vec![
             Item::new(format!("Preview: {preview}"))
                 .with_subtitle("Confirmation required. Choose the row below to save.")
                 .with_valid(false),
@@ -108,10 +121,10 @@ pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Feedback {
                 ))
                 .with_arg(add_token)
                 .with_valid(true),
-        ]);
+        ]));
     }
 
-    Feedback::new(vec![
+    Ok(Feedback::new(vec![
         Item::new(format!("Add memo: {preview}"))
             .with_subtitle(format!(
                 "Press Enter to save ({}/{} bytes).",
@@ -120,7 +133,7 @@ pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Feedback {
             ))
             .with_arg(add_token)
             .with_valid(true),
-    ])
+    ]))
 }
 
 pub fn execute_db_init(
@@ -185,6 +198,41 @@ pub fn execute_add(
     })
 }
 
+pub fn execute_list(
+    db_override: Option<PathBuf>,
+    limit: usize,
+    offset: usize,
+    config: &RuntimeConfig,
+) -> Result<Vec<ListResult>, AppError> {
+    if !(1..=MAX_LIST_LIMIT).contains(&limit) {
+        return Err(AppError::User(format!(
+            "invalid list limit: {limit} (must be integer in range 1..={MAX_LIST_LIMIT})"
+        )));
+    }
+
+    let db_path = db_override.unwrap_or_else(|| config.db_path.clone());
+    let storage = Storage::new(db_path);
+    storage
+        .init()
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    let rows = storage
+        .with_connection(|conn| {
+            repository::list_items(conn, repository::QueryState::All, limit, offset)
+        })
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| ListResult {
+            item_id: format_item_id(row.item_id),
+            created_at: row.created_at,
+            state: row.state,
+            text_preview: row.text_preview,
+        })
+        .collect())
+}
+
 pub fn parse_add_token(arg: &str) -> Option<String> {
     arg.strip_prefix(ADD_TOKEN_PREFIX).map(str::to_string)
 }
@@ -193,8 +241,8 @@ pub fn build_add_token(text: &str) -> String {
     format!("{ADD_TOKEN_PREFIX}{text}")
 }
 
-fn build_empty_query_feedback(config: &RuntimeConfig) -> Feedback {
-    Feedback::new(vec![
+fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppError> {
+    let mut items = vec![
         Item::new("Type memo text after keyword")
             .with_subtitle(format!(
                 "Max {} bytes. Current source: {}.",
@@ -208,7 +256,35 @@ fn build_empty_query_feedback(config: &RuntimeConfig) -> Feedback {
             ))
             .with_arg(DB_INIT_TOKEN)
             .with_valid(true),
-    ])
+    ];
+
+    let recent = execute_list(None, config.recent_limit, 0, config)?;
+    if recent.is_empty() {
+        items.push(
+            Item::new("No memo records yet")
+                .with_subtitle("Use `mm <text>` then press Enter to add your first memo.")
+                .with_valid(false),
+        );
+        return Ok(Feedback::new(items));
+    }
+
+    for row in recent {
+        let preview = row.text_preview.trim();
+        let title = if preview.is_empty() {
+            format!("Recent {}: (empty memo)", row.item_id)
+        } else {
+            format!("Recent {}: {}", row.item_id, truncate_title(preview, 56))
+        };
+
+        items.push(
+            Item::new(title)
+                .with_uid(format!("recent-{}", row.item_id))
+                .with_subtitle(format!("{} | {}", row.created_at, row.state))
+                .with_valid(false),
+        );
+    }
+
+    Ok(Feedback::new(items))
 }
 
 fn truncate_title(input: &str, max_chars: usize) -> String {
@@ -297,6 +373,25 @@ fn resolve_max_input_bytes() -> Result<usize, AppError> {
     Ok(parsed)
 }
 
+fn resolve_recent_limit() -> Result<usize, AppError> {
+    let raw =
+        non_empty_env("MEMO_RECENT_LIMIT").unwrap_or_else(|| DEFAULT_RECENT_LIMIT.to_string());
+
+    let parsed = raw.parse::<usize>().map_err(|_| {
+        AppError::User(format!(
+            "invalid MEMO_RECENT_LIMIT: {raw} (must be integer in range 1..={MAX_RECENT_LIMIT})"
+        ))
+    })?;
+
+    if !(1..=MAX_RECENT_LIMIT).contains(&parsed) {
+        return Err(AppError::User(format!(
+            "invalid MEMO_RECENT_LIMIT: {parsed} (must be integer in range 1..={MAX_RECENT_LIMIT})"
+        )));
+    }
+
+    Ok(parsed)
+}
+
 fn non_empty_env(key: &str) -> Option<String> {
     let value = env::var(key).ok()?;
     let value = value.trim();
@@ -324,6 +419,7 @@ mod tests {
             source: "alfred".to_string(),
             require_confirm: false,
             max_input_bytes: 4096,
+            recent_limit: DEFAULT_RECENT_LIMIT,
         }
     }
 
@@ -335,16 +431,21 @@ mod tests {
 
     #[test]
     fn script_filter_returns_db_init_on_empty_query() {
-        let feedback = build_script_filter("", &test_config());
+        let feedback = build_script_filter("", &test_config()).expect("script filter should build");
 
-        assert_eq!(feedback.items.len(), 2);
-        assert_eq!(feedback.items[1].arg.as_deref(), Some(DB_INIT_TOKEN));
-        assert_eq!(feedback.items[1].valid, Some(true));
+        assert!(feedback.items.len() >= 2);
+        let db_init_item = feedback
+            .items
+            .iter()
+            .find(|item| item.arg.as_deref() == Some(DB_INIT_TOKEN))
+            .expect("db init row should exist");
+        assert_eq!(db_init_item.valid, Some(true));
     }
 
     #[test]
     fn script_filter_returns_add_action_for_non_empty_query() {
-        let feedback = build_script_filter("buy milk", &test_config());
+        let feedback =
+            build_script_filter("buy milk", &test_config()).expect("script filter should build");
 
         assert_eq!(feedback.items.len(), 1);
         assert!(
@@ -362,7 +463,7 @@ mod tests {
         let mut config = test_config();
         config.max_input_bytes = 4;
 
-        let feedback = build_script_filter("12345", &config);
+        let feedback = build_script_filter("12345", &config).expect("script filter should build");
         assert_eq!(feedback.items.len(), 1);
         assert_eq!(feedback.items[0].valid, Some(false));
     }

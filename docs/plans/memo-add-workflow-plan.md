@@ -3,41 +3,46 @@
 ## Overview
 This plan adds a new Alfred workflow focused on fast memo capture, backed by `nils-memo-cli@0.3.3`.
 The primary user flow is `add`: type memo text in Alfred and commit it to SQLite immediately.
-The design also includes explicit `db init` behavior so first-run setup and recovery are deterministic.
+The design also includes explicit `db init` behavior and empty-query recent-list rendering (newest first)
+so first-run setup and write verification are deterministic.
 Implementation follows existing repo conventions: dedicated Rust CLI crate for workflow domain logic, thin shell adapters in `workflows/`, and packaging/testing through existing `scripts/workflow-*` entrypoints.
 
 ## Scope
 - In scope: new workflow `memo-add` with Script Filter + action execution.
 - In scope: pin and consume `nils-memo-cli` version `0.3.3` via `cargo add`.
 - In scope: user-facing `add` flow and explicit `db init` flow from workflow actions.
+- In scope: user-facing latest-first memo query flow (for immediate add verification).
 - In scope: workflow parameter design (DB path/source/confirmation/runtime overrides) with Alfred user config exposure.
+- In scope: evaluate delete/modify requirements against `nils-memo-cli@0.3.3` command surface.
 - In scope: tests, smoke checks, docs, and packaging integration.
-- Out of scope: full memo dashboard UI in Alfred (rich list/search/report screens).
+- Out of scope: full memo dashboard UI in Alfred (custom search/report screens beyond latest preview).
 - Out of scope: background enrichment pipeline UX (`fetch/apply`) in this first delivery.
 - Out of scope: migration of historical notes from external systems.
 
 ## Assumptions (if any)
 1. Workflow ID is `memo-add`, and first-release keyword is `mm`.
-2. `add` is the only end-user write path in v1; `list/search/report` remain future iterations.
+2. End-user write path in v1 is `add`; query path is read-only latest list.
 3. `db init` is exposed as an explicit workflow action and remains idempotent.
 4. Default DB path should prefer Alfred workflow data directory when available, with `memo-cli` default path as fallback.
+5. `nils-memo-cli@0.3.3` does not expose raw memo delete/update commands; v1 keeps append-only semantics.
 
 ## Success Criteria
 - `mm buy milk` can create a memo successfully through workflow action flow.
-- Empty query never crashes; it returns actionable guidance rows (including `db init`).
+- Empty query never crashes; it returns actionable guidance rows (including `db init`) and latest memo rows.
+- Latest memo rows are ordered newest-first (`created_at DESC`, tie-break `item_id DESC`).
 - Running `db init` repeatedly is safe and returns deterministic success feedback.
 - Workflow parameters are configurable via Alfred UI and validated consistently.
 - `scripts/workflow-lint.sh`, `scripts/workflow-test.sh --id memo-add`, and `scripts/workflow-pack.sh --id memo-add` pass.
 
 ## Dependency & Parallelization Map
 - Critical path:
-  - `Task 1.1 -> Task 1.2 -> Task 1.3 -> Task 1.4 -> Task 2.1 -> Task 2.2 -> Task 2.3 -> Task 3.1 -> Task 3.2 -> Task 3.3 -> Task 3.4 -> Task 4.3`.
+  - `Task 1.1 -> Task 1.2 -> Task 1.3 -> Task 1.4 -> Task 2.1 -> Task 2.2 -> Task 2.3 -> Task 2.5 -> Task 2.6 -> Task 3.1 -> Task 3.2 -> Task 3.3 -> Task 3.4 -> Task 4.3`.
 - Parallel track A:
   - `Task 1.5` can run after `Task 1.1` in parallel with `Task 1.3`/`Task 1.4`.
 - Parallel track B:
-  - `Task 2.4` can run after `Task 2.1` in parallel with `Task 2.2` and `Task 2.3`.
+  - `Task 2.4` can run after `Task 2.1` in parallel with `Task 2.2` and `Task 2.3`; `Task 2.5` runs after `Task 2.3`.
 - Parallel track C:
-  - `Task 4.1` can run after `Task 2.3` in parallel with `Task 3.2`/`Task 3.3`.
+  - `Task 4.1` can run after `Task 2.6` in parallel with `Task 3.2`/`Task 3.3`.
 - Parallel track D:
   - `Task 4.2` can start after `Task 3.4` and run parallel with `Task 4.1`.
 
@@ -50,17 +55,18 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
 ### Task 1.1: Write memo workflow contract and parameter matrix
 - **Location**:
   - `docs/memo-workflow-contract.md`
-- **Description**: Define v1 contract for `add` and `db init`, action-token schema, error mapping, exit-code policy, and parameter semantics.
+- **Description**: Define v1 contract for `add`, `db init`, and latest-first query behavior, plus action-token schema, error mapping, exit-code policy, and parameter semantics.
 - **Dependencies**:
   - none
 - **Complexity**: 4
 - **Acceptance criteria**:
   - Contract explicitly documents `mm buy milk -> add` behavior and empty-query fallback behavior.
   - Contract defines `db init` trigger conditions and idempotent response expectations.
+  - Contract documents empty-query recent list ordering and includes delete/modify support assessment.
   - Parameter table includes defaults, allowed ranges, and failure handling.
 - **Validation**:
   - `test -f docs/memo-workflow-contract.md`
-  - `rg -n "add|db init|action token|exit code|MEMO_DB_PATH|MEMO_SOURCE" docs/memo-workflow-contract.md`
+  - `rg -n "add|db init|list|delete|modify|action token|exit code|MEMO_DB_PATH|MEMO_SOURCE" docs/memo-workflow-contract.md`
 
 ### Task 1.2: Scaffold `memo-add` workflow directory
 - **Location**:
@@ -123,7 +129,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - `workflows/memo-add/workflow.toml`
   - `workflows/memo-add/src/info.plist.template`
   - `docs/memo-workflow-contract.md`
-- **Description**: Define and align workflow variables: `MEMO_DB_PATH`, `MEMO_SOURCE`, `MEMO_REQUIRE_CONFIRM`, `MEMO_MAX_INPUT_BYTES`, and optional `MEMO_WORKFLOW_CLI_BIN`.
+- **Description**: Define and align workflow variables: `MEMO_DB_PATH`, `MEMO_SOURCE`, `MEMO_REQUIRE_CONFIRM`, `MEMO_MAX_INPUT_BYTES`, `MEMO_RECENT_LIMIT`, and optional `MEMO_WORKFLOW_CLI_BIN`.
 - **Dependencies**:
   - Task 1.1
   - Task 1.2
@@ -131,24 +137,24 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
 - **Acceptance criteria**:
   - Same defaults/constraints are consistent across manifest, plist, and contract docs.
   - Alfred `userconfigurationconfig` exposes all required variables.
-  - Parameter defaults are pinned for v1: `MEMO_DB_PATH=""`, `MEMO_SOURCE="alfred"`, `MEMO_REQUIRE_CONFIRM="0"`, `MEMO_MAX_INPUT_BYTES="4096"`, `MEMO_WORKFLOW_CLI_BIN=""`.
+  - Parameter defaults are pinned for v1: `MEMO_DB_PATH=""`, `MEMO_SOURCE="alfred"`, `MEMO_REQUIRE_CONFIRM="0"`, `MEMO_MAX_INPUT_BYTES="4096"`, `MEMO_RECENT_LIMIT="8"`, `MEMO_WORKFLOW_CLI_BIN=""`.
 - **Validation**:
-  - `rg -n "MEMO_DB_PATH|MEMO_SOURCE|MEMO_REQUIRE_CONFIRM|MEMO_MAX_INPUT_BYTES|MEMO_WORKFLOW_CLI_BIN" workflows/memo-add/workflow.toml workflows/memo-add/src/info.plist.template docs/memo-workflow-contract.md`
+  - `rg -n "MEMO_DB_PATH|MEMO_SOURCE|MEMO_REQUIRE_CONFIRM|MEMO_MAX_INPUT_BYTES|MEMO_RECENT_LIMIT|MEMO_WORKFLOW_CLI_BIN" workflows/memo-add/workflow.toml workflows/memo-add/src/info.plist.template docs/memo-workflow-contract.md`
   - `scripts/workflow-pack.sh --id memo-add`
-  - `plutil -convert json -o - build/workflows/memo-add/pkg/info.plist | jq -e '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]'`
-  - `plutil -convert json -o - build/workflows/memo-add/pkg/info.plist | jq -e '(.userconfigurationconfig | map({key: .variable, value: .config.default}) | from_entries) == {"MEMO_DB_PATH":"","MEMO_MAX_INPUT_BYTES":"4096","MEMO_REQUIRE_CONFIRM":"0","MEMO_SOURCE":"alfred","MEMO_WORKFLOW_CLI_BIN":""}'`
+  - `plutil -convert json -o - build/workflows/memo-add/pkg/info.plist | jq -e '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]'`
+  - `plutil -convert json -o - build/workflows/memo-add/pkg/info.plist | jq -e '(.userconfigurationconfig | map({key: .variable, value: .config.default}) | from_entries) == {"MEMO_DB_PATH":"","MEMO_MAX_INPUT_BYTES":"4096","MEMO_RECENT_LIMIT":"8","MEMO_REQUIRE_CONFIRM":"0","MEMO_SOURCE":"alfred","MEMO_WORKFLOW_CLI_BIN":""}'`
 
-## Sprint 2: Memo adapter logic (`add` + `db init`)
+## Sprint 2: Memo adapter logic (`add` + `db init` + `list`)
 **Goal**: Implement robust Rust-side command handling and deterministic Alfred JSON responses.
 **Demo/Validation**:
 - Command(s): `cargo test -p nils-memo-workflow-cli`, `cargo run -p nils-memo-workflow-cli -- script-filter --query "buy milk"`
-- Verify: script-filter/add/db-init paths are valid and contract-compliant.
+- Verify: script-filter/add/db-init/list paths are valid and contract-compliant.
 
 ### Task 2.1: Implement runtime config parsing and guardrails
 - **Location**:
   - `crates/memo-workflow-cli/src/config.rs`
   - `crates/memo-workflow-cli/src/lib.rs`
-- **Description**: Parse env/config defaults, validate bounds (including max input bytes), and normalize DB path/source semantics.
+- **Description**: Parse env/config defaults, validate bounds (including max input bytes/recent list size), and normalize DB path/source semantics.
 - **Dependencies**:
   - Task 1.4
   - Task 1.5
@@ -202,28 +208,47 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
 - **Location**:
   - `crates/memo-workflow-cli/src/commands/script_filter.rs`
   - `crates/memo-workflow-cli/src/alfred.rs`
-- **Description**: Build Alfred items for empty query guidance (`db init`) and non-empty query add action tokenization (`add::raw-query` style).
+- **Description**: Build Alfred items for empty query guidance (`db init`) + latest memo rows and non-empty query add action tokenization (`add::raw-query` style).
 - **Dependencies**:
   - Task 2.1
   - Task 2.3
 - **Complexity**: 6
 - **Acceptance criteria**:
-  - Empty query returns non-actionable guidance + actionable init row.
+  - Empty query returns non-actionable guidance + actionable init row + latest memo rows.
   - Non-empty query returns actionable add row with correct arg token.
   - Output is always valid Alfred JSON.
 - **Validation**:
-  - `cargo run -p nils-memo-workflow-cli -- script-filter --query "" | jq -e '.items | type == "array" and length >= 1'`
+  - `cargo run -p nils-memo-workflow-cli -- script-filter --query "" | jq -e '.items | type == "array" and length >= 2'`
   - `cargo run -p nils-memo-workflow-cli -- script-filter --query "buy milk" | jq -e '.items[0].arg | startswith("add::")'`
 
-### Task 2.5: Finalize CLI command surface and contract tests
+### Task 2.5: Implement explicit list query command (latest-first)
+- **Location**:
+  - `crates/memo-workflow-cli/src/lib.rs`
+  - `crates/memo-workflow-cli/src/main.rs`
+  - `crates/memo-workflow-cli/tests/cli_contract.rs`
+- **Description**: Add `list` command for newest-first records so users/operators can verify memo persistence quickly.
+- **Dependencies**:
+  - Task 2.1
+  - Task 2.2
+  - Task 2.3
+- **Complexity**: 5
+- **Acceptance criteria**:
+  - `list` returns rows ordered by newest-first.
+  - JSON mode returns deterministic machine-readable list envelope.
+  - Empty DB returns a stable success payload without errors.
+- **Validation**:
+  - `tmpdir="$(mktemp -d)" && db="$tmpdir/memo.db" && cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "first" && cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "second" && cargo run -p nils-memo-workflow-cli -- list --db "$db" --limit 2 --mode json | jq -e '.ok == true and .result[0].text_preview | test("second")'`
+
+### Task 2.6: Finalize CLI command surface and contract tests
 - **Location**:
   - `crates/memo-workflow-cli/src/main.rs`
   - `crates/memo-workflow-cli/tests/cli_contract.rs`
-- **Description**: Finalize command interface (`script-filter`, `add`, `db-init`) and verify stdout/stderr/exit-code behavior with deterministic contract tests.
+- **Description**: Finalize command interface (`script-filter`, `add`, `db-init`, `list`) and verify stdout/stderr/exit-code behavior with deterministic contract tests.
 - **Dependencies**:
   - Task 2.2
   - Task 2.3
   - Task 2.4
+  - Task 2.5
 - **Complexity**: 6
 - **Acceptance criteria**:
   - `--help` reflects all command options and env behavior.
@@ -238,14 +263,14 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
 **Goal**: Wire shell adapters/plist for stable runtime behavior in both packaged and local development modes.
 **Demo/Validation**:
 - Command(s): `bash workflows/memo-add/tests/smoke.sh`, `scripts/workflow-pack.sh --id memo-add`
-- Verify: workflow package is installable and action paths execute add/init correctly.
+- Verify: workflow package is installable and action paths execute add/init while empty query renders recent rows correctly.
 
 ### Task 3.1: Implement robust `script_filter.sh` adapter
 - **Location**:
   - `workflows/memo-add/scripts/script_filter.sh`
 - **Description**: Resolve workflow binary path (env/package/release/debug), call `script-filter`, and provide error-item fallback on failures.
 - **Dependencies**:
-  - Task 2.5
+  - Task 2.6
 - **Complexity**: 5
 - **Acceptance criteria**:
   - Adapter supports packaged and local development execution paths.
@@ -260,7 +285,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - `workflows/memo-add/scripts/action_run.sh`
 - **Description**: Parse action token (`add::...` / `db-init`), execute corresponding CLI command, and provide user feedback/exit codes.
 - **Dependencies**:
-  - Task 2.5
+  - Task 2.6
 - **Complexity**: 6
 - **Acceptance criteria**:
   - `add` token path writes memo and exits 0 on success.
@@ -332,7 +357,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - `crates/memo-workflow-cli/tests/cli_contract.rs`
 - **Description**: Cover edge cases: empty text, over-limit text, invalid source, db path creation failures, and repeated init/add idempotency boundaries.
 - **Dependencies**:
-  - Task 2.5
+  - Task 2.6
 - **Complexity**: 7
 - **Acceptance criteria**:
   - Edge cases return deterministic error contracts.
@@ -347,15 +372,15 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - `README.md`
   - `docs/WORKFLOW_GUIDE.md`
   - `TROUBLESHOOTING.md`
-- **Description**: Document keyword usage, add/init flows, parameter meanings, and troubleshooting for DB-path/config/permission failures.
+- **Description**: Document keyword usage, add/init/list flows, parameter meanings, delete/modify assessment result, and troubleshooting for DB-path/config/permission failures.
 - **Dependencies**:
   - Task 3.5
 - **Complexity**: 4
 - **Acceptance criteria**:
   - Workflow README includes quick-start and parameter table.
-  - Root docs include memo-add entry and operator validation checklist.
+  - Root docs include memo-add entry, operator validation checklist, and latest-first query behavior.
 - **Validation**:
-  - `rg -n "memo-add|mm|MEMO_DB_PATH|MEMO_SOURCE|db init|add" workflows/memo-add/README.md README.md docs/WORKFLOW_GUIDE.md TROUBLESHOOTING.md`
+  - `rg -n "memo-add|mm|MEMO_DB_PATH|MEMO_SOURCE|MEMO_RECENT_LIMIT|db init|add|recent|delete|modify" workflows/memo-add/README.md README.md docs/WORKFLOW_GUIDE.md TROUBLESHOOTING.md docs/memo-workflow-contract.md`
 
 ### Task 4.3: Execute final quality gates required by project policy
 - **Location**:
@@ -392,19 +417,20 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
 
 ## Testing Strategy
 - Unit:
-  - `memo-workflow-cli` config parsing, token parsing, add/init command semantics, and error mapping.
+  - `memo-workflow-cli` config parsing, token parsing, add/init/list command semantics, and error mapping.
 - Integration:
-  - Script adapter + action script tests with temporary DB paths and deterministic token inputs.
+  - Script adapter + action script tests with temporary DB paths and deterministic token inputs/results.
 - E2E/manual:
-  - Package/install workflow, run `mm` with and without text, verify `db init` and `add` behavior from Alfred UI.
+  - Package/install workflow, run `mm` with and without text, verify `db init`, `add`, and latest-first recent list behavior from Alfred UI.
 - Non-functional:
-  - Validate that repeated add/init operations do not corrupt DB state and keep latency acceptable for Alfred interaction.
+  - Validate that repeated add/init/list operations do not corrupt DB state and keep latency acceptable for Alfred interaction.
 
 ## Risks & gotchas
 - `nils-memo-cli` API surface may evolve; wrapper should minimize dependence on unstable internals.
 - DB path permission issues can cause first-run failures unless error messaging is explicit.
 - Alfred action token parsing is brittle if delimiters are not escaped/validated rigorously.
 - Overly permissive input size can hurt UX or storage quality; limits must be documented and enforced.
+- Raw memo delete/modify is unavailable in `nils-memo-cli@0.3.3`; introducing custom mutation commands would create contract drift.
 
 ## Rollback plan
 1. Stop distributing `memo-add` artifacts in release output.

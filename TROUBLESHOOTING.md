@@ -550,6 +550,7 @@ Use this when quote-feed rollout quality drops and temporary fallback is require
    - `MEMO_SOURCE` (optional, default `alfred`)
    - `MEMO_REQUIRE_CONFIRM` (optional, default `0`)
    - `MEMO_MAX_INPUT_BYTES` (optional, default `4096`)
+   - `MEMO_RECENT_LIMIT` (optional, default `8`, range `1..50`)
    - `MEMO_WORKFLOW_CLI_BIN` (optional, default empty)
 3. Confirm script-filter JSON contract:
    - `bash workflows/memo-add/scripts/script_filter.sh "buy milk" | jq -e '.items | type == "array"'`
@@ -565,6 +566,8 @@ Use this when quote-feed rollout quality drops and temporary fallback is require
 | `memo-workflow-cli binary not found` | Package missing binary or invalid `MEMO_WORKFLOW_CLI_BIN`. | Re-pack workflow, or set `MEMO_WORKFLOW_CLI_BIN` to executable path. |
 | `add requires a non-empty memo text` | Empty/whitespace query was sent to add action. | Enter non-empty memo text after `mm`. |
 | `memo text exceeds MEMO_MAX_INPUT_BYTES` | Query text length exceeded configured max bytes. | Increase `MEMO_MAX_INPUT_BYTES` or shorten memo content. |
+| `invalid MEMO_RECENT_LIMIT` | `MEMO_RECENT_LIMIT` is not an integer in `1..50`. | Set a valid integer (for example `8`) and retry `mm`. |
+| Empty query shows no recent rows after successful add | Wrong DB path/source is being used between add and query. | Verify `MEMO_DB_PATH`, rerun `db-init`, then run `mm` again. |
 | `database open failed` / `database write failed` | Target DB path not writable or parent directory inaccessible. | Update `MEMO_DB_PATH` to writable path and rerun `db-init`. |
 
 ## Workflow: cambridge-dict
