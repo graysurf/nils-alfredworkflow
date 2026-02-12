@@ -500,6 +500,112 @@ format_epoch() {
   printf 'epoch:%s\n' "$ts"
 }
 
+format_compact_duration_minutes() {
+  local total_minutes="${1:-}"
+  [[ "$total_minutes" =~ ^[0-9]+$ ]] || return 1
+
+  local days remainder hours minutes
+  days=$((total_minutes / 1440))
+  remainder=$((total_minutes % 1440))
+  hours=$((remainder / 60))
+  minutes=$((remainder % 60))
+
+  if [[ "$days" -gt 0 ]]; then
+    if [[ "$hours" -gt 0 ]]; then
+      printf '%sd %sh\n' "$days" "$hours"
+      return 0
+    fi
+    if [[ "$minutes" -gt 0 ]]; then
+      printf '%sd %sm\n' "$days" "$minutes"
+      return 0
+    fi
+    printf '%sd\n' "$days"
+    return 0
+  fi
+
+  if [[ "$hours" -gt 0 ]]; then
+    if [[ "$minutes" -gt 0 ]]; then
+      printf '%sh %sm\n' "$hours" "$minutes"
+      return 0
+    fi
+    printf '%sh\n' "$hours"
+    return 0
+  fi
+
+  printf '%sm\n' "$minutes"
+}
+
+format_remaining_duration_from_epoch() {
+  local reset_epoch="${1:-}"
+  [[ "$reset_epoch" =~ ^[0-9]+$ ]] || return 1
+
+  local now delta remaining_minutes
+  now="$(date +%s)"
+  [[ "$now" =~ ^[0-9]+$ ]] || return 1
+
+  delta=$((reset_epoch - now))
+  if [[ "$delta" -lt 0 ]]; then
+    delta=0
+  fi
+
+  remaining_minutes=$(((delta + 59) / 60))
+  format_compact_duration_minutes "$remaining_minutes"
+}
+
+estimate_remaining_duration_from_percent() {
+  local window_label="${1:-}"
+  local percentage="${2:-}"
+
+  [[ "$window_label" =~ ^([0-9]+)([HhMm])$ ]] || return 1
+  local window_value="${BASH_REMATCH[1]}"
+  local window_unit="${BASH_REMATCH[2]}"
+  [[ "$percentage" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
+
+  local minutes
+  minutes="$(
+    awk -v value="$window_value" -v unit="$window_unit" -v pct="$percentage" '
+      BEGIN {
+        total = value
+        if (tolower(unit) == "h") total = total * 60
+        if (pct < 0) pct = 0
+        if (pct > 100) pct = 100
+        mins = int((total * pct / 100) + 0.5)
+        if (mins < 0) mins = 0
+        printf "%d\n", mins
+      }
+    '
+  )"
+  [[ "$minutes" =~ ^[0-9]+$ ]] || return 1
+  format_compact_duration_minutes "$minutes"
+}
+
+build_usage_metric_text() {
+  local metric_label="${1:-}"
+  local percentage="${2:-}"
+  local reset_epoch="${3:-}"
+  local estimate_window_label="${4:-}"
+
+  local text="${metric_label} n/a"
+  if [[ -n "$percentage" && "$percentage" != "null" && "$percentage" != "-" ]]; then
+    text="${metric_label} ${percentage}%"
+  fi
+
+  local remaining_text=""
+  if [[ -n "$reset_epoch" && "$reset_epoch" != "null" && "$reset_epoch" != "-" ]]; then
+    remaining_text="$(format_remaining_duration_from_epoch "$reset_epoch" || true)"
+  fi
+  if [[ -z "$remaining_text" && -n "$estimate_window_label" && -n "$percentage" && "$percentage" != "null" && "$percentage" != "-" ]]; then
+    remaining_text="$(estimate_remaining_duration_from_percent "$estimate_window_label" "$percentage" || true)"
+  fi
+
+  if [[ -n "$remaining_text" ]]; then
+    printf '%s (%s)\n' "$text" "$remaining_text"
+    return 0
+  fi
+
+  printf '%s\n' "$text"
+}
+
 emit_diag_all_json_account_items() {
   local lower_query="$1"
   local output_path="$2"
@@ -532,23 +638,20 @@ emit_diag_all_json_account_items() {
       break
     fi
 
-    local name status label non_weekly weekly weekly_reset email
-    IFS=$'\t' read -r name status label non_weekly weekly weekly_reset email <<<"$row"
+    local name status label non_weekly weekly non_weekly_reset_epoch weekly_reset_epoch weekly_reset email
+    IFS=$'\t' read -r name status label non_weekly weekly non_weekly_reset_epoch weekly_reset_epoch weekly_reset email <<<"$row"
     [[ -n "$name" ]] || name="(unknown)"
     [[ -n "$status" ]] || status="unknown"
     [[ -n "$label" ]] || label="5h"
+    [[ -n "$non_weekly_reset_epoch" ]] || non_weekly_reset_epoch="null"
+    [[ -n "$weekly_reset_epoch" ]] || weekly_reset_epoch="null"
     [[ -n "$weekly_reset" ]] || weekly_reset="-"
     [[ -n "$email" ]] || email="-"
 
     if [[ "$status" == "ok" ]]; then
-      local non_weekly_text="${label} n/a"
-      local weekly_text="weekly n/a"
-      if [[ -n "$non_weekly" && "$non_weekly" != "null" ]]; then
-        non_weekly_text="${label} ${non_weekly}%"
-      fi
-      if [[ -n "$weekly" && "$weekly" != "null" ]]; then
-        weekly_text="weekly ${weekly}%"
-      fi
+      local non_weekly_text weekly_text
+      non_weekly_text="$(build_usage_metric_text "$label" "$non_weekly" "$non_weekly_reset_epoch" "$label")"
+      weekly_text="$(build_usage_metric_text "weekly" "$weekly" "$weekly_reset_epoch" "")"
       emit_item \
         "${name} | ${non_weekly_text} | ${weekly_text}" \
         "${email} | reset ${weekly_reset}" \
@@ -563,7 +666,7 @@ emit_diag_all_json_account_items() {
         false \
         ""
     fi
-  done < <(jq -r "$dataset_filter | sort_by((.summary.weekly_reset_epoch // 9999999999), (.name // \"\"))[]? | [(.name // \"(current)\"), (.status // \"unknown\"), (.summary.non_weekly_label // \"5h\"), (.summary.non_weekly_remaining // \"null\"), (.summary.weekly_remaining // \"null\"), (.summary.weekly_reset_local // \"-\"), (.raw_usage.email // \"-\")] | @tsv" "$output_path")
+  done < <(jq -r "$dataset_filter | sort_by((.summary.weekly_reset_epoch // 9999999999), (.name // \"\"))[]? | [(.name // \"(current)\"), (.status // \"unknown\"), (.summary.non_weekly_label // \"5h\"), (.summary.non_weekly_remaining // \"null\"), (.summary.weekly_remaining // \"null\"), ((.summary.non_weekly_reset_epoch // \"null\") | tostring), ((.summary.weekly_reset_epoch // \"null\") | tostring), (.summary.weekly_reset_local // \"-\"), (.raw_usage.email // \"-\")] | @tsv" "$output_path")
 
   if [[ "$row_count" -eq 0 ]]; then
     emit_item \
@@ -1223,7 +1326,7 @@ build_diag_account_lookup_map() {
   local map_file
   map_file="$(mktemp "${TMPDIR:-/tmp}/codex-cxau-sort.map.XXXXXX")"
 
-  if ! jq -r '.results // [] | .[] | [(.source // ""), (.name // ""), (.summary.weekly_reset_epoch // 9999999999), (.raw_usage.email // ""), (.summary.weekly_reset_local // "-"), (.summary.non_weekly_label // "5h"), (.summary.non_weekly_remaining // "null"), (.summary.weekly_remaining // "null")] | @tsv' "$output_path" >"$raw_file"; then
+  if ! jq -r '.results // [] | .[] | [(.source // ""), (.name // ""), (.summary.weekly_reset_epoch // 9999999999), (.raw_usage.email // ""), (.summary.weekly_reset_local // "-"), (.summary.non_weekly_label // "5h"), (.summary.non_weekly_remaining // "null"), (.summary.weekly_remaining // "null"), ((.summary.non_weekly_reset_epoch // "null") | tostring)] | @tsv' "$output_path" >"$raw_file"; then
     rm -f "$raw_file" "$map_file"
     return 1
   fi
@@ -1247,7 +1350,7 @@ build_diag_account_lookup_map() {
       return v
     }
 
-    function emit_key(k, epoch, email, weekly, label, non_weekly, weekly_remaining) {
+    function emit_key(k, epoch, email, weekly, label, non_weekly, weekly_remaining, non_weekly_reset_epoch) {
       if (k == "") return
       if (epoch !~ /^[0-9]+$/) epoch = 9999999999
       if (email == "") email = "-"
@@ -1255,7 +1358,8 @@ build_diag_account_lookup_map() {
       if (label == "") label = "5h"
       if (non_weekly == "") non_weekly = "null"
       if (weekly_remaining == "") weekly_remaining = "null"
-      print k "\t" epoch "\t" email "\t" weekly "\t" label "\t" non_weekly "\t" weekly_remaining
+      if (non_weekly_reset_epoch == "") non_weekly_reset_epoch = "null"
+      print k "\t" epoch "\t" email "\t" weekly "\t" label "\t" non_weekly "\t" weekly_remaining "\t" non_weekly_reset_epoch
     }
 
     {
@@ -1267,21 +1371,22 @@ build_diag_account_lookup_map() {
       label=$6
       non_weekly=$7
       weekly_remaining=$8
+      non_weekly_reset_epoch=$9
 
       src_key=normalize_json_key(src)
-      emit_key(src_key, epoch, email, weekly, label, non_weekly, weekly_remaining)
+      emit_key(src_key, epoch, email, weekly, label, non_weekly, weekly_remaining, non_weekly_reset_epoch)
 
       name_key=normalize_json_key(name)
-      emit_key(name_key, epoch, email, weekly, label, non_weekly, weekly_remaining)
+      emit_key(name_key, epoch, email, weekly, label, non_weekly, weekly_remaining, non_weekly_reset_epoch)
 
       base_key=normalize_base(name)
       if (base_key != "") {
-        emit_key(base_key ".json", epoch, email, weekly, label, non_weekly, weekly_remaining)
+        emit_key(base_key ".json", epoch, email, weekly, label, non_weekly, weekly_remaining, non_weekly_reset_epoch)
       }
     }
   ' "$raw_file" |
     LC_ALL=C sort -t$'\t' -k1,1 -k2,2n |
-    awk -F'\t' '!seen[$1]++ { print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 }' >"$map_file"
+    awk -F'\t' '!seen[$1]++ { print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 "\t" $8 }' >"$map_file"
   rm -f "$raw_file"
 
   if [[ ! -s "$map_file" ]]; then
@@ -1297,7 +1402,7 @@ lookup_diag_account_meta() {
   local key="$2"
   [[ -n "$map_file" && -f "$map_file" ]] || return 1
 
-  awk -F'\t' -v key="$key" '$1 == key { print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7; exit }' "$map_file"
+  awk -F'\t' -v key="$key" '$1 == key { print $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6 "\t" $7 "\t" $8; exit }' "$map_file"
 }
 
 lookup_current_diag_meta() {
@@ -1351,7 +1456,8 @@ lookup_current_diag_meta() {
           weekly_reset_local: ($row.summary.weekly_reset_local // "-"),
           non_weekly_label: ($row.summary.non_weekly_label // "5h"),
           non_weekly_remaining: ($row.summary.non_weekly_remaining // "null"),
-          weekly_remaining: ($row.summary.weekly_remaining // "null")
+          weekly_remaining: ($row.summary.weekly_remaining // "null"),
+          non_weekly_reset_epoch: ($row.summary.non_weekly_reset_epoch // "null")
         }
       ) |
       map(select(.key_candidates | index($current_json))) |
@@ -1363,7 +1469,8 @@ lookup_current_diag_meta() {
         .weekly_reset_local,
         .non_weekly_label,
         (.non_weekly_remaining | tostring),
-        (.weekly_remaining | tostring)
+        (.weekly_remaining | tostring),
+        (.non_weekly_reset_epoch | tostring)
       ] |
       @tsv
     ' "$output_path" 2>/dev/null || true
@@ -1388,7 +1495,8 @@ lookup_current_diag_meta() {
       (.summary.weekly_reset_local // "-"),
       (.summary.non_weekly_label // "5h"),
       ((.summary.non_weekly_remaining // "null") | tostring),
-      ((.summary.weekly_remaining // "null") | tostring)
+      ((.summary.weekly_remaining // "null") | tostring),
+      ((.summary.non_weekly_reset_epoch // "null") | tostring)
     ] |
     @tsv
   ' "$output_path" 2>/dev/null || true
@@ -1437,18 +1545,14 @@ build_use_usage_suffix() {
   local label="$1"
   local non_weekly="$2"
   local weekly="$3"
+  local non_weekly_reset_epoch="${4:-}"
+  local weekly_reset_epoch="${5:-}"
 
   [[ -n "$label" && "$label" != "-" ]] || label="5h"
 
-  local non_weekly_text="${label} n/a"
-  local weekly_text="weekly n/a"
-
-  if [[ -n "$non_weekly" && "$non_weekly" != "null" && "$non_weekly" != "-" ]]; then
-    non_weekly_text="${label} ${non_weekly}%"
-  fi
-  if [[ -n "$weekly" && "$weekly" != "null" && "$weekly" != "-" ]]; then
-    weekly_text="weekly ${weekly}%"
-  fi
+  local non_weekly_text weekly_text
+  non_weekly_text="$(build_usage_metric_text "$label" "$non_weekly" "$non_weekly_reset_epoch" "$label")"
+  weekly_text="$(build_usage_metric_text "weekly" "$weekly" "$weekly_reset_epoch" "")"
 
   printf '%s | %s\n' "$non_weekly_text" "$weekly_text"
 }
@@ -1458,13 +1562,15 @@ build_use_title() {
   local label="${2:-}"
   local non_weekly="${3:-}"
   local weekly="${4:-}"
+  local non_weekly_reset_epoch="${5:-}"
+  local weekly_reset_epoch="${6:-}"
 
-  if [[ -z "$label" && -z "$non_weekly" && -z "$weekly" ]]; then
+  if [[ -z "$label" && -z "$non_weekly" && -z "$weekly" && -z "$non_weekly_reset_epoch" && -z "$weekly_reset_epoch" ]]; then
     printf '%s\n' "$base"
     return
   fi
 
-  printf '%s | %s\n' "$base" "$(build_use_usage_suffix "$label" "$non_weekly" "$weekly")"
+  printf '%s | %s\n' "$base" "$(build_use_usage_suffix "$label" "$non_weekly" "$weekly" "$non_weekly_reset_epoch" "$weekly_reset_epoch")"
 }
 
 handle_use_query() {
@@ -1531,15 +1637,17 @@ handle_use_query() {
   [[ -n "$current_auth_email" ]] || current_auth_email="-"
 
   local current_cached_email=""
+  local current_cached_weekly_epoch=""
   local current_cached_weekly="-"
   local current_cached_label=""
   local current_cached_non_weekly=""
   local current_cached_weekly_remaining=""
+  local current_cached_non_weekly_reset_epoch=""
   if [[ -n "$current_json" ]]; then
     local current_cached_meta
     current_cached_meta="$(lookup_current_diag_meta "$current_json" || true)"
     if [[ -n "$current_cached_meta" ]]; then
-      IFS=$'\t' read -r _cached_epoch current_cached_email current_cached_weekly current_cached_label current_cached_non_weekly current_cached_weekly_remaining <<<"$current_cached_meta"
+      IFS=$'\t' read -r current_cached_weekly_epoch current_cached_email current_cached_weekly current_cached_label current_cached_non_weekly current_cached_weekly_remaining current_cached_non_weekly_reset_epoch <<<"$current_cached_meta"
     fi
   fi
   if [[ -z "$current_cached_email" || "$current_cached_email" == "-" ]]; then
@@ -1553,14 +1661,14 @@ handle_use_query() {
       current_secret="${current_json%.json}"
       if [[ "$current_json" == "auth.json" ]]; then
         emit_item \
-          "$(build_use_title "Current: ${current_json}" "${current_cached_label:-}" "${current_cached_non_weekly:-}" "${current_cached_weekly_remaining:-}")" \
+          "Current: ${current_json}" \
           "$(build_use_subtitle "${current_cached_email:-"-"}" "${current_cached_weekly:-"-"}" "Active auth file detected (no CODEX_SECRET_DIR list).")" \
           "" \
           false \
           "use "
       else
         emit_item \
-          "$(build_use_title "Current: ${current_json}" "${current_cached_label:-}" "${current_cached_non_weekly:-}" "${current_cached_weekly_remaining:-}")" \
+          "Current: ${current_json}" \
           "$(build_use_subtitle "${current_cached_email:-"-"}" "${current_cached_weekly:-"-"}" "Press Enter to run codex-cli auth use ${current_secret}")" \
           "use::${current_secret}" \
           true \
@@ -1590,14 +1698,14 @@ handle_use_query() {
       current_secret="${current_json%.json}"
       if [[ "$current_json" == "auth.json" ]]; then
         emit_item \
-          "$(build_use_title "Current: ${current_json}" "${current_cached_label:-}" "${current_cached_non_weekly:-}" "${current_cached_weekly_remaining:-}")" \
+          "Current: ${current_json}" \
           "$(build_use_subtitle "${current_cached_email:-"-"}" "${current_cached_weekly:-"-"}" "Active auth file detected (no saved secrets yet).")" \
           "" \
           false \
           "use "
       else
         emit_item \
-          "$(build_use_title "Current: ${current_json}" "${current_cached_label:-}" "${current_cached_non_weekly:-}" "${current_cached_weekly_remaining:-}")" \
+          "Current: ${current_json}" \
           "$(build_use_subtitle "${current_cached_email:-"-"}" "${current_cached_weekly:-"-"}" "Press Enter to run codex-cli auth use ${current_secret}")" \
           "use::${current_secret}" \
           true \
@@ -1631,16 +1739,18 @@ handle_use_query() {
   account_lookup_file="$(build_diag_account_lookup_map || true)"
 
   if [[ -n "$current_json" ]]; then
-    local current_secret current_meta current_email current_weekly current_label current_non_weekly current_weekly_remaining
+    local current_secret current_meta current_email current_weekly current_label current_non_weekly current_weekly_remaining current_weekly_epoch current_non_weekly_reset_epoch
     current_secret="${current_json%.json}"
     current_email="${current_cached_email:-"-"}"
     current_weekly="${current_cached_weekly:-"-"}"
     current_label="${current_cached_label:-}"
     current_non_weekly="${current_cached_non_weekly:-}"
     current_weekly_remaining="${current_cached_weekly_remaining:-}"
+    current_weekly_epoch="${current_cached_weekly_epoch:-}"
+    current_non_weekly_reset_epoch="${current_cached_non_weekly_reset_epoch:-}"
     current_meta="$(lookup_diag_account_meta "$account_lookup_file" "$current_json" || true)"
     if [[ -n "$current_meta" ]]; then
-      IFS=$'\t' read -r _current_epoch current_email current_weekly current_label current_non_weekly current_weekly_remaining <<<"$current_meta"
+      IFS=$'\t' read -r current_weekly_epoch current_email current_weekly current_label current_non_weekly current_weekly_remaining current_non_weekly_reset_epoch <<<"$current_meta"
     fi
     if [[ "$current_json" != "auth.json" && (-z "${current_email:-}" || "$current_email" == "-") ]]; then
       current_email="$(extract_secret_email_from_file "${secret_dir%/}/${current_json}" || true)"
@@ -1650,14 +1760,14 @@ handle_use_query() {
     fi
     if [[ "$current_json" == "auth.json" ]]; then
       emit_item \
-        "$(build_use_title "Current: ${current_json}" "${current_label:-}" "${current_non_weekly:-}" "${current_weekly_remaining:-}")" \
+        "Current: ${current_json}" \
         "$(build_use_subtitle "${current_email:-"-"}" "${current_weekly:-"-"}" "Active auth file (not mapped to saved *.json).")" \
         "" \
         false \
         "use "
     else
       emit_item \
-        "$(build_use_title "Current: ${current_json}" "${current_label:-}" "${current_non_weekly:-}" "${current_weekly_remaining:-}")" \
+        "Current: ${current_json}" \
         "$(build_use_subtitle "${current_email:-"-"}" "${current_weekly:-"-"}" "Press Enter to run codex-cli auth use ${current_secret}")" \
         "use::${current_secret}" \
         true \
@@ -1708,17 +1818,17 @@ handle_use_query() {
   fi
 
   for file in "${sorted_files[@]}"; do
-    local use_secret account_meta account_email account_weekly account_label account_non_weekly account_weekly_remaining
+    local use_secret account_meta account_email account_weekly account_label account_non_weekly account_weekly_remaining account_weekly_epoch account_non_weekly_reset_epoch
     use_secret="${file%.json}"
     account_meta="$(lookup_diag_account_meta "$account_lookup_file" "$file" || true)"
     if [[ -n "$account_meta" ]]; then
-      IFS=$'\t' read -r _account_epoch account_email account_weekly account_label account_non_weekly account_weekly_remaining <<<"$account_meta"
+      IFS=$'\t' read -r account_weekly_epoch account_email account_weekly account_label account_non_weekly account_weekly_remaining account_non_weekly_reset_epoch <<<"$account_meta"
     fi
     if [[ -z "${account_email:-}" ]]; then
       account_email="$(extract_secret_email_from_file "${secret_dir%/}/${file}" || true)"
     fi
     emit_item \
-      "$(build_use_title "$file" "${account_label:-}" "${account_non_weekly:-}" "${account_weekly_remaining:-}")" \
+      "$(build_use_title "$file" "${account_label:-}" "${account_non_weekly:-}" "${account_weekly_remaining:-}" "${account_non_weekly_reset_epoch:-}" "${account_weekly_epoch:-}")" \
       "$(build_use_subtitle "${account_email:-}" "${account_weekly:-}" "Run codex-cli auth use ${use_secret}")" \
       "use::${use_secret}" \
       true \
@@ -1917,7 +2027,7 @@ emit_current_auth_hint_item() {
   current_cached_meta="$(lookup_current_diag_meta "$current_json" || true)"
   if [[ -n "$current_cached_meta" ]]; then
     local cached_email cached_weekly_reset
-    IFS=$'\t' read -r _cached_epoch cached_email cached_weekly_reset _cached_label _cached_non_weekly _cached_weekly_remaining <<<"$current_cached_meta"
+    IFS=$'\t' read -r _cached_epoch cached_email cached_weekly_reset _cached_label _cached_non_weekly _cached_weekly_remaining _cached_non_weekly_reset_epoch <<<"$current_cached_meta"
     if [[ -n "$cached_email" && "$cached_email" != "-" ]]; then
       current_email="$cached_email"
     fi

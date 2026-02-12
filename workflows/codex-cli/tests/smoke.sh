@@ -616,7 +616,7 @@ alias_diag_plain_cache_dir="$tmp_dir/diag-plain-cache"
 alias_diag_plain_log="$tmp_dir/diag-plain.log"
 alias_diag_plain_json="$({ CODEX_STUB_LOG="$alias_diag_plain_log" ALFRED_WORKFLOW_CACHE="$alias_diag_plain_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-plain" "$workflow_dir/scripts/script_filter_diag.sh" ""; })"
 assert_jq_json "$alias_diag_plain_json" '(.items | any(.title == "Rate limits remaining")) | not' "cxd wrapper should hide plain-text rate-limits heading row"
-assert_jq_json "$alias_diag_plain_json" '.items | any(.title == "auth | 5h 84% | weekly 65%")' "cxd wrapper should parse single-account json rows"
+assert_jq_json "$alias_diag_plain_json" '.items | any(.title | test("^auth \\| 5h 84% \\([^)]*\\) \\| weekly 65% \\([^)]*\\)$"))' "cxd wrapper should parse single-account json rows"
 wait_for_file_contains "$alias_diag_plain_log" "diag rate-limits --json" 5 || fail "cxd wrapper should refresh default diag cache via --json"
 
 alias_diag_all_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag_all.sh" ""; })"
@@ -667,7 +667,7 @@ auth_only_cache_home="$tmp_dir/home-auth-cache"
 mkdir -p "$auth_only_cache_home/.config/codex-kit"
 printf '{"token":"x"}\n' >"$auth_only_cache_home/.config/codex-kit/auth.json"
 auth_use_with_diag_cache_json="$({ HOME="$auth_only_cache_home" CODEX_SECRET_DIR="$tmp_dir/missing-secrets-for-diag" CODEX_AUTH_FILE="$auth_only_cache_home/.config/codex-kit/auth.json" ALFRED_WORKFLOW_CACHE="$diag_auto_all_fallback_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
-assert_jq_json "$auth_use_with_diag_cache_json" '.items[0].title == "Current: auth.json | 5h 61% | weekly 11%"' "cxau auth.json current row should include latest cached usage metrics"
+assert_jq_json "$auth_use_with_diag_cache_json" '.items[0].title == "Current: auth.json"' "cxau auth.json current row should keep simple current title"
 assert_jq_json "$auth_use_with_diag_cache_json" '.items[0].subtitle | contains("auth@example.com | reset 2026-02-17 02:19 +08:00")' "cxau auth.json current row should include latest cached email/reset"
 
 diag_all_with_auth_cache_json="$({ HOME="$auth_only_cache_home" CODEX_SECRET_DIR="$tmp_dir/missing-secrets-for-diag" CODEX_AUTH_FILE="$auth_only_cache_home/.config/codex-kit/auth.json" ALFRED_WORKFLOW_CACHE="$diag_auto_all_fallback_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter_diag_all.sh" ""; })"
@@ -806,14 +806,16 @@ fi
 
 diag_all_json_menu_with_latest="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "diag all-json"; })"
 assert_jq_json "$diag_all_json_menu_with_latest" '.items | any(.title == "Diag result ready (all-json)")' "diag all-json menu should render latest result rows from cache"
-assert_jq_json "$diag_all_json_menu_with_latest" '.items | any(.title == "sym | 5h 76% | weekly 88%")' "diag all-json menu should include parsed account rows"
-assert_jq_json "$diag_all_json_menu_with_latest" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "diag all-json menu should sort by earliest weekly reset first"
+assert_jq_json "$diag_all_json_menu_with_latest" '.items | any(.title | test("^sym \\| 5h 76% \\([^)]*\\) \\| weekly 88% \\([^)]*\\)$"))' "diag all-json menu should include parsed account rows"
+# shellcheck disable=SC2016
+assert_jq_json "$diag_all_json_menu_with_latest" '.items | map(.title) as $titles | (($titles | map(startswith("poies | 5h 48%")) | index(true)) < ($titles | map(startswith("sym | 5h 76%")) | index(true)))' "diag all-json menu should sort by earliest weekly reset first"
 
 diag_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "diag result"; })"
 assert_jq_json "$diag_result_json" '.items[0].title | startswith("Diag result ready")' "diag result should show summary item"
-assert_jq_json "$diag_result_json" '.items | any(.title == "sym | 5h 76% | weekly 88%")' "diag result should include sym account row"
-assert_jq_json "$diag_result_json" '.items | any(.title == "poies | 5h 48% | weekly 54%")' "diag result should include poies account row"
-assert_jq_json "$diag_result_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "diag result should sort by earliest weekly reset first"
+assert_jq_json "$diag_result_json" '.items | any(.title | test("^sym \\| 5h 76% \\([^)]*\\) \\| weekly 88% \\([^)]*\\)$"))' "diag result should include sym account row"
+assert_jq_json "$diag_result_json" '.items | any(.title | test("^poies \\| 5h 48% \\([^)]*\\) \\| weekly 54% \\([^)]*\\)$"))' "diag result should include poies account row"
+# shellcheck disable=SC2016
+assert_jq_json "$diag_result_json" '.items | map(.title) as $titles | (($titles | map(startswith("poies | 5h 48%")) | index(true)) < ($titles | map(startswith("sym | 5h 76%")) | index(true)))' "diag result should sort by earliest weekly reset first"
 assert_jq_json "$diag_result_json" '.items | any(.subtitle == "sym@example.com | reset 2026-02-18 02:19 +08:00")' "diag result should include email/reset subtitle"
 
 CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
@@ -826,8 +828,9 @@ assert_jq_json "$alias_diag_result_json" '.items[0].title | startswith("Diag res
 
 alias_diag_all_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag_all.sh" "result"; })"
 assert_jq_json "$alias_diag_all_result_json" '.items[0].title == "Diag result ready (all-json)"' "cxda result should keep all-json mode summary"
-assert_jq_json "$alias_diag_all_result_json" '.items | any(.title == "sym | 5h 76% | weekly 88%")' "cxda result should parse per-account rows"
-assert_jq_json "$alias_diag_all_result_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym | 5h 76% | weekly 88%\"))" "cxda result should sort by earliest weekly reset first"
+assert_jq_json "$alias_diag_all_result_json" '.items | any(.title | test("^sym \\| 5h 76% \\([^)]*\\) \\| weekly 88% \\([^)]*\\)$"))' "cxda result should parse per-account rows"
+# shellcheck disable=SC2016
+assert_jq_json "$alias_diag_all_result_json" '.items | map(.title) as $titles | (($titles | map(startswith("poies | 5h 48%")) | index(true)) < ($titles | map(startswith("sym | 5h 76%")) | index(true)))' "cxda result should sort by earliest weekly reset first"
 
 use_secret_dir_ranked="$tmp_dir/secrets-ranked"
 mkdir -p "$use_secret_dir_ranked"
@@ -838,10 +841,11 @@ printf '{"email":"sym-ranked@example.com"}\n' >"$use_secret_dir_ranked/sym.json"
 alias_auth_use_ranked_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_SECRET_DIR="$use_secret_dir_ranked" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
 assert_jq_json "$alias_auth_use_ranked_json" '.items[0].title == "Current: beta.json"' "cxau should keep current auth summary row"
 assert_jq_json "$alias_auth_use_ranked_json" '.items[0].subtitle | contains("beta-ranked@example.com | reset -")' "cxau current row should include email and reset subtitle"
-assert_jq_json "$alias_auth_use_ranked_json" '.items | any(.title == "poies.json | 5h 48% | weekly 54%")' "cxau should show cxda-style usage metrics in title"
-assert_jq_json "$alias_auth_use_ranked_json" '.items | any(.title == "sym.json | 5h 76% | weekly 88%")' "cxau should show cxda-style usage metrics for sym"
-assert_jq_json "$alias_auth_use_ranked_json" ".items | map(.title) as \$titles | (\$titles | index(\"poies.json | 5h 48% | weekly 54%\")) < (\$titles | index(\"sym.json | 5h 76% | weekly 88%\"))" "cxau should sort secrets by earliest weekly reset from latest cxda result"
-assert_jq_json "$alias_auth_use_ranked_json" '.items | any(.title == "poies.json | 5h 48% | weekly 54%" and (.subtitle | contains("poies@example.com | reset 2026-02-17 02:19 +08:00")))' "cxau rows should show cached email and reset subtitle"
+assert_jq_json "$alias_auth_use_ranked_json" '.items | any(.title | test("^poies\\.json \\| 5h 48% \\([^)]*\\) \\| weekly 54% \\([^)]*\\)$"))' "cxau should show cxda-style usage metrics in title"
+assert_jq_json "$alias_auth_use_ranked_json" '.items | any(.title | test("^sym\\.json \\| 5h 76% \\([^)]*\\) \\| weekly 88% \\([^)]*\\)$"))' "cxau should show cxda-style usage metrics for sym"
+# shellcheck disable=SC2016
+assert_jq_json "$alias_auth_use_ranked_json" '.items | map(.title) as $titles | (($titles | map(startswith("poies.json | 5h 48%")) | index(true)) < ($titles | map(startswith("sym.json | 5h 76%")) | index(true)))' "cxau should sort secrets by earliest weekly reset from latest cxda result"
+assert_jq_json "$alias_auth_use_ranked_json" '.items | any((.title | test("^poies\\.json \\| 5h 48% \\([^)]*\\) \\| weekly 54% \\([^)]*\\)$")) and (.subtitle | contains("poies@example.com | reset 2026-02-17 02:19 +08:00")))' "cxau rows should show cached email and reset subtitle"
 
 cat >"$tmp_dir/bin/open" <<'EOS'
 #!/usr/bin/env bash
