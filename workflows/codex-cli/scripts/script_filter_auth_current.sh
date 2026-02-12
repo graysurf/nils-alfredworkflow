@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+workflow_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+runtime_meta="$workflow_script_dir/lib/codex_cli_runtime.sh"
+if [[ ! -f "$runtime_meta" ]]; then
+  printf '{"items":[{"title":"codex-cli runtime metadata missing","subtitle":"expected %s","valid":false}]}\n' "$runtime_meta"
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$runtime_meta"
+# shellcheck disable=SC2153
+codex_cli_pinned_version="${CODEX_CLI_PINNED_VERSION}"
+# shellcheck disable=SC2153
+codex_cli_pinned_crate="${CODEX_CLI_PINNED_CRATE}"
+
+json_escape() {
+  local value="${1-}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+begin_items() {
+  ITEM_COUNT=0
+  printf '{"items":['
+}
+
+emit_item() {
+  local title="$1"
+  local subtitle="${2-}"
+  local valid="${3:-false}"
+
+  if [[ "$ITEM_COUNT" -gt 0 ]]; then
+    printf ','
+  fi
+
+  printf '{"title":"%s","subtitle":"%s","valid":%s}' \
+    "$(json_escape "$title")" \
+    "$(json_escape "$subtitle")" \
+    "$valid"
+
+  ITEM_COUNT=$((ITEM_COUNT + 1))
+}
+
+end_items() {
+  printf ']}\n'
+}
+
+resolve_codex_cli_path() {
+  if [[ -n "${CODEX_CLI_BIN:-}" && -x "${CODEX_CLI_BIN}" ]]; then
+    printf '%s\n' "${CODEX_CLI_BIN}"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  local packaged_cli
+  packaged_cli="$script_dir/../bin/codex-cli"
+  if [[ -x "$packaged_cli" ]]; then
+    printf '%s\n' "$packaged_cli"
+    return 0
+  fi
+
+  local resolved
+  resolved="$(command -v codex-cli 2>/dev/null || true)"
+  if [[ -n "$resolved" && -x "$resolved" ]]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+
+  return 1
+}
+
+resolve_preferred_codex_auth_file() {
+  [[ -n "${HOME:-}" ]] || return 1
+
+  local auth_candidates=(
+    "${HOME%/}/.config/codex-kit/auth.json"
+    "${HOME%/}/.config/codex/auth.json"
+    "${HOME%/}/.codex/auth.json"
+  )
+  local candidate_auth
+  for candidate_auth in "${auth_candidates[@]}"; do
+    if [[ -f "$candidate_auth" ]]; then
+      printf '%s\n' "$candidate_auth"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+resolve_default_codex_secret_dir() {
+  if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+    printf '%s/codex_secrets\n' "${XDG_CONFIG_HOME%/}"
+    return 0
+  fi
+
+  if [[ -n "${HOME:-}" ]]; then
+    printf '%s/.config/codex_secrets\n' "${HOME%/}"
+    return 0
+  fi
+
+  return 1
+}
+
+ensure_codex_auth_file_env() {
+  local configured="${CODEX_AUTH_FILE:-}"
+  configured="$(printf '%s' "$configured" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  if [[ -n "$configured" ]]; then
+    export CODEX_AUTH_FILE="$configured"
+    return 0
+  fi
+
+  local preferred_auth=""
+  preferred_auth="$(resolve_preferred_codex_auth_file || true)"
+  if [[ -n "$preferred_auth" ]]; then
+    export CODEX_AUTH_FILE="$preferred_auth"
+    return 0
+  fi
+
+  return 1
+}
+
+ensure_codex_secret_dir_env() {
+  local configured="${CODEX_SECRET_DIR:-}"
+  configured="$(printf '%s' "$configured" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+
+  if [[ -z "$configured" ]]; then
+    configured="$(resolve_default_codex_secret_dir || true)"
+  fi
+
+  [[ -n "$configured" ]] || return 1
+  export CODEX_SECRET_DIR="$configured"
+  return 0
+}
+
+compact_text() {
+  local text="${1-}"
+  printf '%s' "$text" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//'
+}
+
+title_from_json_output() {
+  local payload="$1"
+  local matched_secret=""
+  local auth_file=""
+
+  matched_secret="$(printf '%s\n' "$payload" | jq -r '.result.matched_secret // .error.details.matched_secret // empty' 2>/dev/null || true)"
+  auth_file="$(printf '%s\n' "$payload" | jq -r '.result.auth_file // .error.details.auth_file // empty' 2>/dev/null || true)"
+
+  if [[ -n "$matched_secret" ]]; then
+    if [[ "$matched_secret" != *.json ]]; then
+      matched_secret="${matched_secret}.json"
+    fi
+    printf 'Current: %s\n' "$matched_secret"
+    return 0
+  fi
+
+  if [[ -n "$auth_file" ]]; then
+    printf 'Current: auth.json\n'
+    return 0
+  fi
+
+  printf 'Current: unknown\n'
+}
+
+subtitle_from_json_output() {
+  local payload="$1"
+  local ok match_mode auth_file
+
+  ok="$(printf '%s\n' "$payload" | jq -r '.ok // false' 2>/dev/null || true)"
+  match_mode="$(printf '%s\n' "$payload" | jq -r '.result.match_mode // .error.details.match_mode // empty' 2>/dev/null || true)"
+  auth_file="$(printf '%s\n' "$payload" | jq -r '.result.auth_file // .error.details.auth_file // empty' 2>/dev/null || true)"
+
+  [[ -n "$match_mode" ]] || match_mode="-"
+  [[ -n "$auth_file" ]] || auth_file="-"
+  printf 'ok=%s | match_mode=%s | auth_file=%s\n' "$ok" "$match_mode" "$auth_file"
+}
+
+begin_items
+
+ensure_codex_auth_file_env >/dev/null 2>&1 || true
+ensure_codex_secret_dir_env >/dev/null 2>&1 || true
+codex_cli=""
+if ! codex_cli="$(resolve_codex_cli_path)"; then
+  emit_item \
+    "codex-cli runtime missing" \
+    "Re-import workflow, set CODEX_CLI_BIN, or install ${codex_cli_pinned_crate} ${codex_cli_pinned_version}."
+  end_items
+  exit 0
+fi
+
+set +e
+output="$("$codex_cli" auth current --json 2>&1)"
+rc=$?
+set -e
+
+if command -v jq >/dev/null 2>&1 && [[ -n "$output" ]] && printf '%s\n' "$output" | jq -e 'type == "object"' >/dev/null 2>&1; then
+  emit_item \
+    "$(title_from_json_output "$output")" \
+    "$(subtitle_from_json_output "$output")"
+  emit_item \
+    "Raw: codex-cli auth current --json (rc=${rc})" \
+    "$(compact_text "$output")"
+else
+  if [[ "$rc" -eq 0 ]]; then
+    emit_item \
+      "auth current --json returned non-JSON" \
+      "$(compact_text "$output")"
+  else
+    emit_item \
+      "auth current --json failed (rc=${rc})" \
+      "$(compact_text "$output")"
+  fi
+fi
+
+end_items

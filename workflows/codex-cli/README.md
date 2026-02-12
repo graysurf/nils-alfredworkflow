@@ -1,6 +1,6 @@
 # Codex CLI - Alfred Workflow
 
-Run core `nils-codex-cli@0.3.2` operations from Alfred.
+Run core `nils-codex-cli@0.3.5` operations from Alfred.
 
 ## Screenshot
 
@@ -13,6 +13,7 @@ This workflow currently supports:
 - `auth login` (browser, `--api-key`, `--device-code`)
 - `auth use <secret>` (supports direct query and picker list)
 - `auth save [--yes] <secret.json>`
+- `auth current --json` quick inspection (`cxac`)
 - `diag rate-limits` presets:
   - default
   - `--cached`
@@ -48,7 +49,8 @@ No `CODEX_SECRET_DIR` saved secrets behavior:
 ## Runtime Requirements
 
 - End users: no extra install when using release artifact.
-- `.alfredworkflow` bundles `codex-cli@0.3.2` (release-coupled runtime version).
+- `.alfredworkflow` bundles `codex-cli@0.3.5` (release-coupled runtime version).
+- Pinned runtime metadata is centralized in `scripts/lib/codex_cli_runtime.sh`.
 - Bundled target: macOS `arm64`.
 
 Fallback runtime sources (when bundled binary is unavailable):
@@ -59,7 +61,7 @@ Fallback runtime sources (when bundled binary is unavailable):
 Manual fallback install:
 
 ```bash
-cargo install nils-codex-cli --version 0.3.2
+cargo install nils-codex-cli --version 0.3.5
 ```
 
 ## Configuration
@@ -82,6 +84,7 @@ cargo install nils-codex-cli --version 0.3.2
 | `cx` | Command palette for auth/save/diag actions. |
 | `cxa` | Alias of `cx auth ...`. |
 | `cxau` | Alias of `cx auth use ...` (current + all JSON picker). |
+| `cxac` | Run `codex-cli auth current --json` and show raw result. |
 | `cxd` | Alias of `cx diag ...`. |
 | `cxda` | Alias of `cx diag all-json ...` (all-accounts JSON view). |
 | `cxs` | Alias of `cx save ...`. |
@@ -99,6 +102,7 @@ cargo install nils-codex-cli --version 0.3.2
 | `cx use alpha` | Run `codex-cli auth use alpha` |
 | `cxau` | Show current JSON + all JSON secrets, then select to use |
 | `cxau alpha` | Run `codex-cli auth use alpha` directly |
+| `cxac` | Show `codex-cli auth current --json` parsed/raw output |
 | `cx diag` | Run `codex-cli diag rate-limits --json` |
 | `cx diag cached` | Run `codex-cli diag rate-limits --cached` |
 | `cx diag one-line` | Run `codex-cli diag rate-limits --one-line` |
@@ -113,10 +117,15 @@ cargo install nils-codex-cli --version 0.3.2
 
 ## Maintainer Packaging Notes
 
-- Official package should bundle exactly `codex-cli@0.3.2`.
+- Official package should bundle exactly `codex-cli@0.3.5`.
 - `scripts/workflow-pack.sh --id codex-cli` runs `workflows/codex-cli/scripts/prepare_package.sh`.
-- If auto-detection fails during packaging, set:
+- Packaging binary resolution order:
+  1. `CODEX_CLI_PACK_BIN` (if set)
+  2. local `PATH` `codex-cli`
+  3. auto-install pinned `nils-codex-cli@0.3.5` from crates.io via `cargo install --locked --root <cache-root>`
+- Useful overrides:
   - `CODEX_CLI_PACK_BIN=/absolute/path/to/codex-cli`
+  - `CODEX_CLI_PACK_INSTALL_ROOT=/absolute/path/to/install-root` (default is cache under `$XDG_CACHE_HOME` or `~/.cache`)
 
 ## Validation
 

@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+workflow_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+runtime_meta="$workflow_script_dir/lib/codex_cli_runtime.sh"
+if [[ ! -f "$runtime_meta" ]]; then
+  echo "error: missing runtime metadata: $runtime_meta" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+source "$runtime_meta"
+# shellcheck disable=SC2153
+codex_cli_pinned_version="${CODEX_CLI_PINNED_VERSION}"
+# shellcheck disable=SC2153
+codex_cli_pinned_crate="${CODEX_CLI_PINNED_CRATE}"
+
 if [[ "$#" -lt 1 || -z "${1:-}" ]]; then
   echo "usage: action_open.sh <action-token>" >&2
   exit 2
@@ -48,7 +61,7 @@ resolve_codex_cli() {
     return 0
   fi
 
-  echo "codex-cli binary not found (re-import workflow bundle, set CODEX_CLI_BIN, or install nils-codex-cli 0.3.2)" >&2
+  echo "codex-cli binary not found (re-import workflow bundle, set CODEX_CLI_BIN, or install ${codex_cli_pinned_crate} ${codex_cli_pinned_version})" >&2
   return 1
 }
 
@@ -116,6 +129,43 @@ resolve_default_codex_secret_dir() {
 
   if [[ -n "${HOME:-}" ]]; then
     printf '%s/.config/codex_secrets\n' "${HOME%/}"
+    return 0
+  fi
+
+  return 1
+}
+
+resolve_preferred_codex_auth_file() {
+  [[ -n "${HOME:-}" ]] || return 1
+
+  local auth_candidates=(
+    "${HOME%/}/.config/codex-kit/auth.json"
+    "${HOME%/}/.config/codex/auth.json"
+    "${HOME%/}/.codex/auth.json"
+  )
+  local candidate_auth
+  for candidate_auth in "${auth_candidates[@]}"; do
+    if [[ -f "$candidate_auth" ]]; then
+      printf '%s\n' "$candidate_auth"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+ensure_codex_auth_file_env() {
+  local configured="${CODEX_AUTH_FILE:-}"
+  configured="$(printf '%s' "$configured" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  if [[ -n "$configured" ]]; then
+    export CODEX_AUTH_FILE="$configured"
+    return 0
+  fi
+
+  local preferred_auth=""
+  preferred_auth="$(resolve_preferred_codex_auth_file || true)"
+  if [[ -n "$preferred_auth" ]]; then
+    export CODEX_AUTH_FILE="$preferred_auth"
     return 0
   fi
 
@@ -601,6 +651,7 @@ codex_cli=""
 if ! codex_cli="$(resolve_codex_cli)"; then
   exit 1
 fi
+ensure_codex_auth_file_env >/dev/null 2>&1 || true
 ensure_codex_secret_dir_env >/dev/null 2>&1 || true
 
 case "$action_token" in

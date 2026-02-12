@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+runtime_meta="$script_dir/lib/codex_cli_runtime.sh"
+if [[ ! -f "$runtime_meta" ]]; then
+  echo "error: missing runtime metadata: $runtime_meta" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+source "$runtime_meta"
+
 stage_dir=""
 workflow_root=""
-expected_version="${CODEX_CLI_BUNDLE_VERSION:-0.3.2}"
+default_expected_version="${CODEX_CLI_PINNED_VERSION}"
+expected_version="${CODEX_CLI_BUNDLE_VERSION:-$default_expected_version}"
 skip_version_check="${CODEX_CLI_PACK_SKIP_VERSION_CHECK:-0}"
 skip_arch_check="${CODEX_CLI_PACK_SKIP_ARCH_CHECK:-0}"
+default_crate_name="${CODEX_CLI_PINNED_CRATE}"
+crate_name="${CODEX_CLI_CRATE_NAME:-$default_crate_name}"
 
 usage() {
   cat <<USAGE
@@ -55,30 +67,97 @@ done
 }
 
 resolve_source_bin() {
+  local source_bin=""
   if [[ -n "${CODEX_CLI_PACK_BIN:-}" ]]; then
     if [[ ! -x "${CODEX_CLI_PACK_BIN}" ]]; then
       echo "error: CODEX_CLI_PACK_BIN is not executable: ${CODEX_CLI_PACK_BIN}" >&2
       exit 1
     fi
-    printf '%s\n' "${CODEX_CLI_PACK_BIN}"
+    source_bin="${CODEX_CLI_PACK_BIN}"
+  else
+    local resolved
+    resolved="$(command -v codex-cli 2>/dev/null || true)"
+    if [[ -n "$resolved" && -x "$resolved" ]]; then
+      source_bin="$resolved"
+    fi
+  fi
+
+  if [[ -n "$source_bin" && "$skip_version_check" == "1" ]]; then
+    printf '%s\n' "$source_bin"
     return 0
   fi
 
-  local resolved
-  resolved="$(command -v codex-cli 2>/dev/null || true)"
-  if [[ -n "$resolved" && -x "$resolved" ]]; then
-    printf '%s\n' "$resolved"
-    return 0
+  local source_version=""
+  if [[ -n "$source_bin" ]]; then
+    source_version="$(detect_version "$source_bin" || true)"
+    if [[ "$source_version" == "$expected_version" ]]; then
+      printf '%s\n' "$source_bin"
+      return 0
+    fi
+    if [[ -n "$source_version" ]]; then
+      echo "info: local codex-cli version $source_version does not match pinned $expected_version; resolving pinned binary from cache/crates.io." >&2
+    else
+      echo "info: unable to detect local codex-cli version from $source_bin; resolving pinned binary from cache/crates.io." >&2
+    fi
+  else
+    echo "info: local codex-cli not found; resolving pinned binary from cache/crates.io." >&2
   fi
 
-  cat >&2 <<EOF
-error: codex-cli binary not found for packaging codex-cli workflow
-hint: install expected version with:
-  cargo install nils-codex-cli --version ${expected_version}
-or set:
-  CODEX_CLI_PACK_BIN=/absolute/path/to/codex-cli
+  local install_root=""
+  if [[ -n "${CODEX_CLI_PACK_INSTALL_ROOT:-}" ]]; then
+    install_root="${CODEX_CLI_PACK_INSTALL_ROOT}"
+  elif [[ -n "${XDG_CACHE_HOME:-}" ]]; then
+    install_root="${XDG_CACHE_HOME%/}/nils-alfredworkflow/cargo-install/codex-cli/${expected_version}"
+  elif [[ -n "${HOME:-}" ]]; then
+    install_root="${HOME%/}/.cache/nils-alfredworkflow/cargo-install/codex-cli/${expected_version}"
+  else
+    install_root="${workflow_root%/}/.cache/cargo-install/codex-cli/${expected_version}"
+  fi
+  mkdir -p "$install_root"
+
+  local installed_bin="${install_root%/}/bin/codex-cli"
+  if [[ -x "$installed_bin" ]]; then
+    if [[ "$skip_version_check" == "1" ]]; then
+      printf '%s\n' "$installed_bin"
+      return 0
+    fi
+    local installed_version=""
+    installed_version="$(detect_version "$installed_bin" || true)"
+    if [[ "$installed_version" == "$expected_version" ]]; then
+      echo "info: reusing cached pinned codex-cli $expected_version from $installed_bin." >&2
+      printf '%s\n' "$installed_bin"
+      return 0
+    fi
+  fi
+
+  if ! command -v cargo >/dev/null 2>&1; then
+    cat >&2 <<EOF
+error: cargo is required to auto-install pinned codex-cli for packaging
+hint: install rust/cargo, or set CODEX_CLI_PACK_BIN to a codex-cli ${expected_version} binary
 EOF
-  exit 1
+    exit 1
+  fi
+
+  if ! cargo install "$crate_name" --version "$expected_version" --locked --root "$install_root" --force; then
+    cat >&2 <<EOF
+error: failed to install $crate_name@$expected_version from crates.io
+hint: retry with network access, or set CODEX_CLI_PACK_BIN to a local pinned binary
+EOF
+    exit 1
+  fi
+
+  source_bin="$installed_bin"
+  if [[ ! -x "$source_bin" ]]; then
+    echo "error: installed codex-cli binary missing: $source_bin" >&2
+    exit 1
+  fi
+
+  if [[ "$skip_version_check" != "1" ]]; then
+    validate_version "$source_bin"
+  fi
+
+  printf '%s\n' "$source_bin"
+  return 0
 }
 
 parse_semver_from_text() {
@@ -92,12 +171,12 @@ parse_semver_from_text() {
 
 validate_version() {
   local source_bin="$1"
-  local version_line
-  version_line="$("$source_bin" --version 2>/dev/null | head -n1 || true)"
   local actual_version
-  actual_version="$(parse_semver_from_text "$version_line" || true)"
+  actual_version="$(detect_version "$source_bin" || true)"
 
   if [[ -z "$actual_version" ]]; then
+    local version_line
+    version_line="$("$source_bin" --version 2>/dev/null | head -n1 || true)"
     echo "error: unable to detect codex-cli version from: $version_line" >&2
     exit 1
   fi
@@ -106,6 +185,16 @@ validate_version() {
     echo "error: codex-cli version mismatch (expected $expected_version, got $actual_version)" >&2
     exit 1
   fi
+}
+
+detect_version() {
+  local source_bin="$1"
+  local version_line
+  version_line="$("$source_bin" --version 2>/dev/null | head -n1 || true)"
+  local actual_version
+  actual_version="$(parse_semver_from_text "$version_line" || true)"
+  [[ -n "$actual_version" ]] || return 1
+  printf '%s\n' "$actual_version"
 }
 
 supports_arm64() {

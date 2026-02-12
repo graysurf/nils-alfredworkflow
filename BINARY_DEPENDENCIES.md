@@ -19,7 +19,15 @@ This document lists required local tools for development, linting, testing, and 
 - Node dependency: `playwright` package (managed via root `package.json`)
 - Packaging/runtime helpers: `zip`, `unzip`, `open` (macOS install/runtime), `xdg-open` (Linux CI/local smoke compatibility)
 - Optional live scraper runtime: Playwright Chromium browser (`npx playwright install chromium`)
-- Codex CLI workflow packaging (release artifact): `codex-cli` v`0.3.2` available locally on macOS arm64, unless overridden via `CODEX_CLI_PACK_BIN`
+- Codex CLI workflow packaging (release artifact): local `codex-cli` is optional; packaging auto-installs pinned `nils-codex-cli@0.3.5` from crates.io when local binary is missing or version-mismatched (can still override source via `CODEX_CLI_PACK_BIN`)
+
+## Crates.io pinned binary packaging policy
+
+- For workflows that bundle a crates.io runtime binary, packaging must use pinned-version resolution:
+  1. Prefer explicit local override (`*_PACK_BIN`) when provided.
+  2. Then try local PATH binary.
+  3. If missing or version-mismatched, auto-install the pinned crate version from crates.io (with `cargo install --locked`) into a workflow-local cache root and use that binary for packaging.
+- Packaging must fail only when pinned auto-install cannot run (for example missing `cargo`, network failure, or invalid pinned version).
 
 ## Install (macOS)
 

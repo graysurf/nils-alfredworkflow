@@ -98,6 +98,14 @@
 - Pack all workflows:
   - `scripts/workflow-pack.sh --all`
 
+### Crates.io runtime packaging policy
+
+- When a workflow bundles a runtime binary published on crates.io, packaging scripts must follow this order:
+  1. Prefer explicit local override (for example `*_PACK_BIN`).
+  2. Then use local PATH binary.
+  3. If binary is missing or not the pinned version, auto-install the pinned crate version from crates.io via `cargo install --locked --root <cache-root>` and bundle that installed binary.
+- This policy avoids accidental version drift while keeping packaging reproducible across machines.
+
 ## Rust crate publishing (crates.io)
 
 - Dry-run publish checks (all crates from `release/crates-io-publish-order.txt`):
