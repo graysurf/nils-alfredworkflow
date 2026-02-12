@@ -18,7 +18,7 @@ Alfred workflows for macOS users.
 | [YouTube Search](workflows/youtube-search/README.md) | `yt` | Search YouTube videos and open selected videos in browser. | `YOUTUBE_API_KEY` |
 | [Spotify Search](workflows/spotify-search/README.md) | `sp` | Search Spotify tracks and open selected results in Spotify app. | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |
 | [Wiki Search](workflows/wiki-search/README.md) | `wk` | Search Wikipedia articles and open selected page links. | No |
-| [Weather Forecast](workflows/weather/README.md) | `wt`, `ww` | Show today / 7-day weather forecast and copy selected rows. | Optional tuning: `WEATHER_CLI_BIN` |
+| [Weather Forecast](workflows/weather/README.md) | `wt`, `ww` | Show today rows then hourly (`wt`) / city picker then 7-day (`ww`) forecasts, then copy selected rows. | Optional tuning: `WEATHER_CLI_BIN` |
 | [Cambridge Dict](workflows/cambridge-dict/README.md) | `cd` | Two-stage Cambridge dictionary lookup (candidate -> detail) with Enter-to-open entry URL. | Node + Playwright runtime for scraper backend |
 | [Market Expression](workflows/market-expression/README.md) | `mx` | Evaluate market expressions (numeric: `+ - * /`, assets: `+ -`) with FX/crypto conversion and copy selected rows. | Optional tuning: `MARKET_CLI_BIN`, `MARKET_DEFAULT_FIAT` |
 | [Quote Feed](workflows/quote-feed/README.md) | `qq` | Show cached quotes, refresh in background, and copy a selected quote. | Optional tuning: `QUOTE_DISPLAY_COUNT`, `QUOTE_REFRESH_INTERVAL`, `QUOTE_FETCH_COUNT`, `QUOTE_MAX_ENTRIES`, `QUOTE_DATA_DIR` |

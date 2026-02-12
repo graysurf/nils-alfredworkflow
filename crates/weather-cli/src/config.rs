@@ -4,6 +4,7 @@ use std::path::PathBuf;
 pub const WEATHER_CACHE_TTL_SECS: u64 = 30 * 60;
 
 pub const WEATHER_CACHE_DIR_ENV: &str = "WEATHER_CACHE_DIR";
+pub const WEATHER_CACHE_TTL_SECS_ENV: &str = "WEATHER_CACHE_TTL_SECS";
 const ALFRED_WORKFLOW_CACHE_ENV: &str = "alfred_workflow_cache";
 const ALFRED_WORKFLOW_DATA_ENV: &str = "alfred_workflow_data";
 
@@ -16,6 +17,7 @@ pub const MET_NO_USER_AGENT: &str =
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
     pub cache_dir: PathBuf,
+    pub cache_ttl_secs: u64,
 }
 
 impl RuntimeConfig {
@@ -35,6 +37,7 @@ impl RuntimeConfig {
             .collect();
         Self {
             cache_dir: resolve_cache_dir(&map),
+            cache_ttl_secs: resolve_cache_ttl_secs(&map),
         }
     }
 }
@@ -49,6 +52,17 @@ fn resolve_cache_dir(env_map: &HashMap<String, String>) -> PathBuf {
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
         .unwrap_or_else(|| std::env::temp_dir().join("nils-weather-cli"))
+}
+
+fn resolve_cache_ttl_secs(env_map: &HashMap<String, String>) -> u64 {
+    env_map
+        .get(WEATHER_CACHE_TTL_SECS_ENV)
+        .map(String::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(WEATHER_CACHE_TTL_SECS)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,6 +99,7 @@ mod tests {
     fn config_defaults_use_temp_weather_cache_dir() {
         let config = RuntimeConfig::from_pairs(Vec::<(String, String)>::new());
         assert!(config.cache_dir.ends_with("nils-weather-cli"));
+        assert_eq!(config.cache_ttl_secs, WEATHER_CACHE_TTL_SECS);
     }
 
     #[test]
@@ -96,6 +111,18 @@ mod tests {
         ]);
 
         assert_eq!(config.cache_dir, PathBuf::from("/tmp/weather-cache"));
+    }
+
+    #[test]
+    fn config_supports_cache_ttl_override() {
+        let config = RuntimeConfig::from_pairs(vec![(WEATHER_CACHE_TTL_SECS_ENV, "900")]);
+        assert_eq!(config.cache_ttl_secs, 900);
+    }
+
+    #[test]
+    fn config_falls_back_when_cache_ttl_override_invalid() {
+        let config = RuntimeConfig::from_pairs(vec![(WEATHER_CACHE_TTL_SECS_ENV, "abc")]);
+        assert_eq!(config.cache_ttl_secs, WEATHER_CACHE_TTL_SECS);
     }
 
     #[test]

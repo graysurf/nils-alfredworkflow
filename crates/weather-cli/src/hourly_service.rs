@@ -5,7 +5,7 @@ use std::path::Path;
 use chrono::{DateTime, Duration, SecondsFormat, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::config::{RuntimeConfig, WEATHER_CACHE_TTL_SECS};
+use crate::config::RuntimeConfig;
 use crate::error::AppError;
 use crate::geocoding::{ResolvedLocation, city_query_cache_key, coordinate_label};
 use crate::model::{
@@ -62,7 +62,7 @@ where
 
     let cached = read_hourly_cache(&path).map_err(|error| AppError::runtime(error.to_string()))?;
     let cached_state = cached.as_ref().map(|record| {
-        let freshness = evaluate_freshness(record, now, WEATHER_CACHE_TTL_SECS);
+        let freshness = evaluate_freshness(record, now, config.cache_ttl_secs);
         (record.clone(), freshness.age_secs, freshness.is_fresh)
     });
 
@@ -79,6 +79,7 @@ where
             cache_key,
             requested_hours,
             now,
+            config.cache_ttl_secs,
         ));
     }
 
@@ -104,6 +105,7 @@ where
             cache_key,
             requested_hours,
             now,
+            config.cache_ttl_secs,
         ),
         Err(error) => {
             trace.push(format!("open_meteo: {error}"));
@@ -114,6 +116,7 @@ where
                 cache_key,
                 requested_hours,
                 now,
+                config.cache_ttl_secs,
             )
         }
     }
@@ -151,6 +154,7 @@ fn build_live_output(
     cache_key: String,
     requested_hours: usize,
     now: DateTime<Utc>,
+    ttl_secs: u64,
 ) -> Result<HourlyForecastOutput, AppError> {
     let ProviderHourlyForecast {
         timezone: provider_timezone,
@@ -185,6 +189,7 @@ fn build_live_output(
         cache_key,
         requested_hours,
         now,
+        ttl_secs,
     ))
 }
 
@@ -195,6 +200,7 @@ fn fallback_or_error(
     cache_key: String,
     requested_hours: usize,
     now: DateTime<Utc>,
+    ttl_secs: u64,
 ) -> Result<HourlyForecastOutput, AppError> {
     if let Some((record, age_secs, false)) = cached_state {
         return Ok(build_output_from_record(
@@ -205,6 +211,7 @@ fn fallback_or_error(
             cache_key,
             requested_hours,
             now,
+            ttl_secs,
         ));
     }
 
@@ -222,6 +229,7 @@ fn build_output_from_record(
     cache_key: String,
     requested_hours: usize,
     now: DateTime<Utc>,
+    ttl_secs: u64,
 ) -> HourlyForecastOutput {
     let fetched_at = parse_fetched_at(record)
         .unwrap_or_else(Utc::now)
@@ -248,7 +256,7 @@ fn build_output_from_record(
                 }
             },
             key: cache_key,
-            ttl_secs: WEATHER_CACHE_TTL_SECS,
+            ttl_secs,
             age_secs,
         },
     }
@@ -466,6 +474,7 @@ mod tests {
     fn config_in_tempdir() -> RuntimeConfig {
         RuntimeConfig {
             cache_dir: tempfile::tempdir().expect("tempdir").path().to_path_buf(),
+            cache_ttl_secs: crate::config::WEATHER_CACHE_TTL_SECS,
         }
     }
 

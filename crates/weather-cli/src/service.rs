@@ -3,7 +3,7 @@ use chrono::{DateTime, SecondsFormat, Utc};
 use crate::cache::{
     CacheRecord, cache_path, evaluate_freshness, parse_fetched_at, read_cache, write_cache,
 };
-use crate::config::{RuntimeConfig, WEATHER_CACHE_TTL_SECS};
+use crate::config::RuntimeConfig;
 use crate::error::AppError;
 use crate::geocoding::{ResolvedLocation, city_query_cache_key, coordinate_label};
 use crate::model::{
@@ -35,7 +35,7 @@ where
 
     let cached = read_cache(&path).map_err(|error| AppError::runtime(error.to_string()))?;
     let cached_state = cached.as_ref().map(|record| {
-        let freshness = evaluate_freshness(record, now, WEATHER_CACHE_TTL_SECS);
+        let freshness = evaluate_freshness(record, now, config.cache_ttl_secs);
         (record.clone(), freshness.age_secs, freshness.is_fresh)
     });
 
@@ -51,6 +51,7 @@ where
             FreshnessStatus::CacheFresh,
             *age_secs,
             cache_key,
+            config.cache_ttl_secs,
         ));
     }
 
@@ -78,6 +79,7 @@ where
                 "open_meteo",
                 trace,
                 cache_key.clone(),
+                config.cache_ttl_secs,
             );
         }
         Err(error) => trace.push(format!("open_meteo: {error}")),
@@ -96,10 +98,18 @@ where
             "met_no",
             trace,
             cache_key.clone(),
+            config.cache_ttl_secs,
         ),
         Err(error) => {
             trace.push(format!("met_no: {error}"));
-            fallback_or_error(cached_state, &location, request, trace, cache_key)
+            fallback_or_error(
+                cached_state,
+                &location,
+                request,
+                trace,
+                cache_key,
+                config.cache_ttl_secs,
+            )
         }
     }
 }
@@ -129,6 +139,7 @@ fn build_live_output(
     source: &str,
     source_trace: Vec<String>,
     cache_key: String,
+    ttl_secs: u64,
 ) -> Result<ForecastOutput, AppError> {
     let ProviderForecast {
         timezone: provider_timezone,
@@ -161,6 +172,7 @@ fn build_live_output(
         FreshnessStatus::Live,
         0,
         cache_key,
+        ttl_secs,
     ))
 }
 
@@ -170,6 +182,7 @@ fn fallback_or_error(
     request: &ForecastRequest,
     trace: Vec<String>,
     cache_key: String,
+    ttl_secs: u64,
 ) -> Result<ForecastOutput, AppError> {
     if let Some((record, age_secs, false)) = cached_state {
         return Ok(build_output_from_record(
@@ -179,6 +192,7 @@ fn fallback_or_error(
             FreshnessStatus::CacheStaleFallback,
             age_secs,
             cache_key,
+            ttl_secs,
         ));
     }
 
@@ -195,6 +209,7 @@ fn build_output_from_record(
     freshness_status: FreshnessStatus,
     age_secs: u64,
     cache_key: String,
+    ttl_secs: u64,
 ) -> ForecastOutput {
     let fetched_at = parse_fetched_at(record)
         .unwrap_or_else(Utc::now)
@@ -211,7 +226,7 @@ fn build_output_from_record(
         freshness: CacheMetadata {
             status: freshness_status,
             key: cache_key,
-            ttl_secs: WEATHER_CACHE_TTL_SECS,
+            ttl_secs,
             age_secs,
         },
     }
@@ -343,6 +358,7 @@ mod tests {
     fn config_in_tempdir() -> RuntimeConfig {
         RuntimeConfig {
             cache_dir: tempfile::tempdir().expect("tempdir").path().to_path_buf(),
+            cache_ttl_secs: crate::config::WEATHER_CACHE_TTL_SECS,
         }
     }
 
@@ -407,6 +423,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let config = RuntimeConfig {
             cache_dir: dir.path().to_path_buf(),
+            cache_ttl_secs: crate::config::WEATHER_CACHE_TTL_SECS,
         };
         let request = city_request(ForecastPeriod::Today);
         let location = ResolvedLocation {
@@ -454,6 +471,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let config = RuntimeConfig {
             cache_dir: dir.path().to_path_buf(),
+            cache_ttl_secs: crate::config::WEATHER_CACHE_TTL_SECS,
         };
         let request = city_request(ForecastPeriod::Today);
         let location = ResolvedLocation {

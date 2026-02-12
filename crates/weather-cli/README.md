@@ -13,6 +13,7 @@ CLI backend for one-day and seven-day weather forecast retrieval.
 ## Environment Variables
 
 - Optional cache override: `WEATHER_CACHE_DIR`
+- Optional cache TTL override (seconds): `WEATHER_CACHE_TTL_SECS` (default: `1800`)
 - Alfred fallback cache paths: `alfred_workflow_cache`, `alfred_workflow_data`
 
 ## Output Contract

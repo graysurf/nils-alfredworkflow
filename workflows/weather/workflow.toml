@@ -14,6 +14,8 @@ WEATHER_CLI_BIN = ""
 WEATHER_LOCALE = "en"
 # Default city list used when query is empty (comma-separated).
 WEATHER_DEFAULT_CITIES = "Tokyo"
+# Cache TTL in seconds for weather-cli responses (15 minutes default).
+WEATHER_CACHE_TTL_SECS = "900"
 
 [alfred]
 min_alfred = "5"

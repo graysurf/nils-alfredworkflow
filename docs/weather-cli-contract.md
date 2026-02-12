@@ -105,7 +105,9 @@ Hourly (`hourly`) JSON payload:
 
 ## Cache policy
 
-- TTL is fixed at 30 minutes (`1800` seconds).
+- Default TTL is 30 minutes (`1800` seconds).
+- TTL can be overridden by `WEATHER_CACHE_TTL_SECS` (positive integer seconds).
+- Weather workflow sets `WEATHER_CACHE_TTL_SECS=900` by default (15 minutes).
 - Cache key includes period + normalized location identity.
 - Corrupt cache payload is treated as cache miss.
 

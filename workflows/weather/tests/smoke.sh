@@ -144,6 +144,10 @@ if ! rg -n '^WEATHER_DEFAULT_CITIES[[:space:]]*=[[:space:]]*"Tokyo"' "$manifest"
   fail "WEATHER_DEFAULT_CITIES default must be Tokyo"
 fi
 
+if ! rg -n '^WEATHER_CACHE_TTL_SECS[[:space:]]*=[[:space:]]*"900"' "$manifest" >/dev/null; then
+  fail "WEATHER_CACHE_TTL_SECS default must be 900"
+fi
+
 tmp_dir="$(mktemp -d)"
 artifact_id="$(toml_string "$manifest" id)"
 artifact_version="$(toml_string "$manifest" version)"
@@ -596,9 +600,10 @@ assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$ACTION_UID\")
 assert_jq_file "$packaged_json_file" ".connections[\"$TODAY_UID\"] | any(.destinationuid == \"$ACTION_UID\" and .modifiers == 0)" "missing today->copy enter connection"
 assert_jq_file "$packaged_json_file" ".connections[\"$WEEK_UID\"] | any(.destinationuid == \"$ACTION_UID\" and .modifiers == 0)" "missing week->copy enter connection"
 
-assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["WEATHER_CLI_BIN", "WEATHER_DEFAULT_CITIES", "WEATHER_LOCALE"]' "user configuration variables mismatch"
+assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["WEATHER_CACHE_TTL_SECS", "WEATHER_CLI_BIN", "WEATHER_DEFAULT_CITIES", "WEATHER_LOCALE"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WEATHER_CLI_BIN") | .config.required == false' "WEATHER_CLI_BIN must be optional"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WEATHER_LOCALE") | .config.default == "en"' "WEATHER_LOCALE default mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WEATHER_DEFAULT_CITIES") | .config.default == "Tokyo"' "WEATHER_DEFAULT_CITIES default mismatch"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WEATHER_CACHE_TTL_SECS") | .config.default == "900"' "WEATHER_CACHE_TTL_SECS default mismatch"
 
 echo "ok: weather workflow smoke test"

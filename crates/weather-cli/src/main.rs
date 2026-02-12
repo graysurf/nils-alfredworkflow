@@ -910,6 +910,7 @@ mod tests {
     fn config_in_tempdir() -> RuntimeConfig {
         RuntimeConfig {
             cache_dir: tempfile::tempdir().expect("tempdir").path().to_path_buf(),
+            cache_ttl_secs: weather_cli::config::WEATHER_CACHE_TTL_SECS,
         }
     }
 

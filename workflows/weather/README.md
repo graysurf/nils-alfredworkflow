@@ -35,6 +35,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 | `WEATHER_CLI_BIN` | No | `(empty)` | Optional executable path override for `weather-cli`. |
 | `WEATHER_LOCALE` | No | `en` | Output locale for weather labels (`en` default, `zh` optional). |
 | `WEATHER_DEFAULT_CITIES` | No | `Tokyo` | Default city list when query is empty (comma-separated). |
+| `WEATHER_CACHE_TTL_SECS` | No | `900` | Cache TTL in seconds for weather responses (15 minutes). |
 
 ## Notes
 
@@ -44,6 +45,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 - Result rows map weather type to icon under `assets/icons/weather/*.png` (shared visual style).
 - `wt` keeps original today-row display as stage one, then opens hourly rows as stage two.
 - `ww` uses city-picker stage first, then returns fixed 7-day rows for the selected city.
+- Cache TTL is configurable via `WEATHER_CACHE_TTL_SECS` (`900` by default in workflow).
 - Enter on result rows copies the selected row argument.
 - The workflow calls `weather-cli` with `--output alfred-json --lang <locale>` (`hourly` for `wt`, `week` for `ww`).
 
