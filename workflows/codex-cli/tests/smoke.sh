@@ -143,6 +143,9 @@ fi
 if ! rg -n '^CODEX_DIAG_CACHE_TTL_SECONDS[[:space:]]*=[[:space:]]*"300"' "$manifest" >/dev/null; then
   fail "CODEX_DIAG_CACHE_TTL_SECONDS default must be 300"
 fi
+if ! rg -n '^CODEX_DIAG_CACHE_BLOCK_WAIT_SECONDS[[:space:]]*=[[:space:]]*"15"' "$manifest" >/dev/null; then
+  fail "CODEX_DIAG_CACHE_BLOCK_WAIT_SECONDS default must be 15"
+fi
 
 tmp_dir="$(mktemp -d)"
 artifact_id="$(toml_string "$manifest" id)"
@@ -406,6 +409,35 @@ exit 9
 EOS
 chmod +x "$tmp_dir/stubs/codex-cli-diag-all-json"
 
+cat >"$tmp_dir/stubs/codex-cli-diag-plain" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -n "${CODEX_STUB_LOG:-}" ]]; then
+  printf '%s\n' "$*" >>"$CODEX_STUB_LOG"
+fi
+if [[ "${1:-}" == "--version" ]]; then
+  echo "codex-cli 0.3.2"
+  exit 0
+fi
+if [[ "${1:-}" == "diag" && "${2:-}" == "rate-limits" && "${3:-}" == "--json" ]]; then
+  cat <<'JSON'
+{"schema_version":"1.0","command":"diag rate-limits --json","mode":"single","ok":true,"result":{"name":"auth","status":"ok","summary":{"non_weekly_label":"5h","non_weekly_remaining":84,"weekly_remaining":65,"weekly_reset_epoch":1771265976,"weekly_reset_local":"2026-02-19 06:51 +08:00"},"source":"network","raw_usage":{"email":"plain@example.com"}}}
+JSON
+  exit 0
+fi
+if [[ "${1:-}" == "diag" && "${2:-}" == "rate-limits" ]]; then
+  cat <<'OUT'
+Rate limits remaining
+5h 84% • 02-12 16:52
+Weekly 65% • 02-19 06:51
+OUT
+  exit 0
+fi
+echo "unexpected command: $*" >&2
+exit 9
+EOS
+chmod +x "$tmp_dir/stubs/codex-cli-diag-plain"
+
 cat >"$tmp_dir/stubs/codex-cli-current-nonzero" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -563,7 +595,7 @@ assert_jq_json "$diag_async_json" '.items | any(.title == "Latest diag result un
 
 diag_all_json_query_json="$({ ALFRED_WORKFLOW_CACHE="$diag_menu_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "diag all-json"; })"
 assert_jq_json "$diag_all_json_query_json" '.items[0].arg == "diag::all-json"' "diag all-json mapping mismatch"
-assert_jq_json "$diag_all_json_query_json" '.items | any(.title == "Latest diag result unavailable")' "diag all-json menu should show latest-result availability row"
+assert_jq_json "$diag_all_json_query_json" '.items | any(.title == "Diag result ready (all-json)")' "diag all-json menu should block-refresh and show ready result"
 
 alias_auth_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_auth.sh" "login --device-code"; })"
 assert_jq_json "$alias_auth_json" '.items[0].arg == "login::device-code"' "cxa wrapper should map to auth login device-code"
@@ -577,9 +609,19 @@ assert_jq_json "$alias_auth_use_direct_json" '.items[0].arg == "use::alpha"' "cx
 
 alias_diag_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag.sh" ""; })"
 assert_jq_json "$alias_diag_json" '.items[0].arg == "diag::default"' "cxd wrapper should map empty query to diag default"
+assert_jq_json "$alias_diag_json" '(.items | any(.title == "Also available: --cached / --one-line / --all / all-json / async")) | not' "cxd wrapper should hide alternatives hint row"
+assert_jq_json "$alias_diag_json" '(.items | map(.subtitle // "") | any(contains("diag rate-limits --json")))' "cxd wrapper should include diag command in subtitle text"
+
+alias_diag_plain_cache_dir="$tmp_dir/diag-plain-cache"
+alias_diag_plain_log="$tmp_dir/diag-plain.log"
+alias_diag_plain_json="$({ CODEX_STUB_LOG="$alias_diag_plain_log" ALFRED_WORKFLOW_CACHE="$alias_diag_plain_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-plain" "$workflow_dir/scripts/script_filter_diag.sh" ""; })"
+assert_jq_json "$alias_diag_plain_json" '(.items | any(.title == "Rate limits remaining")) | not' "cxd wrapper should hide plain-text rate-limits heading row"
+assert_jq_json "$alias_diag_plain_json" '.items | any(.title == "auth | 5h 84% | weekly 65%")' "cxd wrapper should parse single-account json rows"
+wait_for_file_contains "$alias_diag_plain_log" "diag rate-limits --json" 5 || fail "cxd wrapper should refresh default diag cache via --json"
 
 alias_diag_all_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag_all.sh" ""; })"
 assert_jq_json "$alias_diag_all_json" '.items[0].arg == "diag::all-json"' "cxda wrapper should map empty query to diag all-json"
+assert_jq_json "$alias_diag_all_json" '(.items | any(.title == "Also available: --cached / --one-line / --all / all-json / async")) | not' "cxda wrapper should hide alternatives hint row"
 
 diag_auto_cache_dir="$tmp_dir/diag-auto-cache"
 diag_auto_log="$tmp_dir/diag-auto.log"
@@ -589,15 +631,15 @@ CODEX_STUB_LOG="$diag_auto_log" ALFRED_WORKFLOW_CACHE="$diag_auto_cache_dir" COD
   "$workflow_dir/scripts/script_filter_diag.sh" "" >/dev/null
 
 diag_auto_meta="$diag_auto_cache_dir/diag-rate-limits.last.meta"
-wait_for_file_contains "$diag_auto_meta" "mode=default" 5 || fail "cxd should auto-refresh default diag cache in background"
-wait_for_file_contains "$diag_auto_log" "diag rate-limits" 5 || fail "cxd auto-refresh should run diag rate-limits"
+wait_for_file_contains "$diag_auto_meta" "mode=default" 5 || fail "cxd should block-refresh default diag cache"
+wait_for_file_contains "$diag_auto_log" "diag rate-limits --json" 5 || fail "cxd block-refresh should run diag rate-limits --json"
 
-diag_auto_diag_count_before="$(rg -c '^diag rate-limits$' "$diag_auto_log" 2>/dev/null || true)"
+diag_auto_diag_count_before="$(rg -c '^diag rate-limits --json$' "$diag_auto_log" 2>/dev/null || true)"
 CODEX_STUB_LOG="$diag_auto_log" ALFRED_WORKFLOW_CACHE="$diag_auto_cache_dir" CODEX_DIAG_CACHE_TTL_SECONDS=300 CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/script_filter_diag.sh" "" >/dev/null
 sleep 1
-diag_auto_diag_count_after="$(rg -c '^diag rate-limits$' "$diag_auto_log" 2>/dev/null || true)"
-[[ "$diag_auto_diag_count_after" == "$diag_auto_diag_count_before" ]] || fail "fresh cxd cache should skip repeated auto-refresh"
+diag_auto_diag_count_after="$(rg -c '^diag rate-limits --json$' "$diag_auto_log" 2>/dev/null || true)"
+[[ "$diag_auto_diag_count_after" == "$diag_auto_diag_count_before" ]] || fail "fresh cxd cache should skip repeated block-refresh"
 
 diag_auto_all_cache_dir="$tmp_dir/diag-auto-all-cache"
 diag_auto_all_log="$tmp_dir/diag-auto-all.log"
@@ -607,8 +649,8 @@ CODEX_SECRET_DIR="$use_secret_dir" CODEX_STUB_LOG="$diag_auto_all_log" ALFRED_WO
   "$workflow_dir/scripts/script_filter_diag_all.sh" "" >/dev/null
 
 diag_auto_all_meta="$diag_auto_all_cache_dir/diag-rate-limits.last.meta"
-wait_for_file_contains "$diag_auto_all_meta" "mode=all-json" 5 || fail "cxda should auto-refresh all-json cache in background"
-wait_for_file_contains "$diag_auto_all_log" "diag rate-limits --all --json" 5 || fail "cxda auto-refresh should run diag rate-limits --all --json"
+wait_for_file_contains "$diag_auto_all_meta" "mode=all-json" 5 || fail "cxda should block-refresh all-json cache"
+wait_for_file_contains "$diag_auto_all_log" "diag rate-limits --all --json" 5 || fail "cxda block-refresh should run diag rate-limits --all --json"
 
 diag_auto_all_fallback_cache_dir="$tmp_dir/diag-auto-all-fallback-cache"
 diag_auto_all_fallback_log="$tmp_dir/diag-auto-all-fallback.log"
@@ -618,7 +660,7 @@ CODEX_SECRET_DIR="$tmp_dir/missing-secrets-for-diag" CODEX_STUB_LOG="$diag_auto_
   "$workflow_dir/scripts/script_filter_diag_all.sh" "" >/dev/null
 
 diag_auto_all_fallback_meta="$diag_auto_all_fallback_cache_dir/diag-rate-limits.last.meta"
-wait_for_file_contains "$diag_auto_all_fallback_meta" "command=diag rate-limits --json" 5 || fail "cxda auto-refresh should fallback to current-auth --json when no saved secrets"
+wait_for_file_contains "$diag_auto_all_fallback_meta" "command=diag rate-limits --json" 5 || fail "cxda block-refresh should fallback to current-auth --json when no saved secrets"
 wait_for_file_contains "$diag_auto_all_fallback_log" "diag rate-limits --json" 5 || fail "cxda fallback should run diag rate-limits --json"
 
 auth_only_cache_home="$tmp_dir/home-auth-cache"
@@ -776,7 +818,7 @@ assert_jq_json "$diag_result_json" '.items | any(.subtitle == "sym@example.com |
 
 CODEX_STUB_LOG="$action_log" ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "diag::default" >/dev/null
-[[ "$(tail -n1 "$action_log")" == "diag rate-limits" ]] || fail "diag::default mapping mismatch"
+[[ "$(tail -n1 "$action_log")" == "diag rate-limits --json" ]] || fail "diag::default mapping mismatch"
 [[ ! -f "$diag_default_meta" ]] || fail "diag default action should keep cache in last.meta only"
 
 alias_diag_result_json="$({ ALFRED_WORKFLOW_CACHE="$diag_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_diag.sh" "result"; })"

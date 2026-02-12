@@ -23,9 +23,12 @@ This workflow currently supports:
 
 Diag result behavior:
 
-- `cxd` / `cxda` menu shows latest cached diag result inline (if available).
-- `cxd` / `cxda` auto-refresh cache in background when cache is missing/expired.
-- Auto-refresh TTL is controlled by `CODEX_DIAG_CACHE_TTL_SECONDS` (default `300` = 5 minutes).
+- `cxau` / `cxd` / `cxda` auto-refresh diag cache by TTL before rendering cache-based rows.
+- If cache is missing/expired, list rendering blocks until refresh finishes (no stale cache render).
+- Refresh TTL is controlled by `CODEX_DIAG_CACHE_TTL_SECONDS` (default `300` = 5 minutes).
+- Wait timeout while another refresh is running is controlled by
+  `CODEX_DIAG_CACHE_BLOCK_WAIT_SECONDS` (default `15` seconds).
+- `cxd` default refresh/action uses `diag rate-limits --json` and parses single-account rows.
 - `cxda result` parses JSON and renders one account per row.
 - `cxda result` rows are sorted by `weekly_reset_epoch` ascending (earliest reset first).
 - Parsed subtitle format: `<email> | reset <weekly_reset_local>`.
@@ -66,7 +69,8 @@ cargo install nils-codex-cli --version 0.3.2
 | `CODEX_CLI_BIN` | No | empty | Optional absolute path override for `codex-cli`. |
 | `CODEX_SECRET_DIR` | No | empty | Optional secret directory override. If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`. |
 | `CODEX_SHOW_ASSESSMENT` | No | `0` | Show assessment rows in Alfred list (`1/true/yes/on` to enable). |
-| `CODEX_DIAG_CACHE_TTL_SECONDS` | No | `300` | Background diag cache TTL for `cxd`/`cxda` in seconds (`0` means always refresh). |
+| `CODEX_DIAG_CACHE_TTL_SECONDS` | No | `300` | Diag cache TTL for `cxau`/`cxd`/`cxda` (`0` means always refresh before render). |
+| `CODEX_DIAG_CACHE_BLOCK_WAIT_SECONDS` | No | `15` | Max wait seconds while another process is refreshing the same diag cache mode. |
 | `CODEX_LOGIN_TIMEOUT_SECONDS` | No | `60` | Login timeout in seconds (`1..3600`). |
 | `CODEX_API_KEY` | No | empty | API key source for `auth login --api-key` (otherwise prompt on macOS). |
 | `CODEX_SAVE_CONFIRM` | No | `1` | Require confirmation for `save` without `--yes` (`0` disables). |
@@ -95,13 +99,14 @@ cargo install nils-codex-cli --version 0.3.2
 | `cx use alpha` | Run `codex-cli auth use alpha` |
 | `cxau` | Show current JSON + all JSON secrets, then select to use |
 | `cxau alpha` | Run `codex-cli auth use alpha` directly |
-| `cx diag` | Run `codex-cli diag rate-limits` |
+| `cx diag` | Run `codex-cli diag rate-limits --json` |
 | `cx diag cached` | Run `codex-cli diag rate-limits --cached` |
 | `cx diag one-line` | Run `codex-cli diag rate-limits --one-line` |
 | `cx diag all` | Run `codex-cli diag rate-limits --all` |
 | `cx diag async` | Run `codex-cli diag rate-limits --all --async --jobs 4` |
+| `cxd` | Run `codex-cli diag rate-limits --json` |
 | `cxda` | Run `codex-cli diag rate-limits --all --json` |
-| `cxd result` | Show latest cached diag result lines/rows |
+| `cxd result` | Show latest cached default JSON-parsed result rows |
 | `cxda result` | Show latest cached all-json parsed rows |
 | `cxda result raw` | Same as above with higher row limit |
 | `cx help --assessment` | Show assessment rows + executable actions |

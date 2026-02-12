@@ -84,6 +84,18 @@ diag_result_output_path_all_json() {
   printf '%s/diag-rate-limits.all-json.out\n' "$cache_dir"
 }
 
+resolve_latest_diag_cache_mode() {
+  local meta_path
+  meta_path="$(diag_result_meta_path)"
+  [[ -f "$meta_path" ]] || return 1
+
+  local mode
+  mode="$(read_meta_value "$meta_path" mode)"
+  [[ -n "$mode" ]] || return 1
+
+  canonical_diag_cache_mode "$mode"
+}
+
 resolve_diag_result_cache_paths_for_mode() {
   local expected_mode="${1:-}"
   local canonical_mode=""
@@ -132,6 +144,30 @@ resolve_diag_cache_ttl_seconds() {
   printf '300\n'
 }
 
+is_diag_cache_fresh_from_meta() {
+  local meta_path="$1"
+  local ttl_seconds="$2"
+  [[ -f "$meta_path" ]] || return 1
+  [[ "$ttl_seconds" =~ ^[0-9]+$ ]] || return 1
+
+  if [[ "$ttl_seconds" -eq 0 ]]; then
+    return 1
+  fi
+
+  local timestamp
+  timestamp="$(read_meta_value "$meta_path" timestamp)"
+  [[ "$timestamp" =~ ^[0-9]+$ ]] || return 1
+
+  local now age
+  now="$(date +%s)"
+  age=$((now - timestamp))
+  if [[ "$age" -lt 0 ]]; then
+    age=0
+  fi
+
+  [[ "$age" -le "$ttl_seconds" ]]
+}
+
 is_diag_cache_fresh_for_mode() {
   local mode="$1"
   local ttl_seconds="$2"
@@ -147,22 +183,7 @@ is_diag_cache_fresh_for_mode() {
   cached_mode="$(read_meta_value "$meta_path" mode)"
   [[ "$cached_mode" == "$canonical_mode" ]] || return 1
 
-  local timestamp
-  timestamp="$(read_meta_value "$meta_path" timestamp)"
-  [[ "$timestamp" =~ ^[0-9]+$ ]] || return 1
-
-  if [[ "$ttl_seconds" -eq 0 ]]; then
-    return 1
-  fi
-
-  local now age
-  now="$(date +%s)"
-  age=$((now - timestamp))
-  if [[ "$age" -lt 0 ]]; then
-    age=0
-  fi
-
-  [[ "$age" -le "$ttl_seconds" ]]
+  is_diag_cache_fresh_from_meta "$meta_path" "$ttl_seconds"
 }
 
 is_diag_refresh_running_for_mode() {
@@ -303,10 +324,10 @@ run_diag_cache_refresh_for_mode() {
     fi
     ;;
   *)
-    summary="diag rate-limits"
-    command="diag rate-limits"
+    summary="diag rate-limits --json"
+    command="diag rate-limits --json"
     set +e
-    output="$("$codex_cli" diag rate-limits 2>&1)"
+    output="$("$codex_cli" diag rate-limits --json 2>&1)"
     rc=$?
     set -e
     ;;
@@ -332,27 +353,125 @@ resolve_diag_auto_refresh_mode_for_query() {
   esac
 }
 
-trigger_diag_auto_refresh_if_stale() {
+resolve_diag_cache_block_wait_seconds() {
+  local raw="${CODEX_DIAG_CACHE_BLOCK_WAIT_SECONDS:-15}"
+  if [[ "$raw" =~ ^[0-9]+$ ]] && [[ "$raw" -ge 0 ]] && [[ "$raw" -le 120 ]]; then
+    printf '%s\n' "$raw"
+    return 0
+  fi
+  printf '15\n'
+}
+
+diag_cache_exists_for_mode() {
   local mode="$1"
   local canonical_mode
   canonical_mode="$(canonical_diag_cache_mode "$mode")"
-  local ttl_seconds
-  ttl_seconds="$(resolve_diag_cache_ttl_seconds)"
+  local cache_paths
+  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$canonical_mode" || true)"
+  [[ -n "$cache_paths" ]]
+}
 
-  if is_diag_cache_fresh_for_mode "$canonical_mode" "$ttl_seconds"; then
-    return 0
+resolve_diag_display_cache_paths_for_mode() {
+  local expected_mode="${1:-}"
+  local canonical_mode=""
+  if [[ -n "$expected_mode" ]]; then
+    canonical_mode="$(canonical_diag_cache_mode "$expected_mode")"
   fi
 
+  local cache_paths meta_path output_path
+  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$canonical_mode" || true)"
+  [[ -n "$cache_paths" ]] || return 1
+  IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
+
+  local ttl_seconds
+  ttl_seconds="$(resolve_diag_cache_ttl_seconds)"
+  if [[ "$ttl_seconds" -ne 0 ]] && ! is_diag_cache_fresh_from_meta "$meta_path" "$ttl_seconds"; then
+    return 1
+  fi
+
+  if [[ -n "$canonical_mode" ]]; then
+    local cached_mode
+    cached_mode="$(read_meta_value "$meta_path" mode)"
+    [[ "$cached_mode" == "$canonical_mode" ]] || return 1
+  fi
+
+  printf '%s\t%s\n' "$meta_path" "$output_path"
+}
+
+wait_for_diag_refresh_completion_for_mode() {
+  local mode="$1"
+  local wait_seconds="$2"
+  local canonical_mode
+  canonical_mode="$(canonical_diag_cache_mode "$mode")"
+
+  local max_ticks tick
+  max_ticks=$((wait_seconds * 10))
+  tick=0
+
+  while is_diag_refresh_running_for_mode "$canonical_mode"; do
+    if [[ "$tick" -ge "$max_ticks" ]]; then
+      return 1
+    fi
+    sleep 0.1
+    tick=$((tick + 1))
+  done
+
+  return 0
+}
+
+refresh_diag_cache_blocking_for_mode() {
+  local mode="$1"
+  local canonical_mode
+  canonical_mode="$(canonical_diag_cache_mode "$mode")"
   local lock_path
   if ! lock_path="$(acquire_diag_refresh_lock_for_mode "$canonical_mode")"; then
-    return 0
+    return 1
   fi
 
   (
     set -euo pipefail
     trap 'rm -f "$lock_path"' EXIT
     run_diag_cache_refresh_for_mode "$canonical_mode"
-  ) >/dev/null 2>&1 &
+  )
+}
+
+ensure_diag_cache_ready_for_mode() {
+  local mode="$1"
+  local canonical_mode
+  canonical_mode="$(canonical_diag_cache_mode "$mode")"
+  local ttl_seconds
+  ttl_seconds="$(resolve_diag_cache_ttl_seconds)"
+  local wait_seconds
+  wait_seconds="$(resolve_diag_cache_block_wait_seconds)"
+
+  if [[ "$ttl_seconds" -ne 0 ]] && is_diag_cache_fresh_for_mode "$canonical_mode" "$ttl_seconds"; then
+    return 0
+  fi
+
+  if is_diag_refresh_running_for_mode "$canonical_mode"; then
+    wait_for_diag_refresh_completion_for_mode "$canonical_mode" "$wait_seconds" || true
+
+    if [[ "$ttl_seconds" -eq 0 ]]; then
+      if diag_cache_exists_for_mode "$canonical_mode"; then
+        return 0
+      fi
+    elif is_diag_cache_fresh_for_mode "$canonical_mode" "$ttl_seconds"; then
+      return 0
+    fi
+  fi
+
+  if ! refresh_diag_cache_blocking_for_mode "$canonical_mode"; then
+    if is_diag_refresh_running_for_mode "$canonical_mode"; then
+      wait_for_diag_refresh_completion_for_mode "$canonical_mode" "$wait_seconds" || true
+    fi
+  fi
+
+  if [[ "$ttl_seconds" -eq 0 ]]; then
+    diag_cache_exists_for_mode "$canonical_mode"
+    return
+  fi
+
+  is_diag_cache_fresh_for_mode "$canonical_mode" "$ttl_seconds"
 }
 
 read_meta_value() {
@@ -472,6 +591,8 @@ emit_diag_result_items() {
   local expected_mode=""
   local run_alias="cxd"
   local result_alias="cxd result"
+  local diag_alias
+  diag_alias="$(to_lower "${CODEX_DIAG_ALIAS:-}")"
 
   if [[ "$lower_query" == *"all-json"* || "$lower_query" == *"--all-json"* ]]; then
     expected_mode="all-json"
@@ -480,11 +601,11 @@ emit_diag_result_items() {
   fi
 
   local cache_paths meta_path output_path
-  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$expected_mode" || true)"
+  cache_paths="$(resolve_diag_display_cache_paths_for_mode "$expected_mode" || true)"
   if [[ -z "$cache_paths" ]]; then
     emit_item \
-      "No diag result yet" \
-      "Run ${run_alias} and press Enter once. Then use ${result_alias}." \
+      "No fresh diag result yet" \
+      "Run ${run_alias} to refresh diagnostics, then open ${result_alias}." \
       "" \
       false \
       "diag"
@@ -505,26 +626,29 @@ emit_diag_result_items() {
   [[ -n "$summary" ]] || summary="$command"
   local formatted_time
   formatted_time="$(format_epoch "$timestamp")"
+  local summary_subtitle="${summary} | ${formatted_time}"
 
   if [[ "$rc" == "0" ]]; then
     emit_item \
       "Diag result ready (${mode})" \
-      "${summary} | ${formatted_time}" \
+      "$summary_subtitle" \
       "" \
       false \
       "diag result"
   else
     emit_item \
       "Diag failed (${mode}, rc=${rc})" \
-      "${summary} | ${formatted_time}" \
+      "$summary_subtitle" \
       "" \
       false \
       "diag result"
   fi
 
-  if [[ "$mode" == "all-json" && "$rc" == "0" ]]; then
-    if emit_diag_all_json_account_items "$lower_query" "$output_path"; then
-      return
+  if [[ "$rc" == "0" ]]; then
+    if [[ "$mode" == "all-json" || "$mode" == "default" ]]; then
+      if emit_diag_all_json_account_items "$lower_query" "$output_path"; then
+        return
+      fi
     fi
   fi
 
@@ -541,10 +665,16 @@ emit_diag_result_items() {
 
   local line_count=0
   local truncated=0
-  local line clean
+  local line clean normalized_clean
   while IFS= read -r line || [[ -n "$line" ]]; do
     clean="$(trim "$(strip_ansi "$line")")"
     [[ -z "$clean" ]] && continue
+    if [[ "$diag_alias" == "cxd" ]]; then
+      normalized_clean="$(to_lower "$clean")"
+      if [[ "$normalized_clean" =~ ^rate[[:space:]]+limits[[:space:]]+remaining:?$ ]]; then
+        continue
+      fi
+    fi
 
     line_count=$((line_count + 1))
     if [[ "$line_count" -gt "$max_lines" ]]; then
@@ -762,8 +892,8 @@ emit_auth_action_items() {
 
 emit_diag_action_items() {
   emit_item \
-    "diag rate-limits" \
-    "Run default diagnostics." \
+    "diag rate-limits --json (parsed)" \
+    "Run default diagnostics with JSON output parsing." \
     "diag::default" \
     true \
     "diag"
@@ -1075,7 +1205,7 @@ build_diag_account_lookup_map() {
   fi
 
   local cache_paths meta_path output_path
-  cache_paths="$(resolve_diag_result_cache_paths_for_mode "all-json" || true)"
+  cache_paths="$(resolve_diag_display_cache_paths_for_mode "all-json" || true)"
   [[ -n "$cache_paths" ]] || return 1
   IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
@@ -1178,7 +1308,7 @@ lookup_current_diag_meta() {
   fi
 
   local cache_paths meta_path output_path
-  cache_paths="$(resolve_diag_result_cache_paths_for_mode "all-json" || true)"
+  cache_paths="$(resolve_diag_display_cache_paths_for_mode "all-json" || true)"
   [[ -n "$cache_paths" ]] || return 1
   IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
@@ -1387,7 +1517,7 @@ handle_use_query() {
     return
   fi
 
-  trigger_diag_auto_refresh_if_stale "all-json"
+  ensure_diag_cache_ready_for_mode "all-json" || true
 
   local current_json=""
   local current_auth_email="-"
@@ -1737,22 +1867,12 @@ handle_save_query() {
 emit_latest_diag_result_items_inline() {
   local expected_mode="${1:-}"
   local cache_paths meta_path output_path
-  cache_paths="$(resolve_diag_result_cache_paths_for_mode "$expected_mode" || true)"
+  cache_paths="$(resolve_diag_display_cache_paths_for_mode "$expected_mode" || true)"
 
   if [[ -z "$cache_paths" ]]; then
-    if [[ -n "$expected_mode" ]] && is_diag_refresh_running_for_mode "$expected_mode"; then
-      emit_item \
-        "Refreshing diag cache (${expected_mode})" \
-        "Background refresh in progress. Reopen cxd/cxda shortly." \
-        "" \
-        false \
-        "diag result"
-      return
-    fi
-
     emit_item \
       "Latest diag result unavailable" \
-      "Run cxd/cxda once, then open result again." \
+      "Diag refresh failed or cache is unavailable." \
       "" \
       false \
       "diag result"
@@ -1765,21 +1885,12 @@ emit_latest_diag_result_items_inline() {
   [[ -n "$mode" ]] || mode="unknown"
 
   if [[ -n "$expected_mode" && "$mode" != "$expected_mode" ]]; then
-    if is_diag_refresh_running_for_mode "$expected_mode"; then
-      emit_item \
-        "Refreshing diag cache (${expected_mode})" \
-        "Latest cached mode is ${mode}; waiting for ${expected_mode} refresh." \
-        "" \
-        false \
-        "diag result"
-    else
-      emit_item \
-        "Latest diag result unavailable (${expected_mode})" \
-        "Latest cache mode is ${mode}. Reopen cxd/cxda to refresh." \
-        "" \
-        false \
-        "diag result"
-    fi
+    emit_item \
+      "Latest diag result unavailable (${expected_mode})" \
+      "Latest cache mode is ${mode}; refresh did not produce ${expected_mode} data." \
+      "" \
+      false \
+      "diag result"
     return
   fi
 
@@ -1831,6 +1942,14 @@ emit_current_auth_hint_item() {
 handle_diag_query() {
   local lower_query="$1"
   if [[ "$lower_query" == "diag result"* ]]; then
+    local result_mode=""
+    if [[ "$lower_query" == *"all-json"* || "$lower_query" == *"--all-json"* ]]; then
+      result_mode="all-json"
+    else
+      result_mode="$(resolve_latest_diag_cache_mode || true)"
+      [[ -n "$result_mode" ]] || result_mode="default"
+    fi
+    ensure_diag_cache_ready_for_mode "$result_mode" || true
     emit_diag_result_items "$lower_query"
     return
   fi
@@ -1857,6 +1976,12 @@ handle_diag_query() {
 
   local auto_refresh_mode=""
   auto_refresh_mode="$(resolve_diag_auto_refresh_mode_for_query "$lower_query" || true)"
+  local diag_alias
+  diag_alias="$(to_lower "${CODEX_DIAG_ALIAS:-}")"
+  local is_diag_alias=0
+  if [[ "$diag_alias" == "cxd" || "$diag_alias" == "cxda" ]]; then
+    is_diag_alias=1
+  fi
 
   case "$mode" in
   all-json)
@@ -1928,27 +2053,29 @@ handle_diag_query() {
     ;;
   *)
     emit_item \
-      "Run diag rate-limits" \
-      "Default diagnostics for current secret." \
+      "Run diag rate-limits --json (parsed)" \
+      "Default diagnostics for current secret via JSON output." \
       "diag::default" \
       true \
       "diag"
     ;;
   esac
 
-  emit_item \
-    "Also available: --cached / --one-line / --all / all-json / async" \
-    "Type diag cached, diag one-line, diag all, diag all-json, or diag async." \
-    "" \
-    false \
-    "diag "
+  if [[ "$is_diag_alias" -ne 1 ]]; then
+    emit_item \
+      "Also available: --cached / --one-line / --all / all-json / async" \
+      "Type diag cached, diag one-line, diag all, diag all-json, or diag async." \
+      "" \
+      false \
+      "diag "
+  fi
+
+  if [[ -n "$auto_refresh_mode" ]]; then
+    ensure_diag_cache_ready_for_mode "$auto_refresh_mode" || true
+  fi
 
   emit_current_auth_hint_item
   emit_latest_diag_result_items_inline "$auto_refresh_mode"
-
-  if [[ -n "$auto_refresh_mode" ]]; then
-    trigger_diag_auto_refresh_if_stale "$auto_refresh_mode"
-  fi
 }
 
 query="${1:-}"

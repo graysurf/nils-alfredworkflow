@@ -24,4 +24,4 @@ else
   forward_query="diag $trimmed_query"
 fi
 
-exec "$base_filter" "$forward_query"
+CODEX_DIAG_ALIAS="cxd" exec "$base_filter" "$forward_query"

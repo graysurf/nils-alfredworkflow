@@ -663,7 +663,7 @@ save::*)
   exit $?
   ;;
 diag::default)
-  run_codex_diag_command "$codex_cli" "default" "diag rate-limits" "cxd result" diag rate-limits
+  run_codex_diag_command "$codex_cli" "default" "diag rate-limits --json" "cxd result" diag rate-limits --json
   exit $?
   ;;
 diag::cached)

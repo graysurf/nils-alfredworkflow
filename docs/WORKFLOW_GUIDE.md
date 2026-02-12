@@ -311,8 +311,10 @@ into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
   If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`.
 - `CODEX_SHOW_ASSESSMENT` (optional): default `0`; set to truthy value (`1/true/yes/on`) to show
   assessment rows by default in script filter results.
-- `CODEX_DIAG_CACHE_TTL_SECONDS` (optional): default `300`; cache TTL in seconds for background
-  diag auto-refresh on `cxd` / `cxda` (`0` means always refresh).
+- `CODEX_DIAG_CACHE_TTL_SECONDS` (optional): default `300`; cache TTL in seconds for
+  `cxau` / `cxd` / `cxda` auto refresh (`0` means always refresh before render).
+- `CODEX_DIAG_CACHE_BLOCK_WAIT_SECONDS` (optional): default `15`; maximum seconds to wait when
+  another process is already refreshing the same diag cache mode.
 - `CODEX_LOGIN_TIMEOUT_SECONDS` (optional): login timeout in seconds, default `60`
   (valid range `1..3600`).
 - `CODEX_API_KEY` (optional): API key source for `auth login --api-key`; if unset on macOS,
@@ -346,8 +348,9 @@ Supported actions in this workflow:
 
 Diag result behavior:
 
-- `cxd` / `cxda` menu shows latest cached diag result inline when cache exists.
-- `cxd` / `cxda` trigger background diag cache refresh when cache is missing or expired.
+- `cxd` / `cxda` menu blocks to refresh diag cache when cache is missing/expired, then renders.
+- Stale diag cache is not rendered for `cxau` / `cxd` / `cxda`.
+- `cxd` default refresh/action uses `diag rate-limits --json` and parses single-account rows.
 - `cxda result` parses JSON output and renders one account per row.
 - `cxda result` rows are sorted by `weekly_reset_epoch` ascending (earliest reset first).
 - Parsed row subtitle format is `<email> | reset <weekly_reset_local>`.

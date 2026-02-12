@@ -17,9 +17,11 @@ CODEX_SECRET_DIR = ""
 # Optional UI switch for showing assessment rows in script filter.
 # Default off to keep actionable items easy to select.
 CODEX_SHOW_ASSESSMENT = "0"
-# Diag auto-refresh cache TTL (seconds) for cxd/cxda entry menus.
-# Default 300 seconds (5 minutes). Set 0 to always refresh.
+# Diag cache TTL (seconds) for cxau/cxd/cxda auto refresh.
+# Default 300 seconds (5 minutes). Set 0 to always refresh before render.
 CODEX_DIAG_CACHE_TTL_SECONDS = "300"
+# Max wait seconds while another process is refreshing the same diag cache mode.
+CODEX_DIAG_CACHE_BLOCK_WAIT_SECONDS = "15"
 
 [alfred]
 min_alfred = "5"

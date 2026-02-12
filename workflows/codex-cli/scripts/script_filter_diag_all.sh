@@ -26,4 +26,4 @@ else
   forward_query="diag all-json $trimmed_query"
 fi
 
-exec "$base_filter" "$forward_query"
+CODEX_DIAG_ALIAS="cxda" exec "$base_filter" "$forward_query"
