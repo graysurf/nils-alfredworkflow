@@ -317,6 +317,13 @@ mod tests {
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].get("title").and_then(Value::as_str), Some("int"));
         assert_eq!(items[0].get("arg").and_then(Value::as_str), Some("int"));
+        assert_eq!(
+            items[0]
+                .get("variables")
+                .and_then(|vars| vars.get("RANDOMER_FORMAT"))
+                .and_then(Value::as_str),
+            Some("int")
+        );
         assert!(
             items[0]
                 .get("subtitle")

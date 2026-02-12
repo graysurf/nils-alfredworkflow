@@ -146,7 +146,8 @@ fn list_formats_feedback_with_rng<R: Rng + ?Sized>(query: Option<&str>, rng: &mu
                     "cmd",
                     ItemModifier::new()
                         .with_arg(format.key())
-                        .with_subtitle(format!("show 10 values for {}", format.key())),
+                        .with_subtitle(format!("show 10 values for {}", format.key()))
+                        .with_variable("RANDOMER_FORMAT", format.key()),
                 )
         })
         .collect();
@@ -164,6 +165,7 @@ fn list_types_feedback_with_rng<R: Rng + ?Sized>(query: Option<&str>, rng: &mut 
                 .with_arg(format.key())
                 .with_valid(true)
                 .with_icon(ItemIcon::new(format.icon_path()))
+                .with_variable("RANDOMER_FORMAT", format.key())
         })
         .collect();
 
@@ -415,6 +417,14 @@ mod tests {
             .and_then(|mods| mods.get("cmd"))
             .expect("cmd modifier should be present");
         assert_eq!(cmd_mod.arg.as_deref(), Some("hex"));
+        assert_eq!(
+            cmd_mod
+                .variables
+                .as_ref()
+                .and_then(|vars| vars.get("RANDOMER_FORMAT"))
+                .map(String::as_str),
+            Some("hex")
+        );
         assert!(
             cmd_mod
                 .subtitle
@@ -471,6 +481,13 @@ mod tests {
             item.subtitle
                 .as_deref()
                 .is_some_and(|subtitle| subtitle.contains("show 10 values"))
+        );
+        assert_eq!(
+            item.variables
+                .as_ref()
+                .and_then(|vars| vars.get("RANDOMER_FORMAT"))
+                .map(String::as_str),
+            Some("int")
         );
     }
 
