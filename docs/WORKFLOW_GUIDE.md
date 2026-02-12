@@ -322,6 +322,8 @@ into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
 - `CODEX_SAVE_CONFIRM` (optional): default enabled (`1`); when enabled and `--yes` is not set,
   save action asks confirmation before writing.
 - `CODEX_CLI_PACK_BIN` (packaging only, optional): explicit source binary path for bundling.
+- `CODEX_CLI_PACK_INSTALL_ROOT` (packaging only, optional): override the auto-install root used when
+  pinned crates.io runtime install is needed.
 
 ### Alfred command flow
 
@@ -374,6 +376,12 @@ Runtime resolution order:
 1. `CODEX_CLI_BIN`
 2. bundled `./bin/codex-cli`
 3. `PATH` `codex-cli` fallback
+
+Packaging resolution order for bundled `codex-cli@0.3.2`:
+
+1. `CODEX_CLI_PACK_BIN` (if set)
+2. local `PATH` `codex-cli`
+3. auto-install pinned `nils-codex-cli@0.3.2` from crates.io via `cargo install --locked --root <cache-root>`
 
 ### Operator validation checklist
 

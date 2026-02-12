@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+workflow_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+runtime_meta="$workflow_script_dir/lib/codex_cli_runtime.sh"
+if [[ ! -f "$runtime_meta" ]]; then
+  printf '{"items":[{"title":"codex-cli runtime metadata missing","subtitle":"expected %s","valid":false}]}\n' "$runtime_meta"
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$runtime_meta"
+# shellcheck disable=SC2153
+codex_cli_pinned_version="${CODEX_CLI_PINNED_VERSION}"
+# shellcheck disable=SC2153
+codex_cli_pinned_crate="${CODEX_CLI_PINNED_CRATE}"
+
 json_escape() {
   local value="${1-}"
   value="${value//\\/\\\\}"
@@ -921,7 +934,7 @@ emit_runtime_status() {
 
   emit_item \
     "codex-cli runtime missing" \
-    "Re-import workflow, set CODEX_CLI_BIN, or install nils-codex-cli 0.3.2 manually." \
+    "Re-import workflow, set CODEX_CLI_BIN, or install ${codex_cli_pinned_crate} ${codex_cli_pinned_version} manually." \
     "" \
     false \
     ""
@@ -948,7 +961,7 @@ emit_assessment_items() {
     ""
   emit_item \
     "Can be added next: auth refresh/current/sync" \
-    "0.3.2 supports these auth helpers; straightforward to map next." \
+    "${codex_cli_pinned_version} supports these auth helpers; straightforward to map next." \
     "" \
     false \
     ""
@@ -1081,6 +1094,56 @@ resolve_codex_secret_dir() {
   resolve_default_codex_secret_dir
 }
 
+resolve_preferred_codex_auth_file() {
+  [[ -n "${HOME:-}" ]] || return 1
+
+  local auth_candidates=(
+    "${HOME%/}/.config/codex-kit/auth.json"
+    "${HOME%/}/.config/codex/auth.json"
+    "${HOME%/}/.codex/auth.json"
+  )
+  local candidate_auth
+  for candidate_auth in "${auth_candidates[@]}"; do
+    if [[ -f "$candidate_auth" ]]; then
+      printf '%s\n' "$candidate_auth"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+ensure_codex_auth_file_env() {
+  local configured="${CODEX_AUTH_FILE:-}"
+  configured="$(trim "$configured")"
+  if [[ -n "$configured" ]]; then
+    export CODEX_AUTH_FILE="$configured"
+    return 0
+  fi
+
+  local preferred_auth=""
+  preferred_auth="$(resolve_preferred_codex_auth_file || true)"
+  if [[ -n "$preferred_auth" ]]; then
+    export CODEX_AUTH_FILE="$preferred_auth"
+    return 0
+  fi
+
+  return 1
+}
+
+ensure_codex_secret_dir_env() {
+  local configured="${CODEX_SECRET_DIR:-}"
+  configured="$(trim "$configured")"
+
+  if [[ -z "$configured" ]]; then
+    configured="$(resolve_default_codex_secret_dir || true)"
+  fi
+
+  [[ -n "$configured" ]] || return 1
+  export CODEX_SECRET_DIR="$configured"
+  printf '%s\n' "$configured"
+}
+
 secret_dir_has_saved_json() {
   local secret_dir="${1:-}"
   [[ -n "$secret_dir" ]] || return 1
@@ -1107,6 +1170,7 @@ resolve_codex_auth_file() {
     local auth_candidates=(
       "${HOME%/}/.config/codex-kit/auth.json"
       "${HOME%/}/.config/codex/auth.json"
+      "${HOME%/}/.codex/auth.json"
     )
     local candidate_auth
     for candidate_auth in "${auth_candidates[@]}"; do
@@ -1159,32 +1223,29 @@ detect_current_secret_json() {
   fi
 
   local structured_output=""
-  local structured_rc=0
-  local structured_reported_json=""
   local structured_auth_file=""
   if command -v jq >/dev/null 2>&1; then
     set +e
     structured_output="$("$codex_cli" auth current --json 2>/dev/null)"
-    structured_rc=$?
     set -e
-    if [[ "$structured_rc" -eq 0 ]]; then
-      structured_reported_json="$(printf '%s\n' "$structured_output" | jq -r '.result.matched_secret // empty' 2>/dev/null || true)"
-      if [[ -n "$structured_reported_json" && "$structured_reported_json" != *.json ]]; then
-        structured_reported_json="${structured_reported_json}.json"
+    if [[ -n "$structured_output" ]] && printf '%s\n' "$structured_output" | jq -e 'type == "object"' >/dev/null 2>&1; then
+      local structured_matched_json=""
+      structured_matched_json="$(printf '%s\n' "$structured_output" | jq -r '.result.matched_secret // .error.details.matched_secret // empty' 2>/dev/null || true)"
+      if [[ -n "$structured_matched_json" && "$structured_matched_json" != *.json ]]; then
+        structured_matched_json="${structured_matched_json}.json"
       fi
-      if [[ "$structured_reported_json" == "auth.json" ]]; then
-        structured_reported_json=""
+      if [[ -n "$structured_matched_json" && "$structured_matched_json" != "auth.json" ]]; then
+        printf '%s\n' "$structured_matched_json"
+        return 0
       fi
 
-      structured_auth_file="$(printf '%s\n' "$structured_output" | jq -r '.result.auth_file // empty' 2>/dev/null || true)"
+      structured_auth_file="$(printf '%s\n' "$structured_output" | jq -r '.result.auth_file // .error.details.auth_file // empty' 2>/dev/null || true)"
     fi
   fi
 
   local output
-  local rc=0
   set +e
   output="$("$codex_cli" auth current 2>&1)"
-  rc=$?
   set -e
 
   local clean_output
@@ -1201,15 +1262,10 @@ detect_current_secret_json() {
   if [[ -n "$reported_json" && "$reported_json" != *.json ]]; then
     reported_json="${reported_json}.json"
   fi
-  if [[ "$reported_json" == "auth.json" ]]; then
-    reported_json=""
+  if [[ -n "$reported_json" && "$reported_json" != "auth.json" ]]; then
+    printf '%s\n' "$reported_json"
+    return 0
   fi
-
-  local hinted_json=""
-  hinted_json="$(printf '%s\n' "$clean_output" | grep -Eo '[A-Za-z0-9._@-]+\.json' | grep -vE '^auth\.json$' | tail -n1 || true)"
-
-  local secret_dir=""
-  secret_dir="$(resolve_codex_secret_dir || true)"
 
   local auth_file=""
   if [[ -n "$structured_auth_file" ]]; then
@@ -1217,100 +1273,14 @@ detect_current_secret_json() {
   else
     auth_file="$(resolve_codex_auth_file "$clean_output" || true)"
   fi
-  if [[ (-z "$auth_file" || ! -f "$auth_file") && -n "${CODEX_AUTH_FILE:-}" && -f "${CODEX_AUTH_FILE}" ]]; then
+  if [[ -z "$auth_file" && -n "${CODEX_AUTH_FILE:-}" ]]; then
     auth_file="${CODEX_AUTH_FILE}"
   fi
-
-  if [[ -n "$auth_file" && -f "$auth_file" && -n "$secret_dir" && -d "$secret_dir" ]]; then
-    # Prefer account_id mapping from auth.json because codex-cli "matches <name>"
-    # can be stale after token refresh.
-    local auth_account_id
-    auth_account_id="$(extract_secret_account_id_from_file "$auth_file" || true)"
-    if [[ -n "$auth_account_id" ]]; then
-      local matched_account_json=""
-      local matched_account_count=0
-      local candidate
-      while IFS= read -r candidate; do
-        local candidate_path candidate_account_id
-        candidate_path="${secret_dir%/}/$candidate"
-        candidate_account_id="$(extract_secret_account_id_from_file "$candidate_path" || true)"
-        [[ -n "$candidate_account_id" ]] || continue
-        if [[ "$candidate_account_id" == "$auth_account_id" ]]; then
-          matched_account_count=$((matched_account_count + 1))
-          if [[ "$matched_account_count" -eq 1 ]]; then
-            matched_account_json="$candidate"
-          fi
-        fi
-      done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
-      if [[ "$matched_account_count" -eq 1 && -n "$matched_account_json" ]]; then
-        printf '%s\n' "$matched_account_json"
-        return 0
-      fi
-    fi
-
-    local candidate
-    while IFS= read -r candidate; do
-      local candidate_path="${secret_dir%/}/$candidate"
-      if cmp -s "$auth_file" "$candidate_path"; then
-        printf '%s\n' "$candidate"
-        return 0
-      fi
-    done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
-
-    # Fallback: codex-cli may refresh auth.json in-place (identity matches while secret differs),
-    # so byte-wise cmp can fail. Match by email identity to recover current secret selection.
-    local auth_email
-    auth_email="$(extract_secret_email_from_file "$auth_file" || true)"
-    if [[ -n "$auth_email" ]]; then
-      local auth_email_lower
-      auth_email_lower="$(to_lower "$auth_email")"
-      while IFS= read -r candidate; do
-        local candidate_path candidate_email candidate_email_lower
-        candidate_path="${secret_dir%/}/$candidate"
-        candidate_email="$(extract_secret_email_from_file "$candidate_path" || true)"
-        [[ -n "$candidate_email" ]] || continue
-        candidate_email_lower="$(to_lower "$candidate_email")"
-        if [[ "$candidate_email_lower" == "$auth_email_lower" ]]; then
-          printf '%s\n' "$candidate"
-          return 0
-        fi
-      done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
-    fi
-  fi
-
-  if [[ -n "$secret_dir" && -d "$secret_dir" ]]; then
-    local file
-    while IFS= read -r file; do
-      local base
-      base="${file%.json}"
-      if [[ "$clean_output" == *"$file"* || "$clean_output" == *"$base"* ]]; then
-        printf '%s\n' "$file"
-        return 0
-      fi
-    done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
-  fi
-
-  if [[ -n "$structured_reported_json" ]]; then
-    printf '%s\n' "$structured_reported_json"
-    return 0
-  fi
-
-  if [[ -n "$reported_json" ]]; then
-    printf '%s\n' "$reported_json"
-    return 0
-  fi
-
-  if [[ -n "$hinted_json" ]]; then
-    printf '%s\n' "$hinted_json"
-    return 0
-  fi
-
   if [[ -n "$auth_file" && -f "$auth_file" ]]; then
     printf 'auth.json\n'
     return 0
   fi
 
-  [[ "$rc" -eq 0 ]] || return 1
   return 1
 }
 
@@ -1549,19 +1519,6 @@ extract_secret_email_from_file() {
   printf '%s\n' "$email"
 }
 
-extract_secret_account_id_from_file() {
-  local file_path="$1"
-  [[ -f "$file_path" ]] || return 1
-  if ! command -v jq >/dev/null 2>&1; then
-    return 1
-  fi
-
-  local account_id
-  account_id="$(jq -r '.tokens.account_id // empty' "$file_path" 2>/dev/null || true)"
-  [[ -n "$account_id" ]] || return 1
-  printf '%s\n' "$account_id"
-}
-
 build_use_subtitle() {
   local email="$1"
   local weekly_reset="$2"
@@ -1613,9 +1570,9 @@ handle_use_query() {
 
   remainder="$(printf '%s' "$raw_query" | sed -E 's/^[[:space:]]*(auth[[:space:]]+)?use[[:space:]]*//I')"
 
-  # shellcheck disable=SC2206
-  local parts=($remainder)
-  for token in "${parts[@]}"; do
+  # Bash 3.2 + set -u can treat empty arrays as unbound; iterate words directly.
+  # shellcheck disable=SC2086
+  for token in $remainder; do
     if [[ -z "$secret" ]]; then
       secret="$token"
     else
@@ -1668,17 +1625,12 @@ handle_use_query() {
   [[ -n "$current_auth_email" ]] || current_auth_email="-"
 
   local current_cached_email=""
-  local current_cached_weekly_epoch=""
   local current_cached_weekly="-"
-  local current_cached_label=""
-  local current_cached_non_weekly=""
-  local current_cached_weekly_remaining=""
-  local current_cached_non_weekly_reset_epoch=""
   if [[ -n "$current_json" ]]; then
     local current_cached_meta
     current_cached_meta="$(lookup_current_diag_meta "$current_json" || true)"
     if [[ -n "$current_cached_meta" ]]; then
-      IFS=$'\t' read -r current_cached_weekly_epoch current_cached_email current_cached_weekly current_cached_label current_cached_non_weekly current_cached_weekly_remaining current_cached_non_weekly_reset_epoch <<<"$current_cached_meta"
+      IFS=$'\t' read -r _current_cached_weekly_epoch current_cached_email current_cached_weekly _current_cached_label _current_cached_non_weekly _current_cached_weekly_remaining _current_cached_non_weekly_reset_epoch <<<"$current_cached_meta"
     fi
   fi
   if [[ -z "$current_cached_email" || "$current_cached_email" == "-" ]]; then
@@ -1770,18 +1722,13 @@ handle_use_query() {
   account_lookup_file="$(build_diag_account_lookup_map || true)"
 
   if [[ -n "$current_json" ]]; then
-    local current_secret current_meta current_email current_weekly current_label current_non_weekly current_weekly_remaining current_weekly_epoch current_non_weekly_reset_epoch
+    local current_secret current_meta current_email current_weekly
     current_secret="${current_json%.json}"
     current_email="${current_cached_email:-"-"}"
     current_weekly="${current_cached_weekly:-"-"}"
-    current_label="${current_cached_label:-}"
-    current_non_weekly="${current_cached_non_weekly:-}"
-    current_weekly_remaining="${current_cached_weekly_remaining:-}"
-    current_weekly_epoch="${current_cached_weekly_epoch:-}"
-    current_non_weekly_reset_epoch="${current_cached_non_weekly_reset_epoch:-}"
     current_meta="$(lookup_diag_account_meta "$account_lookup_file" "$current_json" || true)"
     if [[ -n "$current_meta" ]]; then
-      IFS=$'\t' read -r current_weekly_epoch current_email current_weekly current_label current_non_weekly current_weekly_remaining current_non_weekly_reset_epoch <<<"$current_meta"
+      IFS=$'\t' read -r _current_weekly_epoch current_email current_weekly _current_label _current_non_weekly _current_weekly_remaining _current_non_weekly_reset_epoch <<<"$current_meta"
     fi
     if [[ "$current_json" != "auth.json" && (-z "${current_email:-}" || "$current_email" == "-") ]]; then
       current_email="$(extract_secret_email_from_file "${secret_dir%/}/${current_json}" || true)"
@@ -2073,7 +2020,7 @@ emit_current_auth_hint_item() {
   fi
 
   emit_item \
-    "Current auth: ${current_json}" \
+    "Current: ${current_json}" \
     "${subtitle}" \
     "" \
     false \
@@ -2236,6 +2183,8 @@ fi
 lower_query="$(to_lower "$trimmed_query")"
 
 begin_items
+ensure_codex_auth_file_env >/dev/null 2>&1 || true
+ensure_codex_secret_dir_env >/dev/null 2>&1 || true
 emit_runtime_status
 
 if [[ -z "$trimmed_query" ]]; then
