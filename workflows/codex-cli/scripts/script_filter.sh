@@ -1158,6 +1158,28 @@ detect_current_secret_json() {
     return 1
   fi
 
+  local structured_output=""
+  local structured_rc=0
+  local structured_reported_json=""
+  local structured_auth_file=""
+  if command -v jq >/dev/null 2>&1; then
+    set +e
+    structured_output="$("$codex_cli" auth current --json 2>/dev/null)"
+    structured_rc=$?
+    set -e
+    if [[ "$structured_rc" -eq 0 ]]; then
+      structured_reported_json="$(printf '%s\n' "$structured_output" | jq -r '.result.matched_secret // empty' 2>/dev/null || true)"
+      if [[ -n "$structured_reported_json" && "$structured_reported_json" != *.json ]]; then
+        structured_reported_json="${structured_reported_json}.json"
+      fi
+      if [[ "$structured_reported_json" == "auth.json" ]]; then
+        structured_reported_json=""
+      fi
+
+      structured_auth_file="$(printf '%s\n' "$structured_output" | jq -r '.result.auth_file // empty' 2>/dev/null || true)"
+    fi
+  fi
+
   local output
   local rc=0
   set +e
@@ -1190,7 +1212,11 @@ detect_current_secret_json() {
   secret_dir="$(resolve_codex_secret_dir || true)"
 
   local auth_file=""
-  auth_file="$(resolve_codex_auth_file "$clean_output" || true)"
+  if [[ -n "$structured_auth_file" ]]; then
+    auth_file="$structured_auth_file"
+  else
+    auth_file="$(resolve_codex_auth_file "$clean_output" || true)"
+  fi
   if [[ (-z "$auth_file" || ! -f "$auth_file") && -n "${CODEX_AUTH_FILE:-}" && -f "${CODEX_AUTH_FILE}" ]]; then
     auth_file="${CODEX_AUTH_FILE}"
   fi
@@ -1262,6 +1288,11 @@ detect_current_secret_json() {
         return 0
       fi
     done < <(find "$secret_dir" -maxdepth 1 -type f -name '*.json' -print 2>/dev/null | sed -E 's|.*/||' | LC_ALL=C sort)
+  fi
+
+  if [[ -n "$structured_reported_json" ]]; then
+    printf '%s\n' "$structured_reported_json"
+    return 0
   fi
 
   if [[ -n "$reported_json" ]]; then

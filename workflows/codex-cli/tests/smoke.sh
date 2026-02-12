@@ -502,6 +502,32 @@ exit 9
 EOS
 chmod +x "$tmp_dir/stubs/codex-cli-current-auth-file-only"
 
+cat >"$tmp_dir/stubs/codex-cli-current-json-hint" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  echo "codex-cli 0.3.2"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "current" && "${3:-}" == "--json" ]]; then
+  cat <<JSON
+{"schema_version":"codex-cli.auth.v1","command":"auth current","ok":true,"result":{"auth_file":"${CODEX_AUTH_FILE:-/tmp/auth.json}","matched":true,"matched_secret":"plus.json","match_mode":"identity"}}
+JSON
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "current" ]]; then
+  echo "codex: ${CODEX_AUTH_FILE:-/tmp/auth.json}"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "use" ]]; then
+  printf '{"ok":true,"cmd":"auth use","target":"%s","argv":"%s"}\n' "${3:-}" "$*"
+  exit 0
+fi
+echo "unexpected command: $*" >&2
+exit 9
+EOS
+chmod +x "$tmp_dir/stubs/codex-cli-current-json-hint"
+
 empty_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" ""; })"
 assert_jq_json "$empty_json" '.items | type == "array" and length >= 8' "empty query must return action items"
 assert_jq_json "$empty_json" '.items | any(.title == "Implemented now: auth login") | not' "assessment items must be hidden by default"
@@ -581,6 +607,15 @@ printf '{"email":"auth-only@example.com","token":"x"}\n' >"$auth_only_home/.conf
 auth_use_without_secret_dir_json="$({ HOME="$auth_only_home" CODEX_SECRET_DIR="$tmp_dir/missing-secrets" CODEX_AUTH_FILE="$auth_only_home/.config/codex-kit/auth.json" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
 assert_jq_json "$auth_use_without_secret_dir_json" '.items[0].title == "Current: auth.json"' "cxau should show auth.json current row when no saved secrets directory"
 assert_jq_json "$auth_use_without_secret_dir_json" '.items[0].subtitle | contains("auth-only@example.com")' "cxau auth.json row should include auth email"
+
+json_hint_secret_dir="$tmp_dir/secrets-json-hint"
+mkdir -p "$json_hint_secret_dir"
+printf '{"token":"live-plus"}\n' >"$json_hint_secret_dir/plus.json"
+printf '{"token":"live-poies"}\n' >"$json_hint_secret_dir/poies.json"
+json_hint_auth_file="$tmp_dir/auth-json-hint.json"
+printf '{"token":"rotated"}\n' >"$json_hint_auth_file"
+auth_use_json_hint_json="$({ CODEX_SECRET_DIR="$json_hint_secret_dir" CODEX_AUTH_FILE="$json_hint_auth_file" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-json-hint" "$workflow_dir/scripts/script_filter.sh" "auth use"; })"
+assert_jq_json "$auth_use_json_hint_json" '.items[0].title == "Current: plus.json"' "auth use should use auth current --json matched_secret when text output lacks matches"
 
 invalid_save_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "save ../bad"; })"
 assert_jq_json "$invalid_save_json" '.items[0].title == "Invalid secret file name"' "invalid save file name should be rejected"
