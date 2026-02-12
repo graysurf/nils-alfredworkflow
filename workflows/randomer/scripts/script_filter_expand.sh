@@ -43,7 +43,7 @@ print_error_item() {
     subtitle="Package workflow or set RANDOMER_CLI_BIN to a randomer-cli executable."
   elif [[ "$lower" == *"missing format"* || "$lower" == *"format is required"* || "$lower" == *"empty format"* ]]; then
     title="Select a format first"
-    subtitle="Press Cmd+Enter on a format item to generate 10 values."
+    subtitle="Use rrv to pick a format, or run rrvv <format>."
   elif [[ "$lower" == *"unknown format"* || "$lower" == *"unsupported format"* ]]; then
     title="Unknown format"
     subtitle="$message"
@@ -113,12 +113,47 @@ resolve_randomer_cli() {
   return 1
 }
 
-query="${1:-}"
+resolve_query() {
+  local arg_query="${1:-}"
+  if [[ -n "$arg_query" ]]; then
+    printf '%s' "$arg_query"
+    return 0
+  fi
+
+  if [[ -n "${RANDOMER_FORMAT:-}" ]]; then
+    printf '%s' "${RANDOMER_FORMAT}"
+    return 0
+  fi
+  if [[ -n "${randomer_format:-}" ]]; then
+    printf '%s' "${randomer_format}"
+    return 0
+  fi
+
+  if [[ -n "${alfred_workflow_query:-}" ]]; then
+    printf '%s' "${alfred_workflow_query}"
+    return 0
+  fi
+  if [[ -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
+    printf '%s' "${ALFRED_WORKFLOW_QUERY}"
+    return 0
+  fi
+
+  # Some Alfred configurations pass upstream output to stdin instead of argv.
+  if [[ ! -t 0 ]]; then
+    cat
+    return 0
+  fi
+
+  printf ''
+}
+
+query="$(resolve_query "${1:-}")"
 trimmed_query="$(printf '%s' "$query" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
 if [[ -z "$trimmed_query" ]]; then
-  emit_error_item "Select a format first" "Press Cmd+Enter on a format item to generate 10 values."
+  emit_error_item "Select a format first" "Use rrv to pick a format, or run rrvv <format>."
   exit 0
 fi
+query="$trimmed_query"
 
 err_file="${TMPDIR:-/tmp}/randomer-expand-script-filter.err.$$"
 trap 'rm -f "$err_file"' EXIT

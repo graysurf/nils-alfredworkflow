@@ -200,13 +200,13 @@ case "$command_name" in
 list-formats)
   [[ "${2:-}" == "--query" ]] || exit 9
   query="${3:-}"
-  printf '{"items":[{"title":"uuid","subtitle":"sample from %s","arg":"550e8400-e29b-41d4-a716-446655440000","mods":{"cmd":{"arg":"uuid","subtitle":"Generate 10 values"}}}]}' "$query"
+  printf '{"items":[{"title":"uuid","subtitle":"sample from %s","arg":"550e8400-e29b-41d4-a716-446655440000","mods":{"cmd":{"arg":"uuid","subtitle":"Generate 10 values","variables":{"RANDOMER_FORMAT":"uuid"}}}}]}' "$query"
   printf '\n'
   ;;
 list-types)
   [[ "${2:-}" == "--query" ]] || exit 9
   query="${3:-}"
-  printf '{"items":[{"title":"int","subtitle":"sample: 42 · Enter: show 10 values (%s)","arg":"int","icon":{"path":"assets/icons/int.png"},"valid":true}]}' "$query"
+  printf '{"items":[{"title":"int","subtitle":"sample: 42 · Enter: show 10 values (%s)","arg":"int","icon":{"path":"assets/icons/int.png"},"valid":true,"variables":{"RANDOMER_FORMAT":"int"}}]}' "$query"
   printf '\n'
   ;;
 generate)
@@ -242,14 +242,28 @@ chmod +x "$tmp_dir/stubs/randomer-cli-fail"
 primary_json="$({ RANDOMER_CLI_BIN="$tmp_dir/stubs/randomer-cli-ok" "$workflow_dir/scripts/script_filter.sh" "uuid"; })"
 assert_jq_json "$primary_json" '.items | type == "array" and length == 1' "primary script output must be Alfred items array"
 assert_jq_json "$primary_json" '.items[0].mods.cmd.arg == "uuid"' "primary script item must provide cmd modifier arg for expand"
+assert_jq_json "$primary_json" '.items[0].mods.cmd.variables.RANDOMER_FORMAT == "uuid"' "primary cmd modifier must include RANDOMER_FORMAT variable"
 
 types_json="$({ RANDOMER_CLI_BIN="$tmp_dir/stubs/randomer-cli-ok" "$workflow_dir/scripts/script_filter_types.sh" "in"; })"
 assert_jq_json "$types_json" '.items | type == "array" and length == 1' "types script output must be Alfred items array"
 assert_jq_json "$types_json" '.items[0].title == "int" and .items[0].arg == "int"' "types script must provide format key arg"
+assert_jq_json "$types_json" '.items[0].variables.RANDOMER_FORMAT == "int"' "types script must provide RANDOMER_FORMAT variable"
 
 expanded_json="$({ RANDOMER_CLI_BIN="$tmp_dir/stubs/randomer-cli-ok" "$workflow_dir/scripts/script_filter_expand.sh" "uuid"; })"
 assert_jq_json "$expanded_json" '.items | type == "array" and length == 10' "expanded script must output 10 values"
 assert_jq_json "$expanded_json" 'all(.items[]; .subtitle == "uuid")' "expanded script subtitles must match selected format key"
+
+expanded_env_json="$({ RANDOMER_CLI_BIN="$tmp_dir/stubs/randomer-cli-ok" RANDOMER_FORMAT="uuid" "$workflow_dir/scripts/script_filter_expand.sh"; })"
+assert_jq_json "$expanded_env_json" '.items | type == "array" and length == 10' "expanded script must support RANDOMER_FORMAT env fallback"
+assert_jq_json "$expanded_env_json" 'all(.items[]; .subtitle == "uuid")' "RANDOMER_FORMAT fallback subtitles must match format key"
+
+expanded_query_env_json="$({ RANDOMER_CLI_BIN="$tmp_dir/stubs/randomer-cli-ok" alfred_workflow_query="uuid" "$workflow_dir/scripts/script_filter_expand.sh"; })"
+assert_jq_json "$expanded_query_env_json" '.items | type == "array" and length == 10' "expanded script must support alfred_workflow_query fallback"
+assert_jq_json "$expanded_query_env_json" 'all(.items[]; .subtitle == "uuid")' "alfred_workflow_query fallback subtitles must match format key"
+
+expanded_stdin_json="$({ printf 'uuid'; } | RANDOMER_CLI_BIN="$tmp_dir/stubs/randomer-cli-ok" "$workflow_dir/scripts/script_filter_expand.sh")"
+assert_jq_json "$expanded_stdin_json" '.items | type == "array" and length == 10' "expanded script must support stdin format fallback"
+assert_jq_json "$expanded_stdin_json" 'all(.items[]; .subtitle == "uuid")' "stdin format fallback subtitles must match format key"
 
 empty_expand_json="$({ RANDOMER_CLI_BIN="$tmp_dir/stubs/randomer-cli-ok" "$workflow_dir/scripts/script_filter_expand.sh" " "; })"
 assert_jq_json "$empty_expand_json" '.items[0].title == "Select a format first"' "empty expand query should return guidance item"
@@ -321,6 +335,7 @@ assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TYPE_UID\") |
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TYPE_UID\") | .config.scriptargtype == 1" "type selector must pass query via argv"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$VALUES_UID\") | .config.scriptfile == \"./scripts/script_filter_expand.sh\"" "values script filter scriptfile mismatch"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$VALUES_UID\") | .config.scriptargtype == 1" "values script filter must pass query via argv"
+assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$VALUES_UID\") | .config.alfredfiltersresults == false" "values script filter must disable Alfred-side result filtering"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$ACTION_UID\") | .config.scriptfile == \"./scripts/action_open.sh\"" "copy action scriptfile mismatch"
 
 assert_jq_file "$packaged_json_file" ".connections[\"$PRIMARY_UID\"] | any(.destinationuid == \"$ACTION_UID\" and .modifiers == 0)" "missing primary->copy enter connection"
