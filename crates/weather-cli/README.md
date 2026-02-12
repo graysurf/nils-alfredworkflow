@@ -6,8 +6,8 @@ CLI backend for one-day and seven-day weather forecast retrieval.
 
 | Command | Options | Description |
 | --- | --- | --- |
-| `weather-cli today` | `--city <CITY>` or `--lat <LAT> --lon <LON>` `[--json]` | Today weather forecast. |
-| `weather-cli week` | `--city <CITY>` or `--lat <LAT> --lon <LON>` `[--json]` | 7-day weather forecast. |
+| `weather-cli today` | `--city <CITY>` or `--lat <LAT> --lon <LON>` `[--json]` `[--output <human|json|alfred-json>]` `[--lang <en|zh>]` | Today weather forecast. |
+| `weather-cli week` | `--city <CITY>` or `--lat <LAT> --lon <LON>` `[--json]` `[--output <human|json|alfred-json>]` `[--lang <en|zh>]` | 7-day weather forecast. |
 
 ## Environment Variables
 
@@ -18,6 +18,7 @@ CLI backend for one-day and seven-day weather forecast retrieval.
 
 - Default mode: human-readable text summary.
 - JSON mode: `--json` returns structured forecast object.
+- Language mode: `--lang` controls text/Alfred labels (`en` default, `zh` optional).
 - `stderr`: user/runtime error text.
 - Exit codes: `0` success, `1` runtime/provider error, `2` user/input error.
 

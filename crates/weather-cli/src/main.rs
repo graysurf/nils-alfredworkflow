@@ -37,6 +37,8 @@ enum Commands {
         output: Option<OutputModeArg>,
         #[arg(long)]
         json: bool,
+        #[arg(long, value_enum)]
+        lang: Option<LanguageArg>,
     },
     /// 7-day weather forecast.
     Week {
@@ -50,6 +52,8 @@ enum Commands {
         output: Option<OutputModeArg>,
         #[arg(long)]
         json: bool,
+        #[arg(long, value_enum)]
+        lang: Option<LanguageArg>,
     },
 }
 
@@ -71,6 +75,18 @@ enum CliOutputMode {
     Human,
     Json,
     AlfredJson,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum LanguageArg {
+    En,
+    Zh,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OutputLanguage {
+    En,
+    Zh,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,6 +127,15 @@ impl From<OutputModeArg> for CliOutputMode {
             OutputModeArg::Human => CliOutputMode::Human,
             OutputModeArg::Json => CliOutputMode::Json,
             OutputModeArg::AlfredJson => CliOutputMode::AlfredJson,
+        }
+    }
+}
+
+impl From<LanguageArg> for OutputLanguage {
+    fn from(value: LanguageArg) -> Self {
+        match value {
+            LanguageArg::En => OutputLanguage::En,
+            LanguageArg::Zh => OutputLanguage::Zh,
         }
     }
 }
@@ -175,6 +200,7 @@ where
             lon,
             output,
             json,
+            lang,
         } => run_command(
             config,
             providers,
@@ -187,6 +213,7 @@ where
                 lon,
                 output,
                 json,
+                lang,
             },
         ),
         Commands::Week {
@@ -195,6 +222,7 @@ where
             lon,
             output,
             json,
+            lang,
         } => run_command(
             config,
             providers,
@@ -207,6 +235,7 @@ where
                 lon,
                 output,
                 json,
+                lang,
             },
         ),
     }
@@ -221,6 +250,7 @@ struct CommandArgs<'a> {
     lon: Option<f64>,
     output: Option<OutputModeArg>,
     json: bool,
+    lang: Option<LanguageArg>,
 }
 
 fn run_command<P, N>(
@@ -234,6 +264,7 @@ where
     N: Fn() -> DateTime<Utc>,
 {
     let output_mode = resolve_output_mode(args.output, args.json, CliOutputMode::Human)?;
+    let output_language = args.lang.map(Into::into).unwrap_or(OutputLanguage::En);
     let request_mode = match output_mode {
         CliOutputMode::Json => RequestOutputMode::Json,
         CliOutputMode::Human | CliOutputMode::AlfredJson => RequestOutputMode::Text,
@@ -245,8 +276,8 @@ where
 
     match output_mode {
         CliOutputMode::Json => render_service_json_envelope(args.command, &output),
-        CliOutputMode::Human => Ok(format_text_output(&output)),
-        CliOutputMode::AlfredJson => render_alfred_json(&output),
+        CliOutputMode::Human => Ok(format_text_output(&output, output_language)),
+        CliOutputMode::AlfredJson => render_alfred_json(&output, output_language),
     }
 }
 
@@ -293,26 +324,32 @@ fn render_service_json_envelope(
     })
 }
 
-fn render_alfred_json(output: &weather_cli::model::ForecastOutput) -> Result<String, CliError> {
+fn render_alfred_json(
+    output: &weather_cli::model::ForecastOutput,
+    language: OutputLanguage,
+) -> Result<String, CliError> {
     let mut items = Vec::with_capacity(output.forecast.len() + 1);
     items.push(json!({
         "title": format!("{} ({})", output.location.name, output.timezone),
         "subtitle": format!(
-            "source={} freshness={}",
+            "source={} freshness={} lat={:.4} lon={:.4}",
             output.source,
-            freshness_label(output.freshness.status)
+            freshness_label(output.freshness.status),
+            output.location.latitude,
+            output.location.longitude
         ),
         "arg": output.location.name,
         "valid": false,
     }));
 
     for day in &output.forecast {
+        let summary = localized_summary(day, language);
         items.push(json!({
             "title": format!(
                 "{} {} {:.1}~{:.1}°C",
-                day.date, day.summary_zh, day.temp_min_c, day.temp_max_c
+                day.date, summary, day.temp_min_c, day.temp_max_c
             ),
-            "subtitle": format!("rain:{}%", day.precip_prob_max_pct),
+            "subtitle": format!("{}:{}%", precip_label(language), day.precip_prob_max_pct),
             "arg": day.date,
             "valid": false,
         }));
@@ -523,7 +560,10 @@ fn escape_json_string(raw: &str) -> String {
     escaped
 }
 
-fn format_text_output(output: &weather_cli::model::ForecastOutput) -> String {
+fn format_text_output(
+    output: &weather_cli::model::ForecastOutput,
+    language: OutputLanguage,
+) -> String {
     let mut lines = vec![format!(
         "{} ({}) | source={} | freshness={}",
         output.location.name,
@@ -533,13 +573,33 @@ fn format_text_output(output: &weather_cli::model::ForecastOutput) -> String {
     )];
 
     for day in &output.forecast {
+        let summary = localized_summary(day, language);
         lines.push(format!(
-            "{} {} {:.1}~{:.1}°C rain:{}%",
-            day.date, day.summary_zh, day.temp_min_c, day.temp_max_c, day.precip_prob_max_pct
+            "{} {} {:.1}~{:.1}°C {}:{}%",
+            day.date,
+            summary,
+            day.temp_min_c,
+            day.temp_max_c,
+            precip_label(language),
+            day.precip_prob_max_pct
         ));
     }
 
     lines.join("\n")
+}
+
+fn localized_summary(day: &weather_cli::model::ForecastDay, language: OutputLanguage) -> String {
+    match language {
+        OutputLanguage::En => weather_cli::weather_code::summary_en(day.weather_code).to_string(),
+        OutputLanguage::Zh => day.summary_zh.clone(),
+    }
+}
+
+fn precip_label(language: OutputLanguage) -> &'static str {
+    match language {
+        OutputLanguage::En => "rain",
+        OutputLanguage::Zh => "降雨",
+    }
 }
 
 fn freshness_label(status: weather_cli::model::FreshnessStatus) -> &'static str {
@@ -780,6 +840,18 @@ mod tests {
 
         assert!(output.contains("Taipei City"));
         assert!(output.contains("source=open_meteo"));
+        assert!(output.contains("Cloudy"));
+        assert!(output.contains("rain:20%"));
+    }
+
+    #[test]
+    fn main_outputs_text_mode_in_zh_when_requested() {
+        let cli = Cli::parse_from(["weather-cli", "today", "--city", "Taipei", "--lang", "zh"]);
+        let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
+            .expect("zh text mode");
+
+        assert!(output.contains("陰天"));
+        assert!(output.contains("降雨:20%"));
     }
 
     #[test]
@@ -803,6 +875,40 @@ mod tests {
             .and_then(|items| items.first())
             .expect("first item");
         assert!(first_item.get("title").is_some());
+
+        let second_item_title = json
+            .get("items")
+            .and_then(Value::as_array)
+            .and_then(|items| items.get(1))
+            .and_then(|item| item.get("title"))
+            .and_then(Value::as_str);
+        assert_eq!(second_item_title, Some("2026-02-11 Cloudy 14.5~20.1°C"));
+    }
+
+    #[test]
+    fn main_outputs_alfred_json_mode_in_zh_when_requested() {
+        let cli = Cli::parse_from([
+            "weather-cli",
+            "today",
+            "--city",
+            "Taipei",
+            "--output",
+            "alfred-json",
+            "--lang",
+            "zh",
+        ]);
+
+        let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
+            .expect("alfred zh mode");
+        let json: Value = serde_json::from_str(&output).expect("json");
+
+        let second_item_title = json
+            .get("items")
+            .and_then(Value::as_array)
+            .and_then(|items| items.get(1))
+            .and_then(|item| item.get("title"))
+            .and_then(Value::as_str);
+        assert_eq!(second_item_title, Some("2026-02-11 陰天 14.5~20.1°C"));
     }
 
     #[test]

@@ -1,4 +1,6 @@
 use crate::model::ForecastLocation;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedLocation {
@@ -18,7 +20,7 @@ impl ResolvedLocation {
     }
 
     pub fn cache_key(&self) -> String {
-        let slug = slugify(&self.name);
+        let slug = slugify_for_cache(&self.name);
         format!(
             "{}-{:.4}-{:.4}",
             slug,
@@ -28,12 +30,28 @@ impl ResolvedLocation {
     }
 }
 
+pub fn city_query_cache_key(city: &str) -> String {
+    format!("city-{}", slugify_for_cache(city))
+}
+
 pub fn coordinate_label(lat: f64, lon: f64) -> String {
     format!("{:.4},{:.4}", round4(lat), round4(lon))
 }
 
 fn round4(value: f64) -> f64 {
     (value * 10_000.0).round() / 10_000.0
+}
+
+pub fn slugify_for_cache(raw: &str) -> String {
+    let slug = slugify(raw);
+    if !slug.is_empty() {
+        return slug;
+    }
+
+    // Keep cache keys deterministic for non-ASCII-only city names.
+    let mut hasher = DefaultHasher::new();
+    raw.hash(&mut hasher);
+    format!("q{:016x}", hasher.finish())
 }
 
 fn slugify(raw: &str) -> String {
@@ -90,5 +108,17 @@ mod tests {
         };
 
         assert_eq!(location.cache_key(), "taipei-xinyi-dist-25.0300-121.5600");
+    }
+
+    #[test]
+    fn geocoding_city_query_cache_key_uses_city_prefix() {
+        assert_eq!(city_query_cache_key("Tokyo"), "city-tokyo");
+    }
+
+    #[test]
+    fn geocoding_slugify_for_cache_falls_back_for_non_ascii() {
+        let key = slugify_for_cache("東京");
+        assert!(key.starts_with('q'));
+        assert_eq!(key.len(), 17);
     }
 }

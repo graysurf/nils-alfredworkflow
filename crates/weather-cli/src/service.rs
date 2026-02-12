@@ -5,7 +5,7 @@ use crate::cache::{
 };
 use crate::config::{RuntimeConfig, WEATHER_CACHE_TTL_SECS};
 use crate::error::AppError;
-use crate::geocoding::{ResolvedLocation, coordinate_label};
+use crate::geocoding::{ResolvedLocation, city_query_cache_key, coordinate_label};
 use crate::model::{
     CacheMetadata, ForecastDay, ForecastOutput, ForecastRequest, FreshnessStatus, LocationQuery,
 };
@@ -23,9 +23,15 @@ where
     N: Fn() -> DateTime<Utc>,
 {
     let now = now_fn();
-    let location = resolve_location(providers, &request.location)?;
-    let location_key = location.cache_key();
-    let path = cache_path(&config.cache_dir, request.period, &location_key);
+    let (cache_key, mut resolved_location) = match &request.location {
+        LocationQuery::City(city) => (city_query_cache_key(city), None),
+        _ => {
+            let location = resolve_location(providers, &request.location)?;
+            let key = location.cache_key();
+            (key, Some(location))
+        }
+    };
+    let path = cache_path(&config.cache_dir, request.period, &cache_key);
 
     let cached = read_cache(&path).map_err(|error| AppError::runtime(error.to_string()))?;
     let cached_state = cached.as_ref().map(|record| {
@@ -34,15 +40,27 @@ where
     });
 
     if let Some((record, age_secs, true)) = &cached_state {
+        let location = resolved_location
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| resolved_location_from_record(record));
         return Ok(build_output_from_record(
             record,
             &location,
             request,
             FreshnessStatus::CacheFresh,
             *age_secs,
-            location_key,
+            cache_key,
         ));
     }
+
+    let location = match resolved_location.take() {
+        Some(location) => location,
+        None => match cached.as_ref() {
+            Some(record) => resolved_location_from_record(record),
+            None => resolve_location(providers, &request.location)?,
+        },
+    };
 
     let mut trace = Vec::new();
 
@@ -59,7 +77,7 @@ where
                 forecast,
                 "open_meteo",
                 trace,
-                location_key,
+                cache_key.clone(),
             );
         }
         Err(error) => trace.push(format!("open_meteo: {error}")),
@@ -77,11 +95,11 @@ where
             forecast,
             "met_no",
             trace,
-            location_key,
+            cache_key.clone(),
         ),
         Err(error) => {
             trace.push(format!("met_no: {error}"));
-            fallback_or_error(cached_state, &location, request, trace, location_key)
+            fallback_or_error(cached_state, &location, request, trace, cache_key)
         }
     }
 }
@@ -196,6 +214,15 @@ fn build_output_from_record(
             ttl_secs: WEATHER_CACHE_TTL_SECS,
             age_secs,
         },
+    }
+}
+
+fn resolved_location_from_record(record: &CacheRecord) -> ResolvedLocation {
+    ResolvedLocation {
+        name: record.location.name.clone(),
+        latitude: record.location.latitude,
+        longitude: record.location.longitude,
+        timezone: record.timezone.clone(),
     }
 }
 
@@ -382,7 +409,7 @@ mod tests {
         let path = cache_path(
             &config.cache_dir,
             ForecastPeriod::Today,
-            &location.cache_key(),
+            &city_query_cache_key("Taipei"),
         );
         write_cache(
             &path,
@@ -409,6 +436,7 @@ mod tests {
         let output = resolve_forecast(&config, &providers, fixed_now, &request).expect("must pass");
 
         assert_eq!(output.freshness.status, FreshnessStatus::CacheFresh);
+        assert_eq!(providers.geocode_calls.get(), 0);
         assert_eq!(providers.open_meteo_calls.get(), 0);
     }
 
@@ -428,7 +456,7 @@ mod tests {
         let path = cache_path(
             &config.cache_dir,
             ForecastPeriod::Today,
-            &location.cache_key(),
+            &city_query_cache_key("Taipei"),
         );
         write_cache(
             &path,
@@ -460,6 +488,7 @@ mod tests {
         let output = resolve_forecast(&config, &providers, fixed_now, &request).expect("fallback");
         assert_eq!(output.freshness.status, FreshnessStatus::CacheStaleFallback);
         assert_eq!(output.source, "open_meteo");
+        assert_eq!(providers.geocode_calls.get(), 0);
     }
 
     #[test]

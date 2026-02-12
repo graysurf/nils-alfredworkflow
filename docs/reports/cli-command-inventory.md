@@ -24,8 +24,8 @@
 | `nils-randomer-cli` | `randomer-cli` | `generate` | `--format --count` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/randomer/scripts/script_filter_expand.sh` |
 | `nils-spotify-cli` | `spotify-cli` | `search` | `--query <text>` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/spotify-search/scripts/script_filter.sh` |
 | `nils-timezone-cli` | `timezone-cli` | `now` | `--query --config-zones` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/multi-timezone/scripts/script_filter.sh` |
-| `nils-weather-cli` | `weather-cli` | `today` | `--city/--lat/--lon`, `--json` | Text default; `--json` returns raw JSON payload (no envelope) | Keep text default; migrate `--json` to envelope v1 | No Alfred workflow consumer yet; exercised by `scripts/weather-cli-live-smoke.sh` |
-| `nils-weather-cli` | `weather-cli` | `week` | `--city/--lat/--lon`, `--json` | Text default; `--json` returns raw JSON payload (no envelope) | Keep text default; migrate `--json` to envelope v1 | No Alfred workflow consumer yet; exercised by `scripts/weather-cli-live-smoke.sh` |
+| `nils-weather-cli` | `weather-cli` | `today` | `--city/--lat/--lon`, `--json`, `--output alfred-json`, `--lang <en|zh>` | Text default (`en`); `--json` returns envelope v1; `--output alfred-json` returns Alfred items | Keep text default; preserve explicit JSON/Alfred modes | `workflows/weather/scripts/script_filter_today.sh` |
+| `nils-weather-cli` | `weather-cli` | `week` | `--city/--lat/--lon`, `--json`, `--output alfred-json`, `--lang <en|zh>` | Text default (`en`); `--json` returns envelope v1; `--output alfred-json` returns Alfred items | Keep text default; preserve explicit JSON/Alfred modes | `workflows/weather/scripts/script_filter_week.sh` |
 | `nils-wiki-cli` | `wiki-cli` | `search` | `--query <text>` | Legacy Alfred JSON (top-level `items`) | `human-readable` default + explicit `--json` envelope + compatibility mode | `workflows/wiki-search/scripts/script_filter.sh` |
 | `nils-workflow-cli` | `workflow-cli` | `script-filter` | `--query`, `--mode <open|github>` | Legacy Alfred JSON (top-level `items`) | Keep command for compatibility; add explicit standards JSON mode for service use | `workflows/open-project/scripts/script_filter.sh`, `workflows/open-project/scripts/script_filter_github.sh`, `workflows/_template/scripts/script_filter.sh` |
 | `nils-workflow-cli` | `workflow-cli` | `record-usage` | `--path <dir>` | Plain text (path echo) | Keep plain text action contract | `workflows/open-project/scripts/action_record_usage.sh` |
@@ -35,7 +35,7 @@
 ## Consumer Risk Notes
 
 - Highest migration sensitivity: all workflow `script_filter` and `script-filter` callers currently assume Alfred JSON by default.
-- `weather-cli` is currently less coupled to Alfred script filters but still requires envelope migration for service consumers.
+- `weather-cli` now has direct workflow consumers (`wt` / `ww`), so script-filter compatibility mode must remain stable.
 - `workflow-cli` must preserve action-command plain text behavior while adding explicit machine mode for structured integrations.
 
 ## Migration Priority Hints
