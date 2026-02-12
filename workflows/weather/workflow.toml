@@ -1,0 +1,20 @@
+id = "weather"
+name = "Weather Forecast"
+bundle_id = "com.graysurf.weather"
+version = "1.0.5"
+script_filter = "script_filter_today.sh"
+action = "action_copy.sh"
+rust_binary = "weather-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional executable path override for local/debug runtime.
+WEATHER_CLI_BIN = ""
+# Output locale (`en` or `zh`) for human-facing labels.
+WEATHER_LOCALE = "en"
+# Default city list used when query is empty (comma-separated).
+WEATHER_DEFAULT_CITIES = "Tokyo"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

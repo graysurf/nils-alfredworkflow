@@ -7,16 +7,17 @@ Primary source is Open-Meteo, fallback source is MET Norway.
 
 ## Commands
 
-- `weather-cli today --city <name> [--json]`
-- `weather-cli today --lat <f64> --lon <f64> [--json]`
-- `weather-cli week --city <name> [--json]`
-- `weather-cli week --lat <f64> --lon <f64> [--json]`
+- `weather-cli today --city <name> [--json] [--lang <en|zh>]`
+- `weather-cli today --lat <f64> --lon <f64> [--json] [--lang <en|zh>]`
+- `weather-cli week --city <name> [--json] [--lang <en|zh>]`
+- `weather-cli week --lat <f64> --lon <f64> [--json] [--lang <en|zh>]`
 
 Location input rules:
 
 - Use either `--city` OR `--lat/--lon`.
 - `--lat` and `--lon` must be provided together.
 - `--city` cannot be empty.
+- `--lang` affects human/Alfred text labels only; JSON payload fields stay stable.
 
 ## Output schema (JSON mode)
 
