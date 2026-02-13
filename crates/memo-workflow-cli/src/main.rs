@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand, ValueEnum};
 use memo_workflow_cli::{
     ADD_TOKEN_PREFIX, AppError, COPY_JSON_TOKEN_PREFIX, COPY_TOKEN_PREFIX, DELETE_TOKEN_PREFIX,
-    ListResult, RuntimeConfig, UPDATE_TOKEN_PREFIX, build_script_filter, execute_add,
-    execute_db_init, execute_delete, execute_fetch_item, execute_list, execute_update,
-    parse_add_token, parse_copy_json_token, parse_copy_token, parse_delete_token,
+    ListResult, RuntimeConfig, SearchResult, UPDATE_TOKEN_PREFIX, build_script_filter, execute_add,
+    execute_db_init, execute_delete, execute_fetch_item, execute_list, execute_search,
+    execute_update, parse_add_token, parse_copy_json_token, parse_copy_token, parse_delete_token,
     parse_update_token,
 };
 use serde::Serialize;
@@ -80,6 +80,24 @@ enum Command {
     List {
         /// Max rows to return.
         #[arg(long, default_value_t = 8)]
+        limit: usize,
+        /// Row offset for paging.
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
+        /// Override sqlite DB path for this call.
+        #[arg(long)]
+        db: Option<PathBuf>,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = ResultMode::Text)]
+        mode: ResultMode,
+    },
+    /// Search memo records by query text.
+    Search {
+        /// Search query text.
+        #[arg(long)]
+        query: String,
+        /// Max rows to return.
+        #[arg(long, default_value_t = 20)]
         limit: usize,
         /// Row offset for paging.
         #[arg(long, default_value_t = 0)]
@@ -196,6 +214,16 @@ fn run(cli: Cli) -> Result<(), AppError> {
             let result = execute_list(db, limit, offset, &config)?;
             emit(mode, result, render_list_text)?;
         }
+        Command::Search {
+            query,
+            limit,
+            offset,
+            db,
+            mode,
+        } => {
+            let result = execute_search(db, &query, limit, offset, &config)?;
+            emit(mode, result, render_search_text)?;
+        }
         Command::Action {
             token,
             mode,
@@ -283,6 +311,22 @@ fn render_list_text(rows: &Vec<ListResult>) -> String {
         lines.push(format!(
             "{} {} [{}] {}",
             row.item_id, row.created_at, row.state, row.text_preview
+        ));
+    }
+
+    lines.join("\n")
+}
+
+fn render_search_text(rows: &Vec<SearchResult>) -> String {
+    if rows.is_empty() {
+        return "no search matches".to_string();
+    }
+
+    let mut lines = Vec::with_capacity(rows.len());
+    for row in rows {
+        lines.push(format!(
+            "{} {} [score={:.3}] {}",
+            row.item_id, row.created_at, row.score, row.text_preview
         ));
     }
 

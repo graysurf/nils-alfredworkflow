@@ -1,12 +1,13 @@
 # Memo Add - Alfred Workflow
 
-Capture memo text quickly into SQLite-backed `nils-memo-cli` storage.
+Capture memo text quickly into SQLite-backed `nils-memo-cli@0.3.6` storage.
 
 ## Features
 
 - Keyword `mm` as command entry.
-- Extra keywords: `mmr` (latest rows / full item menu), `mma` (add), `mmu` (update), `mmd` (delete), `mmc` (copy).
+- Extra keywords: `mmr` (latest rows / full item menu), `mma` (add), `mmu` (update), `mmd` (delete), `mmc` (copy), `mmq` (search).
 - Primary flow supports `add`, `update`, and `delete`.
+- Search flow supports `search` via dedicated `mmq` keyword and item-management routing.
 - Latest-list view (`mmr`) shows `db init` only when db is missing; otherwise shows db path + latest memo rows.
 - `mmr` recent rows support full action menu flow: Enter -> choose `copy` / `update` / `delete`.
 - Delete intent is hard-delete (permanent remove, no undo).
@@ -29,12 +30,13 @@ Set these via Alfred's `Configure Workflow...` UI:
 
 | Keyword | Behavior |
 |---|---|
-| `mm` | Command entry menu (directs to `mmr` / `mma` / `mmu` / `mmd` / `mmc`). |
+| `mm` | Command entry menu (directs to `mmr` / `mma` / `mmu` / `mmd` / `mmc` / `mmq`). |
 | `mmr` | Show latest memo rows (newest first); `mmr <number>` opens memo item menu by id. |
 | `mma <text>` | Add intent keyword for `add::<text>`. |
 | `mmu` | Show latest memo rows (same as `mmr`); `mmu <number>` routes to update flow for that id; `mmu <item_id> <text>` routes update intent. |
 | `mmd` | Show latest memo rows (same as `mmr`); `mmd <number>` routes to delete action for that id; `mmd <item_id>` routes delete intent. |
 | `mmc` | Show latest memo rows (same as `mmr`); `mmc <number>` or `mmc <item_id>` routes copy action for that id. |
+| `mmq` | Search memos; `mmq <query>` routes to search intent and returns item manage rows via autocomplete. |
 
 ## Query intents
 
@@ -46,13 +48,15 @@ Set these via Alfred's `Configure Workflow...` UI:
 - `mmu <number>` routes to update flow for that id (no full menu).
 - `mmd <number>` routes to delete action for that id (no full menu).
 - `mmc <number>` routes to copy action for that id (no full menu).
+- `mmq <query>` routes to `search <query>` intent.
 - Item action menu intent: `item <item_id>` (typically from Enter on a recent row).
-- Mutation intents: `update <item_id> <text>`, `delete <item_id>`, `copy <item_id>`.
+- Mutation/search intents: `update <item_id> <text>`, `delete <item_id>`, `copy <item_id>`, `search <query>`.
 - Keyword mutation shortcuts: `mmu <item_id> <text>`, `mmd <item_id>`, `mmc <item_id>`.
+- Search rows are non-actionable and use `autocomplete: item <item_id>` for safe follow-up actions.
+- `search` (without query text) returns a guidance row and no executable action.
 - Copy actions: `copy::<item_id>` copies memo text (copy row subtitle shows preview), `copy-json::<item_id>` copies raw item JSON (via Cmd modifier on copy row).
 - `update <item_id>` without text shows guidance row and keeps autocomplete for second-step typing.
 - Invalid mutation syntax (for example missing `item_id` or missing update text) returns non-actionable guidance rows.
-- `mmq` is reserved for future query-condition behavior.
 
 ## Operator CRUD verification
 
@@ -68,6 +72,10 @@ cargo run -p nils-memo-workflow-cli -- update --db "$db" --item-id "$item_id" --
 
 cargo run -p nils-memo-workflow-cli -- delete --db "$db" --item-id "$item_id" --mode json \
   | jq -e '.ok == true and .result.deleted == true'
+
+cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "search target" >/dev/null
+cargo run -p nils-memo-workflow-cli -- search --db "$db" --query "target" --mode json \
+  | jq -e '.ok == true and (.result | length) >= 1'
 ```
 
 ## Validation

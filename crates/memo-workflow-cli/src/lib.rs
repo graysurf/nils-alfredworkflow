@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use alfred_core::{Feedback, Item, ItemModifier};
 use memo_cli::errors::AppError as MemoCliError;
 use memo_cli::output::{format_item_id, parse_item_id};
-use memo_cli::storage::{Storage, repository};
+use memo_cli::storage::{Storage, repository, search};
 use serde::Serialize;
 use thiserror::Error;
 
@@ -21,6 +21,8 @@ pub const DEFAULT_RECENT_LIMIT: usize = 8;
 const MAX_INPUT_BYTES_LIMIT: usize = 1024 * 1024;
 const MAX_RECENT_LIMIT: usize = 50;
 const MAX_LIST_LIMIT: usize = 200;
+const MAX_SEARCH_LIMIT: usize = 200;
+const MAX_SEARCH_FETCH_LIMIT: usize = 500;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
@@ -112,6 +114,17 @@ pub struct ListResult {
     pub text_preview: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SearchResult {
+    pub item_id: String,
+    pub created_at: String,
+    pub score: f64,
+    pub matched_fields: Vec<String>,
+    pub text_preview: String,
+    pub content_type: Option<String>,
+    pub validation_status: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ItemDetailResult {
     pub item_id: String,
@@ -143,6 +156,10 @@ pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Result<Feedba
 
     if let Some(rest) = strip_intent(normalized, "copy") {
         return build_copy_feedback(rest, config);
+    }
+
+    if let Some(rest) = strip_intent(normalized, "search") {
+        return build_search_feedback(rest, config);
     }
 
     if normalized.len() > config.max_input_bytes {
@@ -350,6 +367,73 @@ pub fn execute_list(
             created_at: row.created_at,
             state: row.state,
             text_preview: row.text_preview,
+        })
+        .collect())
+}
+
+pub fn execute_search(
+    db_override: Option<PathBuf>,
+    query: &str,
+    limit: usize,
+    offset: usize,
+    config: &RuntimeConfig,
+) -> Result<Vec<SearchResult>, AppError> {
+    let normalized_query = query.trim();
+    if normalized_query.is_empty() {
+        return Err(AppError::User(
+            "search requires a non-empty query".to_string(),
+        ));
+    }
+
+    if !(1..=MAX_SEARCH_LIMIT).contains(&limit) {
+        return Err(AppError::User(format!(
+            "invalid search limit: {limit} (must be integer in range 1..={MAX_SEARCH_LIMIT})"
+        )));
+    }
+
+    let fetch_limit = limit.checked_add(offset).ok_or_else(|| {
+        AppError::User("invalid search window: limit + offset overflow".to_string())
+    })?;
+    if fetch_limit > MAX_SEARCH_FETCH_LIMIT {
+        return Err(AppError::User(format!(
+            "invalid search window: limit + offset must be <= {MAX_SEARCH_FETCH_LIMIT}"
+        )));
+    }
+
+    let db_path = db_override.unwrap_or_else(|| config.db_path.clone());
+    let storage = Storage::new(db_path);
+    storage
+        .init()
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    let rows = storage
+        .with_connection(|conn| {
+            search::search_items(
+                conn,
+                normalized_query,
+                repository::QueryState::All,
+                &[
+                    search::SearchField::Raw,
+                    search::SearchField::Derived,
+                    search::SearchField::Tags,
+                ],
+                fetch_limit,
+            )
+        })
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    Ok(rows
+        .into_iter()
+        .skip(offset)
+        .take(limit)
+        .map(|row| SearchResult {
+            item_id: format_item_id(row.item_id),
+            created_at: row.created_at,
+            score: row.score,
+            matched_fields: row.matched_fields,
+            text_preview: row.preview,
+            content_type: row.content_type,
+            validation_status: row.validation_status,
         })
         .collect())
 }
@@ -688,6 +772,67 @@ fn build_copy_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, A
             )
             .with_valid(true),
     ]))
+}
+
+fn build_search_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
+    let query = rest.trim();
+    if query.is_empty() {
+        return Ok(Feedback::new(vec![
+            Item::new("Type search text after keyword")
+                .with_subtitle("Use: search <query>")
+                .with_valid(false),
+        ]));
+    }
+
+    if query.len() > config.max_input_bytes {
+        return Ok(Feedback::new(vec![
+            Item::new("Input exceeds MEMO_MAX_INPUT_BYTES")
+                .with_subtitle(format!(
+                    "Current {} bytes, limit {} bytes.",
+                    query.len(),
+                    config.max_input_bytes
+                ))
+                .with_valid(false),
+        ]));
+    }
+
+    let rows = execute_search(None, query, config.recent_limit, 0, config)?;
+    if rows.is_empty() {
+        return Ok(Feedback::new(vec![
+            Item::new("No matching memo records")
+                .with_subtitle(format!("No results for: {}", truncate_title(query, 64)))
+                .with_valid(false),
+        ]));
+    }
+
+    let mut items = Vec::with_capacity(rows.len());
+    for row in rows {
+        let preview = row.text_preview.trim();
+        let title = if preview.is_empty() {
+            format!("Search {}: (empty memo)", row.item_id)
+        } else {
+            format!("Search {}: {}", row.item_id, truncate_title(preview, 56))
+        };
+
+        let matched_fields = if row.matched_fields.is_empty() {
+            "n/a".to_string()
+        } else {
+            row.matched_fields.join(",")
+        };
+
+        items.push(
+            Item::new(title)
+                .with_uid(format!("search-{}", row.item_id))
+                .with_subtitle(format!(
+                    "{} | fields {} | score {:.3} | Press Enter to manage",
+                    row.created_at, matched_fields, row.score
+                ))
+                .with_autocomplete(format!("item {}", row.item_id))
+                .with_valid(false),
+        );
+    }
+
+    Ok(Feedback::new(items))
 }
 
 fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppError> {
@@ -1155,6 +1300,56 @@ mod tests {
         assert_eq!(
             cmd_mod.arg.as_deref(),
             Some(expected_copy_json_arg.as_str())
+        );
+    }
+
+    #[test]
+    fn script_filter_search_intent_returns_manage_rows() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        execute_add("buy milk", None, None, &config).expect("seed add");
+
+        let feedback = build_script_filter("search milk", &config).expect("script filter");
+
+        assert!(
+            !feedback.items.is_empty(),
+            "search should return at least one row"
+        );
+        assert_eq!(feedback.items[0].valid, Some(false));
+        let autocomplete = feedback.items[0]
+            .autocomplete
+            .as_deref()
+            .expect("search row should include autocomplete");
+        assert!(
+            autocomplete.starts_with("item itm_"),
+            "search row should route to item intent"
+        );
+    }
+
+    #[test]
+    fn script_filter_search_intent_requires_query_text() {
+        let feedback = build_script_filter("search", &test_config()).expect("script filter");
+
+        assert_eq!(feedback.items.len(), 1);
+        assert_eq!(feedback.items[0].valid, Some(false));
+        assert_eq!(feedback.items[0].title, "Type search text after keyword");
+    }
+
+    #[test]
+    fn execute_search_rejects_invalid_limit_or_window() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        execute_add("seed memo", None, None, &config).expect("seed add");
+
+        let invalid_limit = execute_search(None, "seed", 0, 0, &config);
+        assert!(invalid_limit.is_err(), "search should reject limit=0");
+
+        let invalid_window = execute_search(None, "seed", 200, 400, &config);
+        assert!(
+            invalid_window.is_err(),
+            "search should reject oversized window"
         );
     }
 

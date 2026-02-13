@@ -38,6 +38,12 @@ cat <<'JSON'
     "subtitle":"Use mmc (or mmc <item_id>)",
     "autocomplete":"mmc ",
     "valid":false
+  },
+  {
+    "title":"Search memo",
+    "subtitle":"Use mmq <query>",
+    "autocomplete":"mmq ",
+    "valid":false
   }
 ]}
 JSON

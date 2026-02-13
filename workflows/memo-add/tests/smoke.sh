@@ -55,6 +55,7 @@ for required in \
   scripts/script_filter_update.sh \
   scripts/script_filter_delete.sh \
   scripts/script_filter_copy.sh \
+  scripts/script_filter_search.sh \
   scripts/script_filter_recent.sh \
   scripts/action_run.sh \
   tests/smoke.sh; do
@@ -68,6 +69,7 @@ for executable in \
   scripts/script_filter_update.sh \
   scripts/script_filter_delete.sh \
   scripts/script_filter_copy.sh \
+  scripts/script_filter_search.sh \
   scripts/script_filter_recent.sh \
   scripts/action_run.sh \
   tests/smoke.sh; do
@@ -160,6 +162,12 @@ if [[ "${1:-}" == "script-filter" && "${2:-}" == "--query" ]]; then
       ;;
     "copy 1")
       emit_copy_item "itm_00000001"
+      ;;
+    "search")
+      printf '{"items":[{"title":"Type search text after keyword","subtitle":"Use: search <query>","valid":false}]}\n'
+      ;;
+    "search milk")
+      printf '{"items":[{"title":"Search itm_00000001: buy milk","subtitle":"search","autocomplete":"item itm_00000001","valid":false}]}\n'
       ;;
     "item itm_00000001")
       emit_item_menu "itm_00000001"
@@ -319,6 +327,7 @@ assert_jq_json "$entry_json" '.items | any(.autocomplete == "mma ")' "entry menu
 assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmu ")' "entry menu should include mmu"
 assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmd ")' "entry menu should include mmd"
 assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmc ")' "entry menu should include mmc"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmq ")' "entry menu should include mmq"
 assert_jq_json "$entry_json" '.items | map(select((.arg // "") | startswith("add::"))) | length == 0' "entry menu should not return add action tokens"
 
 keyword_add_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_add.sh" "buy milk"; })"
@@ -355,6 +364,14 @@ assert_jq_json "$keyword_copy_recent_json" '.items[0].arg == "add::"' "mmc empty
 keyword_copy_id_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_copy.sh" "1"; })"
 assert_jq_json "$keyword_copy_id_json" '.items | length == 1' "mmc numeric query should not show full item menu"
 assert_jq_json "$keyword_copy_id_json" '.items[0].arg == "copy::itm_00000001"' "mmc numeric query should map to copy action"
+
+keyword_search_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_search.sh" "milk"; })"
+assert_jq_json "$keyword_search_json" '.items | length == 1' "mmq query should return search rows"
+assert_jq_json "$keyword_search_json" '.items[0].autocomplete == "item itm_00000001"' "mmq should route to item autocomplete"
+
+keyword_search_empty_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_search.sh" ""; })"
+assert_jq_json "$keyword_search_empty_json" '.items[0].valid == false' "mmq empty query should show guidance row"
+assert_jq_json "$keyword_search_empty_json" '([.items[].arg // ""] | all(startswith("add::") | not))' "mmq empty query should not return add token"
 
 keyword_recent_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_recent.sh" "buy milk"; })"
 assert_jq_json "$keyword_recent_json" '.items[0].arg == "add::"' "mmr should force empty query for newest-first view"
@@ -526,10 +543,11 @@ PY
   )"
 fi
 
-assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 6' "scriptfilter count mismatch"
-assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["mm","mma","mmc","mmd","mmr","mmu"]' "keyword wiring mismatch"
+assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 7' "scriptfilter count mismatch"
+assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["mm","mma","mmc","mmd","mmq","mmr","mmu"]' "keyword wiring mismatch"
 assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm") | .config.scriptfile == "./scripts/script_filter_entry.sh"' "mm keyword should use command-entry script"
-assert_jq_json "$packaged_json" '.connections | length == 6' "connection wiring mismatch"
+assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mmq") | .config.scriptfile == "./scripts/script_filter_search.sh"' "mmq keyword should use search script"
+assert_jq_json "$packaged_json" '.connections | length == 7' "connection wiring mismatch"
 assert_jq_json "$packaged_json" '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]' "plist variable list mismatch"
 assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_MAX_INPUT_BYTES") | .config.default == "4096"' "plist default mismatch"
 assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_RECENT_LIMIT") | .config.default == "8"' "plist recent limit default mismatch"
