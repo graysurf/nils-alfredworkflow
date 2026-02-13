@@ -10,7 +10,8 @@ Provide a capture-first Alfred workflow for quick memo insertion backed by `nils
 - `mm buy milk` -> script-filter returns actionable add row -> action runs add and persists one inbox record.
 - `mm update itm_00000001 buy oat milk` -> script-filter returns actionable update row.
 - `mm delete itm_00000001` -> script-filter returns actionable delete row.
-- `mm` (empty query) -> script-filter returns guidance row + `db init` action row + recent memo rows (newest first).
+- `mm` (empty query, db missing) -> script-filter returns guidance row + `db init` action row.
+- `mm` (empty query, db exists) -> script-filter returns guidance row + db path info row + recent memo rows (newest first).
 
 ## Runtime commands
 
@@ -77,9 +78,9 @@ Malformed update/delete token shapes are handled as user errors.
 
 ## Query semantics
 
-- Empty query includes a recent-records section so users can verify latest captures immediately.
+- Empty query with existing db includes a recent-records section so users can verify latest captures immediately.
 - Recent records default to `MEMO_RECENT_LIMIT=8` and are ordered by `created_at DESC`, then `item_id DESC`.
-- Recent record rows are informational (`valid=false`), while `db init` stays actionable.
+- Recent record rows and db path row are informational (`valid=false`), while `db init` stays actionable when db is missing.
 - Non-empty query defaults to add unless explicit `update` / `delete` intent prefix is matched.
 - Malformed mutation query syntax returns non-actionable guidance rows instead of malformed JSON.
 

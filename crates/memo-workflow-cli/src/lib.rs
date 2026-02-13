@@ -454,6 +454,8 @@ fn build_delete_feedback(rest: &str) -> Result<Feedback, AppError> {
 }
 
 fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppError> {
+    let db_exists = config.db_path.exists();
+
     let mut items = vec![
         Item::new("Type memo text after keyword")
             .with_subtitle(format!(
@@ -461,14 +463,31 @@ fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppErr
                 config.max_input_bytes, config.source
             ))
             .with_valid(false),
-        Item::new("Initialize memo database")
-            .with_subtitle(format!(
-                "Create/open SQLite at {}",
-                config.db_path.display()
-            ))
-            .with_arg(DB_INIT_TOKEN)
-            .with_valid(true),
     ];
+
+    if !db_exists {
+        items.push(
+            Item::new("Initialize memo database")
+                .with_subtitle(format!(
+                    "Create/open SQLite at {}",
+                    config.db_path.display()
+                ))
+                .with_arg(DB_INIT_TOKEN)
+                .with_valid(true),
+        );
+        items.push(
+            Item::new("No memo records yet")
+                .with_subtitle("Run `db-init`, then use `mm <text>` to add your first memo.")
+                .with_valid(false),
+        );
+        return Ok(Feedback::new(items));
+    }
+
+    items.push(
+        Item::new("Memo database path")
+            .with_subtitle(format!("Using SQLite at {}", config.db_path.display()))
+            .with_valid(false),
+    );
 
     let recent = execute_list(None, config.recent_limit, 0, config)?;
     if recent.is_empty() {
@@ -624,6 +643,7 @@ fn parse_bool(raw: &str) -> Option<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     fn test_config() -> RuntimeConfig {
         RuntimeConfig {
@@ -664,7 +684,11 @@ mod tests {
 
     #[test]
     fn script_filter_returns_db_init_on_empty_query() {
-        let feedback = build_script_filter("", &test_config()).expect("script filter should build");
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("missing.db");
+
+        let feedback = build_script_filter("", &config).expect("script filter should build");
 
         assert!(feedback.items.len() >= 2);
         let db_init_item = feedback
@@ -673,6 +697,32 @@ mod tests {
             .find(|item| item.arg.as_deref() == Some(DB_INIT_TOKEN))
             .expect("db init row should exist");
         assert_eq!(db_init_item.valid, Some(true));
+    }
+
+    #[test]
+    fn script_filter_existing_db_shows_db_path_info_without_db_init() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        std::fs::File::create(&config.db_path).expect("create db file");
+
+        let feedback = build_script_filter("", &config).expect("script filter should build");
+
+        let has_db_init = feedback
+            .items
+            .iter()
+            .any(|item| item.arg.as_deref() == Some(DB_INIT_TOKEN));
+        assert!(
+            !has_db_init,
+            "existing db should not show db-init action row"
+        );
+
+        let expected_subtitle = format!("Using SQLite at {}", config.db_path.display());
+        let has_db_path_info = feedback.items.iter().any(|item| {
+            item.title == "Memo database path"
+                && item.subtitle.as_deref() == Some(expected_subtitle.as_str())
+        });
+        assert!(has_db_path_info, "existing db should show db path info row");
     }
 
     #[test]

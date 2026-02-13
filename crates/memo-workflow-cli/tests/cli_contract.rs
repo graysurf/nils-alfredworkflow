@@ -47,6 +47,66 @@ fn script_filter_empty_query_includes_db_init_row() {
         .unwrap_or(false);
 
     assert!(has_db_init, "empty query should include db-init action row");
+
+    let has_db_path_info = payload
+        .get("items")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .any(|item| item.get("title").and_then(Value::as_str) == Some("Memo database path"))
+        })
+        .unwrap_or(false);
+
+    assert!(
+        !has_db_path_info,
+        "empty query without db should not show db path info row"
+    );
+}
+
+#[test]
+fn script_filter_empty_query_with_existing_db_shows_db_path_row_without_db_init() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let init = Command::new(bin())
+        .args(["db-init", "--db", db_path])
+        .output()
+        .expect("db-init should run");
+    assert!(init.status.success(), "db-init must exit 0");
+
+    let output = Command::new(bin())
+        .args(["script-filter", "--query", ""])
+        .env("MEMO_DB_PATH", db_path)
+        .output()
+        .expect("script-filter should run");
+    assert!(output.status.success(), "script-filter must exit 0");
+
+    let payload: Value =
+        serde_json::from_slice(&output.stdout).expect("script-filter stdout must be JSON");
+    let items = payload
+        .get("items")
+        .and_then(Value::as_array)
+        .expect("items array");
+
+    let has_db_init = items
+        .iter()
+        .any(|item| item.get("arg").and_then(Value::as_str) == Some("db-init"));
+    assert!(
+        !has_db_init,
+        "empty query with existing db should not include db-init action row"
+    );
+
+    let db_path_subtitle = format!("Using SQLite at {db_path}");
+    let has_db_path_info = items.iter().any(|item| {
+        item.get("title").and_then(Value::as_str) == Some("Memo database path")
+            && item.get("subtitle").and_then(Value::as_str) == Some(db_path_subtitle.as_str())
+    });
+    assert!(
+        has_db_path_info,
+        "empty query with existing db should show db path info row"
+    );
 }
 
 #[test]

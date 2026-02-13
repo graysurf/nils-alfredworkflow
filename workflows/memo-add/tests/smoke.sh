@@ -230,6 +230,15 @@ success_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$
 assert_jq_json "$success_json" '.items | type == "array" and length == 1' "script_filter success must return one item"
 assert_jq_json "$success_json" '.items[0].arg == "add::buy milk"' "script_filter add arg mismatch"
 
+success_env_query_json="$({ alfred_workflow_query="buy milk" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh"; })"
+assert_jq_json "$success_env_query_json" '.items[0].arg == "add::buy milk"' "script_filter alfred_workflow_query fallback mismatch"
+
+success_null_placeholder_json="$({ alfred_workflow_query="buy milk" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "(null)"; })"
+assert_jq_json "$success_null_placeholder_json" '.items[0].arg == "add::buy milk"' "script_filter (null) fallback mismatch"
+
+success_stdin_query_json="$(printf 'buy milk' | MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh")"
+assert_jq_json "$success_stdin_query_json" '.items[0].arg == "add::buy milk"' "script_filter stdin fallback mismatch"
+
 update_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "update itm_00000001 buy oat milk"; })"
 assert_jq_json "$update_json" '.items[0].arg == "update::itm_00000001::buy oat milk"' "script_filter update arg mismatch"
 

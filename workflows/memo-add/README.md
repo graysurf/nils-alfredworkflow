@@ -6,7 +6,7 @@ Capture memo text quickly into SQLite-backed `nils-memo-cli` storage.
 
 - Keyword `mm` for fast memo capture.
 - Primary flow supports `add`, `update`, and `delete`.
-- Empty query shows `db init` plus latest memo rows (newest -> oldest).
+- Empty query shows `db init` only when db is missing; otherwise shows db path + latest memo rows.
 - Delete intent is hard-delete (permanent remove, no undo).
 - Runtime parameters for DB path, source label, confirmation gate, and max input bytes.
 
@@ -27,7 +27,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 
 | Keyword | Behavior |
 |---|---|
-| `mm` | Show add guidance, a `db init` action row, and recent memo records (newest first). |
+| `mm` | Show add guidance; when db is missing show `db init`, otherwise show db path and recent memo records (newest first). |
 | `mm <text>` | Add memo text to database via `memo-workflow-cli action --token add::<text>`. |
 | `mm update <item_id> <text>` | Update target memo via `memo-workflow-cli action --token update::<item_id>::<text>`. |
 | `mm delete <item_id>` | Hard-delete target memo via `memo-workflow-cli action --token delete::<item_id>`. |

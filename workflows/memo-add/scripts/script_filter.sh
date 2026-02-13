@@ -94,6 +94,18 @@ map_error_title() {
 }
 
 query="${1:-}"
+# Alfred debug/log output may show '(null)' for missing argv.
+if [[ "$query" == "(null)" ]]; then
+  query=""
+fi
+if [[ -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
+  query="${alfred_workflow_query}"
+elif [[ -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
+  query="${ALFRED_WORKFLOW_QUERY}"
+elif [[ -z "$query" && ! -t 0 ]]; then
+  query="$(cat)"
+fi
+
 err_file="${TMPDIR:-/tmp}/memo-add-script-filter.err.$$"
 trap 'rm -f "$err_file"' EXIT
 
