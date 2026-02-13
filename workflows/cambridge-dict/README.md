@@ -13,6 +13,7 @@ Search Cambridge Dictionary from Alfred with a two-stage flow (candidate -> defi
 - Detail stage renders definitions from the selected entry.
 - Press `Enter` on detail rows to open the entry URL from `arg`.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips backend calls.
+- Script-level guardrails: async query coalescing (final query priority) and short TTL cache reduce duplicate backend calls while typing.
 - Uses `cambridge-cli` as the Alfred bridge and Playwright scraper backend.
 
 ## Configuration
@@ -38,6 +39,9 @@ Set these via Alfred's "Configure Workflow..." UI:
 |---|---|
 | `CAMBRIDGE_CLI_BIN` | Optional absolute executable path override for `cambridge-cli`. |
 | `CAMBRIDGE_SCRAPER_SCRIPT` | Exported by `script_filter.sh` to point to bundled `scripts/cambridge_scraper.mjs`. |
+| `CAMBRIDGE_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `10`. |
+| `CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. |
+| `CAMBRIDGE_QUERY_COALESCE_RERUN_SECONDS` | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`. |
 
 ## Runtime bootstrap
 

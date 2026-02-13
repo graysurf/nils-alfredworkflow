@@ -108,6 +108,9 @@ for variable in WIKI_LANGUAGE WIKI_MAX_RESULTS; do
 done
 
 tmp_dir="$(mktemp -d)"
+export ALFRED_WORKFLOW_CACHE="$tmp_dir/alfred-cache"
+export WIKI_QUERY_CACHE_TTL_SECONDS=0
+export WIKI_QUERY_COALESCE_SETTLE_SECONDS=0
 artifact_id="$(toml_string "$manifest" id)"
 artifact_version="$(toml_string "$manifest" version)"
 artifact_name="$(toml_string "$manifest" name)"
@@ -274,6 +277,7 @@ run_layout_check() {
   chmod +x "$copied_script"
   mkdir -p "$layout/workflows/wiki-search/scripts/lib"
   cp "$repo_root/scripts/lib/script_filter_query_policy.sh" "$layout/workflows/wiki-search/scripts/lib/script_filter_query_policy.sh"
+  cp "$repo_root/scripts/lib/script_filter_async_coalesce.sh" "$layout/workflows/wiki-search/scripts/lib/script_filter_async_coalesce.sh"
 
   case "$mode" in
   packaged)
@@ -291,7 +295,7 @@ run_layout_check() {
   esac
 
   local output
-  output="$($copied_script "demo")"
+  output="$(WIKI_QUERY_COALESCE_SETTLE_SECONDS=0 WIKI_QUERY_CACHE_TTL_SECONDS=0 "$copied_script" "demo")"
   assert_jq_json "$output" ".items[0].title == \"$marker\"" "script_filter failed to resolve $mode wiki-cli path"
 }
 
@@ -331,6 +335,7 @@ assert_file "$packaged_dir/icon.png"
 assert_file "$packaged_dir/assets/icon.png"
 assert_file "$packaged_dir/bin/wiki-cli"
 assert_file "$packaged_dir/scripts/lib/script_filter_query_policy.sh"
+assert_file "$packaged_dir/scripts/lib/script_filter_async_coalesce.sh"
 
 if command -v plutil >/dev/null 2>&1; then
   plutil -lint "$packaged_plist" >/dev/null || fail "packaged plist lint failed"

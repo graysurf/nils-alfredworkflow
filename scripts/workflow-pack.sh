@@ -110,12 +110,18 @@ package_one() {
     find "$stage_dir/scripts" -type f -name '*.sh' -exec chmod +x {} +
   fi
 
-  local shared_query_policy
+  local shared_query_policy shared_async_coalesce
   shared_query_policy="$repo_root/scripts/lib/script_filter_query_policy.sh"
+  shared_async_coalesce="$repo_root/scripts/lib/script_filter_async_coalesce.sh"
   if [[ -d "$stage_dir/scripts" && -f "$shared_query_policy" ]]; then
     mkdir -p "$stage_dir/scripts/lib"
     cp "$shared_query_policy" "$stage_dir/scripts/lib/script_filter_query_policy.sh"
     chmod +x "$stage_dir/scripts/lib/script_filter_query_policy.sh"
+  fi
+  if [[ -d "$stage_dir/scripts" && -f "$shared_async_coalesce" ]]; then
+    mkdir -p "$stage_dir/scripts/lib"
+    cp "$shared_async_coalesce" "$stage_dir/scripts/lib/script_filter_async_coalesce.sh"
+    chmod +x "$stage_dir/scripts/lib/script_filter_async_coalesce.sh"
   fi
 
   if [[ -d "$workflow_root/src/assets" ]]; then

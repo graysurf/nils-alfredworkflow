@@ -99,6 +99,19 @@
         <false/>
       </dict>
     </array>
+    <key>771DC53D-E670-447A-9983-1E513A55CA1E</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
   </dict>
   <key>createdby</key>
   <string>graysurf</string>
@@ -309,6 +322,35 @@
     <dict>
       <key>config</key>
       <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>771DC53D-E670-447A-9983-1E513A55CA1E</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
         <key>alfredfiltersresults</key>
         <false/>
         <key>alfredfiltersresultsmatchmode</key>
@@ -494,6 +536,13 @@
       <integer>230</integer>
       <key>ypos</key>
       <integer>180</integer>
+    </dict>
+    <key>771DC53D-E670-447A-9983-1E513A55CA1E</key>
+    <dict>
+      <key>xpos</key>
+      <integer>30</integer>
+      <key>ypos</key>
+      <integer>740</integer>
     </dict>
     <key>A9F12D4E-1D99-4D7B-A950-6E84A583A9C2</key>
     <dict>

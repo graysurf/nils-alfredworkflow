@@ -108,6 +108,9 @@ for variable in BRAVE_API_KEY BRAVE_MAX_RESULTS BRAVE_SAFESEARCH BRAVE_COUNTRY; 
 done
 
 tmp_dir="$(mktemp -d)"
+export ALFRED_WORKFLOW_CACHE="$tmp_dir/alfred-cache"
+export BRAVE_QUERY_CACHE_TTL_SECONDS=0
+export BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0
 artifact_id="$(toml_string "$manifest" id)"
 artifact_version="$(toml_string "$manifest" version)"
 artifact_name="$(toml_string "$manifest" name)"
@@ -238,7 +241,8 @@ assert_jq_json "$stdin_query_json" '.items[0].subtitle == "query=rustlang"' "scr
 quota_json="$({ BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-quota" "$workflow_dir/scripts/script_filter.sh" "rust"; })"
 assert_jq_json "$quota_json" '.items | type == "array" and length == 1' "quota fallback must output single item"
 assert_jq_json "$quota_json" '.items[0].valid == false' "quota fallback item must be invalid"
-assert_jq_json "$quota_json" '.items[0].title == "Brave API quota exceeded"' "quota error title mapping mismatch"
+assert_jq_json "$quota_json" '.items[0].title == "Brave API rate limited"' "rate-limit title mapping mismatch"
+assert_jq_json "$quota_json" '.items[0].subtitle | contains("Too many requests")' "rate-limit subtitle mapping mismatch"
 
 missing_key_json="$({ BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-missing-key" "$workflow_dir/scripts/script_filter.sh" "rust"; })"
 assert_jq_json "$missing_key_json" '.items[0].title == "Brave API key is missing"' "missing key title mapping mismatch"
@@ -259,6 +263,31 @@ short_query_json="$({ BRAVE_STUB_LOG="$short_query_log" BRAVE_CLI_BIN="$tmp_dir/
 assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"' "short query guidance title mismatch"
 assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke brave-cli backend"
+
+cache_probe_log="$tmp_dir/brave-cache-probe.log"
+cache_probe_first="$({ BRAVE_STUB_LOG="$cache_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=30 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "cache-hit"; })"
+assert_jq_json "$cache_probe_first" '.items[0].subtitle == "query=cache-hit"' "cache probe first response mismatch"
+
+cache_probe_second="$({ BRAVE_STUB_LOG="$cache_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=30 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "cache-hit"; })"
+assert_jq_json "$cache_probe_second" '.items[0].subtitle == "query=cache-hit"' "cache probe second response mismatch"
+[[ "$(wc -l <"$cache_probe_log")" -eq 1 ]] || fail "same-query cache should avoid duplicate brave-cli invocation"
+
+coalesce_probe_log="$tmp_dir/brave-coalesce-probe.log"
+coalesce_first_out="$tmp_dir/coalesce-first.json"
+BRAVE_STUB_LOG="$coalesce_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=1 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" \
+  "$workflow_dir/scripts/script_filter.sh" "mayda" >"$coalesce_first_out" &
+coalesce_pid=$!
+sleep 0.1
+coalesce_result="$({ BRAVE_STUB_LOG="$coalesce_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=1 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "mayday"; })"
+wait "$coalesce_pid"
+
+coalesce_pending_a="$(cat "$coalesce_first_out")"
+assert_jq_json "$coalesce_pending_a" '.items[0].title == "Searching Google..."' "coalesce first pending title mismatch"
+assert_jq_json "$coalesce_pending_a" '.items[0].valid == false' "coalesce first pending item must be invalid"
+assert_jq_json "$coalesce_result" '.items[0].title == "stub-result"' "coalesce final result title mismatch"
+assert_jq_json "$coalesce_result" '.items[0].subtitle == "query=mayday"' "coalesce final result query mismatch"
+[[ "$(grep -c -- '--query mayda --mode' "$coalesce_probe_log" || true)" -eq 0 ]] || fail "coalesce should avoid mayda backend invocation"
+[[ "$(grep -c -- '--query mayday' "$coalesce_probe_log" || true)" -eq 1 ]] || fail "coalesce should invoke mayday exactly once"
 
 make_layout_cli() {
   local target="$1"
@@ -284,6 +313,7 @@ run_layout_check() {
   chmod +x "$copied_script"
   mkdir -p "$layout/workflows/google-search/scripts/lib"
   cp "$repo_root/scripts/lib/script_filter_query_policy.sh" "$layout/workflows/google-search/scripts/lib/script_filter_query_policy.sh"
+  cp "$repo_root/scripts/lib/script_filter_async_coalesce.sh" "$layout/workflows/google-search/scripts/lib/script_filter_async_coalesce.sh"
 
   case "$mode" in
   packaged)
@@ -301,7 +331,7 @@ run_layout_check() {
   esac
 
   local output
-  output="$($copied_script "demo")"
+  output="$(BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_QUERY_CACHE_TTL_SECONDS=0 "$copied_script" "demo")"
   assert_jq_json "$output" ".items[0].title == \"$marker\"" "script_filter failed to resolve $mode brave-cli path"
 }
 
@@ -341,6 +371,7 @@ assert_file "$packaged_dir/icon.png"
 assert_file "$packaged_dir/assets/icon.png"
 assert_file "$packaged_dir/bin/brave-cli"
 assert_file "$packaged_dir/scripts/lib/script_filter_query_policy.sh"
+assert_file "$packaged_dir/scripts/lib/script_filter_async_coalesce.sh"
 
 if command -v plutil >/dev/null 2>&1; then
   plutil -lint "$packaged_plist" >/dev/null || fail "packaged plist lint failed"
