@@ -34,6 +34,12 @@ CLI backend for market data (`fx`, `crypto`) and market-expression workflow supp
 - JSON service envelope (`schema_version/command/ok`): not yet migrated.
 - Default human-readable mode: partially migrated (still JSON-first for `fx/crypto`).
 
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+- [`docs/workflow-contract.md`](docs/workflow-contract.md)
+- [`docs/expression-rules.md`](docs/expression-rules.md)
+
 ## Validation
 
 - `cargo run -p nils-market-cli -- --help`

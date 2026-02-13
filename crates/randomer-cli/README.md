@@ -26,6 +26,10 @@ CLI backend for the `randomer` workflow.
 - JSON service envelope (`schema_version/command/ok`): not yet migrated.
 - Default human-readable mode: not yet migrated (legacy JSON-first workflow contract).
 
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+
 ## Validation
 
 - `cargo run -p nils-randomer-cli -- --help`

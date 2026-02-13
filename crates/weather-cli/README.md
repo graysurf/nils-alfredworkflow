@@ -36,6 +36,11 @@ CLI backend for one-day and seven-day weather forecast retrieval.
 - Human-readable default + explicit JSON mode: compliant.
 - JSON service envelope (`schema_version/command/ok`): not yet migrated.
 
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+- [`docs/workflow-contract.md`](docs/workflow-contract.md)
+
 ## Validation
 
 - `cargo run -p nils-weather-cli -- --help`

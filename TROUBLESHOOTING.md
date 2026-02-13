@@ -203,7 +203,7 @@ Use this when API failures are sustained or workflow usability drops sharply.
    - `workflows/youtube-search/`
    - `crates/youtube-cli/`
    - workspace member changes in `Cargo.toml`
-   - docs updates tied to rollout (`docs/youtube-search-contract.md` and rollout references)
+   - docs updates tied to rollout (`crates/youtube-cli/docs/workflow-contract.md` and rollout references)
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`
@@ -271,7 +271,7 @@ Use this when Brave API failures are sustained or workflow usability drops sharp
    - `workflows/google-search/`
    - `crates/brave-cli/`
    - workspace member changes in `Cargo.toml`
-   - docs updates tied to rollout (`docs/google-search-contract.md` and rollout references)
+   - docs updates tied to rollout (`crates/brave-cli/docs/workflow-contract.md` and rollout references)
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`
@@ -336,7 +336,7 @@ Use this when Wikipedia API failures are sustained or workflow usability drops s
    - `workflows/wiki-search/`
    - `crates/wiki-cli/`
    - workspace member changes in `Cargo.toml`
-   - docs updates tied to rollout (`docs/wiki-search-contract.md` and workflow guides)
+   - docs updates tied to rollout (`crates/wiki-cli/docs/workflow-contract.md` and workflow guides)
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`
@@ -403,7 +403,7 @@ Use this when conversion output is incorrect or workflow is unstable.
    - `workflows/epoch-converter/`
    - `crates/epoch-cli/`
    - workspace member update in `Cargo.toml`
-   - related docs updates (`docs/epoch-converter-contract.md`, workflow guides)
+   - related docs updates (`crates/epoch-cli/docs/workflow-contract.md`, workflow guides)
 5. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`
@@ -463,7 +463,7 @@ Use this when timezone output is unstable or local fallback behavior regresses.
    - `workflows/multi-timezone/`
    - `crates/timezone-cli/`
    - workspace member changes in `Cargo.toml`
-   - docs updates tied to rollout (`docs/multi-timezone-contract.md`, `docs/WORKFLOW_GUIDE.md`, and troubleshooting references)
+   - docs updates tied to rollout (`crates/timezone-cli/docs/workflow-contract.md`, `docs/WORKFLOW_GUIDE.md`, and troubleshooting references)
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`
@@ -531,7 +531,7 @@ Use this when quote-feed rollout quality drops and temporary fallback is require
    - `workflows/quote-feed/`
    - `crates/quote-cli/`
    - workspace member changes in `Cargo.toml`
-   - docs updates tied to rollout (`docs/quote-workflow-contract.md`, troubleshooting, workflow guides)
+   - docs updates tied to rollout (`crates/quote-cli/docs/workflow-contract.md`, troubleshooting, workflow guides)
 4. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`
@@ -618,7 +618,7 @@ Use this when anti-bot/cookie/network volatility makes the workflow unstable.
 1. Stop rollout of new `cambridge-dict` artifacts.
 2. Revert Cambridge workflow changeset(s), including:
    - `workflows/cambridge-dict/`
-   - `docs/cambridge-dict-contract.md`
+   - `crates/cambridge-cli/docs/workflow-contract.md`
    - docs updates in `README.md`, `docs/WORKFLOW_GUIDE.md`, and `TROUBLESHOOTING.md`
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`

@@ -29,6 +29,11 @@ Configured via `workflow-common` runtime config:
 - Human-readable mode: partially compliant (non-script-filter commands already plain text).
 - JSON service envelope (`schema_version/command/ok`): not yet migrated for `script-filter`.
 
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+- [`Open Project Port Parity contract`](../../crates/workflow-cli/docs/README.md#canonical-documents)
+
 ## Validation
 
 - `cargo run -p nils-workflow-cli -- --help`
