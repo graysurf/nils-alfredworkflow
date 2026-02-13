@@ -65,8 +65,8 @@
 |       `-- scripts/
 |-- scripts/
 |   |-- lib/
-|   |   |-- common.sh                # Logging, argument parsing, env loading
-|   |   `-- alfred.sh                # Alfred JSON output helpers
+|   |   |-- script_filter_query_policy.sh   # Shared Script Filter query/short-query helpers
+|   |   `-- script_filter_async_coalesce.sh # Shared Script Filter async coalesce/cache helpers
 |   |-- workflow-pack.sh             # Wrapper to package one/all workflows
 |   |-- workflow-install.sh          # Install built workflow via `open`
 |   |-- workflow-lint.sh             # shellcheck, shfmt, plist lint, manifest lint

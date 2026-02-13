@@ -77,10 +77,47 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
 - Keep queue behavior synchronized with repository policy tooling.
 - Validation command:
   - `bash scripts/workflow-sync-script-filter-policy.sh --check --workflows <workflow-id>`
+- Remediation command:
+  - `bash scripts/workflow-sync-script-filter-policy.sh --apply --workflows <workflow-id>`
+
+### Shared Script Filter helper libraries (`scripts/lib`)
+
+- Shared Script Filter runtime helpers are:
+  - `scripts/lib/script_filter_query_policy.sh` (`sfqp_*`)
+  - `scripts/lib/script_filter_async_coalesce.sh` (`sfac_*`)
+- `scripts/workflow-pack.sh` must stage both helper files into packaged workflows at `scripts/lib/`.
+- Script Filter adapters should resolve packaged helper first, then local-repo fallback for development/tests.
+- If a required helper file cannot be resolved at runtime, emit a non-crashing Alfred error item (`valid=false`) and exit successfully (`exit 0`).
+
+### `sfqp_*` query policy usage standard
+
+- Normalize input via `sfqp_resolve_query_input` and `sfqp_trim` before validation/backend calls.
+- Enforce short-query guardrails with `sfqp_is_short_query` and return operator guidance via `sfqp_emit_short_query_item_json`.
+- Keep JSON error rows newline-safe and non-actionable through helper emitters.
+
+### `sfac_*` async coalesce usage standard
+
+- Initialize workflow-scoped context before cache/coalesce operations:
+  - `sfac_init_context "<workflow-id>" "<fallback-cache-dir>"`
+- Resolve tunables with helper validators (avoid inline parsing):
+  - cache TTL: `sfac_resolve_positive_int_env "<PREFIX>_QUERY_CACHE_TTL_SECONDS" "10"`
+  - settle window: `sfac_resolve_non_negative_number_env "<PREFIX>_QUERY_COALESCE_SETTLE_SECONDS" "2"`
+  - rerun interval: `sfac_resolve_non_negative_number_env "<PREFIX>_QUERY_COALESCE_RERUN_SECONDS" "0.4"`
+- Async flow contract:
+  1. Try `sfac_load_cache_result`.
+  2. If query is not final yet, return pending row via `sfac_emit_pending_item_json` with `rerun`.
+  3. On backend completion, write cache via `sfac_store_cache_result` for both success (`ok`) and error (`err`) paths.
+
+### Workflow package/install command standard (macOS)
+
+- Use `scripts/workflow-pack-install.sh --id <workflow-id>` as the canonical operator command when you need to rebuild and install the latest artifact.
+- For repeated local debug loops, set `WORKFLOW_PACK_ID=<workflow-id>` (for example in `.env`) and run `scripts/workflow-pack-install.sh`.
+- Use `scripts/workflow-install.sh <workflow-id>` only when re-installing an already-built artifact from `dist/` without rebuilding.
+- `scripts/workflow-pack.sh --id <workflow-id> --install` remains the low-level primitive; troubleshooting docs should prefer the wrapper above for consistency.
 
 ### Installed-workflow debug checklist
 
-1. Confirm the latest package was installed (`scripts/workflow-pack.sh --id <workflow-id> --install`).
+1. Confirm the latest package was installed (`scripts/workflow-pack-install.sh --id <workflow-id>`).
 2. Locate installed workflow directory by bundle id in Alfred preferences.
 3. Inspect installed `info.plist` node runtime wiring (`type`, `scriptfile`, `connections`).
 4. Execute installed scripts directly from workflow directory to isolate Alfred UI factors.
