@@ -11,6 +11,8 @@ Search YouTube videos from Alfred and open selected videos in your browser.
 - Trigger YouTube search with `yt <query>`.
 - Show video title and description in Alfred results.
 - Open selected YouTube watch URL in your default browser with `Enter`.
+- Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
+- Script Filter queue policy: 1 second delay with initial immediate run disabled.
 - Map common failures (missing API key, quota exceeded, API unavailable, invalid config) to actionable Alfred messages.
 - Tune result count and region targeting through workflow variables.
 

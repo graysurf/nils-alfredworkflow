@@ -18,7 +18,12 @@ and truncation, error-to-feedback mapping, and environment variable constraints.
   - Return one non-actionable Alfred item with:
     - `title = "Enter a search query"`
     - `subtitle = "Type keywords after wk to search Wikipedia."`
-- Non-empty query behavior:
+- Short query behavior (`< 2` characters after trim):
+  - Do not call MediaWiki API.
+  - Return one non-actionable Alfred item with:
+    - `title = "Keep typing (2+ chars)"`
+    - `subtitle = "Type at least 2 characters before searching Wikipedia."`
+- Query behavior (`>= 2` characters after trim):
   - Call MediaWiki Action API `https://{language}.wikipedia.org/w/api.php` with:
     - `action=query`
     - `list=search`
@@ -84,6 +89,7 @@ The workflow must never crash or emit non-JSON output for handled failures.
 | Scenario | Detection signal | Alfred title | Alfred subtitle | Item behavior |
 | --- | --- | --- | --- | --- |
 | Empty query | Query is empty after trim | `Enter a search query` | `Type keywords after wk to search Wikipedia.` | `valid: false` |
+| Short query | Query length is `1` after trim | `Keep typing (2+ chars)` | `Type at least 2 characters before searching Wikipedia.` | `valid: false` |
 | Invalid config | `WIKI_LANGUAGE` fails validation or `WIKI_MAX_RESULTS` cannot be parsed as base-10 integer | `Invalid Wiki workflow config` | `Check WIKI_LANGUAGE and WIKI_MAX_RESULTS, then retry.` | `valid: false` |
 | No results | API succeeds but returns zero search items | `No articles found` | `Try broader keywords or switch WIKI_LANGUAGE.` | `valid: false` |
 | API unavailable | DNS/TLS/timeout/network failure, upstream `5xx`, or malformed API response | `Wikipedia API unavailable` | `Cannot reach Wikipedia now. Check network and retry.` | `valid: false` |

@@ -18,7 +18,12 @@ error-to-feedback mapping, and environment variable constraints.
   - Return one non-actionable Alfred item with:
     - `title = "Enter a search query"`
     - `subtitle = "Type keywords after yt to search YouTube."`
-- Non-empty query behavior:
+- Short query behavior (`< 2` characters after trim):
+  - Do not call YouTube API.
+  - Return one non-actionable Alfred item with:
+    - `title = "Keep typing (2+ chars)"`
+    - `subtitle = "Type at least 2 characters before searching YouTube."`
+- Query behavior (`>= 2` characters after trim):
   - Call YouTube Data API v3 `search.list` with `part=snippet` and `type=video`.
 
 ## Alfred Item JSON Contract
@@ -73,6 +78,8 @@ The workflow must never crash or emit non-JSON output for handled failures.
 
 | Scenario | Detection signal | Alfred title | Alfred subtitle | Item behavior |
 | --- | --- | --- | --- | --- |
+| Empty query | Query is empty after trim | `Enter a search query` | `Type keywords after yt to search YouTube.` | `valid: false` |
+| Short query | Query length is `1` after trim | `Keep typing (2+ chars)` | `Type at least 2 characters before searching YouTube.` | `valid: false` |
 | Missing API key | `YOUTUBE_API_KEY` missing or empty | `YouTube API key is missing` | `Set YOUTUBE_API_KEY in workflow configuration and retry.` | `valid: false` |
 | Quota exceeded | API error reason includes `quotaExceeded` or `dailyLimitExceeded` | `YouTube quota exceeded` | `Daily quota is exhausted. Retry later or lower YOUTUBE_MAX_RESULTS.` | `valid: false` |
 | API unavailable | DNS/TLS/timeout/network failure or upstream `5xx` | `YouTube API unavailable` | `Cannot reach YouTube API now. Check network and retry.` | `valid: false` |

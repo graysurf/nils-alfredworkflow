@@ -18,7 +18,12 @@ error-to-feedback mapping, and environment variable constraints.
   - Return one non-actionable Alfred item with:
     - `title = "Enter a search query"`
     - `subtitle = "Type keywords after gg to search Google."`
-- Non-empty query behavior:
+- Short query behavior (`< 2` characters after trim):
+  - Do not call Brave Search API.
+  - Return one non-actionable Alfred item with:
+    - `title = "Keep typing (2+ chars)"`
+    - `subtitle = "Type at least 2 characters before searching Google."`
+- Query behavior (`>= 2` characters after trim):
   - Call Brave backend (`brave-cli search --query <query>`) to fetch web results.
 
 ## Alfred Item JSON Contract
@@ -73,6 +78,7 @@ The workflow must never crash or emit non-JSON output for handled failures.
 | Scenario | Detection signal | Alfred title | Alfred subtitle | Item behavior |
 | --- | --- | --- | --- | --- |
 | Empty query | Query is empty after trim | `Enter a search query` | `Type keywords after gg to search Google.` | `valid: false` |
+| Short query | Query length is `1` after trim | `Keep typing (2+ chars)` | `Type at least 2 characters before searching Google.` | `valid: false` |
 | Missing API key | `BRAVE_API_KEY` missing or empty | `Brave API key is missing` | `Set BRAVE_API_KEY in workflow configuration and retry.` | `valid: false` |
 | Quota/rate limited | Error includes quota/rate-limit/HTTP 429 signals | `Brave API quota exceeded` | `Rate quota is exhausted. Retry later or lower BRAVE_MAX_RESULTS.` | `valid: false` |
 | API unavailable | Transport/network/TLS/DNS failures or upstream `5xx` | `Brave API unavailable` | `Cannot reach Brave API now. Check network and retry.` | `valid: false` |

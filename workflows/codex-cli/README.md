@@ -22,6 +22,11 @@ This workflow currently supports:
   - `--all --json` (parsed in Alfred)
   - `--all --async --jobs 4`
 
+Input policy:
+
+- All `cx*` Script Filters use a 1 second queue delay and disable immediate first-character execution.
+- `cxac` and `diag` branches gate short partial queries (`<2` chars) with `Keep typing (2+ chars)` and skip expensive refresh/current calls.
+
 Diag result behavior:
 
 - `cxau` / `cxd` / `cxda` auto-refresh diag cache by TTL before rendering cache-based rows.

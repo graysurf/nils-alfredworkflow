@@ -157,12 +157,15 @@ Use this when open-project behavior regresses and a fast fallback is required.
    - `YOUTUBE_REGION_CODE` (optional)
 3. Confirm script-filter contract output is JSON:
    - `bash workflows/youtube-search/scripts/script_filter.sh "rust tutorial" | jq -e '.items | type == "array"'`
+4. Confirm queue policy is synced:
+   - `bash scripts/workflow-sync-script-filter-policy.sh --check --workflows youtube-search`
 
 ### Common failures and actions
 
 | Symptom in Alfred | Likely cause | Action |
 | --- | --- | --- |
 | `YouTube API key is missing` | `YOUTUBE_API_KEY` is empty/missing. | Set a valid key in workflow config, then retry. |
+| `Keep typing (2+ chars)` | Query is shorter than minimum length (`<2`). | Continue typing until at least 2 characters; no API request is sent before that. |
 | `YouTube quota exceeded` | Daily quota exhausted (`quotaExceeded`, `dailyLimitExceeded`). | Wait for quota reset, reduce query frequency, and lower `YOUTUBE_MAX_RESULTS`. |
 | `YouTube API unavailable` | Network issue, DNS/TLS issue, timeout, or upstream `5xx`. | Check local network/DNS, retry later, and verify YouTube API status. |
 | `No videos found` | Query is too narrow or region filter excludes results. | Use broader keywords or clear/change `YOUTUBE_REGION_CODE`. |
@@ -225,12 +228,15 @@ Use this when API failures are sustained or workflow usability drops sharply.
    - `BRAVE_COUNTRY` (optional)
 3. Confirm script-filter contract output is JSON:
    - `bash workflows/google-search/scripts/script_filter.sh "rust language" | jq -e '.items | type == "array"'`
+4. Confirm queue policy is synced:
+   - `bash scripts/workflow-sync-script-filter-policy.sh --check --workflows google-search`
 
 ### Common failures and actions
 
 | Symptom in Alfred | Likely cause | Action |
 | --- | --- | --- |
 | `Brave API key is missing` | `BRAVE_API_KEY` is empty/missing. | Set a valid token in workflow config, then retry. |
+| `Keep typing (2+ chars)` | Query is shorter than minimum length (`<2`). | Continue typing until at least 2 characters; no API request is sent before that. |
 | `Brave API quota exceeded` | Rate limit/quota exhausted (`429`/quota errors). | Wait and retry later, reduce query frequency, and lower `BRAVE_MAX_RESULTS`. |
 | `Brave API unavailable` | Network/DNS/TLS issue, timeout, or upstream `5xx`. | Check local network/DNS, retry later, and verify Brave API status. |
 | `No results found` | Query is too narrow or country/safesearch filters are restrictive. | Use broader keywords or adjust `BRAVE_COUNTRY`/`BRAVE_SAFESEARCH`. |
@@ -291,12 +297,15 @@ Use this when Brave API failures are sustained or workflow usability drops sharp
    - `WIKI_MAX_RESULTS` (optional, default `10`)
 3. Confirm script-filter contract output is JSON:
    - `bash workflows/wiki-search/scripts/script_filter.sh "rust language" | jq -e '.items | type == "array"'`
+4. Confirm queue policy is synced:
+   - `bash scripts/workflow-sync-script-filter-policy.sh --check --workflows wiki-search`
 
 ### Common failures and actions
 
 | Symptom in Alfred | Likely cause | Action |
 | --- | --- | --- |
 | `Invalid Wiki workflow config` | `WIKI_LANGUAGE` format invalid or `WIKI_MAX_RESULTS` is not a base-10 integer. | Fix variable values and retry (`WIKI_LANGUAGE` lowercase letters `2..12`, `WIKI_MAX_RESULTS` integer). |
+| `Keep typing (2+ chars)` | Query is shorter than minimum length (`<2`). | Continue typing until at least 2 characters; no API request is sent before that. |
 | `Wikipedia API unavailable` | Network/DNS/TLS issue, timeout, malformed upstream response, or upstream `5xx`. | Check local network/DNS, retry later, and verify Wikipedia status. |
 | `No articles found` | Query is too narrow or selected language has no matching articles. | Use broader keywords or switch `WIKI_LANGUAGE`. |
 | `"wiki-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `wiki-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run quarantine cleanup command below, then retry Alfred query. |

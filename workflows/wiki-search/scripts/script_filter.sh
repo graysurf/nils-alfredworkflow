@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+resolve_query_policy_helper() {
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  local candidates=(
+    "$script_dir/lib/script_filter_query_policy.sh"
+    "$script_dir/../../../scripts/lib/script_filter_query_policy.sh"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 json_escape() {
   local value="${1-}"
   value="${value//\\/\\\\}"
@@ -109,19 +128,27 @@ resolve_wiki_cli() {
   return 1
 }
 
-query="${1:-}"
-if [[ -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
-  query="${alfred_workflow_query}"
-elif [[ -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
-  query="${ALFRED_WORKFLOW_QUERY}"
-elif [[ -z "$query" && ! -t 0 ]]; then
-  stdin_query="$(cat)"
-  query="$stdin_query"
+query_policy_helper="$(resolve_query_policy_helper || true)"
+if [[ -z "$query_policy_helper" ]]; then
+  emit_error_item "Workflow helper missing" "Cannot locate script_filter_query_policy.sh runtime helper."
+  exit 0
 fi
+# shellcheck disable=SC1090
+source "$query_policy_helper"
 
-trimmed_query="$(printf '%s' "$query" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+query="$(sfqp_resolve_query_input "${1:-}")"
+trimmed_query="$(sfqp_trim "$query")"
+
 if [[ -z "$trimmed_query" ]]; then
   emit_error_item "Enter a search query" "Type keywords after wk to search Wikipedia."
+  exit 0
+fi
+
+if sfqp_is_short_query "$trimmed_query" 2; then
+  sfqp_emit_short_query_item_json \
+    2 \
+    "Keep typing (2+ chars)" \
+    "Type at least %s characters before searching Wikipedia."
   exit 0
 fi
 

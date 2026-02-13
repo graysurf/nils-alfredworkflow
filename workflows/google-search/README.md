@@ -11,6 +11,8 @@ Search web results from Alfred using Brave Search API and open selected links in
 - Trigger web search with `gg <query>`.
 - Show result title and snippet directly in Alfred.
 - Open selected URL in your default browser with `Enter`.
+- Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
+- Script Filter queue policy: 1 second delay with initial immediate run disabled.
 - Map common failures (missing API key, quota/rate limit, API unavailable, invalid config) to actionable Alfred messages.
 - Tune result count, safe search mode, and country bias through workflow variables.
 

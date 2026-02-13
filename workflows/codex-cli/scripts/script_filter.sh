@@ -14,6 +14,50 @@ codex_cli_pinned_version="${CODEX_CLI_PINNED_VERSION}"
 # shellcheck disable=SC2153
 codex_cli_pinned_crate="${CODEX_CLI_PINNED_CRATE}"
 
+resolve_query_policy_helper() {
+  local candidates=(
+    "$workflow_script_dir/lib/script_filter_query_policy.sh"
+    "$workflow_script_dir/../../../scripts/lib/script_filter_query_policy.sh"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+query_policy_helper="$(resolve_query_policy_helper || true)"
+if [[ -n "$query_policy_helper" ]]; then
+  # shellcheck disable=SC1090
+  source "$query_policy_helper"
+fi
+
+if ! declare -F sfqp_trim >/dev/null 2>&1; then
+  sfqp_trim() {
+    local value="${1-}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+  }
+fi
+
+if ! declare -F sfqp_resolve_query_input >/dev/null 2>&1; then
+  sfqp_resolve_query_input() {
+    local query="${1-}"
+    if [[ -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
+      query="${alfred_workflow_query}"
+    elif [[ -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
+      query="${ALFRED_WORKFLOW_QUERY}"
+    elif [[ -z "$query" && ! -t 0 ]]; then
+      query="$(cat)"
+    fi
+    printf '%s' "$query"
+  }
+fi
+
 json_escape() {
   local value="${1-}"
   value="${value//\\/\\\\}"
@@ -24,10 +68,7 @@ json_escape() {
 }
 
 trim() {
-  local value="${1-}"
-  value="${value#"${value%%[![:space:]]*}"}"
-  value="${value%"${value##*[![:space:]]}"}"
-  printf '%s' "$value"
+  sfqp_trim "${1-}"
 }
 
 to_lower() {
@@ -2029,6 +2070,25 @@ emit_current_auth_hint_item() {
 
 handle_diag_query() {
   local lower_query="$1"
+  local diag_remainder
+  diag_remainder="$(printf '%s' "$lower_query" | sed -E 's/^[[:space:]]*diag([[:space:]]+|$)//I')"
+  diag_remainder="$(trim "$diag_remainder")"
+  if [[ -n "$diag_remainder" ]]; then
+    local diag_first_token
+    diag_first_token="${diag_remainder%%[[:space:]]*}"
+    local normalized_token="${diag_first_token#--}"
+    normalized_token="${normalized_token#-}"
+    if [[ "${#normalized_token}" -lt 2 ]]; then
+      emit_item \
+        "Keep typing (2+ chars)" \
+        "Type at least 2 characters to disambiguate diag options." \
+        "" \
+        false \
+        "diag "
+      return
+    fi
+  fi
+
   if [[ "$lower_query" == "diag result"* ]]; then
     local result_mode=""
     if [[ "$lower_query" == *"all-json"* || "$lower_query" == *"--all-json"* ]]; then
@@ -2166,7 +2226,7 @@ handle_diag_query() {
   emit_latest_diag_result_items_inline "$auto_refresh_mode"
 }
 
-query="${1:-}"
+query="$(sfqp_resolve_query_input "${1:-}")"
 trimmed_query="$(trim "$query")"
 lower_query_raw="$(to_lower "$trimmed_query")"
 
