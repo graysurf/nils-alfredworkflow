@@ -48,7 +48,7 @@ Existing workflows remain unchanged in this phase; only CLI and supporting docum
 
 ### Task 1.1: Define command contract and provider policy
 - **Location**:
-  - `docs/weather-cli-contract.md`
+  - `crates/weather-cli/docs/workflow-contract.md`
   - `docs/plans/weather-forecast-cli-plan.md`
 - **Description**: Document command grammar (`today`, `week`), required/optional flags, output schema fields, provider selection order, and cache freshness states.
 - **Dependencies**:
@@ -59,8 +59,8 @@ Existing workflows remain unchanged in this phase; only CLI and supporting docum
   - Output schema includes `period`, `location`, `timezone`, `forecast`, `source`, and `freshness`.
   - Contract states free/no-token requirement and provider order.
 - **Validation**:
-  - `test -f docs/weather-cli-contract.md`
-  - `rg -n "today|week|--city|--lat|--lon|source|freshness|Open-Meteo|MET Norway|no-token" docs/weather-cli-contract.md`
+  - `test -f crates/weather-cli/docs/workflow-contract.md`
+  - `rg -n "today|week|--city|--lat|--lon|source|freshness|Open-Meteo|MET Norway|no-token" crates/weather-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Add `weather-cli` crate and workspace membership
 - **Location**:
@@ -269,7 +269,7 @@ Existing workflows remain unchanged in this phase; only CLI and supporting docum
 
 ### Task 3.4: Document workflow adapter integration guide
 - **Location**:
-  - `docs/weather-cli-contract.md`
+  - `crates/weather-cli/docs/workflow-contract.md`
   - `README.md`
 - **Description**: Document how workflow script filters can call `weather-cli`, parse JSON, and render fallback/error rows without embedding provider logic in workflow shell scripts.
 - **Dependencies**:
@@ -280,7 +280,7 @@ Existing workflows remain unchanged in this phase; only CLI and supporting docum
   - Docs explain freshness/source semantics for UI rendering decisions.
   - Docs reiterate no-token provider policy and fallback behavior.
 - **Validation**:
-  - `rg -n "weather-cli|today|week|freshness|source|Open-Meteo|MET Norway|no token" README.md docs/weather-cli-contract.md`
+  - `rg -n "weather-cli|today|week|freshness|source|Open-Meteo|MET Norway|no token" README.md crates/weather-cli/docs/workflow-contract.md`
 
 ## Testing Strategy
 - Unit: Input validation, weather-code mapping, geocoding parsing, provider response parsing, and cache freshness logic.

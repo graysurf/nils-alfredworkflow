@@ -47,7 +47,7 @@ Implementation follows existing repository architecture: domain logic in Rust, t
 
 ### Task 1.1: Define Cambridge workflow behavior contract
 - **Location**:
-  - `docs/cambridge-dict-contract.md`
+  - `crates/cambridge-cli/docs/workflow-contract.md`
 - **Description**: Write functional contract for keyword behavior, two-stage query flow (`search` vs `def::WORD`), Alfred JSON schema, and error mapping.
 - **Dependencies**:
   - none
@@ -57,13 +57,13 @@ Implementation follows existing repository architecture: domain logic in Rust, t
   - Contract defines required Alfred item fields for success/empty/error states.
   - Contract includes query token grammar and examples.
 - **Validation**:
-  - `test -f docs/cambridge-dict-contract.md`
-  - `rg -n "^## (Keyword and Query Handling|Two-Stage Query Token Grammar|Alfred Item JSON Contract|Error Mapping|Environment Variables and Constraints)$" docs/cambridge-dict-contract.md`
-  - `rg -n "def::|CAMBRIDGE_DICT_MODE|english-chinese-traditional|english" docs/cambridge-dict-contract.md`
+  - `test -f crates/cambridge-cli/docs/workflow-contract.md`
+  - `rg -n "^## (Keyword and Query Handling|Two-Stage Query Token Grammar|Alfred Item JSON Contract|Error Mapping|Environment Variables and Constraints)$" crates/cambridge-cli/docs/workflow-contract.md`
+  - `rg -n "def::|CAMBRIDGE_DICT_MODE|english-chinese-traditional|english" crates/cambridge-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Define mode parameter and runtime env contract
 - **Location**:
-  - `docs/cambridge-dict-contract.md`
+  - `crates/cambridge-cli/docs/workflow-contract.md`
   - `workflows/cambridge-dict/workflow.toml`
   - `workflows/cambridge-dict/src/info.plist.template`
 - **Description**: Define environment variables and constraints: `CAMBRIDGE_DICT_MODE`, `CAMBRIDGE_MAX_RESULTS`, `CAMBRIDGE_TIMEOUT_MS`, `CAMBRIDGE_HEADLESS`.
@@ -74,8 +74,8 @@ Implementation follows existing repository architecture: domain logic in Rust, t
   - Allowed mode values and defaults are explicit and consistent across docs/manifest/plist.
   - Numeric bounds and fallback defaults are documented.
 - **Validation**:
-  - `rg -n "CAMBRIDGE_DICT_MODE|CAMBRIDGE_MAX_RESULTS|CAMBRIDGE_TIMEOUT_MS|CAMBRIDGE_HEADLESS" docs/cambridge-dict-contract.md workflows/cambridge-dict/workflow.toml workflows/cambridge-dict/src/info.plist.template`
-  - `rg -n "english-chinese-traditional|english" docs/cambridge-dict-contract.md workflows/cambridge-dict/workflow.toml`
+  - `rg -n "CAMBRIDGE_DICT_MODE|CAMBRIDGE_MAX_RESULTS|CAMBRIDGE_TIMEOUT_MS|CAMBRIDGE_HEADLESS" crates/cambridge-cli/docs/workflow-contract.md workflows/cambridge-dict/workflow.toml workflows/cambridge-dict/src/info.plist.template`
+  - `rg -n "english-chinese-traditional|english" crates/cambridge-cli/docs/workflow-contract.md workflows/cambridge-dict/workflow.toml`
 
 ### Task 1.3: Scaffold workflow folder and manifest
 - **Location**:
@@ -472,7 +472,7 @@ Implementation follows existing repository architecture: domain logic in Rust, t
   - `workflows/cambridge-dict/`
   - `crates/cambridge-cli/`
   - workspace member update in `Cargo.toml`
-  - docs updates in `README.md`, `docs/WORKFLOW_GUIDE.md`, `TROUBLESHOOTING.md`, and `docs/cambridge-dict-contract.md`
+  - docs updates in `README.md`, `docs/WORKFLOW_GUIDE.md`, `TROUBLESHOOTING.md`, and `crates/cambridge-cli/docs/workflow-contract.md`
 - Step 3: Re-run quality gates after rollback:
   - `scripts/workflow-lint.sh`
   - `scripts/workflow-test.sh`

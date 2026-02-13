@@ -57,7 +57,7 @@ The design keeps local-first UX: results are served from local cache immediately
 
 ### Task 1.1: Write quote workflow contract and parameter spec
 - **Location**:
-  - `docs/quote-workflow-contract.md`
+  - `crates/quote-cli/docs/workflow-contract.md`
 - **Description**: Document v1 behavior, quote item schema, cache/refresh lifecycle, and the four parameter defaults and constraints.
 - **Dependencies**:
   - none
@@ -67,9 +67,9 @@ The design keeps local-first UX: results are served from local cache immediately
   - Contract explicitly defines defaults `3`, `1h`, `5`, and `100`.
   - Contract defines validation/clamp rules for invalid values.
 - **Validation**:
-  - `test -f docs/quote-workflow-contract.md`
-  - `rg -n "QUOTE_DISPLAY_COUNT|QUOTE_REFRESH_INTERVAL|QUOTE_FETCH_COUNT|QUOTE_MAX_ENTRIES" docs/quote-workflow-contract.md`
-  - `rg -n "QUOTE_DISPLAY_COUNT.*3|QUOTE_REFRESH_INTERVAL.*1h|QUOTE_FETCH_COUNT.*5|QUOTE_MAX_ENTRIES.*100" docs/quote-workflow-contract.md`
+  - `test -f crates/quote-cli/docs/workflow-contract.md`
+  - `rg -n "QUOTE_DISPLAY_COUNT|QUOTE_REFRESH_INTERVAL|QUOTE_FETCH_COUNT|QUOTE_MAX_ENTRIES" crates/quote-cli/docs/workflow-contract.md`
+  - `rg -n "QUOTE_DISPLAY_COUNT.*3|QUOTE_REFRESH_INTERVAL.*1h|QUOTE_FETCH_COUNT.*5|QUOTE_MAX_ENTRIES.*100" crates/quote-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold workflow directory for `quote-feed`
 - **Location**:
@@ -113,7 +113,7 @@ The design keeps local-first UX: results are served from local cache immediately
 - **Location**:
   - `workflows/quote-feed/workflow.toml`
   - `workflows/quote-feed/src/info.plist.template`
-  - `docs/quote-workflow-contract.md`
+  - `crates/quote-cli/docs/workflow-contract.md`
 - **Description**: Add Alfred user configuration variables for the four parameters and keep defaults/descriptions consistent across manifest, plist, and contract docs.
 - **Dependencies**:
   - Task 1.1
@@ -123,7 +123,7 @@ The design keeps local-first UX: results are served from local cache immediately
   - `userconfigurationconfig` exposes all four variables with correct defaults.
   - Defaults and descriptions are consistent in all three files.
 - **Validation**:
-  - `rg -n "QUOTE_DISPLAY_COUNT|QUOTE_REFRESH_INTERVAL|QUOTE_FETCH_COUNT|QUOTE_MAX_ENTRIES" workflows/quote-feed/workflow.toml workflows/quote-feed/src/info.plist.template docs/quote-workflow-contract.md`
+  - `rg -n "QUOTE_DISPLAY_COUNT|QUOTE_REFRESH_INTERVAL|QUOTE_FETCH_COUNT|QUOTE_MAX_ENTRIES" workflows/quote-feed/workflow.toml workflows/quote-feed/src/info.plist.template crates/quote-cli/docs/workflow-contract.md`
   - `plutil -convert json -o - workflows/quote-feed/src/info.plist.template | jq -e '(.userconfigurationconfig | map({key: .variable, value: .config.default}) | from_entries) == {"QUOTE_DISPLAY_COUNT":"3","QUOTE_REFRESH_INTERVAL":"1h","QUOTE_FETCH_COUNT":"5","QUOTE_MAX_ENTRIES":"100"}'`
 
 ## Sprint 2: Quote domain logic and refresh pipeline
@@ -364,7 +364,7 @@ The design keeps local-first UX: results are served from local cache immediately
 ### Task 4.3: Add troubleshooting and migration notes from `quote-init.zsh`
 - **Location**:
   - `TROUBLESHOOTING.md`
-  - `docs/quote-workflow-contract.md`
+  - `crates/quote-cli/docs/workflow-contract.md`
 - **Description**: Add troubleshooting notes for API timeout, malformed payloads, empty cache, and a migration note comparing legacy zsh behavior vs workflow behavior.
 - **Dependencies**:
   - Task 4.2
@@ -373,7 +373,7 @@ The design keeps local-first UX: results are served from local cache immediately
   - Troubleshooting includes symptom -> cause -> action mapping.
   - Migration section clarifies where quote data is stored before/after migration.
 - **Validation**:
-  - `rg -n "quote-feed|zenquotes|cache|migration|quote-init.zsh" TROUBLESHOOTING.md docs/quote-workflow-contract.md`
+  - `rg -n "quote-feed|zenquotes|cache|migration|quote-init.zsh" TROUBLESHOOTING.md crates/quote-cli/docs/workflow-contract.md`
 
 ### Task 4.4: Run end-to-end quality gates and release readiness checks
 - **Location**:

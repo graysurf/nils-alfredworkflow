@@ -43,7 +43,7 @@ The data source is YouTube Data API v3 using an API key provided through workflo
 
 ### Task 1.1: Define workflow behavior contract
 - **Location**:
-  - `docs/youtube-search-contract.md`
+  - `crates/youtube-cli/docs/workflow-contract.md`
 - **Description**: Write the functional contract for keyword behavior, query handling, result schema (`title`, `subtitle`, `arg` URL), truncation rules, and API/runtime error mapping to Alfred items.
 - **Dependencies**:
   - none
@@ -52,8 +52,8 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Contract includes happy path and failure path behaviors.
   - Contract explicitly defines expected JSON fields for each Alfred item state.
 - **Validation**:
-  - `test -f docs/youtube-search-contract.md`
-  - `rg -n "keyword|title|subtitle|arg|error|quota|API key" docs/youtube-search-contract.md`
+  - `test -f crates/youtube-cli/docs/workflow-contract.md`
+  - `rg -n "keyword|title|subtitle|arg|error|quota|API key" crates/youtube-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold new workflow folder and manifest
 - **Location**:
@@ -97,7 +97,7 @@ The data source is YouTube Data API v3 using an API key provided through workflo
 - **Location**:
   - `workflows/youtube-search/workflow.toml`
   - `workflows/youtube-search/src/info.plist.template`
-  - `docs/youtube-search-contract.md`
+  - `crates/youtube-cli/docs/workflow-contract.md`
 - **Description**: Define and document env variables: `YOUTUBE_API_KEY` (required), `YOUTUBE_MAX_RESULTS` (optional, default and max clamp), and `YOUTUBE_REGION_CODE` (optional).
 - **Dependencies**:
   - Task 1.1
@@ -106,7 +106,7 @@ The data source is YouTube Data API v3 using an API key provided through workflo
   - Env variable defaults and constraints are specified consistently across manifest/template/docs.
   - Required/optional status is explicit for operators.
 - **Validation**:
-  - `rg -n "YOUTUBE_API_KEY|YOUTUBE_MAX_RESULTS|YOUTUBE_REGION_CODE" workflows/youtube-search/workflow.toml workflows/youtube-search/src/info.plist.template docs/youtube-search-contract.md`
+  - `rg -n "YOUTUBE_API_KEY|YOUTUBE_MAX_RESULTS|YOUTUBE_REGION_CODE" workflows/youtube-search/workflow.toml workflows/youtube-search/src/info.plist.template crates/youtube-cli/docs/workflow-contract.md`
 
 ## Sprint 2: API and JSON pipeline
 **Goal**: Implement API client + CLI pipeline that returns Alfred JSON items for query input.

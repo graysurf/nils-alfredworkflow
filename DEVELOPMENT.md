@@ -43,7 +43,7 @@
 ### Documentation placement
 
 - Policy spec: `docs/specs/crate-docs-placement-policy.md`
-- Stub lifecycle decision (normative): root compatibility stubs are permanent redirects with no deprecation sunset; see `docs/specs/crate-docs-placement-policy.md` (`Root compatibility stub lifecycle decision`) and `docs/reports/crate-doc-migration-inventory.md` (`Stub lifecycle decision and current status`).
+- Legacy root doc lifecycle decision (normative): root compatibility stubs are not kept; migrate references to canonical crate docs, then remove the root legacy file. See `docs/specs/crate-docs-placement-policy.md` (`Legacy root doc lifecycle decision`) and `docs/reports/crate-doc-migration-inventory.md` (`Legacy root docs removal status`).
 - This section is normative for all contributors when adding a new crate or a new markdown file.
 - For every new publishable crate, you must add `crates/<crate-name>/README.md` and `crates/<crate-name>/docs/README.md` in the same change before adding crate-specific docs.
 - Crate-owned docs must live under `crates/<crate-name>/docs/`; do not place crate-owned docs under root `docs/`.

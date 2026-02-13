@@ -68,7 +68,7 @@ wiring, and regression-safe tests/docs updates.
 
 ### Task 1.2: Freeze search interaction contract (`mmq` + intent grammar)
 - **Location**:
-  - `docs/memo-workflow-contract.md`
+  - `crates/memo-workflow-cli/docs/workflow-contract.md`
   - `workflows/memo-add/README.md`
   - `docs/WORKFLOW_GUIDE.md`
 - **Description**: Define search behavior end-to-end: keyword, accepted query shape, empty-query behavior, result row semantics, and fallback/error behavior.
@@ -80,7 +80,7 @@ wiring, and regression-safe tests/docs updates.
   - Search empty-query behavior is explicitly documented (guidance row and no executable action).
   - Existing CRUD behavior documentation remains intact and unchanged where not related to search.
 - **Validation**:
-  - `rg -n "mmq|search QUERY_TEXT|search intent|empty-query|CRUD|copy|update|delete" docs/memo-workflow-contract.md workflows/memo-add/README.md docs/WORKFLOW_GUIDE.md`
+  - `rg -n "mmq|search QUERY_TEXT|search intent|empty-query|CRUD|copy|update|delete" crates/memo-workflow-cli/docs/workflow-contract.md workflows/memo-add/README.md docs/WORKFLOW_GUIDE.md`
 
 ### Task 1.3: Update runtime CLI docs for version and command surface
 - **Location**:
@@ -246,7 +246,7 @@ wiring, and regression-safe tests/docs updates.
 
 ### Task 4.2: Refresh memo docs and troubleshooting for search + version bump
 - **Location**:
-  - `docs/memo-workflow-contract.md`
+  - `crates/memo-workflow-cli/docs/workflow-contract.md`
   - `workflows/memo-add/README.md`
   - `docs/WORKFLOW_GUIDE.md`
   - `TROUBLESHOOTING.md`
@@ -260,8 +260,8 @@ wiring, and regression-safe tests/docs updates.
   - Search keyword/intent examples and failure cases are documented.
   - Operator checklist includes search validation command(s).
 - **Validation**:
-  - `rg -n "0\\.3\\.6|mmq|search" docs/memo-workflow-contract.md workflows/memo-add/README.md docs/WORKFLOW_GUIDE.md TROUBLESHOOTING.md crates/memo-workflow-cli/README.md`
-  - `! rg -n "0\\.3\\.5" docs/memo-workflow-contract.md workflows/memo-add/README.md docs/WORKFLOW_GUIDE.md TROUBLESHOOTING.md crates/memo-workflow-cli/README.md`
+  - `rg -n "0\\.3\\.6|mmq|search" crates/memo-workflow-cli/docs/workflow-contract.md workflows/memo-add/README.md docs/WORKFLOW_GUIDE.md TROUBLESHOOTING.md crates/memo-workflow-cli/README.md`
+  - `! rg -n "0\\.3\\.5" crates/memo-workflow-cli/docs/workflow-contract.md workflows/memo-add/README.md docs/WORKFLOW_GUIDE.md TROUBLESHOOTING.md crates/memo-workflow-cli/README.md`
 
 ### Task 4.3: Execute full quality gates and packaging checks
 - **Location**:

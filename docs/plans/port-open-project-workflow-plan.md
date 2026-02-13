@@ -35,17 +35,17 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
 
 ### Task 1.1: Write parity contract from reference workflow
 - **Location**:
-  - `docs/open-project-port-parity.md`
+  - `crates/workflow-cli/docs/open-project-port-parity.md`
 - **Description**: Document exact runtime semantics to preserve: env defaults (`PROJECT_DIRS`, `USAGE_FILE`, `VSCODE_PATH`), scanning depth, matching behavior, subtitle format, sort order, Alfred entrypoints (`c`, `code`, `github`), and Shift modifier routing.
 - **Dependencies**:
   - none
 - **Complexity**: 3
 - **Acceptance criteria**:
-  - `docs/open-project-port-parity.md` lists all parity-critical behaviors and maps each behavior to target files in this repo.
+  - `crates/workflow-cli/docs/open-project-port-parity.md` lists all parity-critical behaviors and maps each behavior to target files in this repo.
   - The contract explicitly separates required parity from optional improvements.
 - **Validation**:
-  - `test -f docs/open-project-port-parity.md`
-  - `rg -n "PROJECT_DIRS|USAGE_FILE|VSCODE_PATH|Shift|github|subtitle|sort" docs/open-project-port-parity.md`
+  - `test -f crates/workflow-cli/docs/open-project-port-parity.md`
+  - `rg -n "PROJECT_DIRS|USAGE_FILE|VSCODE_PATH|Shift|github|subtitle|sort" crates/workflow-cli/docs/open-project-port-parity.md`
 
 ### Task 1.2: Extend Alfred feedback model for parity features
 - **Location**:
@@ -211,7 +211,7 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - Task 3.3
 - **Complexity**: 7
 - **Acceptance criteria**:
-  - Each parity-sensitive rule from `docs/open-project-port-parity.md` has at least one direct unit test.
+  - Each parity-sensitive rule from `crates/workflow-cli/docs/open-project-port-parity.md` has at least one direct unit test.
   - Failing cases include helpful assertion messages for fast diagnosis.
 - **Validation**:
   - `cargo test -p nils-workflow-common`
@@ -235,7 +235,7 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
 - **Location**:
   - `README.md`
   - `docs/WORKFLOW_GUIDE.md`
-  - `docs/open-project-port-parity.md`
+  - `crates/workflow-cli/docs/open-project-port-parity.md`
 - **Description**: Document new command usage, env variable behavior, and expected parity boundaries so future changes can preserve intended behavior.
 - **Dependencies**:
   - Task 4.1
@@ -245,7 +245,7 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - Readme and workflow guide document how to validate and package ported workflow.
   - Parity document includes a final status checklist marked complete.
 - **Validation**:
-  - `rg -n "open-project|PROJECT_DIRS|USAGE_FILE|VSCODE_PATH|workflow-cli" README.md docs/WORKFLOW_GUIDE.md docs/open-project-port-parity.md`
+  - `rg -n "open-project|PROJECT_DIRS|USAGE_FILE|VSCODE_PATH|workflow-cli" README.md docs/WORKFLOW_GUIDE.md crates/workflow-cli/docs/open-project-port-parity.md`
   - `plan-tooling validate --file docs/plans/port-open-project-workflow-plan.md`
 
 ## Testing Strategy
@@ -272,4 +272,4 @@ Packaging and validation remain on the existing `xtask` and `scripts/workflow-*`
   - `crates/workflow-cli/src/main.rs`
   - `crates/alfred-core/src/lib.rs`
 - Rebuild and reinstall previous artifact using `scripts/workflow-pack.sh --id open-project --install`.
-- Keep `docs/open-project-port-parity.md` as postmortem input to address gaps before reattempting port.
+- Keep `crates/workflow-cli/docs/open-project-port-parity.md` as postmortem input to address gaps before reattempting port.

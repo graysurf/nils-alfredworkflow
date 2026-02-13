@@ -54,7 +54,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
 
 ### Task 1.1: Write memo workflow contract and parameter matrix
 - **Location**:
-  - `docs/memo-workflow-contract.md`
+  - `crates/memo-workflow-cli/docs/workflow-contract.md`
 - **Description**: Define v1 contract for `add`, `db init`, and latest-first query behavior, plus action-token schema, error mapping, exit-code policy, and parameter semantics.
 - **Dependencies**:
   - none
@@ -65,8 +65,8 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - Contract documents empty-query recent list ordering and includes delete/modify support assessment.
   - Parameter table includes defaults, allowed ranges, and failure handling.
 - **Validation**:
-  - `test -f docs/memo-workflow-contract.md`
-  - `rg -n "add|db init|list|delete|modify|action token|exit code|MEMO_DB_PATH|MEMO_SOURCE" docs/memo-workflow-contract.md`
+  - `test -f crates/memo-workflow-cli/docs/workflow-contract.md`
+  - `rg -n "add|db init|list|delete|modify|action token|exit code|MEMO_DB_PATH|MEMO_SOURCE" crates/memo-workflow-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold `memo-add` workflow directory
 - **Location**:
@@ -128,7 +128,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
 - **Location**:
   - `workflows/memo-add/workflow.toml`
   - `workflows/memo-add/src/info.plist.template`
-  - `docs/memo-workflow-contract.md`
+  - `crates/memo-workflow-cli/docs/workflow-contract.md`
 - **Description**: Define and align workflow variables: `MEMO_DB_PATH`, `MEMO_SOURCE`, `MEMO_REQUIRE_CONFIRM`, `MEMO_MAX_INPUT_BYTES`, `MEMO_RECENT_LIMIT`, and optional `MEMO_WORKFLOW_CLI_BIN`.
 - **Dependencies**:
   - Task 1.1
@@ -139,7 +139,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - Alfred `userconfigurationconfig` exposes all required variables.
   - Parameter defaults are pinned for v1: `MEMO_DB_PATH=""`, `MEMO_SOURCE="alfred"`, `MEMO_REQUIRE_CONFIRM="0"`, `MEMO_MAX_INPUT_BYTES="4096"`, `MEMO_RECENT_LIMIT="8"`, `MEMO_WORKFLOW_CLI_BIN=""`.
 - **Validation**:
-  - `rg -n "MEMO_DB_PATH|MEMO_SOURCE|MEMO_REQUIRE_CONFIRM|MEMO_MAX_INPUT_BYTES|MEMO_RECENT_LIMIT|MEMO_WORKFLOW_CLI_BIN" workflows/memo-add/workflow.toml workflows/memo-add/src/info.plist.template docs/memo-workflow-contract.md`
+  - `rg -n "MEMO_DB_PATH|MEMO_SOURCE|MEMO_REQUIRE_CONFIRM|MEMO_MAX_INPUT_BYTES|MEMO_RECENT_LIMIT|MEMO_WORKFLOW_CLI_BIN" workflows/memo-add/workflow.toml workflows/memo-add/src/info.plist.template crates/memo-workflow-cli/docs/workflow-contract.md`
   - `scripts/workflow-pack.sh --id memo-add`
   - `plutil -convert json -o - build/workflows/memo-add/pkg/info.plist | jq -e '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]'`
   - `plutil -convert json -o - build/workflows/memo-add/pkg/info.plist | jq -e '(.userconfigurationconfig | map({key: .variable, value: .config.default}) | from_entries) == {"MEMO_DB_PATH":"","MEMO_MAX_INPUT_BYTES":"4096","MEMO_RECENT_LIMIT":"8","MEMO_REQUIRE_CONFIRM":"0","MEMO_SOURCE":"alfred","MEMO_WORKFLOW_CLI_BIN":""}'`
@@ -380,7 +380,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - Workflow README includes quick-start and parameter table.
   - Root docs include memo-add entry, operator validation checklist, and latest-first query behavior.
 - **Validation**:
-  - `rg -n "memo-add|mm|MEMO_DB_PATH|MEMO_SOURCE|MEMO_RECENT_LIMIT|db init|add|recent|delete|modify" workflows/memo-add/README.md README.md docs/WORKFLOW_GUIDE.md TROUBLESHOOTING.md docs/memo-workflow-contract.md`
+  - `rg -n "memo-add|mm|MEMO_DB_PATH|MEMO_SOURCE|MEMO_RECENT_LIMIT|db init|add|recent|delete|modify" workflows/memo-add/README.md README.md docs/WORKFLOW_GUIDE.md TROUBLESHOOTING.md crates/memo-workflow-cli/docs/workflow-contract.md`
 
 ### Task 4.3: Execute final quality gates required by project policy
 - **Location**:
@@ -403,7 +403,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
 
 ### Task 4.4: Add rollout and rollback runbook notes
 - **Location**:
-  - `docs/memo-workflow-contract.md`
+  - `crates/memo-workflow-cli/docs/workflow-contract.md`
   - `docs/plans/memo-add-workflow-plan.md`
 - **Description**: Document release checklist, disable triggers, and rollback sequence for fast recovery when runtime/storage issues occur.
 - **Dependencies**:
@@ -413,7 +413,7 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - Rollout/rollback steps are explicit and executable.
   - Support notes include objective disable triggers and fallback behavior.
 - **Validation**:
-  - `rg -n "rollback|disable|fallback|memo-add" docs/memo-workflow-contract.md docs/plans/memo-add-workflow-plan.md`
+  - `rg -n "rollback|disable|fallback|memo-add" crates/memo-workflow-cli/docs/workflow-contract.md docs/plans/memo-add-workflow-plan.md`
 
 ## Testing Strategy
 - Unit:

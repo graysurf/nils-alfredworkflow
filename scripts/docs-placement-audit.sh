@@ -175,28 +175,6 @@ done
 echo
 echo "== Root docs placement =="
 
-legacy_root_stub_allowlist=(
-  "cambridge-dict-contract.md"
-  "epoch-converter-contract.md"
-  "google-search-contract.md"
-  "market-cli-contract.md"
-  "market-expression-rules.md"
-  "memo-workflow-contract.md"
-  "multi-timezone-contract.md"
-  "open-project-port-parity.md"
-  "quote-workflow-contract.md"
-  "randomer-contract.md"
-  "spotify-search-contract.md"
-  "weather-cli-contract.md"
-  "wiki-search-contract.md"
-  "youtube-search-contract.md"
-)
-
-declare -A legacy_root_stub_set=()
-for filename in "${legacy_root_stub_allowlist[@]}"; do
-  legacy_root_stub_set["$filename"]=1
-done
-
 mapfile -t root_doc_paths < <(find "$repo_root/docs" -mindepth 1 -maxdepth 1 -type f -name '*.md' | sort)
 crate_specific_root_detected=0
 
@@ -209,18 +187,7 @@ for root_doc_path in "${root_doc_paths[@]}"; do
   fi
 
   crate_specific_root_detected=1
-
-  if [[ -n "${legacy_root_stub_set[$filename]:-}" ]]; then
-    if rg -n 'Moved to' "$root_doc_path" >/dev/null &&
-      rg -n '`crates/[^`]+/docs/[^`]+`' "$root_doc_path" >/dev/null; then
-      repo_pass "legacy stub allowed: $rel_path"
-    else
-      repo_fail "legacy root doc must be a compatibility stub with canonical crate pointer: $rel_path"
-    fi
-    continue
-  fi
-
-  repo_fail "new crate-specific root docs file is not allowed: $rel_path (move under crates/<crate>/docs/)"
+  repo_fail "crate-specific root docs file is not allowed: $rel_path (move under crates/<crate>/docs/)"
 done
 
 if [[ $crate_specific_root_detected -eq 0 ]]; then

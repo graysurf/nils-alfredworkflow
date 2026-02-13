@@ -44,7 +44,7 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
 
 ### Task 1.1: Define wiki workflow behavior contract
 - **Location**:
-  - `docs/wiki-search-contract.md`
+  - `crates/wiki-cli/docs/workflow-contract.md`
 - **Description**: Write a functional contract for keyword behavior, query normalization, result schema (`title`, `subtitle`, `arg` URL), snippet cleanup/truncation rules, and failure mapping to Alfred items.
 - **Dependencies**:
   - none
@@ -54,9 +54,9 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Contract defines JSON fields required for success, empty, and error items.
   - Contract clarifies canonical URL strategy (`https://{language}.wikipedia.org/?curid={pageid}`).
 - **Validation**:
-  - `test -f docs/wiki-search-contract.md`
-  - `rg -n "^## (Keyword and Query Handling|Alfred Item JSON Contract|Snippet Normalization and Truncation|Error Mapping|Environment Variables and Constraints)$" docs/wiki-search-contract.md`
-  - `rg -n "WIKI_LANGUAGE|WIKI_MAX_RESULTS|curid|valid: false|No articles found" docs/wiki-search-contract.md`
+  - `test -f crates/wiki-cli/docs/workflow-contract.md`
+  - `rg -n "^## (Keyword and Query Handling|Alfred Item JSON Contract|Snippet Normalization and Truncation|Error Mapping|Environment Variables and Constraints)$" crates/wiki-cli/docs/workflow-contract.md`
+  - `rg -n "WIKI_LANGUAGE|WIKI_MAX_RESULTS|curid|valid: false|No articles found" crates/wiki-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold new workflow folder and manifest
 - **Location**:
@@ -100,7 +100,7 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
 - **Location**:
   - `workflows/wiki-search/workflow.toml`
   - `workflows/wiki-search/src/info.plist.template`
-  - `docs/wiki-search-contract.md`
+  - `crates/wiki-cli/docs/workflow-contract.md`
 - **Description**: Define and document `WIKI_LANGUAGE` (optional, default `en`) and `WIKI_MAX_RESULTS` (optional, default and clamp rules), with constraints shared across manifest/template/docs.
 - **Dependencies**:
   - Task 1.1
@@ -110,7 +110,7 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - Default values and constraints are consistent across manifest/template/docs.
   - Variable semantics are explicit for operators and testable in code.
 - **Validation**:
-  - `rg -n "WIKI_LANGUAGE|WIKI_MAX_RESULTS" workflows/wiki-search/workflow.toml workflows/wiki-search/src/info.plist.template docs/wiki-search-contract.md`
+  - `rg -n "WIKI_LANGUAGE|WIKI_MAX_RESULTS" workflows/wiki-search/workflow.toml workflows/wiki-search/src/info.plist.template crates/wiki-cli/docs/workflow-contract.md`
 
 ## Sprint 2: API and JSON pipeline
 **Goal**: Implement API client and CLI pipeline that returns Alfred JSON from query input.
@@ -422,7 +422,7 @@ The backend is MediaWiki Action API over public Wikipedia endpoints without API-
   - `workflows/wiki-search/`
   - `crates/wiki-cli/`
   - workspace member update in `Cargo.toml`
-  - related docs updates (`docs/wiki-search-contract.md`, workflow guide references)
+  - related docs updates (`crates/wiki-cli/docs/workflow-contract.md`, workflow guide references)
 - Step 3: Rebuild and run validation after rollback:
   - `scripts/workflow-lint.sh`
   - `scripts/workflow-test.sh`

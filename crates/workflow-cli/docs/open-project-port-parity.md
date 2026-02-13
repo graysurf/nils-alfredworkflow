@@ -34,7 +34,7 @@
 - Add extra workflow metadata fields not required by runtime behavior.
 
 ## Validation Checklist
-- [x] `docs/open-project-port-parity.md` exists and maps parity rules to repository files.
+- [x] `crates/workflow-cli/docs/open-project-port-parity.md` exists and maps parity rules to repository files.
 - [x] `PROJECT_DIRS`, `USAGE_FILE`, `VSCODE_PATH` defaults documented and implemented.
 - [x] Query filtering, subtitle formatting, and usage-based sort behavior covered by unit tests.
 - [x] `c`, `code`, `github` and Shift route represented in `info.plist.template`.

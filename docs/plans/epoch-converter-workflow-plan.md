@@ -47,7 +47,7 @@ Implementation emphasizes deterministic local execution without external API dep
 
 ### Task 1.1: Document source workflow behavior and delta requirements
 - **Location**:
-  - `docs/epoch-converter-contract.md`
+  - `crates/epoch-cli/docs/workflow-contract.md`
   - `docs/plans/epoch-converter-workflow-plan.md`
 - **Description**: Record baseline behavior from installed workflow `snooze92.epoch.converter` (input patterns, output item taxonomy, clipboard behavior, current timestamp items) and explicitly add the new formatted-date-row requirement.
 - **Dependencies**:
@@ -58,8 +58,8 @@ Implementation emphasizes deterministic local execution without external API dep
   - Contract explicitly states the additional formatted datetime row and exact format.
   - Contract defines deterministic behavior for invalid input and overflow edge cases.
 - **Validation**:
-  - `test -f docs/epoch-converter-contract.md`
-  - `rg -n "epoch->datetime|datetime->epoch|clipboard|formatted datetime row|invalid input" docs/epoch-converter-contract.md`
+  - `test -f crates/epoch-cli/docs/workflow-contract.md`
+  - `rg -n "epoch->datetime|datetime->epoch|clipboard|formatted datetime row|invalid input" crates/epoch-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold `epoch-converter` workflow structure
 - **Location**:
@@ -103,7 +103,7 @@ Implementation emphasizes deterministic local execution without external API dep
 
 ### Task 1.4: Define output schema and formatted-row contract
 - **Location**:
-  - `docs/epoch-converter-contract.md`
+  - `crates/epoch-cli/docs/workflow-contract.md`
   - `crates/epoch-cli/src/feedback.rs`
   - `workflows/epoch-converter/README.md`
 - **Description**: Define output item schema and labels so the extra formatted row is stable, discoverable, and copy-friendly.
@@ -115,7 +115,7 @@ Implementation emphasizes deterministic local execution without external API dep
   - Formatted row label and format string are fixed and tested.
   - README examples include one query showing the extra row.
 - **Validation**:
-  - `rg -n "formatted|YYYY-MM-DD HH:MM:SS|copy payload|output schema" docs/epoch-converter-contract.md workflows/epoch-converter/README.md`
+  - `rg -n "formatted|YYYY-MM-DD HH:MM:SS|copy payload|output schema" crates/epoch-cli/docs/workflow-contract.md workflows/epoch-converter/README.md`
 
 ## Sprint 2: Conversion engine and CLI behavior
 **Goal**: Build deterministic Rust conversion logic covering all supported input modes and output rows.
@@ -366,7 +366,7 @@ Implementation emphasizes deterministic local execution without external API dep
 
 ### Task 4.3: Migration and rollback operational notes
 - **Location**:
-  - `docs/epoch-converter-contract.md`
+  - `crates/epoch-cli/docs/workflow-contract.md`
   - `TROUBLESHOOTING.md`
 - **Description**: Document migration path from old installed workflow, keyword conflict handling, and explicit rollback steps to previous workflow package.
 - **Dependencies**:
@@ -377,7 +377,7 @@ Implementation emphasizes deterministic local execution without external API dep
   - Rollback can be executed in under 5 minutes with deterministic commands.
   - Troubleshooting includes known clipboard and timezone pitfalls.
 - **Validation**:
-  - `rg -n "rollback|bundle id|keyword conflict|timezone|clipboard" docs/epoch-converter-contract.md TROUBLESHOOTING.md`
+  - `rg -n "rollback|bundle id|keyword conflict|timezone|clipboard" crates/epoch-cli/docs/workflow-contract.md TROUBLESHOOTING.md`
 
 ## Testing Strategy
 - Unit: `epoch-cli` parser/converter/feedback tests lock input grammar, precision inference, timezone behavior, and formatted-row output.

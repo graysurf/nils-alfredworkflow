@@ -44,7 +44,7 @@ The data source is Brave Search API using credentials provided through workflow 
 
 ### Task 1.1: Define Google workflow behavior contract (Brave backend)
 - **Location**:
-  - `docs/google-search-contract.md`
+  - `crates/brave-cli/docs/workflow-contract.md`
 - **Description**: Write a functional contract for keyword behavior, query handling, result schema (`title`, `subtitle`, `arg` URL), snippet truncation rules, and error-to-feedback mapping.
 - **Dependencies**:
   - none
@@ -53,9 +53,9 @@ The data source is Brave Search API using credentials provided through workflow 
   - Contract includes happy path and major failure path behaviors.
   - Contract defines JSON fields required for success, empty, and error items.
 - **Validation**:
-  - `test -f docs/google-search-contract.md`
-  - `rg -n "^## (Keyword and Query Handling|Alfred Item JSON Contract|Error Mapping|Environment Variables and Constraints)$" docs/google-search-contract.md`
-  - `rg -n "title = \"Enter a search query\"|valid: false|BRAVE_API_KEY|BRAVE_COUNTRY|BRAVE_MAX_RESULTS|BRAVE_SAFESEARCH" docs/google-search-contract.md`
+  - `test -f crates/brave-cli/docs/workflow-contract.md`
+  - `rg -n "^## (Keyword and Query Handling|Alfred Item JSON Contract|Error Mapping|Environment Variables and Constraints)$" crates/brave-cli/docs/workflow-contract.md`
+  - `rg -n "title = \"Enter a search query\"|valid: false|BRAVE_API_KEY|BRAVE_COUNTRY|BRAVE_MAX_RESULTS|BRAVE_SAFESEARCH" crates/brave-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold new workflow folder and manifest
 - **Location**:
@@ -99,7 +99,7 @@ The data source is Brave Search API using credentials provided through workflow 
 - **Location**:
   - `workflows/google-search/workflow.toml`
   - `workflows/google-search/src/info.plist.template`
-  - `docs/google-search-contract.md`
+  - `crates/brave-cli/docs/workflow-contract.md`
 - **Description**: Define and document environment variables: `BRAVE_API_KEY` (required), `BRAVE_MAX_RESULTS` (optional, default and clamp), `BRAVE_SAFESEARCH` (optional safe-search mode), and `BRAVE_COUNTRY` (optional country bias).
 - **Dependencies**:
   - Task 1.1
@@ -108,7 +108,7 @@ The data source is Brave Search API using credentials provided through workflow 
   - Default values and constraints are consistent across manifest/template/docs.
   - Required vs optional variables are explicit and operator-friendly.
 - **Validation**:
-  - `rg -n "BRAVE_API_KEY|BRAVE_COUNTRY|BRAVE_MAX_RESULTS|BRAVE_SAFESEARCH" workflows/google-search/workflow.toml workflows/google-search/src/info.plist.template docs/google-search-contract.md`
+  - `rg -n "BRAVE_API_KEY|BRAVE_COUNTRY|BRAVE_MAX_RESULTS|BRAVE_SAFESEARCH" workflows/google-search/workflow.toml workflows/google-search/src/info.plist.template crates/brave-cli/docs/workflow-contract.md`
 
 ## Sprint 2: API and JSON pipeline
 **Goal**: Implement API client and CLI pipeline that returns Alfred JSON from query input.

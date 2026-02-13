@@ -4,7 +4,7 @@
 
 - Moved: crate-owned docs are now canonical under `crates/<crate>/docs/`.
 - Stayed at root: workspace-level docs remain under allowed categories (`docs/specs/`, `docs/plans/`, `docs/reports/`, and repo-wide guides).
-- Transitional state: some legacy root doc paths still exist as short compatibility stubs that only point to canonical crate-local docs.
+- Transitional state ended: legacy root crate-specific docs have been removed after reference migration.
 
 ### before/after path examples
 
@@ -19,7 +19,7 @@
 ## Enforcement changes
 
 - New crate-specific markdown under root `docs/` is disallowed by policy.
-- Root stubs are migration-only pointers; they must not duplicate full crate content.
+- Root compatibility stubs are not allowed.
 - Contributors must classify each new markdown file (`workspace-level` vs `crate-specific`) before placement.
 
 ## Contributor workflows (common)
@@ -31,7 +31,7 @@
    - Place only in allowed root categories (`docs/specs/`, `docs/plans/`, `docs/reports/`).
 3. Migrate a legacy root crate doc:
    - Move canonical content to `crates/<crate>/docs/...`.
-   - Keep only a minimal pointer stub at the old root path during transition.
+   - Update all references to the canonical path and remove the old root file.
 
 ## Mandatory pre-commit checks
 

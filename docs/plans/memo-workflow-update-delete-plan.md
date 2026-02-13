@@ -45,12 +45,12 @@ without cross-test contamination or dependence on user/local memo state.
 ## Sprint 1: Contract and interaction design
 **Goal**: Freeze user-visible mutation contract and define safe token/query grammar before code changes.
 **Demo/Validation**:
-- Command(s): `plan-tooling validate --file docs/plans/memo-workflow-update-delete-plan.md`, `rg -n "update|delete|db init|token" docs/memo-workflow-contract.md`
+- Command(s): `plan-tooling validate --file docs/plans/memo-workflow-update-delete-plan.md`, `rg -n "update|delete|db init|token" crates/memo-workflow-cli/docs/workflow-contract.md`
 - Verify: contract documents update/delete behavior, token schema, and failure mapping.
 
 ### Task 1.1: Update memo workflow contract for CRUD behavior
 - **Location**:
-  - `docs/memo-workflow-contract.md`
+  - `crates/memo-workflow-cli/docs/workflow-contract.md`
   - `docs/WORKFLOW_GUIDE.md`
   - `workflows/memo-add/README.md`
 - **Description**: Replace append-only limitation notes with explicit `add/update/delete` contract, including hard-delete semantics and usage examples.
@@ -62,13 +62,13 @@ without cross-test contamination or dependence on user/local memo state.
   - Action token contract includes token names and payload format for update/delete.
   - Delete behavior clearly states hard-delete and expected user error for invalid `item_id`.
 - **Validation**:
-  - `rg -n "Runtime commands|Action token contract|update|delete|hard-delete" docs/memo-workflow-contract.md`
+  - `rg -n "Runtime commands|Action token contract|update|delete|hard-delete" crates/memo-workflow-cli/docs/workflow-contract.md`
   - `rg -n "Memo Add workflow details|update|delete" docs/WORKFLOW_GUIDE.md workflows/memo-add/README.md`
 
 ### Task 1.2: Define query-intent grammar and token encoding strategy
 - **Location**:
   - `crates/memo-workflow-cli/src/lib.rs`
-  - `docs/memo-workflow-contract.md`
+  - `crates/memo-workflow-cli/docs/workflow-contract.md`
 - **Description**: Define deterministic grammar (`add` default, `update`/`delete` prefixed intents) and token encoding rules that avoid delimiter ambiguity for update text payloads.
 - **Dependencies**:
   - Task 1.1
@@ -220,7 +220,7 @@ without cross-test contamination or dependence on user/local memo state.
 
 ### Task 3.4: Document CRUD verification recipe for operators
 - **Location**:
-  - `docs/memo-workflow-contract.md`
+  - `crates/memo-workflow-cli/docs/workflow-contract.md`
   - `workflows/memo-add/README.md`
 - **Description**: Add copy-paste operator commands that create a new temp DB and verify create/update/delete semantics end-to-end.
 - **Dependencies**:
@@ -230,7 +230,7 @@ without cross-test contamination or dependence on user/local memo state.
   - README includes one explicit CRUD verification block with temporary DB setup.
   - Contract checklist includes add/update/delete validation commands.
 - **Validation**:
-  - `rg -n "mktemp|add|update|delete|MEMO_DB_PATH" workflows/memo-add/README.md docs/memo-workflow-contract.md`
+  - `rg -n "mktemp|add|update|delete|MEMO_DB_PATH" workflows/memo-add/README.md crates/memo-workflow-cli/docs/workflow-contract.md`
 
 ## Sprint 4: Integration hardening and release safety
 **Goal**: Ensure the new mutation capabilities are stable, documented, and reversible.

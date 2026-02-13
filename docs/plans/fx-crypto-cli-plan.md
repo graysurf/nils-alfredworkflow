@@ -49,7 +49,7 @@ Existing workflows remain unchanged until a later integration plan consumes this
 
 ### Task 1.1: Define CLI and JSON contract for workflow-facing consumption
 - **Location**:
-  - `docs/market-cli-contract.md`
+  - `crates/market-cli/docs/workflow-contract.md`
   - `docs/plans/fx-crypto-cli-plan.md`
 - **Description**: Document subcommands, flags, normalized output schema, freshness metadata fields, provider naming, and error semantics for user/runtime failures.
 - **Dependencies**:
@@ -60,8 +60,8 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - JSON schema includes at minimum `kind`, `base`, `quote`, `amount`, `unit_price`, `converted`, `provider`, `fetched_at`, and `cache` metadata.
   - Freshness states are explicit (`live`, `cache_fresh`, `cache_stale_fallback`).
 - **Validation**:
-  - `test -f docs/market-cli-contract.md`
-  - `rg -n "fx|crypto|cache_stale_fallback|unit_price|converted|provider|fetched_at" docs/market-cli-contract.md`
+  - `test -f crates/market-cli/docs/workflow-contract.md`
+  - `rg -n "fx|crypto|cache_stale_fallback|unit_price|converted|provider|fetched_at" crates/market-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Add `market-cli` crate and workspace membership
 - **Location**:
@@ -273,7 +273,7 @@ Existing workflows remain unchanged until a later integration plan consumes this
 
 ### Task 3.2: Document workflow adapter integration guide (without implementing workflow)
 - **Location**:
-  - `docs/market-cli-contract.md`
+  - `crates/market-cli/docs/workflow-contract.md`
   - `README.md`
 - **Description**: Add an operator-focused section showing how future workflow `script_filter.sh` can call `market-cli`, parse JSON, and render fallback/error rows.
 - **Dependencies**:
@@ -284,7 +284,7 @@ Existing workflows remain unchanged until a later integration plan consumes this
   - Docs specify cache behavior expectations (`24h`, `5m`, stale fallback).
   - Docs clarify that no API key is required for current provider set.
 - **Validation**:
-  - `rg -n "market-cli|Frankfurter|Coinbase|Kraken|24h|5m|no API key" README.md docs/market-cli-contract.md`
+  - `rg -n "market-cli|Frankfurter|Coinbase|Kraken|24h|5m|no API key" README.md crates/market-cli/docs/workflow-contract.md`
 
 ### Task 3.3: Add deterministic smoke tests for command contract
 - **Location**:

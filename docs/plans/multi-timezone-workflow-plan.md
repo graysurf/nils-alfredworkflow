@@ -45,7 +45,7 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
 
 ### Task 1.1: Capture product contract and input precedence
 - **Location**:
-  - `docs/multi-timezone-contract.md`
+  - `crates/timezone-cli/docs/workflow-contract.md`
   - `docs/plans/multi-timezone-workflow-plan.md`
 - **Description**: Document required behavior for empty input, configured timezone field, query override, invalid timezone handling, and strict row ordering semantics.
 - **Dependencies**:
@@ -56,8 +56,8 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - Contract states output ordering rule as strict source-order preservation.
   - Contract defines valid timezone format as IANA ID (for example `Asia/Taipei`).
 - **Validation**:
-  - `test -f docs/multi-timezone-contract.md`
-  - `rg -n "precedence|MULTI_TZ_ZONES|IANA|order|fallback" docs/multi-timezone-contract.md`
+  - `test -f crates/timezone-cli/docs/workflow-contract.md`
+  - `rg -n "precedence|MULTI_TZ_ZONES|IANA|order|fallback" crates/timezone-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold `multi-timezone` workflow files
 - **Location**:
@@ -102,7 +102,7 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
 
 ### Task 1.4: Freeze output schema and copy payload format
 - **Location**:
-  - `docs/multi-timezone-contract.md`
+  - `crates/timezone-cli/docs/workflow-contract.md`
   - `workflows/multi-timezone/README.md`
   - `crates/timezone-cli/src/feedback.rs`
 - **Description**: Define row title/subtitle/arg schema, including timezone label, local clock display format, and copy payload format.
@@ -116,7 +116,7 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - Row format examples include one-row local fallback and multi-timezone list cases.
   - Invalid timezone row schema is explicitly documented.
 - **Validation**:
-  - `rg -n "title|subtitle|arg|uid|invalid timezone|copy payload" docs/multi-timezone-contract.md workflows/multi-timezone/README.md`
+  - `rg -n "title|subtitle|arg|uid|invalid timezone|copy payload" crates/timezone-cli/docs/workflow-contract.md workflows/multi-timezone/README.md`
 
 ## Sprint 2: Timezone engine and local detection fallback chain
 **Goal**: Implement robust timezone parsing/detection logic and deterministic row rendering for current time.
@@ -351,7 +351,7 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
 
 ### Task 4.3: Add troubleshooting and rollback procedures
 - **Location**:
-  - `docs/multi-timezone-contract.md`
+  - `crates/timezone-cli/docs/workflow-contract.md`
   - `TROUBLESHOOTING.md`
 - **Description**: Document operational recovery for timezone misconfiguration, missing timezone database, and rollback to previous release artifact.
 - **Dependencies**:
@@ -362,7 +362,7 @@ Implementation follows this repository's existing pattern: Rust CLI for logic pl
   - Rollback steps are executable in under five minutes.
   - Docs call out how to clear conflicting env field values.
 - **Validation**:
-  - `rg -n "rollback|IANA|MULTI_TZ_ZONES|fallback|timezone database" docs/multi-timezone-contract.md TROUBLESHOOTING.md`
+  - `rg -n "rollback|IANA|MULTI_TZ_ZONES|fallback|timezone database" crates/timezone-cli/docs/workflow-contract.md TROUBLESHOOTING.md`
 
 ## Testing Strategy
 - Unit: `timezone-cli` parser, local-timezone detector, and renderer tests lock ordering and fallback behavior.

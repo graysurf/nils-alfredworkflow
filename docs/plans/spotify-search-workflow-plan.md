@@ -44,7 +44,7 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
 
 ### Task 1.1: Define Spotify workflow behavior contract
 - **Location**:
-  - `docs/spotify-search-contract.md`
+  - `crates/spotify-cli/docs/workflow-contract.md`
 - **Description**: Write query handling, Alfred JSON shape, subtitle truncation rules, and error mapping for credentials/rate-limit/unavailable/invalid-config/empty-result states.
 - **Dependencies**:
   - none
@@ -54,9 +54,9 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Contract defines non-success items as `valid: false` and no `arg`.
   - Contract includes keyword behavior for empty query guidance.
 - **Validation**:
-  - `test -f docs/spotify-search-contract.md`
-  - `rg -n "Keyword and Query Handling|Alfred Item JSON Contract|Error Mapping|Environment Variables" docs/spotify-search-contract.md`
-  - `rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_CLIENT_SECRET|SPOTIFY_MAX_RESULTS|SPOTIFY_MARKET" docs/spotify-search-contract.md`
+  - `test -f crates/spotify-cli/docs/workflow-contract.md`
+  - `rg -n "Keyword and Query Handling|Alfred Item JSON Contract|Error Mapping|Environment Variables" crates/spotify-cli/docs/workflow-contract.md`
+  - `rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_CLIENT_SECRET|SPOTIFY_MAX_RESULTS|SPOTIFY_MARKET" crates/spotify-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold `spotify-search` workflow folder and manifest
 - **Location**:
@@ -101,7 +101,7 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
 - **Location**:
   - `workflows/spotify-search/workflow.toml`
   - `workflows/spotify-search/src/info.plist.template`
-  - `docs/spotify-search-contract.md`
+  - `crates/spotify-cli/docs/workflow-contract.md`
 - **Description**: Define and document `SPOTIFY_CLIENT_ID` (required), `SPOTIFY_CLIENT_SECRET` (required), `SPOTIFY_MAX_RESULTS` (optional clamp), and `SPOTIFY_MARKET` (optional uppercase country code).
 - **Dependencies**:
   - Task 1.1
@@ -111,10 +111,10 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Required/optional flags are consistent across docs, manifest, and Alfred user config UI.
   - Defaults and guardrails are explicitly documented.
 - **Validation**:
-  - `rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_CLIENT_SECRET|SPOTIFY_MAX_RESULTS|SPOTIFY_MARKET" workflows/spotify-search/workflow.toml workflows/spotify-search/src/info.plist.template docs/spotify-search-contract.md`
+  - `rg -n "SPOTIFY_CLIENT_ID|SPOTIFY_CLIENT_SECRET|SPOTIFY_MAX_RESULTS|SPOTIFY_MARKET" workflows/spotify-search/workflow.toml workflows/spotify-search/src/info.plist.template crates/spotify-cli/docs/workflow-contract.md`
   - `rg -n 'SPOTIFY_CLIENT_ID\\s*=\\s*\"\"|SPOTIFY_CLIENT_SECRET\\s*=\\s*\"\"|SPOTIFY_MAX_RESULTS\\s*=\\s*\"10\"' workflows/spotify-search/workflow.toml`
   - `rg -n 'SPOTIFY_CLIENT_ID|SPOTIFY_CLIENT_SECRET|SPOTIFY_MAX_RESULTS|SPOTIFY_MARKET|required|placeholder|default' workflows/spotify-search/src/info.plist.template`
-  - `rg -n 'required|optional|default' docs/spotify-search-contract.md`
+  - `rg -n 'required|optional|default' crates/spotify-cli/docs/workflow-contract.md`
 
 ## Sprint 2: Spotify API and CLI pipeline
 **Goal**: Implement a deterministic Rust pipeline for config + auth + search + Alfred feedback JSON.
@@ -317,7 +317,7 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
 - **Location**:
   - `README.md`
   - `workflows/spotify-search/README.md`
-  - `docs/spotify-search-contract.md`
+  - `crates/spotify-cli/docs/workflow-contract.md`
 - **Description**: Add quick start, env setup, keyword usage, known limits, and troubleshooting pointers for search-only Spotify workflow.
 - **Dependencies**:
   - Task 3.3
@@ -326,8 +326,8 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - Docs clearly separate required credentials from optional tuning variables.
   - Operator steps include at least one copy-paste packaging + validation flow.
 - **Validation**:
-  - `rg -n "spotify-search|SPOTIFY_CLIENT_ID|SPOTIFY_CLIENT_SECRET|sp query-text" README.md workflows/spotify-search/README.md docs/spotify-search-contract.md`
-  - `rg -n "Required credentials|Optional tuning" README.md workflows/spotify-search/README.md docs/spotify-search-contract.md`
+  - `rg -n "spotify-search|SPOTIFY_CLIENT_ID|SPOTIFY_CLIENT_SECRET|sp query-text" README.md workflows/spotify-search/README.md crates/spotify-cli/docs/workflow-contract.md`
+  - `rg -n "Required credentials|Optional tuning" README.md workflows/spotify-search/README.md crates/spotify-cli/docs/workflow-contract.md`
   - `rg -n "workflow-pack.sh --id spotify-search|scripts/workflow-test.sh --id spotify-search" README.md workflows/spotify-search/README.md`
 
 ### Task 4.2: Run and lock quality gates for new workflow
@@ -390,7 +390,7 @@ The implementation prioritizes deterministic smoke coverage so the workflow can 
   - `workflows/spotify-search/scripts/action_open.sh`
   - `workflows/spotify-search/src/info.plist.template`
   - `workflows/spotify-search/tests/smoke.sh`
-  - `docs/spotify-search-contract.md`
+  - `crates/spotify-cli/docs/workflow-contract.md`
 - Remove workspace membership entry in `Cargo.toml` for `crates/spotify-cli`.
 - Re-run baseline checks to confirm rollback health:
   - `scripts/workflow-lint.sh`

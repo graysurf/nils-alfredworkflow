@@ -22,13 +22,13 @@
   - `docs/*-contract.md` when the content is owned by one crate.
   - `docs/*-workflow-contract.md` when the content is owned by one crate.
   - `docs/*-expression-rules.md` when the content is owned by one crate.
-- Root compatibility stubs are permanent redirect files for migrated legacy paths and must contain only a pointer to the canonical crate doc.
+- Root compatibility stubs are not allowed. Migrate references directly to canonical crate docs and remove the legacy root file.
 
-### Root compatibility stub lifecycle decision
+### Legacy root doc lifecycle decision
 
-- Decision: root compatibility stubs are permanent redirects with no sunset date.
-- Stub deprecation/removal is out of scope for normal migration work and requires an explicit policy change.
-- Every stub must stay minimal (pointer + migration metadata) and must not duplicate canonical crate-owned content.
+- Decision: legacy root crate-specific docs are removed after references are migrated.
+- Migration completion requires deleting the root legacy file and updating all references to canonical crate paths.
+- Re-introducing root compatibility stubs is out of scope unless this policy is explicitly changed.
 
 ## Canonical Crate-Doc Paths
 
@@ -62,4 +62,4 @@
 2. If crate-specific, place it in `crates/<crate-name>/docs/`.
 3. If workspace-level, place it only in an allowed root `docs/` category.
 4. For cross-crate topics, choose canonical owner or declare workspace-level scope with rationale.
-5. Keep legacy root stubs only as short migration pointers; never duplicate full crate content in root `docs/`.
+5. Do not keep root compatibility stubs; remove legacy root files after migrating references.
