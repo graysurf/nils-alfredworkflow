@@ -156,10 +156,14 @@ impl From<SearchMatch> for SearchMatchMode {
 
 #[derive(Debug, Serialize)]
 struct JsonEnvelope<T> {
+    schema_version: &'static str,
+    command: &'static str,
     ok: bool,
     result: Option<T>,
     error: Option<String>,
 }
+
+const ENVELOPE_SCHEMA_VERSION: &str = "v1";
 
 fn main() {
     let cli = Cli::parse();
@@ -188,7 +192,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
             mode,
         } => {
             let result = execute_add(&text, source.as_deref(), db, &config)?;
-            emit(mode, result, |res| {
+            emit(mode, "memo.add", result, |res| {
                 format!("added {} at {}", res.item_id, res.created_at)
             })?;
         }
@@ -199,7 +203,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
             mode,
         } => {
             let result = execute_update(&item_id, &text, db, &config)?;
-            emit(mode, result, |res| {
+            emit(mode, "memo.update", result, |res| {
                 format!(
                     "updated {} at {} (state={}, cleared_derivations={}, cleared_workflows={})",
                     res.item_id,
@@ -212,7 +216,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
         }
         Command::Delete { item_id, db, mode } => {
             let result = execute_delete(&item_id, db, &config)?;
-            emit(mode, result, |res| {
+            emit(mode, "memo.delete", result, |res| {
                 format!(
                     "deleted {} at {} (removed_derivations={}, removed_workflows={})",
                     res.item_id,
@@ -224,7 +228,9 @@ fn run(cli: Cli) -> Result<(), AppError> {
         }
         Command::DbInit { db, mode } => {
             let result = execute_db_init(db, &config)?;
-            emit(mode, result, |res| format!("initialized {}", res.db_path))?;
+            emit(mode, "memo.db_init", result, |res| {
+                format!("initialized {}", res.db_path)
+            })?;
         }
         Command::List {
             limit,
@@ -233,7 +239,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
             mode,
         } => {
             let result = execute_list(db, limit, offset, &config)?;
-            emit(mode, result, render_list_text)?;
+            emit(mode, "memo.list", result, render_list_text)?;
         }
         Command::Search {
             query,
@@ -244,7 +250,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
             mode,
         } => {
             let result = execute_search(db, &query, match_mode.into(), limit, offset, &config)?;
-            emit(mode, result, render_search_text)?;
+            emit(mode, "memo.search", result, render_search_text)?;
         }
         Command::Action {
             token,
@@ -254,7 +260,9 @@ fn run(cli: Cli) -> Result<(), AppError> {
         } => {
             if token == memo_workflow_cli::DB_INIT_TOKEN {
                 let result = execute_db_init(db, &config)?;
-                emit(mode, result, |res| format!("initialized {}", res.db_path))?;
+                emit(mode, "memo.action", result, |res| {
+                    format!("initialized {}", res.db_path)
+                })?;
                 return Ok(());
             }
 
@@ -262,7 +270,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
                 let item_id = parse_copy_json_token(&token)
                     .ok_or_else(|| AppError::User("invalid copy-json action token".to_string()))?;
                 let result = execute_fetch_item(&item_id, db, &config)?;
-                emit(mode, result, render_item_json_text)?;
+                emit(mode, "memo.action", result, render_item_json_text)?;
                 return Ok(());
             }
 
@@ -270,7 +278,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
                 let item_id = parse_copy_token(&token)
                     .ok_or_else(|| AppError::User("invalid copy action token".to_string()))?;
                 let result = execute_fetch_item(&item_id, db, &config)?;
-                emit(mode, result, |res| res.text.clone())?;
+                emit(mode, "memo.action", result, |res| res.text.clone())?;
                 return Ok(());
             }
 
@@ -278,7 +286,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
                 let (item_id, text) = parse_update_token(&token)
                     .ok_or_else(|| AppError::User("invalid update action token".to_string()))?;
                 let result = execute_update(&item_id, &text, db, &config)?;
-                emit(mode, result, |res| {
+                emit(mode, "memo.action", result, |res| {
                     format!(
                         "updated {} at {} (state={}, cleared_derivations={}, cleared_workflows={})",
                         res.item_id,
@@ -295,7 +303,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
                 let item_id = parse_delete_token(&token)
                     .ok_or_else(|| AppError::User("invalid delete action token".to_string()))?;
                 let result = execute_delete(&item_id, db, &config)?;
-                emit(mode, result, |res| {
+                emit(mode, "memo.action", result, |res| {
                     format!(
                         "deleted {} at {} (removed_derivations={}, removed_workflows={})",
                         res.item_id,
@@ -314,7 +322,7 @@ fn run(cli: Cli) -> Result<(), AppError> {
             };
 
             let result = execute_add(&text, source.as_deref(), db, &config)?;
-            emit(mode, result, |res| {
+            emit(mode, "memo.action", result, |res| {
                 format!("added {} at {}", res.item_id, res.created_at)
             })?;
         }
@@ -362,7 +370,12 @@ where
     serde_json::to_string(value).unwrap_or_else(|_| "{}".to_string())
 }
 
-fn emit<T, F>(mode: ResultMode, result: T, text_renderer: F) -> Result<(), AppError>
+fn emit<T, F>(
+    mode: ResultMode,
+    command: &'static str,
+    result: T,
+    text_renderer: F,
+) -> Result<(), AppError>
 where
     T: Serialize,
     F: Fn(&T) -> String,
@@ -371,6 +384,8 @@ where
         ResultMode::Text => println!("{}", text_renderer(&result)),
         ResultMode::Json => {
             let payload = JsonEnvelope {
+                schema_version: ENVELOPE_SCHEMA_VERSION,
+                command,
                 ok: true,
                 result: Some(result),
                 error: None,

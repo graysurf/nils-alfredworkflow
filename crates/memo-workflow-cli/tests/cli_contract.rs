@@ -23,6 +23,18 @@ fn item_display_id(item_id: &str) -> String {
         .unwrap_or_else(|| item_id.to_string())
 }
 
+fn assert_json_success_envelope(payload: &Value, command: &str) {
+    assert_eq!(
+        payload.get("schema_version").and_then(Value::as_str),
+        Some("v1")
+    );
+    assert_eq!(
+        payload.get("command").and_then(Value::as_str),
+        Some(command)
+    );
+    assert_eq!(payload.get("ok").and_then(Value::as_bool), Some(true));
+}
+
 #[test]
 fn script_filter_returns_items_array() {
     let output = Command::new(bin())
@@ -383,7 +395,7 @@ fn add_writes_one_row() {
     assert!(output.status.success(), "add must exit 0");
 
     let payload: Value = serde_json::from_slice(&output.stdout).expect("add stdout must be JSON");
-    assert_eq!(payload.get("ok").and_then(Value::as_bool), Some(true));
+    assert_json_success_envelope(&payload, "memo.add");
     assert_eq!(
         payload
             .get("result")
@@ -428,6 +440,7 @@ fn list_returns_latest_first() {
     assert!(list.status.success(), "list should exit 0");
 
     let payload: Value = serde_json::from_slice(&list.stdout).expect("list stdout must be JSON");
+    assert_json_success_envelope(&payload, "memo.list");
     let rows = payload
         .get("result")
         .and_then(Value::as_array)
@@ -479,10 +492,7 @@ fn update_mutates_existing_item() {
         .expect("update should run");
     assert!(update.status.success(), "update should succeed");
     let update_payload: Value = serde_json::from_slice(&update.stdout).expect("update json");
-    assert_eq!(
-        update_payload.get("ok").and_then(Value::as_bool),
-        Some(true)
-    );
+    assert_json_success_envelope(&update_payload, "memo.update");
     assert_eq!(
         update_payload
             .get("result")
@@ -722,7 +732,7 @@ fn search_command_returns_matching_rows() {
     assert!(search.status.success(), "search should succeed");
 
     let payload: Value = serde_json::from_slice(&search.stdout).expect("search payload json");
-    assert_eq!(payload.get("ok").and_then(Value::as_bool), Some(true));
+    assert_json_success_envelope(&payload, "memo.search");
     let rows = payload
         .get("result")
         .and_then(Value::as_array)
@@ -762,6 +772,7 @@ fn search_command_supports_prefix_and_contains_match_modes() {
     assert!(prefix.status.success(), "prefix search should succeed");
     let prefix_payload: Value =
         serde_json::from_slice(&prefix.stdout).expect("prefix search payload json");
+    assert_json_success_envelope(&prefix_payload, "memo.search");
     let prefix_rows = prefix_payload
         .get("result")
         .and_then(Value::as_array)
@@ -780,6 +791,7 @@ fn search_command_supports_prefix_and_contains_match_modes() {
     assert!(contains.status.success(), "contains search should succeed");
     let contains_payload: Value =
         serde_json::from_slice(&contains.stdout).expect("contains search payload json");
+    assert_json_success_envelope(&contains_payload, "memo.search");
     let contains_rows = contains_payload
         .get("result")
         .and_then(Value::as_array)

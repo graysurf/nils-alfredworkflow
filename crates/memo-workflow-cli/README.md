@@ -28,7 +28,8 @@ Workflow adapter CLI for Alfred memo capture actions backed by `nils-memo-cli@0.
 
 - `script-filter`: Alfred Script Filter JSON object on `stdout`.
 - `add` / `db-init` / `action` in text mode: one-line human result on `stdout`.
-- `add` / `db-init` / `action` in JSON mode: `{ ok, result, error }` envelope on `stdout`.
+- `add` / `update` / `delete` / `db-init` / `list` / `search` / `action` in JSON mode:
+  `{ schema_version, command, ok, result, error }` envelope on `stdout`.
 - `stderr`: error diagnostics only.
 - Exit codes: `0` success, `2` user/config/usage errors, `1` runtime/storage failures.
 
