@@ -12,6 +12,7 @@ Search Cambridge Dictionary from Alfred with a two-stage flow (candidate -> defi
 - Candidate stage returns headwords and sets Alfred `autocomplete` tokens like `def::open`.
 - Detail stage renders definitions from the selected entry.
 - Press `Enter` on detail rows to open the entry URL from `arg`.
+- Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips backend calls.
 - Uses `cambridge-cli` as the Alfred bridge and Playwright scraper backend.
 
 ## Configuration

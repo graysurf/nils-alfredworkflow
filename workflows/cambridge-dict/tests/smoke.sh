@@ -201,6 +201,9 @@ OPEN_STUB_OUT="$tmp_dir/open-arg.txt" PATH="$tmp_dir/bin:$PATH" \
 cat >"$tmp_dir/stubs/cambridge-cli-ok" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -n "${CAMBRIDGE_STUB_LOG:-}" ]]; then
+  printf '%s\n' "$*" >>"$CAMBRIDGE_STUB_LOG"
+fi
 [[ "${1:-}" == "query" ]] || exit 9
 [[ "${2:-}" == "--input" ]] || exit 9
 query="${3:-}"
@@ -267,6 +270,12 @@ assert_jq_json "$success_json" '.items | type == "array" and length == 1' "scrip
 assert_jq_json "$success_json" '.items[0].autocomplete == "def::open"' "suggest stage must expose def:: autocomplete token"
 assert_jq_json "$success_json" '.items[0].arg == "https://dictionary.cambridge.org/dictionary/english/open"' "suggest stage arg URL mismatch"
 
+env_query_json="$({ CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" alfred_workflow_query="open sesame" "$workflow_dir/scripts/script_filter.sh"; })"
+assert_jq_json "$env_query_json" '.items[0].autocomplete == "def::open"' "script_filter must support Alfred query via env fallback"
+
+stdin_query_json="$(printf 'open' | CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh")"
+assert_jq_json "$stdin_query_json" '.items[0].autocomplete == "def::open"' "script_filter must support query via stdin fallback"
+
 # Detail-stage query should return rows that still support Enter open URL.
 detail_json="$({ CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "def::open"; })"
 assert_jq_json "$detail_json" '.items | type == "array" and length >= 1' "detail stage must output rows"
@@ -296,12 +305,20 @@ missing_script="$missing_layout/workflows/cambridge-dict/scripts/script_filter.s
 mkdir -p "$(dirname "$missing_script")"
 cp "$workflow_dir/scripts/script_filter.sh" "$missing_script"
 chmod +x "$missing_script"
+mkdir -p "$missing_layout/workflows/cambridge-dict/scripts/lib"
+cp "$repo_root/scripts/lib/script_filter_query_policy.sh" "$missing_layout/workflows/cambridge-dict/scripts/lib/script_filter_query_policy.sh"
 missing_binary_json="$({ CAMBRIDGE_CLI_BIN="$missing_layout/does-not-exist/cambridge-cli" "$missing_script" "open"; })"
 assert_jq_json "$missing_binary_json" '.items[0].title == "cambridge-cli binary not found"' "missing binary title mapping mismatch"
 
 empty_query_json="$({ CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "   "; })"
 assert_jq_json "$empty_query_json" '.items[0].title == "Enter a word"' "empty query guidance title mismatch"
 assert_jq_json "$empty_query_json" '.items[0].valid == false' "empty query item must be invalid"
+
+short_query_log="$tmp_dir/cambridge-short-query.log"
+short_query_json="$({ CAMBRIDGE_STUB_LOG="$short_query_log" CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "o"; })"
+assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"' "short query guidance title mismatch"
+assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
+[[ ! -s "$short_query_log" ]] || fail "short query should not invoke cambridge-cli backend"
 
 make_layout_cli() {
   local target="$1"
@@ -325,6 +342,8 @@ run_layout_check() {
   mkdir -p "$(dirname "$copied_script")"
   cp "$workflow_dir/scripts/script_filter.sh" "$copied_script"
   chmod +x "$copied_script"
+  mkdir -p "$layout/workflows/cambridge-dict/scripts/lib"
+  cp "$repo_root/scripts/lib/script_filter_query_policy.sh" "$layout/workflows/cambridge-dict/scripts/lib/script_filter_query_policy.sh"
 
   case "$mode" in
   packaged)
@@ -388,6 +407,7 @@ assert_file "$packaged_dir/scripts/lib/cambridge_selectors.mjs"
 assert_file "$packaged_dir/scripts/lib/extract_suggest.mjs"
 assert_file "$packaged_dir/scripts/lib/extract_define.mjs"
 assert_file "$packaged_dir/scripts/lib/error_classify.mjs"
+assert_file "$packaged_dir/scripts/lib/script_filter_query_policy.sh"
 
 if command -v plutil >/dev/null 2>&1; then
   plutil -lint "$packaged_plist" >/dev/null || fail "packaged plist lint failed"
@@ -403,6 +423,9 @@ assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-4
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptargtype == 1' "script filter scriptargtype must be argv"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "cd"' "keyword trigger must be cd"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.alfredfiltersresults == false' "script filter must disable Alfred-side filtering"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelaycustom == 1' "script filter queue delay custom must be 1 second"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelaymode == 0' "script filter queue delay mode must be custom seconds"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelayimmediatelyinitially == false' "script filter must disable immediate initial run"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.type == 8' "action node must be external script type=8"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"
