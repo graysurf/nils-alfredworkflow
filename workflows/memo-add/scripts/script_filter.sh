@@ -106,6 +106,15 @@ elif [[ -z "$query" && ! -t 0 ]]; then
   query="$(cat)"
 fi
 
+query_prefix="${MEMO_QUERY_PREFIX:-}"
+if [[ -n "$query_prefix" ]]; then
+  if [[ -n "$query" ]]; then
+    query="$query_prefix $query"
+  else
+    query="$query_prefix"
+  fi
+fi
+
 err_file="${TMPDIR:-/tmp}/memo-add-script-filter.err.$$"
 trap 'rm -f "$err_file"' EXIT
 

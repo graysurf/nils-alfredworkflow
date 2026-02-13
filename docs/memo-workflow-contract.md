@@ -6,12 +6,25 @@ Provide a capture-first Alfred workflow for quick memo insertion backed by `nils
 
 ## Primary user behavior
 
-- Keyword: `mm`
-- `mm buy milk` -> script-filter returns actionable add row -> action runs add and persists one inbox record.
-- `mm update itm_00000001 buy oat milk` -> script-filter returns actionable update row.
-- `mm delete itm_00000001` -> script-filter returns actionable delete row.
-- `mm` (empty query, db missing) -> script-filter returns guidance row + `db init` action row.
-- `mm` (empty query, db exists) -> script-filter returns guidance row + db path info row + recent memo rows (newest first).
+- Keywords: `mm`, `mmr`, `mma`, `mmu`, `mmd`, `mmc`
+- `mm` -> command entry menu that routes users to `mmr` / `mma` / `mmu` / `mmd` / `mmc`.
+- `mmr` -> forces empty-query rendering and shows recent memo rows in newest-first order.
+- `mmr <number>` -> routes to `item <number>` for memo item action menu.
+- `mmu` / `mmd` / `mmc` -> default to same newest-first recent list behavior as `mmr`.
+- `mmu <number>` -> routes to update flow for that id (single update row, not full item menu).
+- `mmd <number>` -> routes to delete flow for that id (single delete row, not full item menu).
+- `mmc <number>` -> routes to copy flow for that id (single copy row, not full item menu).
+- `mma buy milk` -> script-filter returns actionable add row -> action runs add and persists one inbox record.
+- `mmu itm_00000001 buy oat milk` -> script-filter returns actionable update row.
+- `mmd itm_00000001` -> script-filter returns actionable delete row.
+- `mmc itm_00000001` -> script-filter returns actionable copy row.
+- choose `Copy` row (from `mmr <id>` item menu) -> Enter copies memo text; `Cmd` modifier switches action to copy raw JSON for that item.
+- choose `Update` row (from `mmr <id>` item menu) -> query autocompletes to `update <item_id>`; type new text and press Enter to execute update.
+- `mma <text>` routes to add intent.
+- `mmu <item_id> <text>` routes to update intent.
+- `mmd <item_id>` routes to delete intent.
+- `mmc <item_id>` routes to copy intent.
+- `mmq` remains reserved for future query-condition behavior.
 
 ## Runtime commands
 
@@ -31,6 +44,8 @@ The workflow runtime binary is `memo-workflow-cli` with these commands:
 - `add::<raw-text>`: add one memo with raw text payload.
 - `update::<item-id>::<raw-text>`: update one memo row by item id.
 - `delete::<item-id>`: delete one memo row by item id.
+- `copy::<item-id>`: output memo text for clipboard copy path.
+- `copy-json::<item-id>`: output raw memo JSON row for clipboard copy path.
 
 `update` token parsing splits only the first two `::` delimiters, so update text keeps raw suffix bytes.
 Malformed update/delete token shapes are handled as user errors.
@@ -80,8 +95,21 @@ Malformed update/delete token shapes are handled as user errors.
 
 - Empty query with existing db includes a recent-records section so users can verify latest captures immediately.
 - Recent records default to `MEMO_RECENT_LIMIT=8` and are ordered by `created_at DESC`, then `item_id DESC`.
-- Recent record rows and db path row are informational (`valid=false`), while `db init` stays actionable when db is missing.
-- Non-empty query defaults to add unless explicit `update` / `delete` intent prefix is matched.
+- Recent rows are informational (`valid=false`) but include `autocomplete=item <item_id>` for item-level action routing.
+- `item <item_id>` intent renders an action menu in order: copy (action token) + update (autocomplete) + delete (action token).
+- Additional script-filters:
+  - `mm` renders command-entry rows only (no query intent execution).
+  - `mmr` forwards empty/non-numeric query to newest-first recent rows.
+  - `mmr <number>` forwards numeric query to `item <number>` lookup.
+  - `mma` forwards query to default add intent.
+  - `mmu` forwards empty query to newest-first recent rows, otherwise prepends `update` before forwarding query.
+  - `mmd` forwards empty query to newest-first recent rows, otherwise prepends `delete` before forwarding query.
+  - `mmc` forwards empty query to newest-first recent rows, otherwise prepends `copy` before forwarding query.
+- Copy row subtitle includes text preview for the default copy payload.
+- Copy row also provides a `cmd` modifier action token (`copy-json::<item_id>`) with JSON preview subtitle.
+- `update <item_id>` without text renders guidance/autocomplete instead of hard error row.
+- db path row is informational (`valid=false`), while `db init` stays actionable when db is missing.
+- Non-empty query defaults to add unless explicit `update` / `delete` / `copy` intent prefix is matched (for keyword wrappers / internal script-filter paths).
 - Malformed mutation query syntax returns non-actionable guidance rows instead of malformed JSON.
 
 ## Error mapping

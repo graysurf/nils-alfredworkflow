@@ -82,6 +82,22 @@ rc=$?
 set -e
 
 if [[ "$rc" -eq 0 ]]; then
+  if [[ "$action_token" == copy::* || "$action_token" == copy-json::* ]]; then
+    if ! command -v pbcopy >/dev/null 2>&1; then
+      notify "Memo action failed"
+      echo "pbcopy not found for copy action" >&2
+      exit 1
+    fi
+
+    printf '%s' "$output" | pbcopy
+    if [[ "$action_token" == copy-json::* ]]; then
+      notify "Memo JSON copied"
+    else
+      notify "Memo copied"
+    fi
+    exit 0
+  fi
+
   [[ -n "$output" ]] && printf '%s\n' "$output"
 
   if [[ "$action_token" == "db-init" ]]; then

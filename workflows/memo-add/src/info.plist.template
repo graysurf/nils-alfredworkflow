@@ -8,7 +8,72 @@
   <string>Productivity</string>
   <key>connections</key>
   <dict>
+    <key>2C5B0C3B-925A-4E91-9F79-9E1E1BEA4E11</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>5D4F8E92-2B41-4AF4-94FD-38FC8C8F7A22</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>7A2CB5D4-3ECF-4D0B-A8EA-2B2D0A8D3C33</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>9E17F304-0DBA-4DE3-B7CE-29FBC5AB4D44</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>C2B2F5F9-6E3F-4C14-8D4E-0C9D234ABF11</key>
     <array>
       <dict>
         <key>destinationuid</key>
@@ -64,9 +129,58 @@
         <key>scriptargtype</key>
         <integer>1</integer>
         <key>scriptfile</key>
-        <string>./scripts/script_filter.sh</string>
+        <string>./scripts/script_filter_entry.sh</string>
         <key>subtext</key>
-        <string>Add memo text, run db init, or inspect recent memos</string>
+        <string>Command entry for memo keywords</string>
+        <key>title</key>
+        <string>Memo Commands</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>mma</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <true/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_add.sh</string>
+        <key>subtext</key>
+        <string>Use mm &lt;text&gt; add flow</string>
         <key>title</key>
         <string>Memo Add</string>
         <key>type</key>
@@ -77,7 +191,203 @@
       <key>type</key>
       <string>alfred.workflow.input.scriptfilter</string>
       <key>uid</key>
-      <string>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</string>
+      <string>2C5B0C3B-925A-4E91-9F79-9E1E1BEA4E11</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>mmu</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <true/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_update.sh</string>
+        <key>subtext</key>
+        <string>Show latest memos; optional item id for update flow</string>
+        <key>title</key>
+        <string>Memo Update</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>5D4F8E92-2B41-4AF4-94FD-38FC8C8F7A22</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>mmd</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <true/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_delete.sh</string>
+        <key>subtext</key>
+        <string>Show latest memos; optional item id for delete flow</string>
+        <key>title</key>
+        <string>Memo Delete</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>7A2CB5D4-3ECF-4D0B-A8EA-2B2D0A8D3C33</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>mmc</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <true/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_copy.sh</string>
+        <key>subtext</key>
+        <string>Show latest memos; optional item id for copy action</string>
+        <key>title</key>
+        <string>Memo Copy</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>9E17F304-0DBA-4DE3-B7CE-29FBC5AB4D44</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>mmr</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <true/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_recent.sh</string>
+        <key>subtext</key>
+        <string>Show latest memos; optional numeric id lookup</string>
+        <key>title</key>
+        <string>Memo Recent / Lookup</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>C2B2F5F9-6E3F-4C14-8D4E-0C9D234ABF11</string>
       <key>version</key>
       <integer>3</integer>
     </dict>
@@ -106,15 +416,50 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword mm to add memo text quickly. Empty query exposes database init and recent memo rows.</string>
+  <string>Use keywords mm/mmr/mma/mmu/mmd/mmc for memo workflows.</string>
   <key>uidata</key>
   <dict>
+    <key>2C5B0C3B-925A-4E91-9F79-9E1E1BEA4E11</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>320</integer>
+    </dict>
+    <key>5D4F8E92-2B41-4AF4-94FD-38FC8C8F7A22</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>460</integer>
+    </dict>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>
     <dict>
       <key>xpos</key>
       <integer>230</integer>
       <key>ypos</key>
       <integer>180</integer>
+    </dict>
+    <key>7A2CB5D4-3ECF-4D0B-A8EA-2B2D0A8D3C33</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>600</integer>
+    </dict>
+    <key>9E17F304-0DBA-4DE3-B7CE-29FBC5AB4D44</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>740</integer>
+    </dict>
+    <key>C2B2F5F9-6E3F-4C14-8D4E-0C9D234ABF11</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>880</integer>
     </dict>
     <key>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</key>
     <dict>

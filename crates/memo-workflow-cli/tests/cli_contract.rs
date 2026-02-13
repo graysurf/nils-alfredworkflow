@@ -110,6 +110,208 @@ fn script_filter_empty_query_with_existing_db_shows_db_path_row_without_db_init(
 }
 
 #[test]
+fn script_filter_recent_rows_offer_manage_autocomplete() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add = Command::new(bin())
+        .args([
+            "add",
+            "--db",
+            db_path,
+            "--text",
+            "manage me",
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("add should run");
+    assert!(add.status.success(), "add should succeed");
+    let add_payload: Value = serde_json::from_slice(&add.stdout).expect("add json");
+    let item_id = add_payload
+        .get("result")
+        .and_then(|result| result.get("item_id"))
+        .and_then(Value::as_str)
+        .expect("item id");
+
+    let output = Command::new(bin())
+        .args(["script-filter", "--query", ""])
+        .env("MEMO_DB_PATH", db_path)
+        .output()
+        .expect("script-filter should run");
+    assert!(output.status.success(), "script-filter should exit 0");
+
+    let payload: Value =
+        serde_json::from_slice(&output.stdout).expect("script-filter stdout must be JSON");
+    let items = payload
+        .get("items")
+        .and_then(Value::as_array)
+        .expect("items array");
+
+    let expected_uid = format!("recent-{item_id}");
+    let expected_autocomplete = format!("item {item_id}");
+    let has_manage_row = items.iter().any(|item| {
+        item.get("uid").and_then(Value::as_str) == Some(expected_uid.as_str())
+            && item.get("autocomplete").and_then(Value::as_str)
+                == Some(expected_autocomplete.as_str())
+            && item
+                .get("subtitle")
+                .and_then(Value::as_str)
+                .map(|subtitle| subtitle.contains("Press Enter to manage"))
+                .unwrap_or(false)
+    });
+    assert!(
+        has_manage_row,
+        "recent row should expose item autocomplete for manage flow"
+    );
+}
+
+#[test]
+fn script_filter_item_intent_shows_copy_update_delete_menu_and_update_guidance() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add = Command::new(bin())
+        .args([
+            "add",
+            "--db",
+            db_path,
+            "--text",
+            "menu seed",
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("add should run");
+    assert!(add.status.success(), "add should succeed");
+    let add_payload: Value = serde_json::from_slice(&add.stdout).expect("add payload json");
+    let item_id = add_payload
+        .get("result")
+        .and_then(|result| result.get("item_id"))
+        .and_then(Value::as_str)
+        .expect("item id");
+
+    let item_query = format!("item {item_id}");
+    let menu = Command::new(bin())
+        .args(["script-filter", "--query", &item_query])
+        .env("MEMO_DB_PATH", db_path)
+        .output()
+        .expect("script-filter item intent should run");
+    assert!(menu.status.success(), "item intent should succeed");
+
+    let menu_payload: Value =
+        serde_json::from_slice(&menu.stdout).expect("item intent payload json");
+    let menu_items = menu_payload
+        .get("items")
+        .and_then(Value::as_array)
+        .expect("items array");
+    assert_eq!(
+        menu_items.len(),
+        3,
+        "item intent should render three menu rows"
+    );
+    let expected_copy_title = format!("Copy memo: {item_id}");
+    let expected_copy_arg = format!("copy::{item_id}");
+    let expected_copy_json_arg = format!("copy-json::{item_id}");
+    let expected_update_title = format!("Update memo: {item_id}");
+    let expected_update_autocomplete = format!("update {item_id} ");
+    let expected_delete_arg = format!("delete::{item_id}");
+    assert_eq!(
+        menu_items[0].get("title").and_then(Value::as_str),
+        Some(expected_copy_title.as_str())
+    );
+    assert_eq!(
+        menu_items[0].get("arg").and_then(Value::as_str),
+        Some(expected_copy_arg.as_str())
+    );
+    let copy_subtitle = menu_items[0]
+        .get("subtitle")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        copy_subtitle.contains("Preview text: menu seed"),
+        "copy row subtitle should include memo text preview"
+    );
+    assert_eq!(
+        menu_items[0]
+            .get("mods")
+            .and_then(|mods| mods.get("cmd"))
+            .and_then(|cmd| cmd.get("arg"))
+            .and_then(Value::as_str),
+        Some(expected_copy_json_arg.as_str())
+    );
+    assert_eq!(
+        menu_items[1].get("title").and_then(Value::as_str),
+        Some(expected_update_title.as_str())
+    );
+    assert_eq!(
+        menu_items[1].get("autocomplete").and_then(Value::as_str),
+        Some(expected_update_autocomplete.as_str())
+    );
+    assert_eq!(
+        menu_items[2].get("arg").and_then(Value::as_str),
+        Some(expected_delete_arg.as_str())
+    );
+
+    let update_guidance_query = format!("update {item_id}");
+    let update_guidance = Command::new(bin())
+        .args(["script-filter", "--query", &update_guidance_query])
+        .env("MEMO_DB_PATH", db_path)
+        .output()
+        .expect("script-filter update guidance should run");
+    assert!(
+        update_guidance.status.success(),
+        "update guidance should succeed"
+    );
+
+    let guidance_payload: Value =
+        serde_json::from_slice(&update_guidance.stdout).expect("guidance payload json");
+    let guidance_items = guidance_payload
+        .get("items")
+        .and_then(Value::as_array)
+        .expect("items array");
+    assert_eq!(guidance_items.len(), 1, "update guidance should be one row");
+    assert_eq!(
+        guidance_items[0].get("title").and_then(Value::as_str),
+        Some(expected_update_title.as_str())
+    );
+    assert_eq!(
+        guidance_items[0]
+            .get("autocomplete")
+            .and_then(Value::as_str),
+        Some(expected_update_autocomplete.as_str())
+    );
+    assert_eq!(
+        guidance_items[0].get("valid").and_then(Value::as_bool),
+        Some(false)
+    );
+
+    let update_execute_query = format!("update {item_id} changed text");
+    let update_execute = Command::new(bin())
+        .args(["script-filter", "--query", &update_execute_query])
+        .env("MEMO_DB_PATH", db_path)
+        .output()
+        .expect("script-filter update execute should run");
+    assert!(
+        update_execute.status.success(),
+        "update execute should succeed"
+    );
+    let execute_payload: Value =
+        serde_json::from_slice(&update_execute.stdout).expect("execute payload json");
+    let execute_items = execute_payload
+        .get("items")
+        .and_then(Value::as_array)
+        .expect("items array");
+    let expected_update_arg = format!("update::{item_id}::changed text");
+    assert_eq!(
+        execute_items[0].get("arg").and_then(Value::as_str),
+        Some(expected_update_arg.as_str())
+    );
+}
+
+#[test]
 fn db_init_creates_database() {
     let dir = tempdir().expect("temp dir");
     let db = dir.path().join("memo.db");
@@ -364,6 +566,38 @@ fn action_token_crud_roundtrip_with_isolated_db() {
         .output()
         .expect("action update should run");
     assert!(update.status.success(), "action update should succeed");
+
+    let copy_token = format!("copy::{item_id}");
+    let copy = Command::new(bin())
+        .args(["action", "--token", &copy_token, "--db", db_path])
+        .output()
+        .expect("action copy should run");
+    assert!(copy.status.success(), "action copy should succeed");
+    assert_eq!(
+        String::from_utf8_lossy(&copy.stdout).trim_end(),
+        "updated memo",
+        "copy token should output raw memo text in text mode"
+    );
+
+    let copy_json_token = format!("copy-json::{item_id}");
+    let copy_json = Command::new(bin())
+        .args(["action", "--token", &copy_json_token, "--db", db_path])
+        .output()
+        .expect("action copy-json should run");
+    assert!(
+        copy_json.status.success(),
+        "action copy-json should succeed"
+    );
+    let copied_payload: Value =
+        serde_json::from_slice(&copy_json.stdout).expect("copy-json should output item json");
+    assert_eq!(
+        copied_payload.get("item_id").and_then(Value::as_str),
+        Some(item_id.as_str())
+    );
+    assert_eq!(
+        copied_payload.get("text").and_then(Value::as_str),
+        Some("updated memo")
+    );
 
     let delete_token = format!("delete::{item_id}");
     let delete = Command::new(bin())
