@@ -53,6 +53,18 @@
 - For changes under `workflows/cambridge-dict/`:
   - `bash workflows/cambridge-dict/tests/smoke.sh`
 
+### Alfred Script Filter guardrail
+
+- For workflows where Script Filter output is already fully controlled by our CLI/script JSON, keep
+  `alfredfiltersresults=false` in `info.plist.template`.
+- Do not set `alfredfiltersresults=true` unless you explicitly need Alfred-side secondary filtering.
+- Reason: `alfredfiltersresults=true` can hide valid workflow items when Alfred query propagation
+  falls back to null/empty argument paths, making the workflow appear broken even though script
+  output is correct.
+- Validation checklist for any workflow plist change:
+  - `scripts/workflow-pack.sh --id <workflow-id>`
+  - `plutil -convert json -o - build/workflows/<workflow-id>/pkg/info.plist | jq -e '(.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.alfredfiltersresults) == false'`
+
 ### CI-style test reporting (optional)
 
 - If `cargo nextest` is missing, run `scripts/setup-rust-tooling.sh`
