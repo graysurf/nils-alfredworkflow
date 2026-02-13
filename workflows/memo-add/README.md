@@ -1,6 +1,6 @@
 # Memo Add - Alfred Workflow
 
-Capture memo text quickly into SQLite-backed `nils-memo-cli@0.3.6` storage.
+Capture memo text quickly into SQLite-backed `nils-memo-cli@0.3.7` storage.
 
 ## Screenshot
 
@@ -28,6 +28,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 | `MEMO_REQUIRE_CONFIRM` | No | `0` | `1/true/yes/on` adds an explicit confirm row before add action. |
 | `MEMO_MAX_INPUT_BYTES` | No | `4096` | Max bytes allowed for one memo input. |
 | `MEMO_RECENT_LIMIT` | No | `8` | Number of recent rows shown when query is empty (`1..50`). |
+| `MEMO_SEARCH_MATCH` | No | `fts` | Default search match mode for `mmq`/`search` (`fts`, `prefix`, `contains`). |
 | `MEMO_WORKFLOW_CLI_BIN` | No | `(empty)` | Optional executable path override for `memo-workflow-cli`. |
 
 ## Keyword
@@ -40,7 +41,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 | `mmu` | Show latest memo rows (same as `mmr`); `mmu <number>` routes to update flow for that id; `mmu <item_id> <text>` routes update intent. |
 | `mmd` | Show latest memo rows (same as `mmr`); `mmd <number>` routes to delete action for that id; `mmd <item_id>` routes delete intent. |
 | `mmc` | Show latest memo rows (same as `mmr`); `mmc <number>` or `mmc <item_id>` routes copy action for that id. |
-| `mmq` | Search memos; `mmq <query>` routes to search intent and for single-hit results opens item manage menu directly. |
+| `mmq` | Search memos; `mmq <query>` routes to search intent (default mode from `MEMO_SEARCH_MATCH`) and always returns selectable search rows. |
 
 ## Query intents
 
@@ -55,9 +56,9 @@ Set these via Alfred's `Configure Workflow...` UI:
 - `mmq <query>` routes to `search <query>` intent.
 - Item action menu intent: `item <item_id>` (typically from Enter on a recent row).
 - Mutation/search intents: `update <item_id> <text>`, `delete <item_id>`, `copy <item_id>`, `search <query>`.
+- Optional search mode intent: `search --match <fts|prefix|contains> <query>` (`fts` default).
 - Keyword mutation shortcuts: `mmu <item_id> <text>`, `mmd <item_id>`, `mmc <item_id>`.
-- `search <query>` with a single hit returns direct item action menu rows (`copy` / `update` / `delete`).
-- Multi-hit search keeps non-actionable rows with `autocomplete: item <item_id>` for safe follow-up actions.
+- `search <query>` always keeps non-actionable rows with `autocomplete: item <item_id>` for safe follow-up actions.
 - `search` (without query text) returns a guidance row and no executable action.
 - Copy actions: `copy::<item_id>` copies memo text (copy row subtitle shows preview), `copy-json::<item_id>` copies raw item JSON (via Cmd modifier on copy row).
 - `update <item_id>` without text shows guidance row and keeps autocomplete for second-step typing.

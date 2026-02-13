@@ -713,7 +713,93 @@ fn search_command_returns_matching_rows() {
 }
 
 #[test]
-fn script_filter_search_intent_returns_item_menu_for_single_hit() {
+fn search_command_supports_prefix_and_contains_match_modes() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "123"])
+        .output()
+        .expect("add should run");
+    assert!(add.status.success(), "add should succeed");
+
+    let prefix = Command::new(bin())
+        .args([
+            "search", "--db", db_path, "--query", "12", "--match", "prefix", "--mode", "json",
+        ])
+        .output()
+        .expect("prefix search should run");
+    assert!(prefix.status.success(), "prefix search should succeed");
+    let prefix_payload: Value =
+        serde_json::from_slice(&prefix.stdout).expect("prefix search payload json");
+    let prefix_rows = prefix_payload
+        .get("result")
+        .and_then(Value::as_array)
+        .expect("prefix result rows");
+    assert!(
+        !prefix_rows.is_empty(),
+        "prefix mode should match 12 against stored 123"
+    );
+
+    let contains = Command::new(bin())
+        .args([
+            "search", "--db", db_path, "--query", "23", "--match", "contains", "--mode", "json",
+        ])
+        .output()
+        .expect("contains search should run");
+    assert!(contains.status.success(), "contains search should succeed");
+    let contains_payload: Value =
+        serde_json::from_slice(&contains.stdout).expect("contains search payload json");
+    let contains_rows = contains_payload
+        .get("result")
+        .and_then(Value::as_array)
+        .expect("contains result rows");
+    assert!(
+        !contains_rows.is_empty(),
+        "contains mode should match 23 against stored 123"
+    );
+}
+
+#[test]
+fn script_filter_search_intent_uses_env_default_match_mode() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "123"])
+        .output()
+        .expect("add should run");
+    assert!(add.status.success(), "add should succeed");
+
+    let output = Command::new(bin())
+        .args(["script-filter", "--query", "search 12"])
+        .env("MEMO_DB_PATH", db_path)
+        .env("MEMO_SEARCH_MATCH", "prefix")
+        .output()
+        .expect("script-filter should run");
+    assert!(output.status.success(), "script-filter should succeed");
+
+    let payload: Value =
+        serde_json::from_slice(&output.stdout).expect("script-filter payload json");
+    let items = payload
+        .get("items")
+        .and_then(Value::as_array)
+        .expect("items array");
+    assert_eq!(items.len(), 1, "prefix default should match 12 against 123");
+    let autocomplete = items[0]
+        .get("autocomplete")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        autocomplete.starts_with("item itm_"),
+        "configured search mode should still route to item autocomplete"
+    );
+}
+
+#[test]
+fn script_filter_search_intent_keeps_search_row_for_single_hit() {
     let dir = tempdir().expect("temp dir");
     let db = dir.path().join("memo.db");
     let db_path = db.to_str().expect("db path");
@@ -737,30 +823,23 @@ fn script_filter_search_intent_returns_item_menu_for_single_hit() {
         .get("items")
         .and_then(Value::as_array)
         .expect("items array");
-    assert_eq!(items.len(), 3, "single search hit should render item menu");
-    assert!(
-        items[0]
-            .get("title")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .starts_with("Copy memo: itm_"),
-        "first row should be copy action"
+    assert_eq!(
+        items.len(),
+        1,
+        "single search hit should keep one search row"
     );
-    assert!(
-        items[1]
-            .get("title")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .starts_with("Update memo: itm_"),
-        "second row should be update action"
+    assert_eq!(
+        items[0].get("valid").and_then(Value::as_bool),
+        Some(false),
+        "single-hit search row should remain non-actionable"
     );
+    let autocomplete = items[0]
+        .get("autocomplete")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     assert!(
-        items[2]
-            .get("title")
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .starts_with("Delete memo: itm_"),
-        "third row should be delete action"
+        autocomplete.starts_with("item itm_"),
+        "single-hit search row should keep item autocomplete"
     );
 }
 

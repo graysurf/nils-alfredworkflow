@@ -18,11 +18,14 @@ const UPDATE_TOKEN_DELIMITER: &str = "::";
 pub const DEFAULT_SOURCE: &str = "alfred";
 pub const DEFAULT_MAX_INPUT_BYTES: usize = 4096;
 pub const DEFAULT_RECENT_LIMIT: usize = 8;
+pub const DEFAULT_SEARCH_MATCH_MODE: SearchMatchMode = SearchMatchMode::Fts;
 const MAX_INPUT_BYTES_LIMIT: usize = 1024 * 1024;
 const MAX_RECENT_LIMIT: usize = 50;
 const MAX_LIST_LIMIT: usize = 200;
 const MAX_SEARCH_LIMIT: usize = 200;
 const MAX_SEARCH_FETCH_LIMIT: usize = 500;
+const SEARCH_INTENT_USAGE: &str = "Use: search <query> (optional: --match fts|prefix|contains)";
+const SEARCH_MATCH_USAGE: &str = "Use: search --match <fts|prefix|contains> <query>";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
@@ -31,6 +34,7 @@ pub struct RuntimeConfig {
     pub require_confirm: bool,
     pub max_input_bytes: usize,
     pub recent_limit: usize,
+    pub search_match_mode: SearchMatchMode,
 }
 
 impl RuntimeConfig {
@@ -40,6 +44,7 @@ impl RuntimeConfig {
         let require_confirm = resolve_require_confirm()?;
         let max_input_bytes = resolve_max_input_bytes()?;
         let recent_limit = resolve_recent_limit()?;
+        let search_match_mode = resolve_search_match_mode()?;
 
         Ok(Self {
             db_path,
@@ -47,7 +52,26 @@ impl RuntimeConfig {
             require_confirm,
             max_input_bytes,
             recent_limit,
+            search_match_mode,
         })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchMatchMode {
+    Fts,
+    Prefix,
+    Contains,
+}
+
+impl SearchMatchMode {
+    pub fn parse_token(raw: &str) -> Option<Self> {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "fts" => Some(Self::Fts),
+            "prefix" => Some(Self::Prefix),
+            "contains" => Some(Self::Contains),
+            _ => None,
+        }
     }
 }
 
@@ -374,6 +398,7 @@ pub fn execute_list(
 pub fn execute_search(
     db_override: Option<PathBuf>,
     query: &str,
+    match_mode: SearchMatchMode,
     limit: usize,
     offset: usize,
     config: &RuntimeConfig,
@@ -406,17 +431,25 @@ pub fn execute_search(
         .init()
         .map_err(|error| AppError::Runtime(error.message().to_string()))?;
 
+    let search_fields = [
+        search::SearchField::Raw,
+        search::SearchField::Derived,
+        search::SearchField::Tags,
+    ];
+    let upstream_match_mode = match match_mode {
+        SearchMatchMode::Fts => search::SearchMatchMode::Fts,
+        SearchMatchMode::Prefix => search::SearchMatchMode::Prefix,
+        SearchMatchMode::Contains => search::SearchMatchMode::Contains,
+    };
+
     let rows = storage
         .with_connection(|conn| {
             search::search_items(
                 conn,
                 normalized_query,
                 repository::QueryState::All,
-                &[
-                    search::SearchField::Raw,
-                    search::SearchField::Derived,
-                    search::SearchField::Tags,
-                ],
+                &search_fields,
+                upstream_match_mode,
                 fetch_limit,
             )
         })
@@ -775,11 +808,15 @@ fn build_copy_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, A
 }
 
 fn build_search_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
-    let query = rest.trim();
+    let (match_mode, query) = match parse_search_intent(rest, config.search_match_mode) {
+        Ok(parsed) => parsed,
+        Err(feedback) => return Ok(feedback),
+    };
+
     if query.is_empty() {
         return Ok(Feedback::new(vec![
             Item::new("Type search text after keyword")
-                .with_subtitle("Use: search <query>")
+                .with_subtitle(SEARCH_INTENT_USAGE)
                 .with_valid(false),
         ]));
     }
@@ -796,17 +833,13 @@ fn build_search_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
         ]));
     }
 
-    let rows = execute_search(None, query, config.recent_limit, 0, config)?;
+    let rows = execute_search(None, query, match_mode, config.recent_limit, 0, config)?;
     if rows.is_empty() {
         return Ok(Feedback::new(vec![
             Item::new("No matching memo records")
                 .with_subtitle(format!("No results for: {}", truncate_title(query, 64)))
                 .with_valid(false),
         ]));
-    }
-
-    if rows.len() == 1 {
-        return build_item_action_feedback(&rows[0].item_id, config);
     }
 
     let mut items = Vec::with_capacity(rows.len());
@@ -837,6 +870,66 @@ fn build_search_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
     }
 
     Ok(Feedback::new(items))
+}
+
+fn parse_search_intent(
+    rest: &str,
+    default_match_mode: SearchMatchMode,
+) -> Result<(SearchMatchMode, &str), Feedback> {
+    let trimmed = rest.trim();
+    if trimmed.is_empty() {
+        return Err(Feedback::new(vec![
+            Item::new("Type search text after keyword")
+                .with_subtitle("Use: search <query>")
+                .with_valid(false),
+        ]));
+    }
+
+    if let Some(after_flag) = trimmed.strip_prefix("--match") {
+        let is_match_flag = after_flag
+            .chars()
+            .next()
+            .map(|ch| ch.is_whitespace() || ch == '=')
+            .unwrap_or(true);
+        if is_match_flag {
+            let mut rest = after_flag.trim_start();
+            if let Some(remaining) = rest.strip_prefix('=') {
+                rest = remaining.trim_start();
+            }
+            if rest.is_empty() {
+                return Err(Feedback::new(vec![
+                    Item::new("Missing search match mode")
+                        .with_subtitle(SEARCH_MATCH_USAGE)
+                        .with_valid(false),
+                ]));
+            }
+
+            let mut parts = rest.splitn(2, char::is_whitespace);
+            let mode_raw = parts.next().unwrap_or("").trim();
+            let Some(match_mode) = SearchMatchMode::parse_token(mode_raw) else {
+                return Err(Feedback::new(vec![
+                    Item::new(format!(
+                        "Invalid search match mode: {}",
+                        truncate_title(mode_raw, 32)
+                    ))
+                    .with_subtitle(SEARCH_MATCH_USAGE)
+                    .with_valid(false),
+                ]));
+            };
+
+            let query = parts.next().unwrap_or("").trim();
+            if query.is_empty() {
+                return Err(Feedback::new(vec![
+                    Item::new("Type search text after keyword")
+                        .with_subtitle(SEARCH_MATCH_USAGE)
+                        .with_valid(false),
+                ]));
+            }
+            return Ok((match_mode, query));
+        }
+    }
+
+    Ok((default_match_mode, trimmed))
 }
 
 fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppError> {
@@ -1037,6 +1130,15 @@ fn resolve_recent_limit() -> Result<usize, AppError> {
     Ok(parsed)
 }
 
+fn resolve_search_match_mode() -> Result<SearchMatchMode, AppError> {
+    let raw = non_empty_env("MEMO_SEARCH_MATCH").unwrap_or_else(|| "fts".to_string());
+    SearchMatchMode::parse_token(&raw).ok_or_else(|| {
+        AppError::User(format!(
+            "invalid MEMO_SEARCH_MATCH: {raw} (must be one of fts/prefix/contains)"
+        ))
+    })
+}
+
 fn non_empty_env(key: &str) -> Option<String> {
     let value = env::var(key).ok()?;
     let value = value.trim();
@@ -1066,6 +1168,7 @@ mod tests {
             require_confirm: false,
             max_input_bytes: 4096,
             recent_limit: DEFAULT_RECENT_LIMIT,
+            search_match_mode: DEFAULT_SEARCH_MATCH_MODE,
         }
     }
 
@@ -1318,20 +1421,14 @@ mod tests {
 
         assert_eq!(
             feedback.items.len(),
-            3,
-            "single search hit should show item menu"
+            1,
+            "single search hit should keep selectable search row"
         );
+        assert_eq!(feedback.items[0].valid, Some(false));
+        let expected_autocomplete = format!("item {}", add.item_id);
         assert_eq!(
-            feedback.items[0].title,
-            format!("Copy memo: {}", add.item_id)
-        );
-        assert_eq!(
-            feedback.items[1].title,
-            format!("Update memo: {}", add.item_id)
-        );
-        assert_eq!(
-            feedback.items[2].title,
-            format!("Delete memo: {}", add.item_id)
+            feedback.items[0].autocomplete.as_deref(),
+            Some(expected_autocomplete.as_str())
         );
     }
 
@@ -1370,16 +1467,68 @@ mod tests {
     }
 
     #[test]
+    fn script_filter_search_intent_supports_explicit_match_modes() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        let add = execute_add("123", None, None, &config).expect("seed add");
+
+        let prefix_feedback =
+            build_script_filter("search --match prefix 12", &config).expect("prefix search");
+        assert_eq!(prefix_feedback.items.len(), 1);
+        let expected_autocomplete = format!("item {}", add.item_id);
+        assert_eq!(
+            prefix_feedback.items[0].autocomplete.as_deref(),
+            Some(expected_autocomplete.as_str())
+        );
+
+        let contains_feedback =
+            build_script_filter("search --match contains 23", &config).expect("contains search");
+        assert_eq!(contains_feedback.items.len(), 1);
+        assert_eq!(
+            contains_feedback.items[0].autocomplete.as_deref(),
+            Some(expected_autocomplete.as_str())
+        );
+    }
+
+    #[test]
+    fn script_filter_search_intent_uses_configured_default_match_mode() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        config.search_match_mode = SearchMatchMode::Prefix;
+        let add = execute_add("123", None, None, &config).expect("seed add");
+
+        let feedback = build_script_filter("search 12", &config).expect("prefix-by-default search");
+        assert_eq!(feedback.items.len(), 1);
+        let expected_autocomplete = format!("item {}", add.item_id);
+        assert_eq!(
+            feedback.items[0].autocomplete.as_deref(),
+            Some(expected_autocomplete.as_str())
+        );
+    }
+
+    #[test]
+    fn script_filter_search_intent_rejects_invalid_match_mode() {
+        let feedback = build_script_filter("search --match fuzzy milk", &test_config())
+            .expect("script filter");
+
+        assert_eq!(feedback.items.len(), 1);
+        assert_eq!(feedback.items[0].valid, Some(false));
+        assert_eq!(feedback.items[0].title, "Invalid search match mode: fuzzy");
+    }
+
+    #[test]
     fn execute_search_rejects_invalid_limit_or_window() {
         let dir = tempdir().expect("temp dir");
         let mut config = test_config();
         config.db_path = dir.path().join("memo.db");
         execute_add("seed memo", None, None, &config).expect("seed add");
 
-        let invalid_limit = execute_search(None, "seed", 0, 0, &config);
+        let invalid_limit = execute_search(None, "seed", SearchMatchMode::Fts, 0, 0, &config);
         assert!(invalid_limit.is_err(), "search should reject limit=0");
 
-        let invalid_window = execute_search(None, "seed", 200, 400, &config);
+        let invalid_window = execute_search(None, "seed", SearchMatchMode::Fts, 200, 400, &config);
         assert!(
             invalid_window.is_err(),
             "search should reject oversized window"

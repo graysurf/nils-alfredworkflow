@@ -24,4 +24,14 @@ fi
 
 query="$(printf '%s' "$query" | xargs)"
 
-MEMO_QUERY_PREFIX="search" exec "$script_dir/script_filter.sh" "$query"
+first_token="${query%%[[:space:]]*}"
+first_token_lower="$(printf '%s' "$first_token" | tr '[:upper:]' '[:lower:]')"
+
+case "$first_token_lower" in
+item | update | delete | copy | search)
+  exec "$script_dir/script_filter.sh" "$query"
+  ;;
+*)
+  MEMO_QUERY_PREFIX="search" exec "$script_dir/script_filter.sh" "$query"
+  ;;
+esac

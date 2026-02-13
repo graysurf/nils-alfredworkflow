@@ -85,7 +85,7 @@ manifest="$workflow_dir/workflow.toml"
 [[ "$(toml_string "$manifest" script_filter)" == "script_filter_entry.sh" ]] || fail "script_filter mismatch"
 [[ "$(toml_string "$manifest" action)" == "action_run.sh" ]] || fail "action mismatch"
 
-for variable in MEMO_DB_PATH MEMO_SOURCE MEMO_REQUIRE_CONFIRM MEMO_MAX_INPUT_BYTES MEMO_RECENT_LIMIT MEMO_WORKFLOW_CLI_BIN; do
+for variable in MEMO_DB_PATH MEMO_SOURCE MEMO_REQUIRE_CONFIRM MEMO_MAX_INPUT_BYTES MEMO_RECENT_LIMIT MEMO_SEARCH_MATCH MEMO_WORKFLOW_CLI_BIN; do
   rg -n "^${variable}[[:space:]]*=" "$manifest" >/dev/null || fail "missing env var: $variable"
 done
 
@@ -93,6 +93,7 @@ rg -n '^MEMO_SOURCE[[:space:]]*=[[:space:]]*"alfred"' "$manifest" >/dev/null || 
 rg -n '^MEMO_REQUIRE_CONFIRM[[:space:]]*=[[:space:]]*"0"' "$manifest" >/dev/null || fail "MEMO_REQUIRE_CONFIRM default mismatch"
 rg -n '^MEMO_MAX_INPUT_BYTES[[:space:]]*=[[:space:]]*"4096"' "$manifest" >/dev/null || fail "MEMO_MAX_INPUT_BYTES default mismatch"
 rg -n '^MEMO_RECENT_LIMIT[[:space:]]*=[[:space:]]*"8"' "$manifest" >/dev/null || fail "MEMO_RECENT_LIMIT default mismatch"
+rg -n '^MEMO_SEARCH_MATCH[[:space:]]*=[[:space:]]*"fts"' "$manifest" >/dev/null || fail "MEMO_SEARCH_MATCH default mismatch"
 
 set +e
 "$workflow_dir/scripts/action_run.sh" >/dev/null 2>&1
@@ -167,7 +168,7 @@ if [[ "${1:-}" == "script-filter" && "${2:-}" == "--query" ]]; then
       printf '{"items":[{"title":"Type search text after keyword","subtitle":"Use: search <query>","valid":false}]}\n'
       ;;
     "search milk")
-      emit_item_menu "itm_00000001"
+      printf '{"items":[{"title":"Search itm_00000001: buy milk","subtitle":"search","autocomplete":"item itm_00000001","valid":false}]}\n'
       ;;
     "item itm_00000001")
       emit_item_menu "itm_00000001"
@@ -366,10 +367,12 @@ assert_jq_json "$keyword_copy_id_json" '.items | length == 1' "mmc numeric query
 assert_jq_json "$keyword_copy_id_json" '.items[0].arg == "copy::itm_00000001"' "mmc numeric query should map to copy action"
 
 keyword_search_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_search.sh" "milk"; })"
-assert_jq_json "$keyword_search_json" '.items | length == 3' "mmq single-hit query should return item menu rows"
-assert_jq_json "$keyword_search_json" '.items[0].arg == "copy::itm_00000001"' "mmq single-hit query should include copy action"
-assert_jq_json "$keyword_search_json" '.items[1].autocomplete == "update itm_00000001 "' "mmq single-hit query should include update action"
-assert_jq_json "$keyword_search_json" '.items[2].arg == "delete::itm_00000001"' "mmq single-hit query should include delete action"
+assert_jq_json "$keyword_search_json" '.items | length == 1' "mmq query should return search rows"
+assert_jq_json "$keyword_search_json" '.items[0].autocomplete == "item itm_00000001"' "mmq should route to item autocomplete"
+
+keyword_search_item_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_search.sh" "item itm_00000001"; })"
+assert_jq_json "$keyword_search_item_json" '.items | length == 3' "mmq item intent should keep full item menu"
+assert_jq_json "$keyword_search_item_json" '.items[0].arg == "copy::itm_00000001"' "mmq item intent should include copy action"
 
 keyword_search_empty_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_search.sh" ""; })"
 assert_jq_json "$keyword_search_empty_json" '.items[0].valid == false' "mmq empty query should show guidance row"
@@ -551,8 +554,9 @@ assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.i
 assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm") | .config.withspace == false' "mm keyword should keep no-space suffix routing"
 assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mmq") | .config.scriptfile == "./scripts/script_filter_search.sh"' "mmq keyword should use search script"
 assert_jq_json "$packaged_json" '.connections | length == 7' "connection wiring mismatch"
-assert_jq_json "$packaged_json" '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]' "plist variable list mismatch"
+assert_jq_json "$packaged_json" '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SEARCH_MATCH","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]' "plist variable list mismatch"
 assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_MAX_INPUT_BYTES") | .config.default == "4096"' "plist default mismatch"
 assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_RECENT_LIMIT") | .config.default == "8"' "plist recent limit default mismatch"
+assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_SEARCH_MATCH") | .config.default == "fts"' "plist search match default mismatch"
 
 echo "ok: memo-add smoke test"

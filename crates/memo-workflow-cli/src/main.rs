@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand, ValueEnum};
 use memo_workflow_cli::{
     ADD_TOKEN_PREFIX, AppError, COPY_JSON_TOKEN_PREFIX, COPY_TOKEN_PREFIX, DELETE_TOKEN_PREFIX,
-    ListResult, RuntimeConfig, SearchResult, UPDATE_TOKEN_PREFIX, build_script_filter, execute_add,
-    execute_db_init, execute_delete, execute_fetch_item, execute_list, execute_search,
-    execute_update, parse_add_token, parse_copy_json_token, parse_copy_token, parse_delete_token,
-    parse_update_token,
+    ListResult, RuntimeConfig, SearchMatchMode, SearchResult, UPDATE_TOKEN_PREFIX,
+    build_script_filter, execute_add, execute_db_init, execute_delete, execute_fetch_item,
+    execute_list, execute_search, execute_update, parse_add_token, parse_copy_json_token,
+    parse_copy_token, parse_delete_token, parse_update_token,
 };
 use serde::Serialize;
 
@@ -96,6 +96,9 @@ enum Command {
         /// Search query text.
         #[arg(long)]
         query: String,
+        /// Search match mode.
+        #[arg(long = "match", value_enum, default_value_t = SearchMatch::Fts)]
+        match_mode: SearchMatch,
         /// Max rows to return.
         #[arg(long, default_value_t = 20)]
         limit: usize,
@@ -131,6 +134,24 @@ enum Command {
 enum ResultMode {
     Text,
     Json,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[value(rename_all = "kebab-case")]
+enum SearchMatch {
+    Fts,
+    Prefix,
+    Contains,
+}
+
+impl From<SearchMatch> for SearchMatchMode {
+    fn from(value: SearchMatch) -> Self {
+        match value {
+            SearchMatch::Fts => SearchMatchMode::Fts,
+            SearchMatch::Prefix => SearchMatchMode::Prefix,
+            SearchMatch::Contains => SearchMatchMode::Contains,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -216,12 +237,13 @@ fn run(cli: Cli) -> Result<(), AppError> {
         }
         Command::Search {
             query,
+            match_mode,
             limit,
             offset,
             db,
             mode,
         } => {
-            let result = execute_search(db, &query, limit, offset, &config)?;
+            let result = execute_search(db, &query, match_mode.into(), limit, offset, &config)?;
             emit(mode, result, render_search_text)?;
         }
         Command::Action {

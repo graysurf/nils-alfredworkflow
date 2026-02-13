@@ -2,7 +2,7 @@
 
 ## Goal
 
-Provide a capture-first Alfred workflow for quick memo insertion backed by `nils-memo-cli@0.3.6`.
+Provide a capture-first Alfred workflow for quick memo insertion backed by `nils-memo-cli@0.3.7`.
 
 ## Primary user behavior
 
@@ -18,8 +18,8 @@ Provide a capture-first Alfred workflow for quick memo insertion backed by `nils
 - `mmu itm_00000001 buy oat milk` -> script-filter returns actionable update row.
 - `mmd itm_00000001` -> script-filter returns actionable delete row.
 - `mmc itm_00000001` -> script-filter returns actionable copy row.
-- `mmq milk` -> single-hit search returns the same item action menu as `mmr <id>` (`copy` / `update` / `delete`).
-- `mmq <query>` with multiple hits -> non-actionable search rows with `autocomplete=item <item_id>`.
+- `mmq <query>` -> search rows are always non-actionable and route with `autocomplete=item <item_id>`.
+- Enter on a search row routes to `item <item_id>` and opens full item action menu (`copy` / `update` / `delete`).
 - choose `Copy` row (from `mmr <id>` item menu) -> Enter copies memo text; `Cmd` modifier switches action to copy raw JSON for that item.
 - choose `Update` row (from `mmr <id>` item menu) -> query autocompletes to `update <item_id>`; type new text and press Enter to execute update.
 - `mma <text>` routes to add intent.
@@ -39,7 +39,7 @@ The workflow runtime binary is `memo-workflow-cli` with these commands:
 - `delete --item-id <id>`: direct delete operation (for debug/manual use).
 - `db-init`: direct db initialization operation (for debug/manual use).
 - `list --limit <n> --offset <n>`: direct newest-first memo query (for debug/manual use).
-- `search --query <text> --limit <n> --offset <n>`: direct FTS-backed memo search (for debug/manual use).
+- `search --query <text> --match <fts|prefix|contains> --limit <n> --offset <n>`: direct memo search (`fts` default; `prefix` and `contains` optional for debug/manual use).
 
 ## Action token contract
 
@@ -64,6 +64,7 @@ Malformed update/delete token shapes are handled as user errors.
 | `MEMO_REQUIRE_CONFIRM` | `"0"` | No | Truthy (`1/true/yes/on`) adds explicit confirm row before add action. |
 | `MEMO_MAX_INPUT_BYTES` | `"4096"` | No | Max input bytes for one memo. Integer range `1..=1048576`. |
 | `MEMO_RECENT_LIMIT` | `"8"` | No | Count of recent rows shown for empty query. Integer range `1..=50`. |
+| `MEMO_SEARCH_MATCH` | `"fts"` | No | Default search match mode for `search <query>` (`fts`, `prefix`, `contains`). |
 | `MEMO_WORKFLOW_CLI_BIN` | `""` | No | Optional absolute binary override for workflow runtime. |
 
 ## DB init semantics
@@ -108,13 +109,13 @@ Malformed update/delete token shapes are handled as user errors.
   - `mmu` forwards empty query to newest-first recent rows, otherwise prepends `update` before forwarding query.
   - `mmd` forwards empty query to newest-first recent rows, otherwise prepends `delete` before forwarding query.
   - `mmc` forwards empty query to newest-first recent rows, otherwise prepends `copy` before forwarding query.
-  - `mmq` prepends `search` before forwarding query.
+- `mmq` defaults to prepending `search` for plain query text (`MEMO_SEARCH_MATCH` controls default match mode when query does not include `--match`), but passes through explicit intents (`item|update|delete|copy|search`) for multi-step manage flow.
 - Copy row subtitle includes text preview for the default copy payload.
 - Copy row also provides a `cmd` modifier action token (`copy-json::<item_id>`) with JSON preview subtitle.
 - `update <item_id>` without text renders guidance/autocomplete instead of hard error row.
 - `search` without query text renders guidance row and no executable action token.
-- `search <query>` with one hit returns direct item action menu rows (`copy` / `update` / `delete`).
-- `search <query>` with multiple hits returns non-destructive rows with `autocomplete=item <item_id>`.
+- `search <query>` always returns non-destructive rows with `autocomplete=item <item_id>`.
+- `search --match <fts|prefix|contains> <query>` is accepted for optional match mode override (default `fts`).
 - db path row is informational (`valid=false`), while `db init` stays actionable when db is missing.
 - Non-empty query defaults to add unless explicit `update` / `delete` / `copy` / `search` intent prefix is matched (for keyword wrappers / internal script-filter paths).
 - Malformed mutation query syntax returns non-actionable guidance rows instead of malformed JSON.

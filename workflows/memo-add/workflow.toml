@@ -18,6 +18,8 @@ MEMO_REQUIRE_CONFIRM = "0"
 MEMO_MAX_INPUT_BYTES = "4096"
 # Optional number of latest memo rows shown on empty query.
 MEMO_RECENT_LIMIT = "8"
+# Optional default search match mode for mmq/search (fts|prefix|contains).
+MEMO_SEARCH_MATCH = "fts"
 # Optional executable path override for memo-workflow-cli.
 MEMO_WORKFLOW_CLI_BIN = ""
 

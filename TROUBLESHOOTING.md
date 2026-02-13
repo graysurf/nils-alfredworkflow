@@ -572,6 +572,7 @@ Use this when quote-feed rollout quality drops and temporary fallback is require
 | `invalid item_id` | Update/delete target id is malformed or does not exist in current DB. | Re-run `mm` to read recent ids, then retry with exact `itm_########` id in the same `MEMO_DB_PATH`. |
 | `Invalid mutation syntax` / `malformed update/delete token` | Query/token does not match required grammar (`update <item_id> <text>`, `delete <item_id>`, `update::<item_id>::<text>`, `delete::<item_id>`). | Fix mutation syntax and retry; malformed syntax should return guidance/error rows, not executable actions. |
 | `Type search text after keyword` | `mmq` or `search` intent was called without query text. | Enter search text after `mmq` (for example `mmq milk`). |
+| `invalid MEMO_SEARCH_MATCH` | `MEMO_SEARCH_MATCH` is not one of `fts`, `prefix`, or `contains`. | Set `MEMO_SEARCH_MATCH` to a valid mode (default `fts`). |
 | `memo action failed` | `action_run.sh` received a bad token, or runtime returned exit `1`/`2`. | Run token directly for diagnostics: `memo-workflow-cli action --token "<token>"`; fix user/config error first, then re-run Alfred action. |
 | `invalid MEMO_RECENT_LIMIT` | `MEMO_RECENT_LIMIT` is not an integer in `1..50`. | Set a valid integer (for example `8`) and retry `mm`. |
 | Empty query shows no recent rows after successful add | Wrong DB path/source is being used between add and query. | Verify `MEMO_DB_PATH`, rerun `db-init`, then run `mm` again. |
