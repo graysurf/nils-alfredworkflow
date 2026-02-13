@@ -171,8 +171,6 @@ sfac_read_latest_request() {
   [[ -n "$seq" && -n "$updated" ]] || return 1
 
   SFAC_REQUEST_SEQ="$seq"
-  SFAC_REQUEST_UPDATED_AT="$updated"
-  SFAC_REQUEST_QUERY="$query"
   return 0
 }
 
@@ -223,7 +221,9 @@ sfac_load_cache_result() {
   local query="$1"
   local ttl_seconds="${2:-0}"
 
+  # shellcheck disable=SC2034 # API output variable consumed by caller scripts.
   SFAC_CACHE_STATUS=""
+  # shellcheck disable=SC2034 # API output variable consumed by caller scripts.
   SFAC_CACHE_PAYLOAD=""
 
   [[ "$ttl_seconds" =~ ^[0-9]+$ ]] || return 1
@@ -249,7 +249,9 @@ sfac_load_cache_result() {
   payload="$(cat "$payload_path" 2>/dev/null || true)"
   [[ -n "$payload" ]] || return 1
 
+  # shellcheck disable=SC2034 # API output variable consumed by caller scripts.
   SFAC_CACHE_STATUS="$status"
+  # shellcheck disable=SC2034 # API output variable consumed by caller scripts.
   SFAC_CACHE_PAYLOAD="$payload"
   return 0
 }
