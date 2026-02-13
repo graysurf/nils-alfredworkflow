@@ -2,13 +2,16 @@ use std::env;
 use std::path::PathBuf;
 
 use alfred_core::{Feedback, Item};
-use memo_cli::output::format_item_id;
+use memo_cli::output::{format_item_id, parse_item_id};
 use memo_cli::storage::{Storage, repository};
 use serde::Serialize;
 use thiserror::Error;
 
 pub const DB_INIT_TOKEN: &str = "db-init";
 pub const ADD_TOKEN_PREFIX: &str = "add::";
+pub const UPDATE_TOKEN_PREFIX: &str = "update::";
+pub const DELETE_TOKEN_PREFIX: &str = "delete::";
+const UPDATE_TOKEN_DELIMITER: &str = "::";
 pub const DEFAULT_SOURCE: &str = "alfred";
 pub const DEFAULT_MAX_INPUT_BYTES: usize = 4096;
 pub const DEFAULT_RECENT_LIMIT: usize = 8;
@@ -75,6 +78,25 @@ pub struct AddResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct UpdateResult {
+    pub item_id: String,
+    pub updated_at: String,
+    pub text: String,
+    pub state: String,
+    pub cleared_derivations: i64,
+    pub cleared_workflow_anchors: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DeleteResult {
+    pub item_id: String,
+    pub deleted: bool,
+    pub deleted_at: String,
+    pub removed_derivations: i64,
+    pub removed_workflow_anchors: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct InitResult {
     pub db_path: String,
 }
@@ -91,6 +113,14 @@ pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Result<Feedba
     let normalized = query.trim();
     if normalized.is_empty() {
         return build_empty_query_feedback(config);
+    }
+
+    if let Some(rest) = strip_intent(normalized, "update") {
+        return build_update_feedback(rest, config);
+    }
+
+    if let Some(rest) = strip_intent(normalized, "delete") {
+        return build_delete_feedback(rest);
     }
 
     if normalized.len() > config.max_input_bytes {
@@ -198,6 +228,75 @@ pub fn execute_add(
     })
 }
 
+pub fn execute_update(
+    item_id_raw: &str,
+    text: &str,
+    db_override: Option<PathBuf>,
+    config: &RuntimeConfig,
+) -> Result<UpdateResult, AppError> {
+    let item_id = parse_item_id(item_id_raw)
+        .ok_or_else(|| AppError::User("update requires a valid item_id".to_string()))?;
+    let normalized_text = text.trim();
+    if normalized_text.is_empty() {
+        return Err(AppError::User(
+            "update requires a non-empty text argument".to_string(),
+        ));
+    }
+
+    if normalized_text.len() > config.max_input_bytes {
+        return Err(AppError::User(format!(
+            "memo text exceeds MEMO_MAX_INPUT_BYTES: {} > {}",
+            normalized_text.len(),
+            config.max_input_bytes
+        )));
+    }
+
+    let db_path = db_override.unwrap_or_else(|| config.db_path.clone());
+    let storage = Storage::new(db_path);
+    storage
+        .init()
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    let updated = storage
+        .with_transaction(|tx| repository::update_item(tx, item_id, normalized_text))
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    Ok(UpdateResult {
+        item_id: format_item_id(updated.item_id),
+        updated_at: updated.updated_at,
+        text: updated.text,
+        state: "pending".to_string(),
+        cleared_derivations: updated.cleared_derivations,
+        cleared_workflow_anchors: updated.cleared_workflow_anchors,
+    })
+}
+
+pub fn execute_delete(
+    item_id_raw: &str,
+    db_override: Option<PathBuf>,
+    config: &RuntimeConfig,
+) -> Result<DeleteResult, AppError> {
+    let item_id = parse_item_id(item_id_raw)
+        .ok_or_else(|| AppError::User("delete requires a valid item_id".to_string()))?;
+    let db_path = db_override.unwrap_or_else(|| config.db_path.clone());
+    let storage = Storage::new(db_path);
+    storage
+        .init()
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    let deleted = storage
+        .with_transaction(|tx| repository::delete_item_hard(tx, item_id))
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    Ok(DeleteResult {
+        item_id: format_item_id(deleted.item_id),
+        deleted: true,
+        deleted_at: deleted.deleted_at,
+        removed_derivations: deleted.removed_derivations,
+        removed_workflow_anchors: deleted.removed_workflow_anchors,
+    })
+}
+
 pub fn execute_list(
     db_override: Option<PathBuf>,
     limit: usize,
@@ -239,6 +338,119 @@ pub fn parse_add_token(arg: &str) -> Option<String> {
 
 pub fn build_add_token(text: &str) -> String {
     format!("{ADD_TOKEN_PREFIX}{text}")
+}
+
+pub fn parse_update_token(arg: &str) -> Option<(String, String)> {
+    let payload = arg.strip_prefix(UPDATE_TOKEN_PREFIX)?;
+    let (item_id_raw, text_raw) = payload.split_once(UPDATE_TOKEN_DELIMITER)?;
+    let item_id = parse_item_id(item_id_raw)?;
+    let text = text_raw.trim();
+    if text.is_empty() {
+        return None;
+    }
+
+    Some((format_item_id(item_id), text.to_string()))
+}
+
+pub fn build_update_token(item_id: &str, text: &str) -> String {
+    format!("{UPDATE_TOKEN_PREFIX}{item_id}{UPDATE_TOKEN_DELIMITER}{text}")
+}
+
+pub fn parse_delete_token(arg: &str) -> Option<String> {
+    let payload = arg.strip_prefix(DELETE_TOKEN_PREFIX)?;
+    let item_id = parse_item_id(payload.trim())?;
+    Some(format_item_id(item_id))
+}
+
+pub fn build_delete_token(item_id: &str) -> String {
+    format!("{DELETE_TOKEN_PREFIX}{item_id}")
+}
+
+fn strip_intent<'a>(query: &'a str, intent: &str) -> Option<&'a str> {
+    let mut parts = query.splitn(2, char::is_whitespace);
+    let first = parts.next()?;
+    if !first.eq_ignore_ascii_case(intent) {
+        return None;
+    }
+    Some(parts.next().unwrap_or("").trim())
+}
+
+fn build_update_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
+    let mut parts = rest.splitn(2, char::is_whitespace);
+    let item_id_raw = parts.next().unwrap_or("").trim();
+    let text = parts.next().unwrap_or("").trim();
+
+    if item_id_raw.is_empty() || text.is_empty() {
+        return Ok(Feedback::new(vec![
+            Item::new("Invalid update syntax")
+                .with_subtitle("Use: update <item_id> <new text>")
+                .with_valid(false),
+        ]));
+    }
+
+    let item_id = match parse_item_id(item_id_raw) {
+        Some(item_id) => format_item_id(item_id),
+        None => {
+            return Ok(Feedback::new(vec![
+                Item::new("Invalid item_id for update")
+                    .with_subtitle("Expected itm_XXXXXXXX or positive integer item id.")
+                    .with_valid(false),
+            ]));
+        }
+    };
+
+    if text.len() > config.max_input_bytes {
+        return Ok(Feedback::new(vec![
+            Item::new("Input exceeds MEMO_MAX_INPUT_BYTES")
+                .with_subtitle(format!(
+                    "Current {} bytes, limit {} bytes.",
+                    text.len(),
+                    config.max_input_bytes
+                ))
+                .with_valid(false),
+        ]));
+    }
+
+    Ok(Feedback::new(vec![
+        Item::new(format!("Update memo: {item_id}"))
+            .with_subtitle(format!(
+                "Press Enter to update text ({}/{} bytes).",
+                text.len(),
+                config.max_input_bytes
+            ))
+            .with_arg(build_update_token(&item_id, text))
+            .with_valid(true),
+    ]))
+}
+
+fn build_delete_feedback(rest: &str) -> Result<Feedback, AppError> {
+    let mut parts = rest.split_whitespace();
+    let item_id_raw = parts.next().unwrap_or("").trim();
+    if item_id_raw.is_empty() || parts.next().is_some() {
+        return Ok(Feedback::new(vec![
+            Item::new("Invalid delete syntax")
+                .with_subtitle("Use: delete <item_id>")
+                .with_valid(false),
+        ]));
+    }
+
+    let item_id = match parse_item_id(item_id_raw) {
+        Some(item_id) => format_item_id(item_id),
+        None => {
+            return Ok(Feedback::new(vec![
+                Item::new("Invalid item_id for delete")
+                    .with_subtitle("Expected itm_XXXXXXXX or positive integer item id.")
+                    .with_valid(false),
+            ]));
+        }
+    };
+
+    Ok(Feedback::new(vec![
+        Item::new(format!("Delete memo: {item_id}"))
+            .with_subtitle("Press Enter to hard-delete this memo item.")
+            .with_arg(build_delete_token(&item_id))
+            .with_valid(true),
+    ]))
 }
 
 fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppError> {
@@ -430,6 +642,27 @@ mod tests {
     }
 
     #[test]
+    fn update_token_roundtrip() {
+        let token = build_update_token("itm_00000042", "buy milk::after work");
+        let parsed = parse_update_token(&token).expect("update token should parse");
+        assert_eq!(parsed.0, "itm_00000042");
+        assert_eq!(parsed.1, "buy milk::after work");
+    }
+
+    #[test]
+    fn delete_token_roundtrip() {
+        let token = build_delete_token("itm_00000042");
+        let parsed = parse_delete_token(&token).expect("delete token should parse");
+        assert_eq!(parsed, "itm_00000042");
+    }
+
+    #[test]
+    fn update_token_rejects_missing_text() {
+        let token = format!("{UPDATE_TOKEN_PREFIX}itm_00000042{UPDATE_TOKEN_DELIMITER}");
+        assert!(parse_update_token(&token).is_none());
+    }
+
+    #[test]
     fn script_filter_returns_db_init_on_empty_query() {
         let feedback = build_script_filter("", &test_config()).expect("script filter should build");
 
@@ -456,6 +689,48 @@ mod tests {
                 .starts_with(ADD_TOKEN_PREFIX)
         );
         assert_eq!(feedback.items[0].valid, Some(true));
+    }
+
+    #[test]
+    fn script_filter_returns_update_action_for_update_intent() {
+        let feedback = build_script_filter("update itm_00000002 buy almond milk", &test_config())
+            .expect("script filter should build");
+
+        assert_eq!(feedback.items.len(), 1);
+        let arg = feedback.items[0].arg.as_deref().expect("arg should exist");
+        assert!(arg.starts_with(UPDATE_TOKEN_PREFIX));
+        assert_eq!(feedback.items[0].valid, Some(true));
+    }
+
+    #[test]
+    fn script_filter_rejects_update_without_text() {
+        let feedback =
+            build_script_filter("update itm_00000002", &test_config()).expect("script filter");
+
+        assert_eq!(feedback.items.len(), 1);
+        assert_eq!(feedback.items[0].valid, Some(false));
+        assert_eq!(feedback.items[0].title, "Invalid update syntax");
+    }
+
+    #[test]
+    fn script_filter_returns_delete_action_for_delete_intent() {
+        let feedback =
+            build_script_filter("delete itm_00000009", &test_config()).expect("script filter");
+
+        assert_eq!(feedback.items.len(), 1);
+        let arg = feedback.items[0].arg.as_deref().expect("arg should exist");
+        assert!(arg.starts_with(DELETE_TOKEN_PREFIX));
+        assert_eq!(feedback.items[0].valid, Some(true));
+    }
+
+    #[test]
+    fn script_filter_rejects_delete_with_invalid_item_id() {
+        let feedback =
+            build_script_filter("delete abc", &test_config()).expect("script filter should build");
+
+        assert_eq!(feedback.items.len(), 1);
+        assert_eq!(feedback.items[0].valid, Some(false));
+        assert_eq!(feedback.items[0].title, "Invalid item_id for delete");
     }
 
     #[test]

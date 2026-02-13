@@ -5,8 +5,9 @@ Capture memo text quickly into SQLite-backed `nils-memo-cli` storage.
 ## Features
 
 - Keyword `mm` for fast memo capture.
-- Primary flow is `add` (one Enter to save memo text).
+- Primary flow supports `add`, `update`, and `delete`.
 - Empty query shows `db init` plus latest memo rows (newest -> oldest).
+- Delete intent is hard-delete (permanent remove, no undo).
 - Runtime parameters for DB path, source label, confirmation gate, and max input bytes.
 
 ## Configuration
@@ -28,6 +29,30 @@ Set these via Alfred's `Configure Workflow...` UI:
 |---|---|
 | `mm` | Show add guidance, a `db init` action row, and recent memo records (newest first). |
 | `mm <text>` | Add memo text to database via `memo-workflow-cli action --token add::<text>`. |
+| `mm update <item_id> <text>` | Update target memo via `memo-workflow-cli action --token update::<item_id>::<text>`. |
+| `mm delete <item_id>` | Hard-delete target memo via `memo-workflow-cli action --token delete::<item_id>`. |
+
+## Query intents
+
+- Default intent: add (`mm <text>`).
+- Mutation intents: `update <item_id> <text>`, `delete <item_id>`.
+- Invalid mutation syntax (for example missing `item_id` or missing update text) returns non-actionable guidance rows.
+
+## Operator CRUD verification
+
+```bash
+tmpdir="$(mktemp -d)"
+db="$tmpdir/memo.db"
+
+add_json="$(cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "before" --mode json)"
+item_id="$(jq -r '.result.item_id' <<<"$add_json")"
+
+cargo run -p nils-memo-workflow-cli -- update --db "$db" --item-id "$item_id" --text "after" --mode json \
+  | jq -e '.ok == true and .result.item_id == "'"$item_id"'"'
+
+cargo run -p nils-memo-workflow-cli -- delete --db "$db" --item-id "$item_id" --mode json \
+  | jq -e '.ok == true and .result.deleted == true'
+```
 
 ## Validation
 

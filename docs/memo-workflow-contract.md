@@ -8,6 +8,8 @@ Provide a capture-first Alfred workflow for quick memo insertion backed by `nils
 
 - Keyword: `mm`
 - `mm buy milk` -> script-filter returns actionable add row -> action runs add and persists one inbox record.
+- `mm update itm_00000001 buy oat milk` -> script-filter returns actionable update row.
+- `mm delete itm_00000001` -> script-filter returns actionable delete row.
 - `mm` (empty query) -> script-filter returns guidance row + `db init` action row + recent memo rows (newest first).
 
 ## Runtime commands
@@ -17,6 +19,8 @@ The workflow runtime binary is `memo-workflow-cli` with these commands:
 - `script-filter --query <text>`: returns Alfred JSON.
 - `action --token <token>`: executes workflow action token.
 - `add --text <text>`: direct add operation (for debug/manual use).
+- `update --item-id <id> --text <text>`: direct update operation (for debug/manual use).
+- `delete --item-id <id>`: direct delete operation (for debug/manual use).
 - `db-init`: direct db initialization operation (for debug/manual use).
 - `list --limit <n> --offset <n>`: direct newest-first memo query (for debug/manual use).
 
@@ -24,6 +28,11 @@ The workflow runtime binary is `memo-workflow-cli` with these commands:
 
 - `db-init`: initialize sqlite database and schema.
 - `add::<raw-text>`: add one memo with raw text payload.
+- `update::<item-id>::<raw-text>`: update one memo row by item id.
+- `delete::<item-id>`: delete one memo row by item id.
+
+`update` token parsing splits only the first two `::` delimiters, so update text keeps raw suffix bytes.
+Malformed update/delete token shapes are handled as user errors.
 
 `action_run.sh` forwards selected Alfred `arg` token into `memo-workflow-cli action --token`.
 
@@ -52,17 +61,27 @@ The workflow runtime binary is `memo-workflow-cli` with these commands:
 - Oversize text (> `MEMO_MAX_INPUT_BYTES`) is rejected as usage/user error.
 - Success path persists one row and returns item id/timestamp acknowledgment.
 
+## Update semantics
+
+- Query intent form: `update <item_id> <new text>`.
+- Requires valid `item_id` and non-empty update text.
+- Invalid `item_id` or malformed update syntax is rejected as usage/user error.
+- Success path updates target row text and returns updated metadata acknowledgment.
+
+## Delete semantics
+
+- Query intent form: `delete <item_id>`.
+- Delete uses hard-delete semantics (row is permanently removed; no soft-delete/undo path).
+- Invalid/missing `item_id` or malformed delete syntax is rejected as usage/user error.
+- Success path returns deletion acknowledgment for the target item id.
+
 ## Query semantics
 
 - Empty query includes a recent-records section so users can verify latest captures immediately.
 - Recent records default to `MEMO_RECENT_LIMIT=8` and are ordered by `created_at DESC`, then `item_id DESC`.
 - Recent record rows are informational (`valid=false`), while `db init` stays actionable.
-
-## Delete/modify assessment
-
-- `nils-memo-cli@0.3.3` command surface is `add/list/search/report/fetch/apply`.
-- There is no direct delete/update command for raw memo rows in this version.
-- Workflow v1 keeps append-only capture semantics; delete/modify are out of scope unless upstream contract adds safe support.
+- Non-empty query defaults to add unless explicit `update` / `delete` intent prefix is matched.
+- Malformed mutation query syntax returns non-actionable guidance rows instead of malformed JSON.
 
 ## Error mapping
 
@@ -74,7 +93,11 @@ The workflow runtime binary is `memo-workflow-cli` with these commands:
 
 - `cargo run -p nils-memo-workflow-cli -- script-filter --query "buy milk" | jq -e '.items | type == "array"'`
 - `cargo run -p nils-memo-workflow-cli -- script-filter --query "" | jq -e '.items | type == "array" and length >= 2'`
+- `cargo run -p nils-memo-workflow-cli -- script-filter --query "update itm_00000001 revised text" | jq -e '.items[0].arg | startswith("update::")'`
+- `cargo run -p nils-memo-workflow-cli -- script-filter --query "delete itm_00000001" | jq -e '.items[0].arg | startswith("delete::")'`
 - `cargo run -p nils-memo-workflow-cli -- db-init`
 - `cargo run -p nils-memo-workflow-cli -- add --text "buy milk"`
+- `tmpdir="$(mktemp -d)" && db="$tmpdir/memo.db" && add_json="$(cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "before" --mode json)" && item_id="$(jq -r '.result.item_id' <<<"$add_json")" && cargo run -p nils-memo-workflow-cli -- update --db "$db" --item-id "$item_id" --text "after" --mode json`
+- `tmpdir="$(mktemp -d)" && db="$tmpdir/memo.db" && add_json="$(cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "to-delete" --mode json)" && item_id="$(jq -r '.result.item_id' <<<"$add_json")" && cargo run -p nils-memo-workflow-cli -- delete --db "$db" --item-id "$item_id" --mode json`
 - `cargo run -p nils-memo-workflow-cli -- list --limit 8 --mode json`
 - `bash workflows/memo-add/tests/smoke.sh`

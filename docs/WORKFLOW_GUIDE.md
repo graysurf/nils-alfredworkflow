@@ -321,7 +321,11 @@ Runtime checks:
 - Enter flow: `workflows/memo-add/scripts/action_run.sh` ->
   `memo-workflow-cli action --token "<token>"`.
 - Empty query returns guidance + `db-init` row + latest memo rows (newest first).
-- Non-empty query returns add action row.
+- Intent examples:
+  - `mm buy milk` -> add token (`add::<text>`).
+  - `mm update itm_00000001 buy oat milk` -> update token (`update::<item_id>::<text>`).
+  - `mm delete itm_00000001` -> delete token (`delete::<item_id>`; hard-delete).
+  - malformed mutation query (`mm update`, `mm delete`, `mm update <id>`) -> non-actionable guidance row.
 
 ### Operator validation checklist
 
@@ -336,6 +340,8 @@ Runtime checks:
 - Empty query must include one actionable `db init` row and recent list rows.
 - Invalid `MEMO_*` values must return a non-actionable config error item.
 - Add action must persist one row and return success text from action script.
+- Invalid `item_id` for update/delete must be rejected as user error (non-actionable Alfred error item).
+- Malformed mutation query/token syntax must not crash and must return guidance or action error text.
 
 ## Codex CLI workflow details
 

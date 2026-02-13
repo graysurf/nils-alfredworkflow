@@ -2,8 +2,9 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use memo_workflow_cli::{
-    ADD_TOKEN_PREFIX, AppError, ListResult, RuntimeConfig, build_script_filter, execute_add,
-    execute_db_init, execute_list,
+    ADD_TOKEN_PREFIX, AppError, DELETE_TOKEN_PREFIX, ListResult, RuntimeConfig,
+    UPDATE_TOKEN_PREFIX, build_script_filter, execute_add, execute_db_init, execute_delete,
+    execute_list, execute_update, parse_add_token, parse_delete_token, parse_update_token,
 };
 use serde::Serialize;
 
@@ -33,6 +34,33 @@ enum Command {
         /// Override source label for this call.
         #[arg(long)]
         source: Option<String>,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = ResultMode::Text)]
+        mode: ResultMode,
+    },
+    /// Update one memo item.
+    Update {
+        /// Memo item identifier (itm_XXXXXXXX or integer id).
+        #[arg(long)]
+        item_id: String,
+        /// Updated memo text.
+        #[arg(long)]
+        text: String,
+        /// Override sqlite DB path for this call.
+        #[arg(long)]
+        db: Option<PathBuf>,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = ResultMode::Text)]
+        mode: ResultMode,
+    },
+    /// Hard-delete one memo item.
+    Delete {
+        /// Memo item identifier (itm_XXXXXXXX or integer id).
+        #[arg(long)]
+        item_id: String,
+        /// Override sqlite DB path for this call.
+        #[arg(long)]
+        db: Option<PathBuf>,
         /// Output format.
         #[arg(long, value_enum, default_value_t = ResultMode::Text)]
         mode: ResultMode,
@@ -123,6 +151,36 @@ fn run(cli: Cli) -> Result<(), AppError> {
                 format!("added {} at {}", res.item_id, res.created_at)
             })?;
         }
+        Command::Update {
+            item_id,
+            text,
+            db,
+            mode,
+        } => {
+            let result = execute_update(&item_id, &text, db, &config)?;
+            emit(mode, result, |res| {
+                format!(
+                    "updated {} at {} (state={}, cleared_derivations={}, cleared_workflows={})",
+                    res.item_id,
+                    res.updated_at,
+                    res.state,
+                    res.cleared_derivations,
+                    res.cleared_workflow_anchors
+                )
+            })?;
+        }
+        Command::Delete { item_id, db, mode } => {
+            let result = execute_delete(&item_id, db, &config)?;
+            emit(mode, result, |res| {
+                format!(
+                    "deleted {} at {} (removed_derivations={}, removed_workflows={})",
+                    res.item_id,
+                    res.deleted_at,
+                    res.removed_derivations,
+                    res.removed_workflow_anchors
+                )
+            })?;
+        }
         Command::DbInit { db, mode } => {
             let result = execute_db_init(db, &config)?;
             emit(mode, result, |res| format!("initialized {}", res.db_path))?;
@@ -148,13 +206,46 @@ fn run(cli: Cli) -> Result<(), AppError> {
                 return Ok(());
             }
 
-            let text = if let Some(raw) = token.strip_prefix(ADD_TOKEN_PREFIX) {
-                raw
+            if token.starts_with(UPDATE_TOKEN_PREFIX) {
+                let (item_id, text) = parse_update_token(&token)
+                    .ok_or_else(|| AppError::User("invalid update action token".to_string()))?;
+                let result = execute_update(&item_id, &text, db, &config)?;
+                emit(mode, result, |res| {
+                    format!(
+                        "updated {} at {} (state={}, cleared_derivations={}, cleared_workflows={})",
+                        res.item_id,
+                        res.updated_at,
+                        res.state,
+                        res.cleared_derivations,
+                        res.cleared_workflow_anchors
+                    )
+                })?;
+                return Ok(());
+            }
+
+            if token.starts_with(DELETE_TOKEN_PREFIX) {
+                let item_id = parse_delete_token(&token)
+                    .ok_or_else(|| AppError::User("invalid delete action token".to_string()))?;
+                let result = execute_delete(&item_id, db, &config)?;
+                emit(mode, result, |res| {
+                    format!(
+                        "deleted {} at {} (removed_derivations={}, removed_workflows={})",
+                        res.item_id,
+                        res.deleted_at,
+                        res.removed_derivations,
+                        res.removed_workflow_anchors
+                    )
+                })?;
+                return Ok(());
+            }
+
+            let text = if token.starts_with(ADD_TOKEN_PREFIX) {
+                parse_add_token(&token).unwrap_or_default()
             } else {
-                token.as_str()
+                token
             };
 
-            let result = execute_add(text, source.as_deref(), db, &config)?;
+            let result = execute_add(&text, source.as_deref(), db, &config)?;
             emit(mode, result, |res| {
                 format!("added {} at {}", res.item_id, res.created_at)
             })?;

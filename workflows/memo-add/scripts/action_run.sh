@@ -86,6 +86,12 @@ if [[ "$rc" -eq 0 ]]; then
 
   if [[ "$action_token" == "db-init" ]]; then
     notify "Memo DB initialized"
+  elif [[ "$action_token" == add::* ]]; then
+    notify "Memo added"
+  elif [[ "$action_token" == update::* ]]; then
+    notify "Memo updated"
+  elif [[ "$action_token" == delete::* ]]; then
+    notify "Memo deleted"
   else
     notify "Memo added"
   fi

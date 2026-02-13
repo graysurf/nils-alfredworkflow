@@ -554,9 +554,11 @@ Use this when quote-feed rollout quality drops and temporary fallback is require
    - `MEMO_WORKFLOW_CLI_BIN` (optional, default empty)
 3. Confirm script-filter JSON contract:
    - `bash workflows/memo-add/scripts/script_filter.sh "buy milk" | jq -e '.items | type == "array"'`
-4. Confirm db init and add behavior:
+4. Confirm db init and CRUD action behavior:
    - `bash workflows/memo-add/scripts/action_run.sh "db-init"`
    - `bash workflows/memo-add/scripts/action_run.sh "add::buy milk"`
+   - `bash workflows/memo-add/scripts/action_run.sh "update::itm_00000001::buy oat milk"`
+   - `bash workflows/memo-add/scripts/action_run.sh "delete::itm_00000001"`
 
 ### Common failures and actions
 
@@ -566,6 +568,9 @@ Use this when quote-feed rollout quality drops and temporary fallback is require
 | `memo-workflow-cli binary not found` | Package missing binary or invalid `MEMO_WORKFLOW_CLI_BIN`. | Re-pack workflow, or set `MEMO_WORKFLOW_CLI_BIN` to executable path. |
 | `add requires a non-empty memo text` | Empty/whitespace query was sent to add action. | Enter non-empty memo text after `mm`. |
 | `memo text exceeds MEMO_MAX_INPUT_BYTES` | Query text length exceeded configured max bytes. | Increase `MEMO_MAX_INPUT_BYTES` or shorten memo content. |
+| `invalid item_id` | Update/delete target id is malformed or does not exist in current DB. | Re-run `mm` to read recent ids, then retry with exact `itm_########` id in the same `MEMO_DB_PATH`. |
+| `Invalid mutation syntax` / `malformed update/delete token` | Query/token does not match required grammar (`update <item_id> <text>`, `delete <item_id>`, `update::<item_id>::<text>`, `delete::<item_id>`). | Fix mutation syntax and retry; malformed syntax should return guidance/error rows, not executable actions. |
+| `memo action failed` | `action_run.sh` received a bad token, or runtime returned exit `1`/`2`. | Run token directly for diagnostics: `memo-workflow-cli action --token "<token>"`; fix user/config error first, then re-run Alfred action. |
 | `invalid MEMO_RECENT_LIMIT` | `MEMO_RECENT_LIMIT` is not an integer in `1..50`. | Set a valid integer (for example `8`) and retry `mm`. |
 | Empty query shows no recent rows after successful add | Wrong DB path/source is being used between add and query. | Verify `MEMO_DB_PATH`, rerun `db-init`, then run `mm` again. |
 | `database open failed` / `database write failed` | Target DB path not writable or parent directory inaccessible. | Update `MEMO_DB_PATH` to writable path and rerun `db-init`. |
