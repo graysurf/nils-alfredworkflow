@@ -228,27 +228,28 @@ fn script_filter_item_intent_shows_copy_update_delete_menu_and_update_guidance()
         3,
         "item intent should render three menu rows"
     );
-    let expected_copy_title = format!("Copy memo: {}", item_display_id(item_id));
+    let expected_copy_title_prefix = format!("Copy memo: {} | menu seed", item_display_id(item_id));
     let expected_copy_arg = format!("copy::{item_id}");
     let expected_copy_json_arg = format!("copy-json::{item_id}");
-    let expected_update_title = format!("Update memo: {}", item_display_id(item_id));
+    let expected_update_title_prefix =
+        format!("Update memo: {} | menu seed", item_display_id(item_id));
     let expected_update_autocomplete = format!("update {} ", item_route_id(item_id));
     let expected_delete_arg = format!("delete::{item_id}");
-    assert_eq!(
-        menu_items[0].get("title").and_then(Value::as_str),
-        Some(expected_copy_title.as_str())
+    assert!(
+        menu_items[0]
+            .get("title")
+            .and_then(Value::as_str)
+            .map(|value| value.starts_with(expected_copy_title_prefix.as_str()))
+            .unwrap_or(false),
+        "item menu copy title should include memo preview"
     );
     assert_eq!(
         menu_items[0].get("arg").and_then(Value::as_str),
         Some(expected_copy_arg.as_str())
     );
-    let copy_subtitle = menu_items[0]
-        .get("subtitle")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
     assert!(
-        copy_subtitle.contains("Preview text: menu seed"),
-        "copy row subtitle should include memo text preview"
+        menu_items[0].get("subtitle").is_none(),
+        "item menu copy subtitle should stay empty for short preview"
     );
     assert_eq!(
         menu_items[0]
@@ -258,13 +259,21 @@ fn script_filter_item_intent_shows_copy_update_delete_menu_and_update_guidance()
             .and_then(Value::as_str),
         Some(expected_copy_json_arg.as_str())
     );
-    assert_eq!(
-        menu_items[1].get("title").and_then(Value::as_str),
-        Some(expected_update_title.as_str())
+    assert!(
+        menu_items[1]
+            .get("title")
+            .and_then(Value::as_str)
+            .map(|value| value.starts_with(expected_update_title_prefix.as_str()))
+            .unwrap_or(false),
+        "item menu update title should include memo preview"
     );
     assert_eq!(
         menu_items[1].get("autocomplete").and_then(Value::as_str),
         Some(expected_update_autocomplete.as_str())
+    );
+    assert!(
+        menu_items[1].get("subtitle").is_none(),
+        "item menu update subtitle should stay empty for short preview"
     );
     assert_eq!(
         menu_items[2].get("arg").and_then(Value::as_str),
@@ -289,9 +298,13 @@ fn script_filter_item_intent_shows_copy_update_delete_menu_and_update_guidance()
         .and_then(Value::as_array)
         .expect("items array");
     assert_eq!(guidance_items.len(), 1, "update guidance should be one row");
-    assert_eq!(
-        guidance_items[0].get("title").and_then(Value::as_str),
-        Some(expected_update_title.as_str())
+    assert!(
+        guidance_items[0]
+            .get("title")
+            .and_then(Value::as_str)
+            .map(|value| value.starts_with(expected_update_title_prefix.as_str()))
+            .unwrap_or(false),
+        "update guidance title should include memo preview"
     );
     assert_eq!(
         guidance_items[0]

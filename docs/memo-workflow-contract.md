@@ -112,7 +112,7 @@ Malformed update/delete token shapes are handled as user errors.
   - `mmd` forwards empty query to newest-first recent rows, otherwise prepends `delete` before forwarding query.
   - `mmc` forwards empty query to newest-first recent rows, otherwise prepends `copy` before forwarding query.
 - `mmq` defaults to prepending `search` for plain query text (`MEMO_SEARCH_MATCH` controls default match mode when query does not include `--match`), but passes through explicit intents (`item|update|delete|copy|search`) for multi-step manage flow.
-- Copy row subtitle includes text preview for the default copy payload.
+- Copy row title includes text preview for the default copy payload (overflow moves to subtitle).
 - Copy row also provides a `cmd` modifier action token (`copy-json::<item_id>`) with JSON preview subtitle.
 - `update <item_id>` without text renders guidance/autocomplete instead of hard error row.
 - `search` without query text renders guidance row and no executable action token.

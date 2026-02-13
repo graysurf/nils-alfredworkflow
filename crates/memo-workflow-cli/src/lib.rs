@@ -26,6 +26,7 @@ const MAX_SEARCH_LIMIT: usize = 200;
 const MAX_SEARCH_FETCH_LIMIT: usize = 500;
 const SEARCH_INTENT_USAGE: &str = "Use: search <query> (optional: --match fts|prefix|contains)";
 const SEARCH_MATCH_USAGE: &str = "Use: search --match <fts|prefix|contains> <query>";
+const ACTION_TITLE_MAX_CHARS: usize = 84;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {
@@ -175,7 +176,7 @@ pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Result<Feedba
     }
 
     if let Some(rest) = strip_intent(normalized, "delete") {
-        return build_delete_feedback(rest);
+        return build_delete_feedback(rest, config);
     }
 
     if let Some(rest) = strip_intent(normalized, "copy") {
@@ -645,36 +646,24 @@ fn build_item_action_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feed
         }
         Err(error) => return Err(error),
     };
-    let copy_text_preview = render_copy_text_preview(&detail.text);
     let raw_json_preview = render_item_detail_json(&detail);
+    let copy_item = build_copy_item(
+        &item_id,
+        &item_display,
+        Some(&detail.text),
+        &raw_json_preview,
+    );
+    let update_item = build_update_item(
+        &item_id,
+        &item_display,
+        &item_route,
+        Some(&detail.text),
+        None,
+        false,
+    );
+    let delete_item = build_delete_item(&item_id, &item_display, Some(&detail.text));
 
-    Ok(Feedback::new(vec![
-        Item::new(format!("Copy memo: {item_display}"))
-            .with_subtitle(format!(
-                "Preview text: {} | Hold Cmd to copy raw JSON row.",
-                copy_text_preview
-            ))
-            .with_arg(build_copy_token(&item_id))
-            .with_mod(
-                "cmd",
-                ItemModifier::new()
-                    .with_subtitle(format!(
-                        "Preview JSON: {}",
-                        truncate_title(&raw_json_preview, 72)
-                    ))
-                    .with_arg(build_copy_json_token(&item_id))
-                    .with_valid(true),
-            )
-            .with_valid(true),
-        Item::new(format!("Update memo: {item_display}"))
-            .with_subtitle("Press Enter, then type the new text and press Enter again.")
-            .with_autocomplete(format!("update {item_route} "))
-            .with_valid(false),
-        Item::new(format!("Delete memo: {item_display}"))
-            .with_subtitle("Press Enter to hard-delete this memo item.")
-            .with_arg(build_delete_token(&item_id))
-            .with_valid(true),
-    ]))
+    Ok(Feedback::new(vec![copy_item, update_item, delete_item]))
 }
 
 fn build_update_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
@@ -702,14 +691,20 @@ fn build_update_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
     };
     let item_route = item_route_id(&item_id);
     let item_display = item_display_id(&item_id);
+    let detail_text = execute_fetch_item(&item_id, None, config)
+        .ok()
+        .map(|detail| detail.text);
 
     if text.is_empty() {
-        return Ok(Feedback::new(vec![
-            Item::new(format!("Update memo: {item_display}"))
-                .with_subtitle("Type new text after item id, then press Enter to update.")
-                .with_autocomplete(format!("update {item_route} "))
-                .with_valid(false),
-        ]));
+        let update_item = build_update_item(
+            &item_id,
+            &item_display,
+            &item_route,
+            detail_text.as_deref(),
+            None,
+            false,
+        );
+        return Ok(Feedback::new(vec![update_item]));
     }
 
     if text.len() > config.max_input_bytes {
@@ -724,19 +719,19 @@ fn build_update_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
         ]));
     }
 
-    Ok(Feedback::new(vec![
-        Item::new(format!("Update memo: {item_display}"))
-            .with_subtitle(format!(
-                "Press Enter to update text ({}/{} bytes).",
-                text.len(),
-                config.max_input_bytes
-            ))
-            .with_arg(build_update_token(&item_id, text))
-            .with_valid(true),
-    ]))
+    let update_item = build_update_item(
+        &item_id,
+        &item_display,
+        &item_route,
+        detail_text.as_deref(),
+        Some(text),
+        true,
+    );
+
+    Ok(Feedback::new(vec![update_item]))
 }
 
-fn build_delete_feedback(rest: &str) -> Result<Feedback, AppError> {
+fn build_delete_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
     let mut parts = rest.split_whitespace();
     let item_id_raw = parts.next().unwrap_or("").trim();
     if item_id_raw.is_empty() || parts.next().is_some() {
@@ -758,13 +753,12 @@ fn build_delete_feedback(rest: &str) -> Result<Feedback, AppError> {
         }
     };
     let item_display = item_display_id(&item_id);
+    let detail_text = execute_fetch_item(&item_id, None, config)
+        .ok()
+        .map(|detail| detail.text);
+    let delete_item = build_delete_item(&item_id, &item_display, detail_text.as_deref());
 
-    Ok(Feedback::new(vec![
-        Item::new(format!("Delete memo: {item_display}"))
-            .with_subtitle("Press Enter to hard-delete this memo item.")
-            .with_arg(build_delete_token(&item_id))
-            .with_valid(true),
-    ]))
+    Ok(Feedback::new(vec![delete_item]))
 }
 
 fn build_copy_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
@@ -801,28 +795,15 @@ fn build_copy_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, A
         }
         Err(error) => return Err(error),
     };
-    let copy_text_preview = render_copy_text_preview(&detail.text);
     let raw_json_preview = render_item_detail_json(&detail);
+    let copy_item = build_copy_item(
+        &item_id,
+        &item_display,
+        Some(&detail.text),
+        &raw_json_preview,
+    );
 
-    Ok(Feedback::new(vec![
-        Item::new(format!("Copy memo: {item_display}"))
-            .with_subtitle(format!(
-                "Preview text: {} | Hold Cmd to copy raw JSON row.",
-                copy_text_preview
-            ))
-            .with_arg(build_copy_token(&item_id))
-            .with_mod(
-                "cmd",
-                ItemModifier::new()
-                    .with_subtitle(format!(
-                        "Preview JSON: {}",
-                        truncate_title(&raw_json_preview, 72)
-                    ))
-                    .with_arg(build_copy_json_token(&item_id))
-                    .with_valid(true),
-            )
-            .with_valid(true),
-    ]))
+    Ok(Feedback::new(vec![copy_item]))
 }
 
 fn build_search_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
@@ -1027,7 +1008,7 @@ fn render_item_detail_json(detail: &ItemDetailResult) -> String {
     serde_json::to_string(detail).unwrap_or_else(|_| "{}".to_string())
 }
 
-fn render_copy_text_preview(text: &str) -> String {
+fn normalize_text_preview(text: &str) -> String {
     let normalized = text
         .chars()
         .map(|ch| {
@@ -1039,12 +1020,103 @@ fn render_copy_text_preview(text: &str) -> String {
         })
         .collect::<String>();
     let collapsed = normalized.split_whitespace().collect::<Vec<_>>().join(" ");
-    let preview = if collapsed.is_empty() {
+    if collapsed.is_empty() {
         "(empty memo)".to_string()
     } else {
         collapsed
+    }
+}
+
+fn split_action_title(prefix: &str, text: &str) -> (String, Option<String>) {
+    let preview = normalize_text_preview(text);
+    let prefix_len = prefix.chars().count();
+    if prefix_len >= ACTION_TITLE_MAX_CHARS {
+        return (
+            truncate_title(&format!("{prefix}{preview}"), ACTION_TITLE_MAX_CHARS),
+            None,
+        );
+    }
+
+    let available = ACTION_TITLE_MAX_CHARS - prefix_len;
+    let preview_len = preview.chars().count();
+    if preview_len <= available {
+        return (format!("{prefix}{preview}"), None);
+    }
+
+    let title_preview = preview.chars().take(available).collect::<String>();
+    let overflow = preview.chars().skip(available).collect::<String>();
+    (format!("{prefix}{title_preview}…"), Some(overflow))
+}
+
+fn build_delete_item(item_id: &str, item_display: &str, text: Option<&str>) -> Item {
+    let prefix = format!("Delete memo: {item_display} | ");
+    let (title, subtitle) = match text {
+        Some(value) => split_action_title(&prefix, value),
+        None => (format!("Delete memo: {item_display}"), None),
     };
-    truncate_title(&preview, 72)
+
+    let mut item = Item::new(title)
+        .with_arg(build_delete_token(item_id))
+        .with_valid(true);
+    if let Some(value) = subtitle {
+        item = item.with_subtitle(value);
+    }
+
+    item
+}
+
+fn build_copy_item(item_id: &str, item_display: &str, text: Option<&str>, raw_json: &str) -> Item {
+    let prefix = format!("Copy memo: {item_display} | ");
+    let (title, subtitle) = match text {
+        Some(value) => split_action_title(&prefix, value),
+        None => (format!("Copy memo: {item_display}"), None),
+    };
+
+    let mut item = Item::new(title)
+        .with_arg(build_copy_token(item_id))
+        .with_mod(
+            "cmd",
+            ItemModifier::new()
+                .with_subtitle(format!("Preview JSON: {}", truncate_title(raw_json, 72)))
+                .with_arg(build_copy_json_token(item_id))
+                .with_valid(true),
+        )
+        .with_valid(true);
+    if let Some(value) = subtitle {
+        item = item.with_subtitle(value);
+    }
+
+    item
+}
+
+fn build_update_item(
+    item_id: &str,
+    item_display: &str,
+    item_route: &str,
+    existing_text: Option<&str>,
+    update_text: Option<&str>,
+    valid: bool,
+) -> Item {
+    let preview_text = existing_text.or(update_text);
+    let prefix = format!("Update memo: {item_display} | ");
+    let (title, subtitle) = match preview_text {
+        Some(value) => split_action_title(&prefix, value),
+        None => (format!("Update memo: {item_display}"), None),
+    };
+
+    let mut item = Item::new(title);
+    if valid {
+        if let Some(text) = update_text {
+            item = item.with_arg(build_update_token(item_id, text));
+        }
+    } else {
+        item = item.with_autocomplete(format!("update {item_route} "));
+    }
+    if let Some(value) = subtitle {
+        item = item.with_subtitle(value);
+    }
+
+    item.with_valid(valid)
 }
 
 fn truncate_title(input: &str, max_chars: usize) -> String {
@@ -1317,6 +1389,33 @@ mod tests {
     }
 
     #[test]
+    fn update_row_overflow_moves_remaining_text_to_subtitle() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        let long_text =
+            "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor";
+        let add = execute_add(long_text, None, None, &config).expect("seed add");
+        let query = format!("update {}", add.item_id);
+
+        let feedback = build_script_filter(&query, &config).expect("script filter");
+
+        assert_eq!(feedback.items.len(), 1);
+        assert!(
+            feedback.items[0].title.ends_with('…'),
+            "overflow title should end with ellipsis"
+        );
+        assert!(
+            feedback.items[0]
+                .subtitle
+                .as_deref()
+                .map(|value| !value.is_empty())
+                .unwrap_or(false),
+            "overflow title should move remaining preview into subtitle"
+        );
+    }
+
+    #[test]
     fn script_filter_item_intent_returns_copy_update_delete_choices() {
         let dir = tempdir().expect("temp dir");
         let mut config = test_config();
@@ -1329,22 +1428,22 @@ mod tests {
         assert_eq!(feedback.items.len(), 3);
         let expected_item_display = item_display_id(&add.item_id);
         let expected_item_route = item_route_id(&add.item_id);
-        assert_eq!(
-            feedback.items[0].title,
-            format!("Copy memo: {}", expected_item_display)
+        let expected_copy_title_prefix =
+            format!("Copy memo: {} | seed memo", expected_item_display);
+        assert!(
+            feedback.items[0]
+                .title
+                .starts_with(expected_copy_title_prefix.as_str()),
+            "copy row title should include memo text preview"
         );
         let expected_copy_arg = format!("copy::{}", add.item_id);
         assert_eq!(
             feedback.items[0].arg.as_deref(),
             Some(expected_copy_arg.as_str())
         );
-        let copy_subtitle = feedback.items[0]
-            .subtitle
-            .as_deref()
-            .expect("copy row subtitle should exist");
         assert!(
-            copy_subtitle.contains("Preview text: seed memo"),
-            "copy row subtitle should include memo text preview"
+            feedback.items[0].subtitle.is_none(),
+            "copy row should not use subtitle for short preview"
         );
         let cmd_mod = feedback.items[0]
             .mods
@@ -1365,9 +1464,13 @@ mod tests {
             "cmd modifier subtitle should keep JSON preview"
         );
 
-        assert_eq!(
-            feedback.items[1].title,
-            format!("Update memo: {}", expected_item_display)
+        let expected_update_title_prefix =
+            format!("Update memo: {} | seed memo", expected_item_display);
+        assert!(
+            feedback.items[1]
+                .title
+                .starts_with(expected_update_title_prefix.as_str()),
+            "update row title should include memo text preview"
         );
         let expected_update_autocomplete = format!("update {} ", expected_item_route);
         assert_eq!(
@@ -1375,10 +1478,18 @@ mod tests {
             Some(expected_update_autocomplete.as_str())
         );
         assert_eq!(feedback.items[1].valid, Some(false));
+        assert!(
+            feedback.items[1].subtitle.is_none(),
+            "update row should not use subtitle for short preview"
+        );
 
-        assert_eq!(
-            feedback.items[2].title,
-            format!("Delete memo: {}", expected_item_display)
+        let expected_delete_title_prefix =
+            format!("Delete memo: {} | seed memo", expected_item_display);
+        assert!(
+            feedback.items[2]
+                .title
+                .starts_with(expected_delete_title_prefix.as_str()),
+            "delete row title should include memo text preview"
         );
         let expected_delete_arg = format!("delete::{}", add.item_id);
         assert_eq!(
@@ -1386,17 +1497,62 @@ mod tests {
             Some(expected_delete_arg.as_str())
         );
         assert_eq!(feedback.items[2].valid, Some(true));
+        assert!(
+            feedback.items[2].subtitle.is_none(),
+            "delete row should not use subtitle for short preview"
+        );
     }
 
     #[test]
     fn script_filter_returns_delete_action_for_delete_intent() {
-        let feedback =
-            build_script_filter("delete itm_00000009", &test_config()).expect("script filter");
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        let add = execute_add("delete me", None, None, &config).expect("seed add");
+        let query = format!("delete {}", add.item_id);
+
+        let feedback = build_script_filter(&query, &config).expect("script filter");
 
         assert_eq!(feedback.items.len(), 1);
         let arg = feedback.items[0].arg.as_deref().expect("arg should exist");
         assert!(arg.starts_with(DELETE_TOKEN_PREFIX));
+        assert!(
+            feedback.items[0].title.starts_with(
+                format!("Delete memo: {} | delete me", item_display_id(&add.item_id)).as_str()
+            ),
+            "delete intent title should include memo text preview"
+        );
+        assert!(
+            feedback.items[0].subtitle.is_none(),
+            "delete intent should not use subtitle for short preview"
+        );
         assert_eq!(feedback.items[0].valid, Some(true));
+    }
+
+    #[test]
+    fn delete_row_overflow_moves_remaining_text_to_subtitle() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        let long_text = "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod";
+        let add = execute_add(long_text, None, None, &config).expect("seed add");
+        let query = format!("delete {}", add.item_id);
+
+        let feedback = build_script_filter(&query, &config).expect("script filter");
+
+        assert_eq!(feedback.items.len(), 1);
+        assert!(
+            feedback.items[0].title.ends_with('…'),
+            "overflow title should end with ellipsis"
+        );
+        assert!(
+            feedback.items[0]
+                .subtitle
+                .as_deref()
+                .map(|value| !value.is_empty())
+                .unwrap_or(false),
+            "overflow title should move remaining preview into subtitle"
+        );
     }
 
     #[test]
@@ -1411,14 +1567,22 @@ mod tests {
 
         assert_eq!(feedback.items.len(), 1);
         let expected_item_display = item_display_id(&add.item_id);
-        assert_eq!(
-            feedback.items[0].title,
-            format!("Copy memo: {}", expected_item_display)
+        let expected_copy_title_prefix =
+            format!("Copy memo: {} | seed memo", expected_item_display);
+        assert!(
+            feedback.items[0]
+                .title
+                .starts_with(expected_copy_title_prefix.as_str()),
+            "copy intent title should include memo text preview"
         );
         let expected_copy_arg = format!("copy::{}", add.item_id);
         assert_eq!(
             feedback.items[0].arg.as_deref(),
             Some(expected_copy_arg.as_str())
+        );
+        assert!(
+            feedback.items[0].subtitle.is_none(),
+            "copy intent should not use subtitle for short preview"
         );
         let cmd_mod = feedback.items[0]
             .mods
@@ -1587,13 +1751,29 @@ mod tests {
     }
 
     #[test]
-    fn render_copy_text_preview_normalizes_whitespace_and_truncates() {
-        let text = "line 1\nline\t2\r\nline 3";
-        assert_eq!(render_copy_text_preview(text), "line 1 line 2 line 3");
+    fn copy_row_overflow_moves_remaining_text_to_subtitle() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        let long_text =
+            "copy overflow lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod";
+        let add = execute_add(long_text, None, None, &config).expect("seed add");
+        let query = format!("copy {}", add.item_id);
 
-        let long = "x".repeat(80);
-        let preview = render_copy_text_preview(&long);
-        assert_eq!(preview.chars().count(), 73);
-        assert!(preview.ends_with('…'));
+        let feedback = build_script_filter(&query, &config).expect("script filter");
+
+        assert_eq!(feedback.items.len(), 1);
+        assert!(
+            feedback.items[0].title.ends_with('…'),
+            "overflow title should end with ellipsis"
+        );
+        assert!(
+            feedback.items[0]
+                .subtitle
+                .as_deref()
+                .map(|value| !value.is_empty())
+                .unwrap_or(false),
+            "overflow title should move remaining preview into subtitle"
+        );
     }
 }

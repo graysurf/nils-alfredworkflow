@@ -61,7 +61,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 - Keyword mutation shortcuts: `mmu <item_id> <text>`, `mmd <item_id>`, `mmc <item_id>`.
 - `search <query>` always keeps non-actionable rows with `autocomplete: item <number>` for safe follow-up actions.
 - `search` (without query text) returns a guidance row and no executable action.
-- Copy actions: `copy::<item_id>` copies memo text (copy row subtitle shows preview), `copy-json::<item_id>` copies raw item JSON (via Cmd modifier on copy row).
+- Copy actions: `copy::<item_id>` copies memo text (copy row title shows preview; overflow moves to subtitle), `copy-json::<item_id>` copies raw item JSON (via Cmd modifier on copy row).
 - `update <item_id>` without text shows guidance row and keeps autocomplete for second-step typing.
 - Invalid mutation syntax (for example missing `item_id` or missing update text) returns non-actionable guidance rows.
 
