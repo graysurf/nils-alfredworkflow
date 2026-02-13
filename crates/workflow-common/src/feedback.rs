@@ -29,8 +29,9 @@ pub fn build_script_filter_feedback_with_mode(
     config: &RuntimeConfig,
     mode: ScriptFilterMode,
 ) -> Feedback {
+    let trimmed_query = query.trim();
     let discovered = discover_projects(&config.project_roots);
-    let filtered = filter_projects(&discovered, query);
+    let filtered = filter_projects(&discovered, trimmed_query);
 
     if filtered.is_empty() {
         return no_projects_feedback();
@@ -75,9 +76,15 @@ pub fn build_script_filter_feedback_with_mode(
             .then_with(|| left_name.cmp(right_name))
     });
 
+    let max_items = if trimmed_query.is_empty() {
+        config.max_results
+    } else {
+        usize::MAX
+    };
+
     let items = ranked_items
         .into_iter()
-        .take(config.max_results)
+        .take(max_items)
         .map(|(_, _, item)| item)
         .collect();
 
@@ -208,6 +215,52 @@ mod tests {
             feedback.items[0].valid,
             Some(false),
             "fallback item should be marked invalid"
+        );
+    }
+
+    #[test]
+    fn empty_query_respects_max_results_limit() {
+        let temp = tempdir().expect("create temp dir");
+        let roots = temp.path().join("roots");
+        init_repo(&roots.join("alpha"));
+        init_repo(&roots.join("beta"));
+        init_repo(&roots.join("gamma"));
+
+        let config = RuntimeConfig {
+            project_roots: vec![roots],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 2,
+        };
+
+        let feedback = build_script_filter_feedback("", &config);
+        assert_eq!(
+            feedback.items.len(),
+            2,
+            "empty query should be limited by max_results"
+        );
+    }
+
+    #[test]
+    fn non_empty_query_is_not_limited_by_max_results() {
+        let temp = tempdir().expect("create temp dir");
+        let roots = temp.path().join("roots");
+        init_repo(&roots.join("alpha"));
+        init_repo(&roots.join("beta"));
+        init_repo(&roots.join("gamma"));
+
+        let config = RuntimeConfig {
+            project_roots: vec![roots],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 1,
+        };
+
+        let feedback = build_script_filter_feedback("a", &config);
+        assert_eq!(
+            feedback.items.len(),
+            3,
+            "non-empty query should return all matched projects"
         );
     }
 
