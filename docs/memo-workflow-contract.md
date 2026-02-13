@@ -2,12 +2,12 @@
 
 ## Goal
 
-Provide a capture-first Alfred workflow for quick memo insertion backed by `nils-memo-cli@0.3.5`.
+Provide a capture-first Alfred workflow for quick memo insertion backed by `nils-memo-cli@0.3.6`.
 
 ## Primary user behavior
 
-- Keywords: `mm`, `mmr`, `mma`, `mmu`, `mmd`, `mmc`
-- `mm` -> command entry menu that routes users to `mmr` / `mma` / `mmu` / `mmd` / `mmc`.
+- Keywords: `mm`, `mmr`, `mma`, `mmu`, `mmd`, `mmc`, `mmq`
+- `mm` -> command entry menu that routes users to `mmr` / `mma` / `mmu` / `mmd` / `mmc` / `mmq`.
 - `mmr` -> forces empty-query rendering and shows recent memo rows in newest-first order.
 - `mmr <number>` -> routes to `item <number>` for memo item action menu.
 - `mmu` / `mmd` / `mmc` -> default to same newest-first recent list behavior as `mmr`.
@@ -18,13 +18,14 @@ Provide a capture-first Alfred workflow for quick memo insertion backed by `nils
 - `mmu itm_00000001 buy oat milk` -> script-filter returns actionable update row.
 - `mmd itm_00000001` -> script-filter returns actionable delete row.
 - `mmc itm_00000001` -> script-filter returns actionable copy row.
+- `mmq milk` -> script-filter returns non-actionable search rows with `autocomplete=item <item_id>`.
 - choose `Copy` row (from `mmr <id>` item menu) -> Enter copies memo text; `Cmd` modifier switches action to copy raw JSON for that item.
 - choose `Update` row (from `mmr <id>` item menu) -> query autocompletes to `update <item_id>`; type new text and press Enter to execute update.
 - `mma <text>` routes to add intent.
 - `mmu <item_id> <text>` routes to update intent.
 - `mmd <item_id>` routes to delete intent.
 - `mmc <item_id>` routes to copy intent.
-- `mmq` remains reserved for future query-condition behavior.
+- `mmq <query>` routes to search intent (`search <query>`).
 
 ## Runtime commands
 
@@ -37,6 +38,7 @@ The workflow runtime binary is `memo-workflow-cli` with these commands:
 - `delete --item-id <id>`: direct delete operation (for debug/manual use).
 - `db-init`: direct db initialization operation (for debug/manual use).
 - `list --limit <n> --offset <n>`: direct newest-first memo query (for debug/manual use).
+- `search --query <text> --limit <n> --offset <n>`: direct FTS-backed memo search (for debug/manual use).
 
 ## Action token contract
 
@@ -105,11 +107,14 @@ Malformed update/delete token shapes are handled as user errors.
   - `mmu` forwards empty query to newest-first recent rows, otherwise prepends `update` before forwarding query.
   - `mmd` forwards empty query to newest-first recent rows, otherwise prepends `delete` before forwarding query.
   - `mmc` forwards empty query to newest-first recent rows, otherwise prepends `copy` before forwarding query.
+  - `mmq` prepends `search` before forwarding query.
 - Copy row subtitle includes text preview for the default copy payload.
 - Copy row also provides a `cmd` modifier action token (`copy-json::<item_id>`) with JSON preview subtitle.
 - `update <item_id>` without text renders guidance/autocomplete instead of hard error row.
+- `search` without query text renders guidance row and no executable action token.
+- `search <query>` returns non-destructive rows with `autocomplete=item <item_id>`.
 - db path row is informational (`valid=false`), while `db init` stays actionable when db is missing.
-- Non-empty query defaults to add unless explicit `update` / `delete` / `copy` intent prefix is matched (for keyword wrappers / internal script-filter paths).
+- Non-empty query defaults to add unless explicit `update` / `delete` / `copy` / `search` intent prefix is matched (for keyword wrappers / internal script-filter paths).
 - Malformed mutation query syntax returns non-actionable guidance rows instead of malformed JSON.
 
 ## Error mapping
@@ -124,9 +129,11 @@ Malformed update/delete token shapes are handled as user errors.
 - `cargo run -p nils-memo-workflow-cli -- script-filter --query "" | jq -e '.items | type == "array" and length >= 2'`
 - `cargo run -p nils-memo-workflow-cli -- script-filter --query "update itm_00000001 revised text" | jq -e '.items[0].arg | startswith("update::")'`
 - `cargo run -p nils-memo-workflow-cli -- script-filter --query "delete itm_00000001" | jq -e '.items[0].arg | startswith("delete::")'`
+- `cargo run -p nils-memo-workflow-cli -- script-filter --query "search milk" | jq -e '.items[0].autocomplete | startswith("item ")'`
 - `cargo run -p nils-memo-workflow-cli -- db-init`
 - `cargo run -p nils-memo-workflow-cli -- add --text "buy milk"`
 - `tmpdir="$(mktemp -d)" && db="$tmpdir/memo.db" && add_json="$(cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "before" --mode json)" && item_id="$(jq -r '.result.item_id' <<<"$add_json")" && cargo run -p nils-memo-workflow-cli -- update --db "$db" --item-id "$item_id" --text "after" --mode json`
 - `tmpdir="$(mktemp -d)" && db="$tmpdir/memo.db" && add_json="$(cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "to-delete" --mode json)" && item_id="$(jq -r '.result.item_id' <<<"$add_json")" && cargo run -p nils-memo-workflow-cli -- delete --db "$db" --item-id "$item_id" --mode json`
 - `cargo run -p nils-memo-workflow-cli -- list --limit 8 --mode json`
+- `tmpdir="$(mktemp -d)" && db="$tmpdir/memo.db" && cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "search target" >/dev/null && cargo run -p nils-memo-workflow-cli -- search --db "$db" --query "target" --mode json | jq -e '.ok == true and (.result | length) >= 1'`
 - `bash workflows/memo-add/tests/smoke.sh`

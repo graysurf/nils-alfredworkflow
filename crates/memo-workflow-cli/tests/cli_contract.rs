@@ -667,6 +667,86 @@ fn script_filter_exposes_update_delete_intents() {
 }
 
 #[test]
+fn search_command_returns_matching_rows() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add_one = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "buy milk"])
+        .output()
+        .expect("first add should run");
+    assert!(add_one.status.success(), "first add should succeed");
+
+    let add_two = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "buy oat milk"])
+        .output()
+        .expect("second add should run");
+    assert!(add_two.status.success(), "second add should succeed");
+
+    let search = Command::new(bin())
+        .args([
+            "search", "--db", db_path, "--query", "oat", "--mode", "json",
+        ])
+        .output()
+        .expect("search should run");
+    assert!(search.status.success(), "search should succeed");
+
+    let payload: Value = serde_json::from_slice(&search.stdout).expect("search payload json");
+    assert_eq!(payload.get("ok").and_then(Value::as_bool), Some(true));
+    let rows = payload
+        .get("result")
+        .and_then(Value::as_array)
+        .expect("search result rows");
+    assert!(!rows.is_empty(), "search should return rows");
+    assert!(
+        rows[0].get("item_id").and_then(Value::as_str).is_some(),
+        "search row should include item_id"
+    );
+    assert!(
+        rows[0]
+            .get("matched_fields")
+            .and_then(Value::as_array)
+            .is_some(),
+        "search row should include matched_fields"
+    );
+}
+
+#[test]
+fn script_filter_search_intent_routes_to_item_autocomplete() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "search target"])
+        .output()
+        .expect("add should run");
+    assert!(add.status.success(), "add should succeed");
+
+    let output = Command::new(bin())
+        .args(["script-filter", "--query", "search target"])
+        .env("MEMO_DB_PATH", db_path)
+        .output()
+        .expect("script-filter should run");
+    assert!(output.status.success(), "script-filter should succeed");
+
+    let payload: Value =
+        serde_json::from_slice(&output.stdout).expect("script-filter payload json");
+    let autocomplete = payload
+        .get("items")
+        .and_then(Value::as_array)
+        .and_then(|items| items.first())
+        .and_then(|item| item.get("autocomplete"))
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        autocomplete.starts_with("item itm_"),
+        "search script-filter rows should route to item autocomplete"
+    );
+}
+
+#[test]
 fn update_delete_invalid_item_id_returns_usage_error() {
     let update = Command::new(bin())
         .args([

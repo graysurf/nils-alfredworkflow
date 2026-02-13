@@ -302,7 +302,7 @@ Runtime checks:
 ## Memo Add workflow details
 
 `workflows/memo-add` is a dedicated workflow that uses `memo-workflow-cli` and
-`nils-memo-cli@0.3.5` storage primitives for fast memo capture.
+`nils-memo-cli@0.3.6` storage primitives for fast memo capture/search.
 
 ### Environment variables
 
@@ -315,11 +315,13 @@ Runtime checks:
 
 ### Alfred command flow
 
-- Keyword triggers: `mm`, `mmr`, `mma`, `mmu`, `mmd`, `mmc`.
+- Keyword triggers: `mm`, `mmr`, `mma`, `mmu`, `mmd`, `mmc`, `mmq`.
 - Command-entry adapter: `workflows/memo-add/scripts/script_filter_entry.sh` ->
   static command menu for memo keywords.
 - Intent script-filter adapter: `workflows/memo-add/scripts/script_filter.sh` ->
-  `memo-workflow-cli script-filter --query "<query>"` (used by `mma/mmu/mmd/mmc` wrappers).
+  `memo-workflow-cli script-filter --query "<query>"` (used by `mma/mmu/mmd/mmc/mmq` wrappers).
+- Search keyword adapter: `workflows/memo-add/scripts/script_filter_search.sh` ->
+  prepends `search` intent and forwards into `script_filter.sh`.
 - Latest-list keyword adapter: `workflows/memo-add/scripts/script_filter_recent.sh` ->
   renders recent memo rows (newest first), and maps numeric input to item-id lookup.
 - Enter flow: `workflows/memo-add/scripts/action_run.sh` ->
@@ -330,9 +332,11 @@ Runtime checks:
   - `mmr` -> show recent memo rows (newest first).
   - `mmr 123` -> open memo item action menu for id `123` (full menu: copy/update/delete).
   - `mmu` / `mmd` / `mmc` -> show recent memo rows (newest first; same default as `mmr`).
+  - `mmq` -> search mode keyword (`search <query>` intent).
   - `mmu 123` -> update flow for id `123` (single update row).
   - `mmd 123` -> delete flow for id `123` (single delete row).
   - `mmc 123` -> copy flow for id `123` (single copy row).
+  - `mmq milk` -> search rows (non-actionable, `autocomplete=item <item_id>`).
   - `mma buy milk` -> add token (`add::<text>`).
   - `mmu itm_00000001 buy oat milk` -> update token (`update::<item_id>::<text>`).
   - `mmd itm_00000001` -> delete token (`delete::<item_id>`; hard-delete).
@@ -351,7 +355,9 @@ Runtime checks:
 
 - `mmr` view must include one actionable `db init` row when DB is missing, or recent list rows when DB exists.
 - `mmu` / `mmd` / `mmc` with empty query must render the same newest-first recent list behavior as `mmr`.
+- `mmq` empty query must return non-actionable search guidance row.
 - only `mmr <id>` may return full item menu rows (copy/update/delete).
+- search rows must be non-destructive (`valid=false`) and route by `autocomplete=item <item_id>`.
 - Invalid `MEMO_*` values must return a non-actionable config error item.
 - Add action must persist one row and return success text from action script.
 - Invalid `item_id` for update/delete/copy must be rejected as user error (non-actionable Alfred error item).
