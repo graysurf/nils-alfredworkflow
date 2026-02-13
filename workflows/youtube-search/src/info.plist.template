@@ -8,6 +8,19 @@
   <string>Internet</string>
   <key>connections</key>
   <dict>
+    <key>FF12E9FF-DD14-4C26-83F1-280FFEA92CCF</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>
     <array>
       <dict>
@@ -84,6 +97,35 @@
     <dict>
       <key>config</key>
       <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>FF12E9FF-DD14-4C26-83F1-280FFEA92CCF</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
         <key>concurrently</key>
         <false/>
         <key>escaping</key>
@@ -109,6 +151,13 @@
   <string>Set YOUTUBE_API_KEY and start searching with keyword yt.</string>
   <key>uidata</key>
   <dict>
+    <key>FF12E9FF-DD14-4C26-83F1-280FFEA92CCF</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>180</integer>
+    </dict>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>
     <dict>
       <key>xpos</key>
