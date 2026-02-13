@@ -150,7 +150,7 @@
         <key>type</key>
         <integer>8</integer>
         <key>withspace</key>
-        <true/>
+        <false/>
       </dict>
       <key>type</key>
       <string>alfred.workflow.input.scriptfilter</string>

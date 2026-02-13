@@ -328,7 +328,7 @@ Runtime checks:
   `memo-workflow-cli action --token "<token>"`.
 - Empty query returns guidance + `db-init` row + latest memo rows (newest first).
 - Intent examples:
-  - `mm` -> command entry menu.
+  - `mm` -> command entry menu (Enter on row appends suffix and switches directly to target keyword).
   - `mmr` -> show recent memo rows (newest first).
   - `mmr 123` -> open memo item action menu for id `123` (full menu: copy/update/delete).
   - `mmu` / `mmd` / `mmc` -> show recent memo rows (newest first; same default as `mmr`).
@@ -336,7 +336,7 @@ Runtime checks:
   - `mmu 123` -> update flow for id `123` (single update row).
   - `mmd 123` -> delete flow for id `123` (single delete row).
   - `mmc 123` -> copy flow for id `123` (single copy row).
-  - `mmq milk` -> search rows (non-actionable, `autocomplete=item <item_id>`).
+  - `mmq milk` -> if one hit, return item action menu rows (copy/update/delete); if multiple hits, return search rows.
   - `mma buy milk` -> add token (`add::<text>`).
   - `mmu itm_00000001 buy oat milk` -> update token (`update::<item_id>::<text>`).
   - `mmd itm_00000001` -> delete token (`delete::<item_id>`; hard-delete).
@@ -356,8 +356,8 @@ Runtime checks:
 - `mmr` view must include one actionable `db init` row when DB is missing, or recent list rows when DB exists.
 - `mmu` / `mmd` / `mmc` with empty query must render the same newest-first recent list behavior as `mmr`.
 - `mmq` empty query must return non-actionable search guidance row.
-- only `mmr <id>` may return full item menu rows (copy/update/delete).
-- search rows must be non-destructive (`valid=false`) and route by `autocomplete=item <item_id>`.
+- `mmr <id>` and single-hit `mmq <query>` may return full item menu rows (copy/update/delete).
+- multi-hit search rows must be non-destructive (`valid=false`) and route by `autocomplete=item <item_id>`.
 - Invalid `MEMO_*` values must return a non-actionable config error item.
 - Add action must persist one row and return success text from action script.
 - Invalid `item_id` for update/delete/copy must be rejected as user error (non-actionable Alfred error item).

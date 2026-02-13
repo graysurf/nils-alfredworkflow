@@ -713,7 +713,7 @@ fn search_command_returns_matching_rows() {
 }
 
 #[test]
-fn script_filter_search_intent_routes_to_item_autocomplete() {
+fn script_filter_search_intent_returns_item_menu_for_single_hit() {
     let dir = tempdir().expect("temp dir");
     let db = dir.path().join("memo.db");
     let db_path = db.to_str().expect("db path");
@@ -733,16 +733,80 @@ fn script_filter_search_intent_routes_to_item_autocomplete() {
 
     let payload: Value =
         serde_json::from_slice(&output.stdout).expect("script-filter payload json");
-    let autocomplete = payload
+    let items = payload
         .get("items")
         .and_then(Value::as_array)
-        .and_then(|items| items.first())
-        .and_then(|item| item.get("autocomplete"))
+        .expect("items array");
+    assert_eq!(items.len(), 3, "single search hit should render item menu");
+    assert!(
+        items[0]
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .starts_with("Copy memo: itm_"),
+        "first row should be copy action"
+    );
+    assert!(
+        items[1]
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .starts_with("Update memo: itm_"),
+        "second row should be update action"
+    );
+    assert!(
+        items[2]
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .starts_with("Delete memo: itm_"),
+        "third row should be delete action"
+    );
+}
+
+#[test]
+fn script_filter_search_intent_keeps_search_rows_for_multi_hit() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add_one = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "milk tea"])
+        .output()
+        .expect("first add should run");
+    assert!(add_one.status.success(), "first add should succeed");
+
+    let add_two = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "milk coffee"])
+        .output()
+        .expect("second add should run");
+    assert!(add_two.status.success(), "second add should succeed");
+
+    let output = Command::new(bin())
+        .args(["script-filter", "--query", "search milk"])
+        .env("MEMO_DB_PATH", db_path)
+        .output()
+        .expect("script-filter should run");
+    assert!(output.status.success(), "script-filter should succeed");
+
+    let payload: Value =
+        serde_json::from_slice(&output.stdout).expect("script-filter payload json");
+    let items = payload
+        .get("items")
+        .and_then(Value::as_array)
+        .expect("items array");
+    assert!(
+        items.len() >= 2,
+        "multi-hit search should keep searchable item rows"
+    );
+
+    let autocomplete = items[0]
+        .get("autocomplete")
         .and_then(Value::as_str)
         .unwrap_or_default();
     assert!(
         autocomplete.starts_with("item itm_"),
-        "search script-filter rows should route to item autocomplete"
+        "multi-hit search row should keep item autocomplete"
     );
 }
 

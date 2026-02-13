@@ -7,7 +7,7 @@ Provide a capture-first Alfred workflow for quick memo insertion backed by `nils
 ## Primary user behavior
 
 - Keywords: `mm`, `mmr`, `mma`, `mmu`, `mmd`, `mmc`, `mmq`
-- `mm` -> command entry menu that routes users to `mmr` / `mma` / `mmu` / `mmd` / `mmc` / `mmq`.
+- `mm` -> command entry menu that appends one-letter suffix and switches directly to `mmr` / `mma` / `mmu` / `mmd` / `mmc` / `mmq`.
 - `mmr` -> forces empty-query rendering and shows recent memo rows in newest-first order.
 - `mmr <number>` -> routes to `item <number>` for memo item action menu.
 - `mmu` / `mmd` / `mmc` -> default to same newest-first recent list behavior as `mmr`.
@@ -18,7 +18,8 @@ Provide a capture-first Alfred workflow for quick memo insertion backed by `nils
 - `mmu itm_00000001 buy oat milk` -> script-filter returns actionable update row.
 - `mmd itm_00000001` -> script-filter returns actionable delete row.
 - `mmc itm_00000001` -> script-filter returns actionable copy row.
-- `mmq milk` -> script-filter returns non-actionable search rows with `autocomplete=item <item_id>`.
+- `mmq milk` -> single-hit search returns the same item action menu as `mmr <id>` (`copy` / `update` / `delete`).
+- `mmq <query>` with multiple hits -> non-actionable search rows with `autocomplete=item <item_id>`.
 - choose `Copy` row (from `mmr <id>` item menu) -> Enter copies memo text; `Cmd` modifier switches action to copy raw JSON for that item.
 - choose `Update` row (from `mmr <id>` item menu) -> query autocompletes to `update <item_id>`; type new text and press Enter to execute update.
 - `mma <text>` routes to add intent.
@@ -112,7 +113,8 @@ Malformed update/delete token shapes are handled as user errors.
 - Copy row also provides a `cmd` modifier action token (`copy-json::<item_id>`) with JSON preview subtitle.
 - `update <item_id>` without text renders guidance/autocomplete instead of hard error row.
 - `search` without query text renders guidance row and no executable action token.
-- `search <query>` returns non-destructive rows with `autocomplete=item <item_id>`.
+- `search <query>` with one hit returns direct item action menu rows (`copy` / `update` / `delete`).
+- `search <query>` with multiple hits returns non-destructive rows with `autocomplete=item <item_id>`.
 - db path row is informational (`valid=false`), while `db init` stays actionable when db is missing.
 - Non-empty query defaults to add unless explicit `update` / `delete` / `copy` / `search` intent prefix is matched (for keyword wrappers / internal script-filter paths).
 - Malformed mutation query syntax returns non-actionable guidance rows instead of malformed JSON.
@@ -129,7 +131,7 @@ Malformed update/delete token shapes are handled as user errors.
 - `cargo run -p nils-memo-workflow-cli -- script-filter --query "" | jq -e '.items | type == "array" and length >= 2'`
 - `cargo run -p nils-memo-workflow-cli -- script-filter --query "update itm_00000001 revised text" | jq -e '.items[0].arg | startswith("update::")'`
 - `cargo run -p nils-memo-workflow-cli -- script-filter --query "delete itm_00000001" | jq -e '.items[0].arg | startswith("delete::")'`
-- `cargo run -p nils-memo-workflow-cli -- script-filter --query "search milk" | jq -e '.items[0].autocomplete | startswith("item ")'`
+- `cargo run -p nils-memo-workflow-cli -- script-filter --query "search milk" | jq -e '.items | length == 3 and .items[0].arg | startswith("copy::")'`
 - `cargo run -p nils-memo-workflow-cli -- db-init`
 - `cargo run -p nils-memo-workflow-cli -- add --text "buy milk"`
 - `tmpdir="$(mktemp -d)" && db="$tmpdir/memo.db" && add_json="$(cargo run -p nils-memo-workflow-cli -- add --db "$db" --text "before" --mode json)" && item_id="$(jq -r '.result.item_id' <<<"$add_json")" && cargo run -p nils-memo-workflow-cli -- update --db "$db" --item-id "$item_id" --text "after" --mode json`

@@ -805,6 +805,10 @@ fn build_search_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
         ]));
     }
 
+    if rows.len() == 1 {
+        return build_item_action_feedback(&rows[0].item_id, config);
+    }
+
     let mut items = Vec::with_capacity(rows.len());
     for row in rows {
         let preview = row.text_preview.trim();
@@ -1308,13 +1312,42 @@ mod tests {
         let dir = tempdir().expect("temp dir");
         let mut config = test_config();
         config.db_path = dir.path().join("memo.db");
-        execute_add("buy milk", None, None, &config).expect("seed add");
+        let add = execute_add("buy milk", None, None, &config).expect("seed add");
+
+        let feedback = build_script_filter("search milk", &config).expect("script filter");
+
+        assert_eq!(
+            feedback.items.len(),
+            3,
+            "single search hit should show item menu"
+        );
+        assert_eq!(
+            feedback.items[0].title,
+            format!("Copy memo: {}", add.item_id)
+        );
+        assert_eq!(
+            feedback.items[1].title,
+            format!("Update memo: {}", add.item_id)
+        );
+        assert_eq!(
+            feedback.items[2].title,
+            format!("Delete memo: {}", add.item_id)
+        );
+    }
+
+    #[test]
+    fn script_filter_search_intent_multiple_hits_keep_search_rows() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        execute_add("milk tea", None, None, &config).expect("seed add one");
+        execute_add("milk coffee", None, None, &config).expect("seed add two");
 
         let feedback = build_script_filter("search milk", &config).expect("script filter");
 
         assert!(
-            !feedback.items.is_empty(),
-            "search should return at least one row"
+            feedback.items.len() >= 2,
+            "multiple search hits should keep search result rows"
         );
         assert_eq!(feedback.items[0].valid, Some(false));
         let autocomplete = feedback.items[0]
@@ -1323,7 +1356,7 @@ mod tests {
             .expect("search row should include autocomplete");
         assert!(
             autocomplete.starts_with("item itm_"),
-            "search row should route to item intent"
+            "multi-hit search rows should route to item intent"
         );
     }
 

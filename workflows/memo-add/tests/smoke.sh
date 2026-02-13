@@ -167,7 +167,7 @@ if [[ "${1:-}" == "script-filter" && "${2:-}" == "--query" ]]; then
       printf '{"items":[{"title":"Type search text after keyword","subtitle":"Use: search <query>","valid":false}]}\n'
       ;;
     "search milk")
-      printf '{"items":[{"title":"Search itm_00000001: buy milk","subtitle":"search","autocomplete":"item itm_00000001","valid":false}]}\n'
+      emit_item_menu "itm_00000001"
       ;;
     "item itm_00000001")
       emit_item_menu "itm_00000001"
@@ -322,12 +322,12 @@ assert_jq_json "$success_json" '.items[0].arg == "add::buy milk"' "script_filter
 
 entry_json="$("$workflow_dir/scripts/script_filter_entry.sh" "buy milk")"
 assert_jq_json "$entry_json" '.items[0].title == "Memo Commands"' "entry menu title mismatch"
-assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmr")' "entry menu should include mmr"
-assert_jq_json "$entry_json" '.items | any(.autocomplete == "mma ")' "entry menu should include mma"
-assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmu ")' "entry menu should include mmu"
-assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmd ")' "entry menu should include mmd"
-assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmc ")' "entry menu should include mmc"
-assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmq ")' "entry menu should include mmq"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "r ")' "entry menu should include r suffix for mmr"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "a ")' "entry menu should include a suffix for mma"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "u ")' "entry menu should include u suffix for mmu"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "d ")' "entry menu should include d suffix for mmd"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "c ")' "entry menu should include c suffix for mmc"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "q ")' "entry menu should include q suffix for mmq"
 assert_jq_json "$entry_json" '.items | map(select((.arg // "") | startswith("add::"))) | length == 0' "entry menu should not return add action tokens"
 
 keyword_add_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_add.sh" "buy milk"; })"
@@ -366,8 +366,10 @@ assert_jq_json "$keyword_copy_id_json" '.items | length == 1' "mmc numeric query
 assert_jq_json "$keyword_copy_id_json" '.items[0].arg == "copy::itm_00000001"' "mmc numeric query should map to copy action"
 
 keyword_search_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_search.sh" "milk"; })"
-assert_jq_json "$keyword_search_json" '.items | length == 1' "mmq query should return search rows"
-assert_jq_json "$keyword_search_json" '.items[0].autocomplete == "item itm_00000001"' "mmq should route to item autocomplete"
+assert_jq_json "$keyword_search_json" '.items | length == 3' "mmq single-hit query should return item menu rows"
+assert_jq_json "$keyword_search_json" '.items[0].arg == "copy::itm_00000001"' "mmq single-hit query should include copy action"
+assert_jq_json "$keyword_search_json" '.items[1].autocomplete == "update itm_00000001 "' "mmq single-hit query should include update action"
+assert_jq_json "$keyword_search_json" '.items[2].arg == "delete::itm_00000001"' "mmq single-hit query should include delete action"
 
 keyword_search_empty_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_search.sh" ""; })"
 assert_jq_json "$keyword_search_empty_json" '.items[0].valid == false' "mmq empty query should show guidance row"
@@ -546,6 +548,7 @@ fi
 assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 7' "scriptfilter count mismatch"
 assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["mm","mma","mmc","mmd","mmq","mmr","mmu"]' "keyword wiring mismatch"
 assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm") | .config.scriptfile == "./scripts/script_filter_entry.sh"' "mm keyword should use command-entry script"
+assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm") | .config.withspace == false' "mm keyword should keep no-space suffix routing"
 assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mmq") | .config.scriptfile == "./scripts/script_filter_search.sh"' "mmq keyword should use search script"
 assert_jq_json "$packaged_json" '.connections | length == 7' "connection wiring mismatch"
 assert_jq_json "$packaged_json" '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]' "plist variable list mismatch"
