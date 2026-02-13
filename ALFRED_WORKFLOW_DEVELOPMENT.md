@@ -145,52 +145,36 @@ xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
 3. Rebuild and run repository validation gates (`scripts/workflow-lint.sh`, `scripts/workflow-test.sh`, packaging checks).
 4. Republish known-good artifact and notify operators with scope/ETA.
 
-## Legacy Troubleshooting Migration Map
+## Troubleshooting Documentation Map
 
-This map defines destination ownership after retiring root `TROUBLESHOOTING.md`.
+### Global standards
 
-### Shared sections moved to global standards
+- Cross-workflow runtime and troubleshooting standards are defined in this file:
+  - `ALFRED_WORKFLOW_DEVELOPMENT.md`
 
-| Legacy root section | Destination |
-| --- | --- |
-| `Purpose` | `ALFRED_WORKFLOW_DEVELOPMENT.md` |
-| `Quick Triage Checklist` | `ALFRED_WORKFLOW_DEVELOPMENT.md` (`Installed-workflow debug checklist`) |
-| Shared Gatekeeper/quarantine principles | `ALFRED_WORKFLOW_DEVELOPMENT.md` |
-| Shared Script Filter guardrails (`alfredfiltersresults`, `config.type`, queue policy) | `ALFRED_WORKFLOW_DEVELOPMENT.md` |
-| Generic rollback principles | `ALFRED_WORKFLOW_DEVELOPMENT.md` |
+### Workflow-local runbooks
 
-### Workflow sections moved to workflow-local troubleshooting
-
-| Legacy root workflow section | Destination |
-| --- | --- |
-| `Workflow: open-project` | `workflows/open-project/TROUBLESHOOTING.md` |
-| `Workflow: youtube-search` | `workflows/youtube-search/TROUBLESHOOTING.md` |
-| `Workflow: google-search` | `workflows/google-search/TROUBLESHOOTING.md` |
-| `Workflow: wiki-search` | `workflows/wiki-search/TROUBLESHOOTING.md` |
-| `Workflow: epoch-converter` | `workflows/epoch-converter/TROUBLESHOOTING.md` |
-| `Workflow: multi-timezone` | `workflows/multi-timezone/TROUBLESHOOTING.md` |
-| `Workflow: quote-feed` | `workflows/quote-feed/TROUBLESHOOTING.md` |
-| `Workflow: memo-add` | `workflows/memo-add/TROUBLESHOOTING.md` |
-| `Workflow: cambridge-dict` | `workflows/cambridge-dict/TROUBLESHOOTING.md` |
-
-### Workflows without legacy root section (baseline docs required)
-
+- `workflows/_template/TROUBLESHOOTING.md`
+- `workflows/cambridge-dict/TROUBLESHOOTING.md`
 - `workflows/codex-cli/TROUBLESHOOTING.md`
+- `workflows/epoch-converter/TROUBLESHOOTING.md`
+- `workflows/google-search/TROUBLESHOOTING.md`
 - `workflows/market-expression/TROUBLESHOOTING.md`
+- `workflows/memo-add/TROUBLESHOOTING.md`
+- `workflows/multi-timezone/TROUBLESHOOTING.md`
+- `workflows/open-project/TROUBLESHOOTING.md`
+- `workflows/quote-feed/TROUBLESHOOTING.md`
+- `workflows/randomer/TROUBLESHOOTING.md`
 - `workflows/spotify-search/TROUBLESHOOTING.md`
 - `workflows/weather/TROUBLESHOOTING.md`
-- `workflows/randomer/TROUBLESHOOTING.md`
-- `workflows/_template/TROUBLESHOOTING.md`
+- `workflows/wiki-search/TROUBLESHOOTING.md`
+- `workflows/youtube-search/TROUBLESHOOTING.md`
 
-## Historical Reference Policy
+### Reference policy
 
-Policy decision:
-- Preserve historical references to root `TROUBLESHOOTING.md` in archived plans/reports unless a document is actively maintained and requires navigation fixes.
-- For active entry-point documents (`README.md`, `DEVELOPMENT.md`, `docs/WORKFLOW_GUIDE.md`, `AGENT_DOCS.toml`), references must point to global standards and workflow-local troubleshooting docs.
-
-Rationale:
-- Preserves historical traceability in archival planning artifacts.
-- Avoids unnecessary churn in completed plans while keeping current operator navigation accurate.
+- Active entry-point documents (`README.md`, `DEVELOPMENT.md`, `docs/WORKFLOW_GUIDE.md`, `AGENT_DOCS.toml`) must link to:
+  - `ALFRED_WORKFLOW_DEVELOPMENT.md` for global standards.
+  - `workflows/<workflow-id>/TROUBLESHOOTING.md` for workflow-specific operations.
 
 ## Rollout Rehearsal Checklist
 
@@ -198,7 +182,7 @@ A maintainer should complete the following flow in under three minutes:
 1. Open `README.md` and follow troubleshooting navigation to global standards.
 2. Jump from workflow README to local `TROUBLESHOOTING.md`.
 3. Run `agent-docs resolve --context project-dev --strict --format checklist`.
-4. Confirm rollback path is a single revert of this migration changeset.
+4. Confirm rollback path in the target workflow's `Rollback guidance` section is actionable.
 
 ## Validation
 
