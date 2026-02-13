@@ -13,6 +13,7 @@ Search YouTube videos from Alfred and open selected videos in your browser.
 - Open selected YouTube watch URL in your default browser with `Enter`.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
 - Script Filter queue policy: 1 second delay with initial immediate run disabled.
+- Script-level guardrails: async query coalescing (final query priority) and short TTL cache reduce duplicate API calls while typing.
 - Map common failures (missing API key, quota exceeded, API unavailable, invalid config) to actionable Alfred messages.
 - Tune result count and region targeting through workflow variables.
 
@@ -37,3 +38,6 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `YOUTUBE_CLI_BIN` | Optional override path for `youtube-cli` (useful for local debugging). |
+| `YOUTUBE_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `10`. |
+| `YOUTUBE_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. |
+| `YOUTUBE_QUERY_COALESCE_RERUN_SECONDS` | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`. |

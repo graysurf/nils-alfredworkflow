@@ -35,6 +35,27 @@ if [[ -n "$query_policy_helper" ]]; then
   source "$query_policy_helper"
 fi
 
+resolve_async_coalesce_helper() {
+  local candidates=(
+    "$workflow_script_dir/lib/script_filter_async_coalesce.sh"
+    "$workflow_script_dir/../../../scripts/lib/script_filter_async_coalesce.sh"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+async_coalesce_helper="$(resolve_async_coalesce_helper || true)"
+if [[ -n "$async_coalesce_helper" ]]; then
+  # shellcheck disable=SC1090
+  source "$async_coalesce_helper"
+fi
+
 if ! declare -F sfqp_trim >/dev/null 2>&1; then
   sfqp_trim() {
     local value="${1-}"
@@ -82,6 +103,11 @@ strip_ansi() {
 }
 
 resolve_workflow_cache_dir() {
+  if declare -F sfac_resolve_workflow_cache_dir >/dev/null 2>&1; then
+    sfac_resolve_workflow_cache_dir "nils-codex-cli-workflow"
+    return 0
+  fi
+
   local candidate
   for candidate in \
     "${alfred_workflow_cache:-}" \

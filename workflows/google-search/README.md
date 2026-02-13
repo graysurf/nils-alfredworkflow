@@ -13,7 +13,8 @@ Search web results from Alfred using Brave Search API and open selected links in
 - Open selected URL in your default browser with `Enter`.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
 - Script Filter queue policy: 1 second delay with initial immediate run disabled.
-- Map common failures (missing API key, quota/rate limit, API unavailable, invalid config) to actionable Alfred messages.
+- Script-level guardrails: async query coalescing (final query priority) and short TTL cache reduce duplicate API calls while typing.
+- Map common failures (missing API key, rate limiting, API unavailable, invalid config) to actionable Alfred messages.
 - Tune result count, safe search mode, and country bias through workflow variables.
 
 ## Configuration
@@ -38,3 +39,6 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `BRAVE_CLI_BIN` | Optional override path for `brave-cli` (useful for local debugging). |
+| `BRAVE_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `10`. |
+| `BRAVE_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. |
+| `BRAVE_QUERY_COALESCE_RERUN_SECONDS` | Optional Alfred rerun interval while waiting for async result. Default `0.4`. |

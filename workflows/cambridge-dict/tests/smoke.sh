@@ -127,6 +127,9 @@ for variable in CAMBRIDGE_DICT_MODE CAMBRIDGE_MAX_RESULTS CAMBRIDGE_TIMEOUT_MS C
 done
 
 tmp_dir="$(mktemp -d)"
+export ALFRED_WORKFLOW_CACHE="$tmp_dir/alfred-cache"
+export CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0
+export CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS=0
 artifact_id="$(toml_string "$manifest" id)"
 artifact_version="$(toml_string "$manifest" version)"
 artifact_name="$(toml_string "$manifest" name)"
@@ -307,6 +310,7 @@ cp "$workflow_dir/scripts/script_filter.sh" "$missing_script"
 chmod +x "$missing_script"
 mkdir -p "$missing_layout/workflows/cambridge-dict/scripts/lib"
 cp "$repo_root/scripts/lib/script_filter_query_policy.sh" "$missing_layout/workflows/cambridge-dict/scripts/lib/script_filter_query_policy.sh"
+cp "$repo_root/scripts/lib/script_filter_async_coalesce.sh" "$missing_layout/workflows/cambridge-dict/scripts/lib/script_filter_async_coalesce.sh"
 missing_binary_json="$({ CAMBRIDGE_CLI_BIN="$missing_layout/does-not-exist/cambridge-cli" "$missing_script" "open"; })"
 assert_jq_json "$missing_binary_json" '.items[0].title == "cambridge-cli binary not found"' "missing binary title mapping mismatch"
 
@@ -344,6 +348,7 @@ run_layout_check() {
   chmod +x "$copied_script"
   mkdir -p "$layout/workflows/cambridge-dict/scripts/lib"
   cp "$repo_root/scripts/lib/script_filter_query_policy.sh" "$layout/workflows/cambridge-dict/scripts/lib/script_filter_query_policy.sh"
+  cp "$repo_root/scripts/lib/script_filter_async_coalesce.sh" "$layout/workflows/cambridge-dict/scripts/lib/script_filter_async_coalesce.sh"
 
   case "$mode" in
   packaged)
@@ -361,7 +366,7 @@ run_layout_check() {
   esac
 
   local output
-  output="$($copied_script "open")"
+  output="$(CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS=0 CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 "$copied_script" "open")"
   assert_jq_json "$output" ".items[0].title == \"$marker\"" "script_filter failed to resolve $mode cambridge-cli path"
   assert_jq_json "$output" ".items[0].subtitle == \"$layout/workflows/cambridge-dict/scripts/cambridge_scraper.mjs\"" "script_filter must set CAMBRIDGE_SCRAPER_SCRIPT for $mode layout"
 }
@@ -408,6 +413,7 @@ assert_file "$packaged_dir/scripts/lib/extract_suggest.mjs"
 assert_file "$packaged_dir/scripts/lib/extract_define.mjs"
 assert_file "$packaged_dir/scripts/lib/error_classify.mjs"
 assert_file "$packaged_dir/scripts/lib/script_filter_query_policy.sh"
+assert_file "$packaged_dir/scripts/lib/script_filter_async_coalesce.sh"
 
 if command -v plutil >/dev/null 2>&1; then
   plutil -lint "$packaged_plist" >/dev/null || fail "packaged plist lint failed"
