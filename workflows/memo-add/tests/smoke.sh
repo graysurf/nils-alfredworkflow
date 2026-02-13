@@ -87,21 +87,124 @@ set -e
 [[ "$action_rc" -eq 2 ]] || fail "action_run.sh without args must exit 2"
 
 tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
+crud_tmp_dir="$(mktemp -d)"
+cleanup() {
+  rm -rf "$tmp_dir" "$crud_tmp_dir"
+}
+trap cleanup EXIT
 mkdir -p "$tmp_dir/stubs"
 
 cat >"$tmp_dir/stubs/memo-workflow-cli-ok" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "${1:-}" == "script-filter" ]]; then
-  printf '{"items":[{"title":"Add memo: buy milk","subtitle":"ok","arg":"add::buy milk","valid":true}]}'
-  printf '\n'
+db_path="${MEMO_DB_PATH:-${TMPDIR:-/tmp}/memo-smoke.db}"
+state_file="${db_path}.state"
+
+ensure_state_parent() {
+  mkdir -p "$(dirname "$state_file")"
+}
+
+emit_item() {
+  local title="$1"
+  local token="$2"
+  printf '{"items":[{"title":"%s","subtitle":"ok","arg":"%s","valid":true}]}\n' "$title" "$token"
+}
+
+if [[ "${1:-}" == "script-filter" && "${2:-}" == "--query" ]]; then
+  query="${3:-}"
+  case "$query" in
+    "buy milk")
+      emit_item "Add memo: buy milk" "add::buy milk"
+      ;;
+    "update itm_00000001 buy oat milk")
+      emit_item "Update memo: itm_00000001" "update::itm_00000001::buy oat milk"
+      ;;
+    "delete itm_00000001")
+      emit_item "Delete memo: itm_00000001" "delete::itm_00000001"
+      ;;
+    *)
+      emit_item "Add memo: $query" "add::$query"
+      ;;
+  esac
   exit 0
 fi
+
 if [[ "${1:-}" == "action" && "${2:-}" == "--token" ]]; then
-  printf 'added itm_00000001 at 2026-02-12T12:00:00Z\n'
-  exit 0
+  token="${3:-}"
+  ensure_state_parent
+  case "$token" in
+    db-init)
+      : >"$db_path"
+      : >"$state_file"
+      printf 'initialized %s\n' "$db_path"
+      exit 0
+      ;;
+    add::*)
+      text="${token#add::}"
+      row_count=0
+      if [[ -f "$state_file" ]]; then
+        row_count="$(wc -l <"$state_file")"
+      fi
+      item_num=$((row_count + 1))
+      printf -v item_id 'itm_%08d' "$item_num"
+      printf '%s\t%s\n' "$item_id" "$text" >>"$state_file"
+      printf 'added %s at 2026-02-12T12:00:00Z\n' "$item_id"
+      exit 0
+      ;;
+    update::*)
+      payload="${token#update::}"
+      item_id="${payload%%::*}"
+      text="${payload#*::}"
+      tmp_state="${state_file}.tmp"
+      found=0
+      : >"$tmp_state"
+      if [[ -f "$state_file" ]]; then
+        while IFS=$'\t' read -r row_id row_text; do
+          if [[ "$row_id" == "$item_id" ]]; then
+            printf '%s\t%s\n' "$row_id" "$text" >>"$tmp_state"
+            found=1
+          elif [[ -n "${row_id:-}" ]]; then
+            printf '%s\t%s\n' "$row_id" "$row_text" >>"$tmp_state"
+          fi
+        done <"$state_file"
+      fi
+      if [[ "$found" -eq 0 ]]; then
+        rm -f "$tmp_state"
+        echo "item not found: $item_id" >&2
+        exit 4
+      fi
+      mv "$tmp_state" "$state_file"
+      printf 'updated %s at 2026-02-12T12:05:00Z\n' "$item_id"
+      exit 0
+      ;;
+    delete::*)
+      item_id="${token#delete::}"
+      tmp_state="${state_file}.tmp"
+      found=0
+      : >"$tmp_state"
+      if [[ -f "$state_file" ]]; then
+        while IFS=$'\t' read -r row_id row_text; do
+          if [[ "$row_id" == "$item_id" ]]; then
+            found=1
+            continue
+          fi
+          if [[ -n "${row_id:-}" ]]; then
+            printf '%s\t%s\n' "$row_id" "$row_text" >>"$tmp_state"
+          fi
+        done <"$state_file"
+      fi
+      if [[ "$found" -eq 0 ]]; then
+        rm -f "$tmp_state"
+        echo "item not found: $item_id" >&2
+        exit 4
+      fi
+      mv "$tmp_state" "$state_file"
+      printf 'deleted %s at 2026-02-12T12:10:00Z\n' "$item_id"
+      exit 0
+      ;;
+  esac
 fi
+
 exit 9
 EOS
 chmod +x "$tmp_dir/stubs/memo-workflow-cli-ok"
@@ -114,15 +217,89 @@ exit 2
 EOS
 chmod +x "$tmp_dir/stubs/memo-workflow-cli-invalid"
 
+cat >"$tmp_dir/stubs/osascript" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -n "${MEMO_NOTIFY_LOG:-}" ]]; then
+  printf '%s\n' "$*" >>"$MEMO_NOTIFY_LOG"
+fi
+EOS
+chmod +x "$tmp_dir/stubs/osascript"
+
 success_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "buy milk"; })"
 assert_jq_json "$success_json" '.items | type == "array" and length == 1' "script_filter success must return one item"
 assert_jq_json "$success_json" '.items[0].arg == "add::buy milk"' "script_filter add arg mismatch"
 
+update_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "update itm_00000001 buy oat milk"; })"
+assert_jq_json "$update_json" '.items[0].arg == "update::itm_00000001::buy oat milk"' "script_filter update arg mismatch"
+
+delete_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "delete itm_00000001"; })"
+assert_jq_json "$delete_json" '.items[0].arg == "delete::itm_00000001"' "script_filter delete arg mismatch"
+
 invalid_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-invalid" "$workflow_dir/scripts/script_filter.sh" "buy milk"; })"
 assert_jq_json "$invalid_json" '.items[0].title == "Invalid Memo workflow config"' "invalid config title mismatch"
 
-action_output="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/action_run.sh" "add::buy milk"; })"
+action_output="$({ MEMO_DB_PATH="$tmp_dir/smoke.db" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/action_run.sh" "add::buy milk"; })"
 [[ "$action_output" == *"added itm_00000001"* ]] || fail "action output mismatch"
+
+crud_db_path="$crud_tmp_dir/memo.db"
+crud_state_path="${crud_db_path}.state"
+notify_log="$crud_tmp_dir/notify.log"
+
+db_init_output="$({
+  PATH="$tmp_dir/stubs:$PATH" \
+    MEMO_NOTIFY_LOG="$notify_log" \
+    MEMO_DB_PATH="$crud_db_path" \
+    MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" \
+    "$workflow_dir/scripts/action_run.sh" "db-init"
+})"
+[[ "$db_init_output" == *"initialized $crud_db_path"* ]] || fail "db-init output mismatch"
+rg -n --fixed-strings 'Memo DB initialized' "$notify_log" >/dev/null || fail "db-init notification mismatch"
+
+crud_add_json="$({ MEMO_DB_PATH="$crud_db_path" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "buy milk"; })"
+crud_add_token="$(jq -r '.items[0].arg' <<<"$crud_add_json")"
+[[ "$crud_add_token" == "add::buy milk" ]] || fail "crud add token mismatch"
+: >"$notify_log"
+crud_add_output="$({
+  PATH="$tmp_dir/stubs:$PATH" \
+    MEMO_NOTIFY_LOG="$notify_log" \
+    MEMO_DB_PATH="$crud_db_path" \
+    MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" \
+    "$workflow_dir/scripts/action_run.sh" "$crud_add_token"
+})"
+[[ "$crud_add_output" == *"added itm_00000001"* ]] || fail "crud add output mismatch"
+rg -n --fixed-strings 'Memo added' "$notify_log" >/dev/null || fail "add notification mismatch"
+rg -n '^itm_00000001[[:space:]]+buy milk$' "$crud_state_path" >/dev/null || fail "crud add state mismatch"
+
+crud_update_json="$({ MEMO_DB_PATH="$crud_db_path" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "update itm_00000001 buy oat milk"; })"
+crud_update_token="$(jq -r '.items[0].arg' <<<"$crud_update_json")"
+[[ "$crud_update_token" == "update::itm_00000001::buy oat milk" ]] || fail "crud update token mismatch"
+: >"$notify_log"
+crud_update_output="$({
+  PATH="$tmp_dir/stubs:$PATH" \
+    MEMO_NOTIFY_LOG="$notify_log" \
+    MEMO_DB_PATH="$crud_db_path" \
+    MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" \
+    "$workflow_dir/scripts/action_run.sh" "$crud_update_token"
+})"
+[[ "$crud_update_output" == *"updated itm_00000001"* ]] || fail "crud update output mismatch"
+rg -n --fixed-strings 'Memo updated' "$notify_log" >/dev/null || fail "update notification mismatch"
+rg -n '^itm_00000001[[:space:]]+buy oat milk$' "$crud_state_path" >/dev/null || fail "crud update state mismatch"
+
+crud_delete_json="$({ MEMO_DB_PATH="$crud_db_path" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "delete itm_00000001"; })"
+crud_delete_token="$(jq -r '.items[0].arg' <<<"$crud_delete_json")"
+[[ "$crud_delete_token" == "delete::itm_00000001" ]] || fail "crud delete token mismatch"
+: >"$notify_log"
+crud_delete_output="$({
+  PATH="$tmp_dir/stubs:$PATH" \
+    MEMO_NOTIFY_LOG="$notify_log" \
+    MEMO_DB_PATH="$crud_db_path" \
+    MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" \
+    "$workflow_dir/scripts/action_run.sh" "$crud_delete_token"
+})"
+[[ "$crud_delete_output" == *"deleted itm_00000001"* ]] || fail "crud delete output mismatch"
+rg -n --fixed-strings 'Memo deleted' "$notify_log" >/dev/null || fail "delete notification mismatch"
+[[ ! -s "$crud_state_path" ]] || fail "crud delete should clear state"
 
 cat >"$tmp_dir/stubs/cargo" <<EOS
 #!/usr/bin/env bash

@@ -152,3 +152,245 @@ fn list_returns_latest_first() {
         "newest row should be listed first"
     );
 }
+
+#[test]
+fn update_mutates_existing_item() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add = Command::new(bin())
+        .args(["add", "--db", db_path, "--text", "before", "--mode", "json"])
+        .output()
+        .expect("add should run");
+    assert!(add.status.success(), "add should succeed");
+    let add_payload: Value = serde_json::from_slice(&add.stdout).expect("add json");
+    let item_id = add_payload
+        .get("result")
+        .and_then(|result| result.get("item_id"))
+        .and_then(Value::as_str)
+        .expect("item id")
+        .to_string();
+
+    let update = Command::new(bin())
+        .args([
+            "update",
+            "--db",
+            db_path,
+            "--item-id",
+            &item_id,
+            "--text",
+            "after",
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("update should run");
+    assert!(update.status.success(), "update should succeed");
+    let update_payload: Value = serde_json::from_slice(&update.stdout).expect("update json");
+    assert_eq!(
+        update_payload.get("ok").and_then(Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        update_payload
+            .get("result")
+            .and_then(|result| result.get("text"))
+            .and_then(Value::as_str),
+        Some("after")
+    );
+}
+
+#[test]
+fn delete_removes_existing_item() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add = Command::new(bin())
+        .args([
+            "add",
+            "--db",
+            db_path,
+            "--text",
+            "to delete",
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("add should run");
+    assert!(add.status.success(), "add should succeed");
+    let add_payload: Value = serde_json::from_slice(&add.stdout).expect("add json");
+    let item_id = add_payload
+        .get("result")
+        .and_then(|result| result.get("item_id"))
+        .and_then(Value::as_str)
+        .expect("item id")
+        .to_string();
+
+    let delete = Command::new(bin())
+        .args([
+            "delete",
+            "--db",
+            db_path,
+            "--item-id",
+            &item_id,
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("delete should run");
+    assert!(delete.status.success(), "delete should succeed");
+
+    let list = Command::new(bin())
+        .args(["list", "--db", db_path, "--mode", "json"])
+        .output()
+        .expect("list should run");
+    assert!(list.status.success(), "list should succeed");
+    let list_payload: Value = serde_json::from_slice(&list.stdout).expect("list json");
+    let rows = list_payload
+        .get("result")
+        .and_then(Value::as_array)
+        .expect("list rows");
+    assert!(
+        rows.iter().all(|row| {
+            row.get("item_id")
+                .and_then(Value::as_str)
+                .map(|id| id != item_id)
+                .unwrap_or(true)
+        }),
+        "deleted item should not appear in list"
+    );
+}
+
+#[test]
+fn action_token_crud_roundtrip_with_isolated_db() {
+    let dir = tempdir().expect("temp dir");
+    let db = dir.path().join("memo.db");
+    let db_path = db.to_str().expect("db path");
+
+    let add = Command::new(bin())
+        .args([
+            "action",
+            "--token",
+            "add::first memo",
+            "--db",
+            db_path,
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("action add should run");
+    assert!(add.status.success(), "action add should succeed");
+    let add_payload: Value = serde_json::from_slice(&add.stdout).expect("add json");
+    let item_id = add_payload
+        .get("result")
+        .and_then(|result| result.get("item_id"))
+        .and_then(Value::as_str)
+        .expect("item id")
+        .to_string();
+
+    let update_token = format!("update::{item_id}::updated memo");
+    let update = Command::new(bin())
+        .args([
+            "action",
+            "--token",
+            &update_token,
+            "--db",
+            db_path,
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("action update should run");
+    assert!(update.status.success(), "action update should succeed");
+
+    let delete_token = format!("delete::{item_id}");
+    let delete = Command::new(bin())
+        .args([
+            "action",
+            "--token",
+            &delete_token,
+            "--db",
+            db_path,
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("action delete should run");
+    assert!(delete.status.success(), "action delete should succeed");
+}
+
+#[test]
+fn script_filter_exposes_update_delete_intents() {
+    let output_update = Command::new(bin())
+        .args([
+            "script-filter",
+            "--query",
+            "update itm_00000001 revised text",
+        ])
+        .output()
+        .expect("script-filter update should run");
+    assert!(
+        output_update.status.success(),
+        "script-filter update must exit 0"
+    );
+    let update_payload: Value =
+        serde_json::from_slice(&output_update.stdout).expect("update payload json");
+    let update_arg = update_payload
+        .get("items")
+        .and_then(Value::as_array)
+        .and_then(|items| items.first())
+        .and_then(|item| item.get("arg"))
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        update_arg.starts_with("update::"),
+        "update intent should produce update token"
+    );
+
+    let output_delete = Command::new(bin())
+        .args(["script-filter", "--query", "delete itm_00000001"])
+        .output()
+        .expect("script-filter delete should run");
+    assert!(
+        output_delete.status.success(),
+        "script-filter delete must exit 0"
+    );
+    let delete_payload: Value =
+        serde_json::from_slice(&output_delete.stdout).expect("delete payload json");
+    let delete_arg = delete_payload
+        .get("items")
+        .and_then(Value::as_array)
+        .and_then(|items| items.first())
+        .and_then(|item| item.get("arg"))
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        delete_arg.starts_with("delete::"),
+        "delete intent should produce delete token"
+    );
+}
+
+#[test]
+fn update_delete_invalid_item_id_returns_usage_error() {
+    let update = Command::new(bin())
+        .args([
+            "update",
+            "--item-id",
+            "bad",
+            "--text",
+            "updated",
+            "--mode",
+            "json",
+        ])
+        .output()
+        .expect("update should run");
+    assert_eq!(update.status.code(), Some(2));
+
+    let delete = Command::new(bin())
+        .args(["delete", "--item-id", "bad", "--mode", "json"])
+        .output()
+        .expect("delete should run");
+    assert_eq!(delete.status.code(), Some(2));
+}
