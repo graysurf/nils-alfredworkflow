@@ -93,17 +93,32 @@ map_error_title() {
   printf '%s\n' "Memo workflow error"
 }
 
-query="${1:-}"
+query=""
+query_provided=0
+if [[ $# -gt 0 ]]; then
+  query="${1-}"
+  query_provided=1
+fi
 # Alfred debug/log output may show '(null)' for missing argv.
 if [[ "$query" == "(null)" ]]; then
   query=""
+  query_provided=0
 fi
-if [[ -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
+if [[ "$query_provided" -eq 0 && -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
   query="${alfred_workflow_query}"
-elif [[ -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
+elif [[ "$query_provided" -eq 0 && -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
   query="${ALFRED_WORKFLOW_QUERY}"
-elif [[ -z "$query" && ! -t 0 ]]; then
+elif [[ "$query_provided" -eq 0 && -z "$query" && ! -t 0 ]]; then
   query="$(cat)"
+fi
+
+query_prefix="${MEMO_QUERY_PREFIX:-}"
+if [[ -n "$query_prefix" ]]; then
+  if [[ -n "$query" ]]; then
+    query="$query_prefix $query"
+  else
+    query="$query_prefix"
+  fi
 fi
 
 err_file="${TMPDIR:-/tmp}/memo-add-script-filter.err.$$"

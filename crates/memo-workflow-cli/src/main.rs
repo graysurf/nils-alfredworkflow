@@ -2,9 +2,11 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use memo_workflow_cli::{
-    ADD_TOKEN_PREFIX, AppError, DELETE_TOKEN_PREFIX, ListResult, RuntimeConfig,
-    UPDATE_TOKEN_PREFIX, build_script_filter, execute_add, execute_db_init, execute_delete,
-    execute_list, execute_update, parse_add_token, parse_delete_token, parse_update_token,
+    ADD_TOKEN_PREFIX, AppError, COPY_JSON_TOKEN_PREFIX, COPY_TOKEN_PREFIX, DELETE_TOKEN_PREFIX,
+    ListResult, RuntimeConfig, UPDATE_TOKEN_PREFIX, build_script_filter, execute_add,
+    execute_db_init, execute_delete, execute_fetch_item, execute_list, execute_update,
+    parse_add_token, parse_copy_json_token, parse_copy_token, parse_delete_token,
+    parse_update_token,
 };
 use serde::Serialize;
 
@@ -206,6 +208,22 @@ fn run(cli: Cli) -> Result<(), AppError> {
                 return Ok(());
             }
 
+            if token.starts_with(COPY_JSON_TOKEN_PREFIX) {
+                let item_id = parse_copy_json_token(&token)
+                    .ok_or_else(|| AppError::User("invalid copy-json action token".to_string()))?;
+                let result = execute_fetch_item(&item_id, db, &config)?;
+                emit(mode, result, render_item_json_text)?;
+                return Ok(());
+            }
+
+            if token.starts_with(COPY_TOKEN_PREFIX) {
+                let item_id = parse_copy_token(&token)
+                    .ok_or_else(|| AppError::User("invalid copy action token".to_string()))?;
+                let result = execute_fetch_item(&item_id, db, &config)?;
+                emit(mode, result, |res| res.text.clone())?;
+                return Ok(());
+            }
+
             if token.starts_with(UPDATE_TOKEN_PREFIX) {
                 let (item_id, text) = parse_update_token(&token)
                     .ok_or_else(|| AppError::User("invalid update action token".to_string()))?;
@@ -269,6 +287,13 @@ fn render_list_text(rows: &Vec<ListResult>) -> String {
     }
 
     lines.join("\n")
+}
+
+fn render_item_json_text<T>(value: &T) -> String
+where
+    T: Serialize,
+{
+    serde_json::to_string(value).unwrap_or_else(|_| "{}".to_string())
 }
 
 fn emit<T, F>(mode: ResultMode, result: T, text_renderer: F) -> Result<(), AppError>

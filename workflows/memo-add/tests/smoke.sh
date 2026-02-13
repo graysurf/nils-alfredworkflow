@@ -49,14 +49,26 @@ for required in \
   README.md \
   src/info.plist.template \
   src/assets/icon.png \
+  scripts/script_filter_entry.sh \
   scripts/script_filter.sh \
+  scripts/script_filter_add.sh \
+  scripts/script_filter_update.sh \
+  scripts/script_filter_delete.sh \
+  scripts/script_filter_copy.sh \
+  scripts/script_filter_recent.sh \
   scripts/action_run.sh \
   tests/smoke.sh; do
   assert_file "$workflow_dir/$required"
 done
 
 for executable in \
+  scripts/script_filter_entry.sh \
   scripts/script_filter.sh \
+  scripts/script_filter_add.sh \
+  scripts/script_filter_update.sh \
+  scripts/script_filter_delete.sh \
+  scripts/script_filter_copy.sh \
+  scripts/script_filter_recent.sh \
   scripts/action_run.sh \
   tests/smoke.sh; do
   assert_exec "$workflow_dir/$executable"
@@ -68,7 +80,7 @@ command -v rg >/dev/null 2>&1 || fail "missing required binary: rg"
 manifest="$workflow_dir/workflow.toml"
 [[ "$(toml_string "$manifest" id)" == "memo-add" ]] || fail "workflow id mismatch"
 [[ "$(toml_string "$manifest" rust_binary)" == "memo-workflow-cli" ]] || fail "rust_binary mismatch"
-[[ "$(toml_string "$manifest" script_filter)" == "script_filter.sh" ]] || fail "script_filter mismatch"
+[[ "$(toml_string "$manifest" script_filter)" == "script_filter_entry.sh" ]] || fail "script_filter mismatch"
 [[ "$(toml_string "$manifest" action)" == "action_run.sh" ]] || fail "action mismatch"
 
 for variable in MEMO_DB_PATH MEMO_SOURCE MEMO_REQUIRE_CONFIRM MEMO_MAX_INPUT_BYTES MEMO_RECENT_LIMIT MEMO_WORKFLOW_CLI_BIN; do
@@ -110,6 +122,21 @@ emit_item() {
   printf '{"items":[{"title":"%s","subtitle":"ok","arg":"%s","valid":true}]}\n' "$title" "$token"
 }
 
+emit_copy_item() {
+  local item_id="$1"
+  printf '{"items":[{"title":"Copy memo: %s","subtitle":"copy","arg":"copy::%s","valid":true,"mods":{"cmd":{"subtitle":"raw json","arg":"copy-json::%s","valid":true}}}]}\n' "$item_id" "$item_id" "$item_id"
+}
+
+emit_update_guidance() {
+  local item_id="$1"
+  printf '{"items":[{"title":"Update memo: %s","subtitle":"Type new text after item id, then press Enter to update.","autocomplete":"update %s ","valid":false}]}\n' "$item_id" "$item_id"
+}
+
+emit_item_menu() {
+  local item_id="$1"
+  printf '{"items":[{"title":"Copy memo: %s","subtitle":"copy","arg":"copy::%s","valid":true,"mods":{"cmd":{"subtitle":"raw json","arg":"copy-json::%s","valid":true}}},{"title":"Update memo: %s","subtitle":"update","autocomplete":"update %s ","valid":false},{"title":"Delete memo: %s","subtitle":"delete","arg":"delete::%s","valid":true}]}\n' "$item_id" "$item_id" "$item_id" "$item_id" "$item_id" "$item_id" "$item_id"
+}
+
 if [[ "${1:-}" == "script-filter" && "${2:-}" == "--query" ]]; then
   query="${3:-}"
   case "$query" in
@@ -119,8 +146,26 @@ if [[ "${1:-}" == "script-filter" && "${2:-}" == "--query" ]]; then
     "update itm_00000001 buy oat milk")
       emit_item "Update memo: itm_00000001" "update::itm_00000001::buy oat milk"
       ;;
+    "update 1")
+      emit_update_guidance "itm_00000001"
+      ;;
     "delete itm_00000001")
       emit_item "Delete memo: itm_00000001" "delete::itm_00000001"
+      ;;
+    "delete 1")
+      emit_item "Delete memo: itm_00000001" "delete::itm_00000001"
+      ;;
+    "copy itm_00000001")
+      emit_copy_item "itm_00000001"
+      ;;
+    "copy 1")
+      emit_copy_item "itm_00000001"
+      ;;
+    "item itm_00000001")
+      emit_item_menu "itm_00000001"
+      ;;
+    "item 1")
+      emit_item_menu "itm_00000001"
       ;;
     *)
       emit_item "Add memo: $query" "add::$query"
@@ -202,6 +247,32 @@ if [[ "${1:-}" == "action" && "${2:-}" == "--token" ]]; then
       printf 'deleted %s at 2026-02-12T12:10:00Z\n' "$item_id"
       exit 0
       ;;
+    copy::*)
+      item_id="${token#copy::}"
+      if [[ -f "$state_file" ]]; then
+        while IFS=$'\t' read -r row_id row_text; do
+          if [[ "$row_id" == "$item_id" ]]; then
+            printf '%s' "$row_text"
+            exit 0
+          fi
+        done <"$state_file"
+      fi
+      echo "item not found: $item_id" >&2
+      exit 4
+      ;;
+    copy-json::*)
+      item_id="${token#copy-json::}"
+      if [[ -f "$state_file" ]]; then
+        while IFS=$'\t' read -r row_id row_text; do
+          if [[ "$row_id" == "$item_id" ]]; then
+            printf '{"item_id":"%s","text":"%s"}' "$row_id" "$row_text"
+            exit 0
+          fi
+        done <"$state_file"
+      fi
+      echo "item not found: $item_id" >&2
+      exit 4
+      ;;
   esac
 fi
 
@@ -226,9 +297,71 @@ fi
 EOS
 chmod +x "$tmp_dir/stubs/osascript"
 
+cat >"$tmp_dir/stubs/pbcopy" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -n "${MEMO_CLIPBOARD_LOG:-}" ]]; then
+  cat >"$MEMO_CLIPBOARD_LOG"
+else
+  cat >/dev/null
+fi
+EOS
+chmod +x "$tmp_dir/stubs/pbcopy"
+
 success_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "buy milk"; })"
 assert_jq_json "$success_json" '.items | type == "array" and length == 1' "script_filter success must return one item"
 assert_jq_json "$success_json" '.items[0].arg == "add::buy milk"' "script_filter add arg mismatch"
+
+entry_json="$("$workflow_dir/scripts/script_filter_entry.sh" "buy milk")"
+assert_jq_json "$entry_json" '.items[0].title == "Memo Commands"' "entry menu title mismatch"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmr")' "entry menu should include mmr"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "mma ")' "entry menu should include mma"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmu ")' "entry menu should include mmu"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmd ")' "entry menu should include mmd"
+assert_jq_json "$entry_json" '.items | any(.autocomplete == "mmc ")' "entry menu should include mmc"
+assert_jq_json "$entry_json" '.items | map(select((.arg // "") | startswith("add::"))) | length == 0' "entry menu should not return add action tokens"
+
+keyword_add_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_add.sh" "buy milk"; })"
+assert_jq_json "$keyword_add_json" '.items[0].arg == "add::buy milk"' "mma add arg mismatch"
+
+keyword_update_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_update.sh" "itm_00000001 buy oat milk"; })"
+assert_jq_json "$keyword_update_json" '.items[0].arg == "update::itm_00000001::buy oat milk"' "mmu update arg mismatch"
+
+keyword_delete_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_delete.sh" "itm_00000001"; })"
+assert_jq_json "$keyword_delete_json" '.items[0].arg == "delete::itm_00000001"' "mmd delete arg mismatch"
+
+keyword_update_recent_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_update.sh" ""; })"
+assert_jq_json "$keyword_update_recent_json" '.items[0].arg == "add::"' "mmu empty query should map to newest-first list"
+
+keyword_update_id_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_update.sh" "1"; })"
+assert_jq_json "$keyword_update_id_json" '.items | length == 1' "mmu numeric query should not show full item menu"
+assert_jq_json "$keyword_update_id_json" '.items[0].title == "Update memo: itm_00000001"' "mmu numeric query should map to update guidance"
+assert_jq_json "$keyword_update_id_json" '.items[0].autocomplete == "update itm_00000001 "' "mmu numeric query should keep update autocomplete"
+
+keyword_delete_recent_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_delete.sh" ""; })"
+assert_jq_json "$keyword_delete_recent_json" '.items[0].arg == "add::"' "mmd empty query should map to newest-first list"
+
+keyword_delete_id_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_delete.sh" "1"; })"
+assert_jq_json "$keyword_delete_id_json" '.items | length == 1' "mmd numeric query should not show full item menu"
+assert_jq_json "$keyword_delete_id_json" '.items[0].arg == "delete::itm_00000001"' "mmd numeric query should map to delete action"
+
+keyword_copy_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_copy.sh" "itm_00000001"; })"
+assert_jq_json "$keyword_copy_json" '.items[0].arg == "copy::itm_00000001"' "mmc copy menu mismatch"
+assert_jq_json "$keyword_copy_json" '.items | length == 1' "mmc id query should not show full item menu"
+
+keyword_copy_recent_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_copy.sh" ""; })"
+assert_jq_json "$keyword_copy_recent_json" '.items[0].arg == "add::"' "mmc empty query should map to newest-first list"
+
+keyword_copy_id_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_copy.sh" "1"; })"
+assert_jq_json "$keyword_copy_id_json" '.items | length == 1' "mmc numeric query should not show full item menu"
+assert_jq_json "$keyword_copy_id_json" '.items[0].arg == "copy::itm_00000001"' "mmc numeric query should map to copy action"
+
+keyword_recent_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_recent.sh" "buy milk"; })"
+assert_jq_json "$keyword_recent_json" '.items[0].arg == "add::"' "mmr should force empty query for newest-first view"
+
+keyword_recent_id_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter_recent.sh" "1"; })"
+assert_jq_json "$keyword_recent_id_json" '.items[0].arg == "copy::itm_00000001"' "mmr numeric query should map to item lookup"
+assert_jq_json "$keyword_recent_id_json" '.items | length == 3' "mmr numeric query should keep full item menu"
 
 success_env_query_json="$({ alfred_workflow_query="buy milk" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh"; })"
 assert_jq_json "$success_env_query_json" '.items[0].arg == "add::buy milk"' "script_filter alfred_workflow_query fallback mismatch"
@@ -245,6 +378,13 @@ assert_jq_json "$update_json" '.items[0].arg == "update::itm_00000001::buy oat m
 delete_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "delete itm_00000001"; })"
 assert_jq_json "$delete_json" '.items[0].arg == "delete::itm_00000001"' "script_filter delete arg mismatch"
 
+item_menu_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "item itm_00000001"; })"
+assert_jq_json "$item_menu_json" '.items | type == "array" and length == 3' "script_filter item menu length mismatch"
+assert_jq_json "$item_menu_json" '.items[0].arg == "copy::itm_00000001"' "script_filter copy arg mismatch"
+assert_jq_json "$item_menu_json" '.items[0].mods.cmd.arg == "copy-json::itm_00000001"' "script_filter copy-json cmd arg mismatch"
+assert_jq_json "$item_menu_json" '.items[1].autocomplete == "update itm_00000001 "' "script_filter item update autocomplete mismatch"
+assert_jq_json "$item_menu_json" '.items[2].arg == "delete::itm_00000001"' "script_filter item delete arg mismatch"
+
 invalid_json="$({ MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-invalid" "$workflow_dir/scripts/script_filter.sh" "buy milk"; })"
 assert_jq_json "$invalid_json" '.items[0].title == "Invalid Memo workflow config"' "invalid config title mismatch"
 
@@ -254,6 +394,7 @@ action_output="$({ MEMO_DB_PATH="$tmp_dir/smoke.db" MEMO_WORKFLOW_CLI_BIN="$tmp_
 crud_db_path="$crud_tmp_dir/memo.db"
 crud_state_path="${crud_db_path}.state"
 notify_log="$crud_tmp_dir/notify.log"
+clipboard_log="$crud_tmp_dir/clipboard.log"
 
 db_init_output="$({
   PATH="$tmp_dir/stubs:$PATH" \
@@ -294,6 +435,37 @@ crud_update_output="$({
 [[ "$crud_update_output" == *"updated itm_00000001"* ]] || fail "crud update output mismatch"
 rg -n --fixed-strings 'Memo updated' "$notify_log" >/dev/null || fail "update notification mismatch"
 rg -n '^itm_00000001[[:space:]]+buy oat milk$' "$crud_state_path" >/dev/null || fail "crud update state mismatch"
+
+crud_copy_json="$({ MEMO_DB_PATH="$crud_db_path" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "item itm_00000001"; })"
+crud_copy_token="$(jq -r '.items[0].arg' <<<"$crud_copy_json")"
+[[ "$crud_copy_token" == "copy::itm_00000001" ]] || fail "crud copy token mismatch"
+: >"$notify_log"
+: >"$clipboard_log"
+{
+  PATH="$tmp_dir/stubs:$PATH" \
+    MEMO_NOTIFY_LOG="$notify_log" \
+    MEMO_CLIPBOARD_LOG="$clipboard_log" \
+    MEMO_DB_PATH="$crud_db_path" \
+    MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" \
+    "$workflow_dir/scripts/action_run.sh" "$crud_copy_token"
+} >/dev/null
+rg -n --fixed-strings 'Memo copied' "$notify_log" >/dev/null || fail "copy notification mismatch"
+[[ "$(cat "$clipboard_log")" == "buy oat milk" ]] || fail "copy clipboard mismatch"
+
+crud_copy_json_token="$(jq -r '.items[0].mods.cmd.arg' <<<"$crud_copy_json")"
+[[ "$crud_copy_json_token" == "copy-json::itm_00000001" ]] || fail "crud copy-json token mismatch"
+: >"$notify_log"
+: >"$clipboard_log"
+{
+  PATH="$tmp_dir/stubs:$PATH" \
+    MEMO_NOTIFY_LOG="$notify_log" \
+    MEMO_CLIPBOARD_LOG="$clipboard_log" \
+    MEMO_DB_PATH="$crud_db_path" \
+    MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" \
+    "$workflow_dir/scripts/action_run.sh" "$crud_copy_json_token"
+} >/dev/null
+rg -n --fixed-strings 'Memo JSON copied' "$notify_log" >/dev/null || fail "copy-json notification mismatch"
+assert_jq_json "$(cat "$clipboard_log")" '.item_id == "itm_00000001" and .text == "buy oat milk"' "copy-json clipboard payload mismatch"
 
 crud_delete_json="$({ MEMO_DB_PATH="$crud_db_path" MEMO_WORKFLOW_CLI_BIN="$tmp_dir/stubs/memo-workflow-cli-ok" "$workflow_dir/scripts/script_filter.sh" "delete itm_00000001"; })"
 crud_delete_token="$(jq -r '.items[0].arg' <<<"$crud_delete_json")"
@@ -354,7 +526,10 @@ PY
   )"
 fi
 
-assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.keyword == "mm"' "keyword wiring mismatch"
+assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 6' "scriptfilter count mismatch"
+assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["mm","mma","mmc","mmd","mmr","mmu"]' "keyword wiring mismatch"
+assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm") | .config.scriptfile == "./scripts/script_filter_entry.sh"' "mm keyword should use command-entry script"
+assert_jq_json "$packaged_json" '.connections | length == 6' "connection wiring mismatch"
 assert_jq_json "$packaged_json" '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]' "plist variable list mismatch"
 assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_MAX_INPUT_BYTES") | .config.default == "4096"' "plist default mismatch"
 assert_jq_json "$packaged_json" '.userconfigurationconfig[] | select(.variable == "MEMO_RECENT_LIMIT") | .config.default == "8"' "plist recent limit default mismatch"

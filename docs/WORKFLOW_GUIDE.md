@@ -315,17 +315,29 @@ Runtime checks:
 
 ### Alfred command flow
 
-- Keyword trigger: `mm`.
-- Script filter adapter: `workflows/memo-add/scripts/script_filter.sh` ->
-  `memo-workflow-cli script-filter --query "<query>"`.
+- Keyword triggers: `mm`, `mmr`, `mma`, `mmu`, `mmd`, `mmc`.
+- Command-entry adapter: `workflows/memo-add/scripts/script_filter_entry.sh` ->
+  static command menu for memo keywords.
+- Intent script-filter adapter: `workflows/memo-add/scripts/script_filter.sh` ->
+  `memo-workflow-cli script-filter --query "<query>"` (used by `mma/mmu/mmd/mmc` wrappers).
+- Latest-list keyword adapter: `workflows/memo-add/scripts/script_filter_recent.sh` ->
+  renders recent memo rows (newest first), and maps numeric input to item-id lookup.
 - Enter flow: `workflows/memo-add/scripts/action_run.sh` ->
   `memo-workflow-cli action --token "<token>"`.
 - Empty query returns guidance + `db-init` row + latest memo rows (newest first).
 - Intent examples:
-  - `mm buy milk` -> add token (`add::<text>`).
-  - `mm update itm_00000001 buy oat milk` -> update token (`update::<item_id>::<text>`).
-  - `mm delete itm_00000001` -> delete token (`delete::<item_id>`; hard-delete).
-  - malformed mutation query (`mm update`, `mm delete`, `mm update <id>`) -> non-actionable guidance row.
+  - `mm` -> command entry menu.
+  - `mmr` -> show recent memo rows (newest first).
+  - `mmr 123` -> open memo item action menu for id `123` (full menu: copy/update/delete).
+  - `mmu` / `mmd` / `mmc` -> show recent memo rows (newest first; same default as `mmr`).
+  - `mmu 123` -> update flow for id `123` (single update row).
+  - `mmd 123` -> delete flow for id `123` (single delete row).
+  - `mmc 123` -> copy flow for id `123` (single copy row).
+  - `mma buy milk` -> add token (`add::<text>`).
+  - `mmu itm_00000001 buy oat milk` -> update token (`update::<item_id>::<text>`).
+  - `mmd itm_00000001` -> delete token (`delete::<item_id>`; hard-delete).
+  - `mmc itm_00000001` -> copy token (`copy::<item_id>`).
+  - malformed mutation query (`mmu <id>`, `mmd <id> <extra>`, `mmc <id> <extra>`) -> non-actionable guidance row.
 
 ### Operator validation checklist
 
@@ -337,10 +349,12 @@ Run these before packaging/release:
 
 Runtime checks:
 
-- Empty query must include one actionable `db init` row and recent list rows.
+- `mmr` view must include one actionable `db init` row when DB is missing, or recent list rows when DB exists.
+- `mmu` / `mmd` / `mmc` with empty query must render the same newest-first recent list behavior as `mmr`.
+- only `mmr <id>` may return full item menu rows (copy/update/delete).
 - Invalid `MEMO_*` values must return a non-actionable config error item.
 - Add action must persist one row and return success text from action script.
-- Invalid `item_id` for update/delete must be rejected as user error (non-actionable Alfred error item).
+- Invalid `item_id` for update/delete/copy must be rejected as user error (non-actionable Alfred error item).
 - Malformed mutation query/token syntax must not crash and must return guidance or action error text.
 
 ## Codex CLI workflow details

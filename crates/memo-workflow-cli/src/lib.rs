@@ -1,7 +1,8 @@
 use std::env;
 use std::path::PathBuf;
 
-use alfred_core::{Feedback, Item};
+use alfred_core::{Feedback, Item, ItemModifier};
+use memo_cli::errors::AppError as MemoCliError;
 use memo_cli::output::{format_item_id, parse_item_id};
 use memo_cli::storage::{Storage, repository};
 use serde::Serialize;
@@ -9,6 +10,8 @@ use thiserror::Error;
 
 pub const DB_INIT_TOKEN: &str = "db-init";
 pub const ADD_TOKEN_PREFIX: &str = "add::";
+pub const COPY_TOKEN_PREFIX: &str = "copy::";
+pub const COPY_JSON_TOKEN_PREFIX: &str = "copy-json::";
 pub const UPDATE_TOKEN_PREFIX: &str = "update::";
 pub const DELETE_TOKEN_PREFIX: &str = "delete::";
 const UPDATE_TOKEN_DELIMITER: &str = "::";
@@ -109,10 +112,25 @@ pub struct ListResult {
     pub text_preview: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ItemDetailResult {
+    pub item_id: String,
+    pub created_at: String,
+    pub source: String,
+    pub text: String,
+    pub state: String,
+    pub content_type: Option<String>,
+    pub validation_status: Option<String>,
+}
+
 pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
     let normalized = query.trim();
     if normalized.is_empty() {
         return build_empty_query_feedback(config);
+    }
+
+    if let Some(rest) = strip_intent(normalized, "item") {
+        return build_item_action_feedback(rest, config);
     }
 
     if let Some(rest) = strip_intent(normalized, "update") {
@@ -121,6 +139,10 @@ pub fn build_script_filter(query: &str, config: &RuntimeConfig) -> Result<Feedba
 
     if let Some(rest) = strip_intent(normalized, "delete") {
         return build_delete_feedback(rest);
+    }
+
+    if let Some(rest) = strip_intent(normalized, "copy") {
+        return build_copy_feedback(rest, config);
     }
 
     if normalized.len() > config.max_input_bytes {
@@ -332,12 +354,96 @@ pub fn execute_list(
         .collect())
 }
 
+pub fn execute_fetch_item(
+    item_id_raw: &str,
+    db_override: Option<PathBuf>,
+    config: &RuntimeConfig,
+) -> Result<ItemDetailResult, AppError> {
+    let item_id = parse_item_id(item_id_raw)
+        .ok_or_else(|| AppError::User("copy requires a valid item_id".to_string()))?;
+    let db_path = db_override.unwrap_or_else(|| config.db_path.clone());
+    let storage = Storage::new(db_path);
+    storage
+        .init()
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+
+    let cursor = storage
+        .with_connection(|conn| repository::lookup_fetch_cursor(conn, item_id))
+        .map_err(|error| AppError::Runtime(error.message().to_string()))?;
+    if cursor.is_none() {
+        return Err(AppError::User("item_id does not exist".to_string()));
+    }
+
+    storage
+        .with_connection(|conn| {
+            conn.query_row(
+                "select
+                    i.item_id,
+                    i.created_at,
+                    i.source,
+                    i.raw_text,
+                    case
+                        when ad.derivation_id is not null then 'enriched'
+                        else 'pending'
+                    end as state,
+                    json_extract(ad.payload_json, '$.content_type') as content_type,
+                    json_extract(ad.payload_json, '$.validation_status') as validation_status
+                from inbox_items i
+                left join item_derivations ad
+                  on ad.derivation_id = (
+                    select d.derivation_id
+                    from item_derivations d
+                    where d.item_id = i.item_id
+                      and d.is_active = 1
+                      and d.status = 'accepted'
+                    order by d.derivation_version desc, d.derivation_id desc
+                    limit 1
+                  )
+                where i.item_id = ?1",
+                [item_id],
+                |row| {
+                    Ok(ItemDetailResult {
+                        item_id: format_item_id(row.get::<_, i64>(0)?),
+                        created_at: row.get(1)?,
+                        source: row.get(2)?,
+                        text: row.get(3)?,
+                        state: row.get(4)?,
+                        content_type: row.get(5)?,
+                        validation_status: row.get(6)?,
+                    })
+                },
+            )
+            .map_err(MemoCliError::db_query)
+        })
+        .map_err(|error| AppError::Runtime(error.message().to_string()))
+}
+
 pub fn parse_add_token(arg: &str) -> Option<String> {
     arg.strip_prefix(ADD_TOKEN_PREFIX).map(str::to_string)
 }
 
 pub fn build_add_token(text: &str) -> String {
     format!("{ADD_TOKEN_PREFIX}{text}")
+}
+
+pub fn parse_copy_token(arg: &str) -> Option<String> {
+    let payload = arg.strip_prefix(COPY_TOKEN_PREFIX)?;
+    let item_id = parse_item_id(payload.trim())?;
+    Some(format_item_id(item_id))
+}
+
+pub fn build_copy_token(item_id: &str) -> String {
+    format!("{COPY_TOKEN_PREFIX}{item_id}")
+}
+
+pub fn parse_copy_json_token(arg: &str) -> Option<String> {
+    let payload = arg.strip_prefix(COPY_JSON_TOKEN_PREFIX)?;
+    let item_id = parse_item_id(payload.trim())?;
+    Some(format_item_id(item_id))
+}
+
+pub fn build_copy_json_token(item_id: &str) -> String {
+    format!("{COPY_JSON_TOKEN_PREFIX}{item_id}")
 }
 
 pub fn parse_update_token(arg: &str) -> Option<(String, String)> {
@@ -375,12 +481,77 @@ fn strip_intent<'a>(query: &'a str, intent: &str) -> Option<&'a str> {
     Some(parts.next().unwrap_or("").trim())
 }
 
+fn build_item_action_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
+    let mut parts = rest.split_whitespace();
+    let item_id_raw = parts.next().unwrap_or("").trim();
+    if item_id_raw.is_empty() || parts.next().is_some() {
+        return Ok(Feedback::new(vec![
+            Item::new("Invalid item selection syntax")
+                .with_subtitle("Use: item <item_id>")
+                .with_valid(false),
+        ]));
+    }
+
+    let item_id = match parse_item_id(item_id_raw) {
+        Some(item_id) => format_item_id(item_id),
+        None => {
+            return Ok(Feedback::new(vec![
+                Item::new("Invalid item_id for selection")
+                    .with_subtitle("Expected itm_XXXXXXXX or positive integer item id.")
+                    .with_valid(false),
+            ]));
+        }
+    };
+
+    let detail = match execute_fetch_item(&item_id, None, config) {
+        Ok(detail) => detail,
+        Err(AppError::User(message)) => {
+            return Ok(Feedback::new(vec![
+                Item::new("Memo item not found")
+                    .with_subtitle(format!("{message}: {item_id}"))
+                    .with_valid(false),
+            ]));
+        }
+        Err(error) => return Err(error),
+    };
+    let copy_text_preview = render_copy_text_preview(&detail.text);
+    let raw_json_preview = render_item_detail_json(&detail);
+
+    Ok(Feedback::new(vec![
+        Item::new(format!("Copy memo: {item_id}"))
+            .with_subtitle(format!(
+                "Preview text: {} | Hold Cmd to copy raw JSON row.",
+                copy_text_preview
+            ))
+            .with_arg(build_copy_token(&item_id))
+            .with_mod(
+                "cmd",
+                ItemModifier::new()
+                    .with_subtitle(format!(
+                        "Preview JSON: {}",
+                        truncate_title(&raw_json_preview, 72)
+                    ))
+                    .with_arg(build_copy_json_token(&item_id))
+                    .with_valid(true),
+            )
+            .with_valid(true),
+        Item::new(format!("Update memo: {item_id}"))
+            .with_subtitle("Press Enter, then type the new text and press Enter again.")
+            .with_autocomplete(format!("update {item_id} "))
+            .with_valid(false),
+        Item::new(format!("Delete memo: {item_id}"))
+            .with_subtitle("Press Enter to hard-delete this memo item.")
+            .with_arg(build_delete_token(&item_id))
+            .with_valid(true),
+    ]))
+}
+
 fn build_update_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
     let mut parts = rest.splitn(2, char::is_whitespace);
     let item_id_raw = parts.next().unwrap_or("").trim();
     let text = parts.next().unwrap_or("").trim();
 
-    if item_id_raw.is_empty() || text.is_empty() {
+    if item_id_raw.is_empty() {
         return Ok(Feedback::new(vec![
             Item::new("Invalid update syntax")
                 .with_subtitle("Use: update <item_id> <new text>")
@@ -398,6 +569,15 @@ fn build_update_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
             ]));
         }
     };
+
+    if text.is_empty() {
+        return Ok(Feedback::new(vec![
+            Item::new(format!("Update memo: {item_id}"))
+                .with_subtitle("Type new text after item id, then press Enter to update.")
+                .with_autocomplete(format!("update {item_id} "))
+                .with_valid(false),
+        ]));
+    }
 
     if text.len() > config.max_input_bytes {
         return Ok(Feedback::new(vec![
@@ -449,6 +629,63 @@ fn build_delete_feedback(rest: &str) -> Result<Feedback, AppError> {
         Item::new(format!("Delete memo: {item_id}"))
             .with_subtitle("Press Enter to hard-delete this memo item.")
             .with_arg(build_delete_token(&item_id))
+            .with_valid(true),
+    ]))
+}
+
+fn build_copy_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
+    let mut parts = rest.split_whitespace();
+    let item_id_raw = parts.next().unwrap_or("").trim();
+    if item_id_raw.is_empty() || parts.next().is_some() {
+        return Ok(Feedback::new(vec![
+            Item::new("Invalid copy syntax")
+                .with_subtitle("Use: copy <item_id>")
+                .with_valid(false),
+        ]));
+    }
+
+    let item_id = match parse_item_id(item_id_raw) {
+        Some(item_id) => format_item_id(item_id),
+        None => {
+            return Ok(Feedback::new(vec![
+                Item::new("Invalid item_id for copy")
+                    .with_subtitle("Expected itm_XXXXXXXX or positive integer item id.")
+                    .with_valid(false),
+            ]));
+        }
+    };
+
+    let detail = match execute_fetch_item(&item_id, None, config) {
+        Ok(detail) => detail,
+        Err(AppError::User(message)) => {
+            return Ok(Feedback::new(vec![
+                Item::new("Memo item not found")
+                    .with_subtitle(format!("{message}: {item_id}"))
+                    .with_valid(false),
+            ]));
+        }
+        Err(error) => return Err(error),
+    };
+    let copy_text_preview = render_copy_text_preview(&detail.text);
+    let raw_json_preview = render_item_detail_json(&detail);
+
+    Ok(Feedback::new(vec![
+        Item::new(format!("Copy memo: {item_id}"))
+            .with_subtitle(format!(
+                "Preview text: {} | Hold Cmd to copy raw JSON row.",
+                copy_text_preview
+            ))
+            .with_arg(build_copy_token(&item_id))
+            .with_mod(
+                "cmd",
+                ItemModifier::new()
+                    .with_subtitle(format!(
+                        "Preview JSON: {}",
+                        truncate_title(&raw_json_preview, 72)
+                    ))
+                    .with_arg(build_copy_json_token(&item_id))
+                    .with_valid(true),
+            )
             .with_valid(true),
     ]))
 }
@@ -510,12 +747,40 @@ fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppErr
         items.push(
             Item::new(title)
                 .with_uid(format!("recent-{}", row.item_id))
-                .with_subtitle(format!("{} | {}", row.created_at, row.state))
+                .with_subtitle(format!(
+                    "{} | {} | Press Enter to manage",
+                    row.created_at, row.state
+                ))
+                .with_autocomplete(format!("item {}", row.item_id))
                 .with_valid(false),
         );
     }
 
     Ok(Feedback::new(items))
+}
+
+fn render_item_detail_json(detail: &ItemDetailResult) -> String {
+    serde_json::to_string(detail).unwrap_or_else(|_| "{}".to_string())
+}
+
+fn render_copy_text_preview(text: &str) -> String {
+    let normalized = text
+        .chars()
+        .map(|ch| {
+            if matches!(ch, '\n' | '\r' | '\t') {
+                ' '
+            } else {
+                ch
+            }
+        })
+        .collect::<String>();
+    let collapsed = normalized.split_whitespace().collect::<Vec<_>>().join(" ");
+    let preview = if collapsed.is_empty() {
+        "(empty memo)".to_string()
+    } else {
+        collapsed
+    };
+    truncate_title(&preview, 72)
 }
 
 fn truncate_title(input: &str, max_chars: usize) -> String {
@@ -662,6 +927,20 @@ mod tests {
     }
 
     #[test]
+    fn copy_token_roundtrip() {
+        let token = build_copy_token("itm_00000042");
+        let parsed = parse_copy_token(&token).expect("copy token should parse");
+        assert_eq!(parsed, "itm_00000042");
+    }
+
+    #[test]
+    fn copy_json_token_roundtrip() {
+        let token = build_copy_json_token("itm_00000042");
+        let parsed = parse_copy_json_token(&token).expect("copy json token should parse");
+        assert_eq!(parsed, "itm_00000042");
+    }
+
+    #[test]
     fn update_token_roundtrip() {
         let token = build_update_token("itm_00000042", "buy milk::after work");
         let parsed = parse_update_token(&token).expect("update token should parse");
@@ -753,13 +1032,87 @@ mod tests {
     }
 
     #[test]
-    fn script_filter_rejects_update_without_text() {
+    fn script_filter_guides_update_without_text() {
         let feedback =
             build_script_filter("update itm_00000002", &test_config()).expect("script filter");
 
         assert_eq!(feedback.items.len(), 1);
         assert_eq!(feedback.items[0].valid, Some(false));
-        assert_eq!(feedback.items[0].title, "Invalid update syntax");
+        assert_eq!(feedback.items[0].title, "Update memo: itm_00000002");
+        assert_eq!(
+            feedback.items[0].autocomplete.as_deref(),
+            Some("update itm_00000002 ")
+        );
+    }
+
+    #[test]
+    fn script_filter_item_intent_returns_copy_update_delete_choices() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        let add = execute_add("seed memo", None, None, &config).expect("seed add");
+        let query = format!("item {}", add.item_id);
+
+        let feedback = build_script_filter(&query, &config).expect("script filter");
+
+        assert_eq!(feedback.items.len(), 3);
+        assert_eq!(
+            feedback.items[0].title,
+            format!("Copy memo: {}", add.item_id)
+        );
+        let expected_copy_arg = format!("copy::{}", add.item_id);
+        assert_eq!(
+            feedback.items[0].arg.as_deref(),
+            Some(expected_copy_arg.as_str())
+        );
+        let copy_subtitle = feedback.items[0]
+            .subtitle
+            .as_deref()
+            .expect("copy row subtitle should exist");
+        assert!(
+            copy_subtitle.contains("Preview text: seed memo"),
+            "copy row subtitle should include memo text preview"
+        );
+        let cmd_mod = feedback.items[0]
+            .mods
+            .as_ref()
+            .and_then(|mods| mods.get("cmd"))
+            .expect("copy row should include cmd modifier");
+        let expected_copy_json_arg = format!("copy-json::{}", add.item_id);
+        assert_eq!(
+            cmd_mod.arg.as_deref(),
+            Some(expected_copy_json_arg.as_str())
+        );
+        let cmd_subtitle = cmd_mod
+            .subtitle
+            .as_deref()
+            .expect("cmd modifier subtitle should exist");
+        assert!(
+            cmd_subtitle.contains("Preview JSON:"),
+            "cmd modifier subtitle should keep JSON preview"
+        );
+
+        assert_eq!(
+            feedback.items[1].title,
+            format!("Update memo: {}", add.item_id)
+        );
+        let expected_update_autocomplete = format!("update {} ", add.item_id);
+        assert_eq!(
+            feedback.items[1].autocomplete.as_deref(),
+            Some(expected_update_autocomplete.as_str())
+        );
+        assert_eq!(feedback.items[1].valid, Some(false));
+
+        assert_eq!(
+            feedback.items[2].title,
+            format!("Delete memo: {}", add.item_id)
+        );
+        let expected_delete_arg = format!("delete::{}", add.item_id);
+        assert_eq!(
+            feedback.items[2].arg.as_deref(),
+            Some(expected_delete_arg.as_str())
+        );
+        assert_eq!(feedback.items[2].valid, Some(true));
     }
 
     #[test]
@@ -771,6 +1124,38 @@ mod tests {
         let arg = feedback.items[0].arg.as_deref().expect("arg should exist");
         assert!(arg.starts_with(DELETE_TOKEN_PREFIX));
         assert_eq!(feedback.items[0].valid, Some(true));
+    }
+
+    #[test]
+    fn script_filter_returns_copy_action_for_copy_intent() {
+        let dir = tempdir().expect("temp dir");
+        let mut config = test_config();
+        config.db_path = dir.path().join("memo.db");
+        let add = execute_add("seed memo", None, None, &config).expect("seed add");
+        let query = format!("copy {}", add.item_id);
+
+        let feedback = build_script_filter(&query, &config).expect("script filter");
+
+        assert_eq!(feedback.items.len(), 1);
+        assert_eq!(
+            feedback.items[0].title,
+            format!("Copy memo: {}", add.item_id)
+        );
+        let expected_copy_arg = format!("copy::{}", add.item_id);
+        assert_eq!(
+            feedback.items[0].arg.as_deref(),
+            Some(expected_copy_arg.as_str())
+        );
+        let cmd_mod = feedback.items[0]
+            .mods
+            .as_ref()
+            .and_then(|mods| mods.get("cmd"))
+            .expect("copy row should include cmd modifier");
+        let expected_copy_json_arg = format!("copy-json::{}", add.item_id);
+        assert_eq!(
+            cmd_mod.arg.as_deref(),
+            Some(expected_copy_json_arg.as_str())
+        );
     }
 
     #[test]
@@ -800,5 +1185,16 @@ mod tests {
         assert_eq!(parse_bool("false"), Some(false));
         assert_eq!(parse_bool("0"), Some(false));
         assert_eq!(parse_bool("unknown"), None);
+    }
+
+    #[test]
+    fn render_copy_text_preview_normalizes_whitespace_and_truncates() {
+        let text = "line 1\nline\t2\r\nline 3";
+        assert_eq!(render_copy_text_preview(text), "line 1 line 2 line 3");
+
+        let long = "x".repeat(80);
+        let preview = render_copy_text_preview(&long);
+        assert_eq!(preview.chars().count(), 73);
+        assert!(preview.ends_with('…'));
     }
 }
