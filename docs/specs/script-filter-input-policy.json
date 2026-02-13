@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "queue_delay_seconds": 1,
+    "queue_delay_mode": 0,
+    "queue_delay_custom": 1,
+    "immediate_initial": false,
+    "min_query_chars": 2
+  },
+  "shared_helper": {
+    "source": "scripts/lib/script_filter_query_policy.sh",
+    "packaged_relative_path": "scripts/lib/script_filter_query_policy.sh"
+  },
+  "targets": {
+    "google-search": {
+      "template": "workflows/google-search/src/info.plist.template",
+      "object_uids": [
+        "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"
+      ]
+    },
+    "youtube-search": {
+      "template": "workflows/youtube-search/src/info.plist.template",
+      "object_uids": [
+        "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"
+      ]
+    },
+    "wiki-search": {
+      "template": "workflows/wiki-search/src/info.plist.template",
+      "object_uids": [
+        "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"
+      ]
+    },
+    "codex-cli": {
+      "template": "workflows/codex-cli/src/info.plist.template",
+      "object_uids": [
+        "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10",
+        "F1C87F07-0D5E-4AC2-9EA5-4A0D695E4AB1",
+        "D927D71A-8CB2-4CE7-9D4D-4A57D2A7A8F1",
+        "B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7",
+        "1B2C2CF8-9C9E-4E5E-AE2D-6F911B3A9D63",
+        "C4A6E4D4-4C89-4F8E-B6F8-2F1A7A5E6D09",
+        "A9F12D4E-1D99-4D7B-A950-6E84A583A9C2"
+      ]
+    }
+  }
+}

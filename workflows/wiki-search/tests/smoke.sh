@@ -182,6 +182,9 @@ OPEN_STUB_OUT="$tmp_dir/open-arg.txt" PATH="$tmp_dir/bin:$PATH" \
 cat >"$tmp_dir/stubs/wiki-cli-ok" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -n "${WIKI_STUB_LOG:-}" ]]; then
+  printf '%s\n' "$*" >>"$WIKI_STUB_LOG"
+fi
 [[ "${1:-}" == "search" ]] || exit 9
 [[ "${2:-}" == "--query" ]] || exit 9
 query="${3:-}"
@@ -241,6 +244,12 @@ empty_query_json="$({ WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" "$workflow_dir/s
 assert_jq_json "$empty_query_json" '.items[0].title == "Enter a search query"' "empty query guidance title mismatch"
 assert_jq_json "$empty_query_json" '.items[0].valid == false' "empty query item must be invalid"
 
+short_query_log="$tmp_dir/wiki-short-query.log"
+short_query_json="$({ WIKI_STUB_LOG="$short_query_log" WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" "$workflow_dir/scripts/script_filter.sh" "r"; })"
+assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"' "short query guidance title mismatch"
+assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
+[[ ! -s "$short_query_log" ]] || fail "short query should not invoke wiki-cli backend"
+
 make_layout_cli() {
   local target="$1"
   local marker="$2"
@@ -263,6 +272,8 @@ run_layout_check() {
   mkdir -p "$(dirname "$copied_script")"
   cp "$workflow_dir/scripts/script_filter.sh" "$copied_script"
   chmod +x "$copied_script"
+  mkdir -p "$layout/workflows/wiki-search/scripts/lib"
+  cp "$repo_root/scripts/lib/script_filter_query_policy.sh" "$layout/workflows/wiki-search/scripts/lib/script_filter_query_policy.sh"
 
   case "$mode" in
   packaged)
@@ -319,6 +330,7 @@ assert_file "$packaged_plist"
 assert_file "$packaged_dir/icon.png"
 assert_file "$packaged_dir/assets/icon.png"
 assert_file "$packaged_dir/bin/wiki-cli"
+assert_file "$packaged_dir/scripts/lib/script_filter_query_policy.sh"
 
 if command -v plutil >/dev/null 2>&1; then
   plutil -lint "$packaged_plist" >/dev/null || fail "packaged plist lint failed"
@@ -335,6 +347,9 @@ assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-4
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.argumenttype == 1' "keyword argument type must accept optional query"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptargtype == 1' "script filter must pass query via argv"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.alfredfiltersresults == false' "script filter must disable Alfred local filtering"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelaycustom == 1' "script filter queue delay custom must be 1 second"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelaymode == 0' "script filter queue delay mode must be custom seconds"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelayimmediatelyinitially == false' "script filter must disable immediate initial run"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.type == 8' "action node must be external script type=8"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"

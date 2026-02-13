@@ -11,6 +11,8 @@ Search Wikipedia articles from Alfred and open selected pages in your browser.
 - Trigger wiki search with `wk <query>`.
 - Show article title and cleaned snippet directly in Alfred.
 - Open selected Wikipedia article URL in your default browser with `Enter`.
+- Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
+- Script Filter queue policy: 1 second delay with initial immediate run disabled.
 - Map common failures (invalid config, API unavailable) to actionable Alfred messages.
 - Tune language and result count through workflow variables.
 

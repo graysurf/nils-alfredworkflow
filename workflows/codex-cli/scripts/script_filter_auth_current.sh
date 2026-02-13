@@ -14,6 +14,61 @@ codex_cli_pinned_version="${CODEX_CLI_PINNED_VERSION}"
 # shellcheck disable=SC2153
 codex_cli_pinned_crate="${CODEX_CLI_PINNED_CRATE}"
 
+resolve_query_policy_helper() {
+  local candidates=(
+    "$workflow_script_dir/lib/script_filter_query_policy.sh"
+    "$workflow_script_dir/../../../scripts/lib/script_filter_query_policy.sh"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+query_policy_helper="$(resolve_query_policy_helper || true)"
+if [[ -n "$query_policy_helper" ]]; then
+  # shellcheck disable=SC1090
+  source "$query_policy_helper"
+fi
+
+if ! declare -F sfqp_trim >/dev/null 2>&1; then
+  sfqp_trim() {
+    local value="${1-}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+  }
+fi
+
+if ! declare -F sfqp_resolve_query_input >/dev/null 2>&1; then
+  sfqp_resolve_query_input() {
+    local query="${1-}"
+    if [[ -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
+      query="${alfred_workflow_query}"
+    elif [[ -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
+      query="${ALFRED_WORKFLOW_QUERY}"
+    elif [[ -z "$query" && ! -t 0 ]]; then
+      query="$(cat)"
+    fi
+    printf '%s' "$query"
+  }
+fi
+
+if ! declare -F sfqp_is_short_query >/dev/null 2>&1; then
+  sfqp_is_short_query() {
+    local query="${1-}"
+    local min_chars="${2:-2}"
+    [[ "$min_chars" =~ ^[0-9]+$ ]] || min_chars=2
+    local trimmed
+    trimmed="$(sfqp_trim "$query")"
+    [[ "${#trimmed}" -lt "$min_chars" ]]
+  }
+fi
+
 json_escape() {
   local value="${1-}"
   value="${value//\\/\\\\}"
@@ -183,6 +238,17 @@ subtitle_from_json_output() {
 }
 
 begin_items
+
+query="$(sfqp_resolve_query_input "${1:-}")"
+trimmed_query="$(sfqp_trim "$query")"
+if [[ -n "$trimmed_query" ]] && sfqp_is_short_query "$trimmed_query" 2; then
+  emit_item \
+    "Keep typing (2+ chars)" \
+    "Type at least 2 characters before running auth current." \
+    false
+  end_items
+  exit 0
+fi
 
 ensure_codex_auth_file_env >/dev/null 2>&1 || true
 ensure_codex_secret_dir_env >/dev/null 2>&1 || true
