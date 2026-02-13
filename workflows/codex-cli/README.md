@@ -139,3 +139,7 @@ Run before packaging/release:
 - `bash workflows/codex-cli/tests/smoke.sh`
 - `scripts/workflow-test.sh --id codex-cli`
 - `scripts/workflow-pack.sh --id codex-cli`
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

@@ -168,4 +168,4 @@
   "$WORKFLOW_DIR/scripts/script_filter.sh" "rust tutorial" | jq -e '.items | type == "array"'
   ```
 
-- If Gatekeeper still blocks execution, follow `TROUBLESHOOTING.md` section `macOS Gatekeeper fix (youtube-search)`.
+- If Gatekeeper still blocks execution, start with `ALFRED_WORKFLOW_DEVELOPMENT.md` and then follow the matching workflow-local troubleshooting file (`workflows/<workflow-id>/TROUBLESHOOTING.md`).

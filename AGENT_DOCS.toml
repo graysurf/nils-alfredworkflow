@@ -9,7 +9,7 @@ notes = "Required local toolchain and shell tool installation baseline"
 [[document]]
 context = "project-dev"
 scope = "project"
-path = "TROUBLESHOOTING.md"
+path = "ALFRED_WORKFLOW_DEVELOPMENT.md"
 required = true
 when = "always"
-notes = "Repository-wide troubleshooting log and regression diagnostics"
+notes = "Global Alfred workflow development standards file with project-wide ownership boundaries"

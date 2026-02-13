@@ -57,3 +57,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 2. Packaged binary: `./bin/epoch-cli`
 3. Repository release binary: `target/release/epoch-cli`
 4. Repository debug binary: `target/debug/epoch-cli`
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

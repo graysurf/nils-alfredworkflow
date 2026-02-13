@@ -90,3 +90,7 @@ cargo run -p nils-memo-workflow-cli -- search --db "$db" --query "target" --mode
 - `bash workflows/memo-add/tests/smoke.sh`
 - `scripts/workflow-test.sh --id memo-add`
 - `scripts/workflow-pack.sh --id memo-add`
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

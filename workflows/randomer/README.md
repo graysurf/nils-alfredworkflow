@@ -34,3 +34,7 @@ Generate random values by format and copy them directly from Alfred.
 | `currency` | USD-style value with separators | `$12,345.67` |
 | `hex` | 8-digit uppercase hexadecimal | `0x7FA3C21B` |
 | `otp` | 6-digit zero-padded code | `042931` |
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
