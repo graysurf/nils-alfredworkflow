@@ -40,6 +40,21 @@
 - Warning checks (migration tracking): explicit json-mode indicators, envelope key assertions, and README standards sections.
 - To enforce warnings as failures: `scripts/cli-standards-audit.sh --strict`
 
+### Documentation placement
+
+- Policy spec: `docs/specs/crate-docs-placement-policy.md`
+- Stub lifecycle decision (normative): root compatibility stubs are permanent redirects with no deprecation sunset; see `docs/specs/crate-docs-placement-policy.md` (`Root compatibility stub lifecycle decision`) and `docs/reports/crate-doc-migration-inventory.md` (`Stub lifecycle decision and current status`).
+- This section is normative for all contributors when adding a new crate or a new markdown file.
+- For every new publishable crate, you must add `crates/<crate-name>/README.md` and `crates/<crate-name>/docs/README.md` in the same change before adding crate-specific docs.
+- Crate-owned docs must live under `crates/<crate-name>/docs/`; do not place crate-owned docs under root `docs/`.
+- For every new markdown file, classify it as workspace-level or crate-specific first, then place it in the canonical path defined by the policy.
+
+#### Contributor checklist (required before commit)
+
+- [ ] For every new publishable crate, required docs exist: `crates/<crate-name>/README.md` and `crates/<crate-name>/docs/README.md`.
+- [ ] For every new markdown file, ownership/path classification is complete (`workspace-level` vs `crate-specific`) and crate-specific files are not under root `docs/`.
+- [ ] Run documentation placement audit before commit: `bash scripts/docs-placement-audit.sh --strict`.
+
 ## Testing
 
 ### Required before committing

@@ -24,6 +24,11 @@ CLI backend for the `multi-timezone` workflow.
 - JSON service envelope (`schema_version/command/ok`): not yet migrated.
 - Default human-readable mode: not yet migrated (legacy JSON-first workflow contract).
 
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+- [`docs/workflow-contract.md`](docs/workflow-contract.md)
+
 ## Validation
 
 - `cargo run -p nils-timezone-cli -- --help`

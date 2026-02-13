@@ -38,6 +38,11 @@ Workflow adapter CLI for Alfred memo capture actions backed by `nils-memo-cli@0.
 - Explicit output modes (`text|json`): compliant.
 - Contract tests: present (`tests/cli_contract.rs`).
 
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+- [`docs/workflow-contract.md`](docs/workflow-contract.md)
+
 ## Validation
 
 - `cargo run -p nils-memo-workflow-cli -- --help`

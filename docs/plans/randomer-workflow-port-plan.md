@@ -52,7 +52,7 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
 
 ### Task 1.1: Write Randomer parity + extension contract
 - **Location**:
-  - `docs/randomer-contract.md`
+  - `crates/randomer-cli/docs/workflow-contract.md`
 - **Description**: Document query routing rules, supported type list, output format invariants, and copy behavior contract by porting observed behavior from installed Randomer and defining new numeric-format contracts.
 - **Dependencies**:
   - none
@@ -62,10 +62,10 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - Contract explicitly defines empty/unknown query fallback and exact-type 5-result behavior.
   - Contract defines validation invariants for each numeric format.
 - **Validation**:
-  - `test -f docs/randomer-contract.md`
-  - `rg -n "Keyword and Query Handling|Supported Types|Format Invariants|Clipboard Behavior" docs/randomer-contract.md`
-  - `rg -n "email|imei|unit|uuid|int|decimal|percent|currency|hex|otp" docs/randomer-contract.md`
-  - `rg -n "empty query|unknown query|5 generated values|arg|valid" docs/randomer-contract.md`
+  - `test -f crates/randomer-cli/docs/workflow-contract.md`
+  - `rg -n "Keyword and Query Handling|Supported Types|Format Invariants|Clipboard Behavior" crates/randomer-cli/docs/workflow-contract.md`
+  - `rg -n "email|imei|unit|uuid|int|decimal|percent|currency|hex|otp" crates/randomer-cli/docs/workflow-contract.md`
+  - `rg -n "empty query|unknown query|5 generated values|arg|valid" crates/randomer-cli/docs/workflow-contract.md`
 
 ### Task 1.2: Scaffold `randomer` workflow directory
 - **Location**:
@@ -107,7 +107,7 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
 
 ### Task 1.4: Freeze parity fixtures from installed Randomer behavior
 - **Location**:
-  - `docs/randomer-contract.md`
+  - `crates/randomer-cli/docs/workflow-contract.md`
   - `crates/randomer-cli/tests/parity.rs`
 - **Description**: Encode non-random structural parity rules from installed Randomer (`main.py` + `generators.py`) into testable invariants (for example IMEI checksum, unit checksum, UUID syntax) to reduce regressions during Rust port.
 - **Dependencies**:
@@ -164,7 +164,7 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
 ### Task 2.3: Add numeric format generators (`int`, `decimal`, `percent`, `currency`, `hex`, `otp`)
 - **Location**:
   - `crates/randomer-cli/src/generators.rs`
-  - `docs/randomer-contract.md`
+  - `crates/randomer-cli/docs/workflow-contract.md`
 - **Description**: Implement six numeric generators with explicit formatting invariants and update contract examples accordingly.
 - **Dependencies**:
   - Task 2.2
@@ -184,7 +184,7 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - `cargo test -p nils-randomer-cli format_currency_has_symbol_grouping_and_scale_2`
   - `cargo test -p nils-randomer-cli format_hex_has_prefix_and_fixed_width`
   - `cargo test -p nils-randomer-cli format_otp_is_six_digits_zero_padded`
-  - `rg -n "int|decimal|percent|currency|hex|otp" docs/randomer-contract.md`
+  - `rg -n "int|decimal|percent|currency|hex|otp" crates/randomer-cli/docs/workflow-contract.md`
 
 ### Task 2.4: Implement Alfred feedback mapping
 - **Location**:
@@ -333,7 +333,7 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
 - **Location**:
   - `README.md`
   - `workflows/randomer/README.md`
-  - `docs/randomer-contract.md`
+  - `crates/randomer-cli/docs/workflow-contract.md`
 - **Description**: Document keyword usage, type list, copy behavior, format examples, and troubleshooting tips for invalid queries.
 - **Dependencies**:
   - Task 3.3
@@ -342,7 +342,7 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - Docs list all supported types and show at least one example query flow.
   - Packaging/test commands for operators are copy-paste ready.
 - **Validation**:
-  - `rg -n "randomer|email|imei|unit|uuid|int|decimal|percent|currency|hex|otp" README.md workflows/randomer/README.md docs/randomer-contract.md`
+  - `rg -n "randomer|email|imei|unit|uuid|int|decimal|percent|currency|hex|otp" README.md workflows/randomer/README.md crates/randomer-cli/docs/workflow-contract.md`
   - `rg -n "workflow-pack.sh --id randomer|workflow-test.sh --id randomer" README.md workflows/randomer/README.md`
 
 ### Task 4.2: Execute required quality gates from `DEVELOPMENT.md`
@@ -416,7 +416,7 @@ The implementation emphasizes deterministic tests (format invariants + smoke stu
   - `workflows/randomer/src/info.plist.template`
   - `workflows/randomer/tests/smoke.sh`
   - `workflows/randomer/README.md`
-  - `docs/randomer-contract.md`
+  - `crates/randomer-cli/docs/workflow-contract.md`
 - Remove workspace member for `crates/randomer-cli` from `Cargo.toml`.
 - Re-run baseline gates to confirm rollback health:
   - `scripts/workflow-lint.sh`

@@ -25,6 +25,11 @@ CLI backend for the `google-search` workflow using Brave Search API.
 - JSON service envelope (`schema_version/command/ok`): not yet migrated.
 - Default human-readable mode: not yet migrated (legacy JSON-first workflow contract).
 
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+- [`docs/workflow-contract.md`](docs/workflow-contract.md)
+
 ## Validation
 
 - `cargo run -p nils-brave-cli -- --help`
