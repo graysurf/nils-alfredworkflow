@@ -106,6 +106,13 @@
   3. If binary is missing or not the pinned version, auto-install the pinned crate version from crates.io via `cargo install --locked --root <cache-root>` and bundle that installed binary.
 - This policy avoids accidental version drift while keeping packaging reproducible across machines.
 
+### External crate exact-pin policy
+
+- Third-party crates used by workspace crates must be exact-pinned (for example `foo = "=1.2.3"`), not loose semver ranges.
+- Add or update external crates with exact version syntax:
+  - `cargo add <crate>@=<version>`
+- For reproducibility, commit both `Cargo.toml` and `Cargo.lock` updates together after the pin change.
+
 ## Rust crate publishing (crates.io)
 
 - Dry-run publish checks (all crates from `release/crates-io-publish-order.txt`):

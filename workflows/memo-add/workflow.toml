@@ -1,0 +1,24 @@
+id = "memo-add"
+name = "Memo Add"
+bundle_id = "com.graysurf.memo-add"
+version = "1.0.6"
+script_filter = "script_filter.sh"
+action = "action_run.sh"
+rust_binary = "memo-workflow-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional SQLite path override. Empty uses Alfred workflow data dir, then memo-cli default path.
+MEMO_DB_PATH = ""
+# Optional source label persisted with each added memo.
+MEMO_SOURCE = "alfred"
+# Optional confirmation gate. true/1/yes/on enables an extra confirm row in script filter.
+MEMO_REQUIRE_CONFIRM = "0"
+# Optional max bytes allowed for one memo input.
+MEMO_MAX_INPUT_BYTES = "4096"
+# Optional executable path override for memo-workflow-cli.
+MEMO_WORKFLOW_CLI_BIN = ""
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

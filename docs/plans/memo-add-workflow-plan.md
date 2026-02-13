@@ -1,14 +1,14 @@
-# Plan: Add Memo Workflow (nils-memo-cli 0.3.3)
+# Plan: Add Memo Workflow (nils-memo-cli 0.3.5)
 
 ## Overview
-This plan adds a new Alfred workflow focused on fast memo capture, backed by `nils-memo-cli@0.3.3`.
+This plan adds a new Alfred workflow focused on fast memo capture, backed by `nils-memo-cli@0.3.5`.
 The primary user flow is `add`: type memo text in Alfred and commit it to SQLite immediately.
 The design also includes explicit `db init` behavior so first-run setup and recovery are deterministic.
 Implementation follows existing repo conventions: dedicated Rust CLI crate for workflow domain logic, thin shell adapters in `workflows/`, and packaging/testing through existing `scripts/workflow-*` entrypoints.
 
 ## Scope
 - In scope: new workflow `memo-add` with Script Filter + action execution.
-- In scope: pin and consume `nils-memo-cli` version `0.3.3` via `cargo add`.
+- In scope: pin and consume `nils-memo-cli` version `0.3.5` via `cargo add`.
 - In scope: user-facing `add` flow and explicit `db init` flow from workflow actions.
 - In scope: workflow parameter design (DB path/source/confirmation/runtime overrides) with Alfred user config exposure.
 - In scope: tests, smoke checks, docs, and packaging integration.
@@ -102,21 +102,21 @@ Implementation follows existing repo conventions: dedicated Rust CLI crate for w
   - `cargo check -p nils-memo-workflow-cli`
   - `cargo run -p nils-memo-workflow-cli -- --help`
 
-### Task 1.4: Pin `nils-memo-cli` to `0.3.3` with cargo add
+### Task 1.4: Pin `nils-memo-cli` to exact `0.3.5` with cargo add
 - **Location**:
   - `crates/memo-workflow-cli/Cargo.toml`
   - `Cargo.lock`
-- **Description**: Execute `cargo add nils-memo-cli@0.3.3` from `crates/memo-workflow-cli` and keep lockfile deterministic.
+- **Description**: Execute `cargo add nils-memo-cli@=0.3.5` from `crates/memo-workflow-cli` and keep lockfile deterministic.
 - **Dependencies**:
   - Task 1.3
 - **Complexity**: 2
 - **Acceptance criteria**:
-  - Crate dependency list includes `nils-memo-cli = "0.3.3"`.
+  - Crate dependency list includes `nils-memo-cli = "=0.3.5"`.
   - Build graph resolves without version conflict errors.
 - **Validation**:
-  - `rg -n '^nils-memo-cli\\s*=\\s*\"0\\.3\\.3\"' crates/memo-workflow-cli/Cargo.toml`
+  - `rg -n '^nils-memo-cli\\s*=\\s*\"=0\\.3\\.5\"' crates/memo-workflow-cli/Cargo.toml`
   - `cargo check -p nils-memo-workflow-cli`
-  - `cargo tree -p nils-memo-workflow-cli | rg 'nils-memo-cli v0.3.3'`
+  - `cargo tree -p nils-memo-workflow-cli | rg 'nils-memo-cli v0.3.5'`
 
 ### Task 1.5: Define Alfred workflow parameters and defaults
 - **Location**:
