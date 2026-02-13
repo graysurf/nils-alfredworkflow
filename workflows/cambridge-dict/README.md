@@ -51,3 +51,7 @@ After installing workflow artifact into Alfred, install workflow-local Playwrigh
 - Workflow smoke: `bash workflows/cambridge-dict/tests/smoke.sh`
 
 Live scraping checks are intentionally not part of default smoke gates.
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

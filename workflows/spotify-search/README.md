@@ -36,3 +36,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `SPOTIFY_CLI_BIN` | Optional override path for `spotify-cli` (useful for local debugging). |
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

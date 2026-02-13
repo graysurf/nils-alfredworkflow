@@ -5,6 +5,19 @@
 - End-user workflow runtime is macOS-only because Alfred is macOS-only.
 - Linux support in this repository is for development/CI validation (lint/test/package), including Ubuntu CI runners.
 
+## Troubleshooting operating model
+
+- Use a two-layer troubleshooting route:
+  - Global standards and shared playbooks: [`ALFRED_WORKFLOW_DEVELOPMENT.md`](../ALFRED_WORKFLOW_DEVELOPMENT.md)
+  - Workflow-specific runbooks: `workflows/<workflow-id>/TROUBLESHOOTING.md`
+- Routing rules:
+  1. Cross-workflow failures (Script Filter contract, queue policy, packaging wiring, Gatekeeper) start from global standards.
+  2. Workflow-specific failures (keyword flow, workflow env vars, provider/API behavior) start from the workflow-local troubleshooting doc.
+  3. If scope is unclear, start global then jump to the workflow-local `Quick operator checks` section.
+- Navigation shortcuts:
+  - List all workflow-local troubleshooting docs: `rg --files workflows | rg 'TROUBLESHOOTING\.md$'`
+  - Open the exact workflow path: `workflows/<workflow-id>/TROUBLESHOOTING.md`
+
 ## Add a new workflow
 
 1. `cargo run -p xtask -- workflow new --id <workflow-id>`

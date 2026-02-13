@@ -48,3 +48,7 @@ When no timezone list is provided, `timezone-cli` resolves local timezone in ord
 - `bash workflows/multi-timezone/tests/smoke.sh`
 - `scripts/workflow-test.sh --id multi-timezone`
 - `scripts/workflow-pack.sh --id multi-timezone`
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

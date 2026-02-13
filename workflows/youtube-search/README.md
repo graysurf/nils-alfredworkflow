@@ -37,3 +37,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `YOUTUBE_CLI_BIN` | Optional override path for `youtube-cli` (useful for local debugging). |
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

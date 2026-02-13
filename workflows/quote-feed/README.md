@@ -44,3 +44,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 - `bash workflows/quote-feed/tests/smoke.sh`
 - `scripts/workflow-test.sh --id quote-feed`
 - `scripts/workflow-pack.sh --id quote-feed`
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

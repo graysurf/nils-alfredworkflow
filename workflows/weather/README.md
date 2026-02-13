@@ -54,3 +54,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 - `bash workflows/weather/tests/smoke.sh`
 - `scripts/workflow-test.sh --id weather`
 - `scripts/workflow-pack.sh --id weather`
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

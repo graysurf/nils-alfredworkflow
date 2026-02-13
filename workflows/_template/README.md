@@ -31,4 +31,8 @@ Update these fields before packaging a new workflow:
 
 - This folder is a template, not a final end-user workflow.
 - After scaffolding, replace placeholder values (for example `__WORKFLOW_ID__`) and update scripts/tests accordingly.
+- Every new workflow README must include a `## Troubleshooting` section that links to `./TROUBLESHOOTING.md`.
 
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

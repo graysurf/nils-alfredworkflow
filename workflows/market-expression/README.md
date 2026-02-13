@@ -37,3 +37,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 - `bash workflows/market-expression/tests/smoke.sh`
 - `scripts/workflow-test.sh --id market-expression`
 - `scripts/workflow-pack.sh --id market-expression`
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
