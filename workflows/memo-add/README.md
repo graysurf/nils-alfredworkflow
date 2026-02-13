@@ -2,6 +2,10 @@
 
 Capture memo text quickly into SQLite-backed `nils-memo-cli@0.3.6` storage.
 
+## Screenshot
+
+![Memo Add workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Keyword `mm` as command entry.
@@ -30,13 +34,13 @@ Set these via Alfred's `Configure Workflow...` UI:
 
 | Keyword | Behavior |
 |---|---|
-| `mm` | Command entry menu (directs to `mmr` / `mma` / `mmu` / `mmd` / `mmc` / `mmq`). |
+| `mm` | Command entry menu (Enter on row appends suffix and switches directly to `mmr` / `mma` / `mmu` / `mmd` / `mmc` / `mmq`). |
 | `mmr` | Show latest memo rows (newest first); `mmr <number>` opens memo item menu by id. |
 | `mma <text>` | Add intent keyword for `add::<text>`. |
 | `mmu` | Show latest memo rows (same as `mmr`); `mmu <number>` routes to update flow for that id; `mmu <item_id> <text>` routes update intent. |
 | `mmd` | Show latest memo rows (same as `mmr`); `mmd <number>` routes to delete action for that id; `mmd <item_id>` routes delete intent. |
 | `mmc` | Show latest memo rows (same as `mmr`); `mmc <number>` or `mmc <item_id>` routes copy action for that id. |
-| `mmq` | Search memos; `mmq <query>` routes to search intent and returns item manage rows via autocomplete. |
+| `mmq` | Search memos; `mmq <query>` routes to search intent and for single-hit results opens item manage menu directly. |
 
 ## Query intents
 
@@ -52,7 +56,8 @@ Set these via Alfred's `Configure Workflow...` UI:
 - Item action menu intent: `item <item_id>` (typically from Enter on a recent row).
 - Mutation/search intents: `update <item_id> <text>`, `delete <item_id>`, `copy <item_id>`, `search <query>`.
 - Keyword mutation shortcuts: `mmu <item_id> <text>`, `mmd <item_id>`, `mmc <item_id>`.
-- Search rows are non-actionable and use `autocomplete: item <item_id>` for safe follow-up actions.
+- `search <query>` with a single hit returns direct item action menu rows (`copy` / `update` / `delete`).
+- Multi-hit search keeps non-actionable rows with `autocomplete: item <item_id>` for safe follow-up actions.
 - `search` (without query text) returns a guidance row and no executable action.
 - Copy actions: `copy::<item_id>` copies memo text (copy row subtitle shows preview), `copy-json::<item_id>` copies raw item JSON (via Cmd modifier on copy row).
 - `update <item_id>` without text shows guidance row and keeps autocomplete for second-step typing.
