@@ -1,6 +1,6 @@
 # Codex CLI - Alfred Workflow
 
-Run core `nils-codex-cli@0.3.5` operations from Alfred.
+Run core `nils-codex-cli@0.3.7` operations from Alfred.
 
 ## Screenshot
 
@@ -49,7 +49,7 @@ No `CODEX_SECRET_DIR` saved secrets behavior:
 ## Runtime Requirements
 
 - End users: no extra install when using release artifact.
-- `.alfredworkflow` bundles `codex-cli@0.3.5` (release-coupled runtime version).
+- `.alfredworkflow` bundles `codex-cli@0.3.7` (release-coupled runtime version).
 - Pinned runtime metadata is centralized in `scripts/lib/codex_cli_runtime.sh`.
 - Bundled target: macOS `arm64`.
 
@@ -61,7 +61,7 @@ Fallback runtime sources (when bundled binary is unavailable):
 Manual fallback install:
 
 ```bash
-cargo install nils-codex-cli --version 0.3.5
+cargo install nils-codex-cli --version 0.3.7
 ```
 
 ## Configuration
@@ -117,12 +117,12 @@ cargo install nils-codex-cli --version 0.3.5
 
 ## Maintainer Packaging Notes
 
-- Official package should bundle exactly `codex-cli@0.3.5`.
+- Official package should bundle exactly `codex-cli@0.3.7`.
 - `scripts/workflow-pack.sh --id codex-cli` runs `workflows/codex-cli/scripts/prepare_package.sh`.
 - Packaging binary resolution order:
   1. `CODEX_CLI_PACK_BIN` (if set)
   2. local `PATH` `codex-cli`
-  3. auto-install pinned `nils-codex-cli@0.3.5` from crates.io via `cargo install --locked --root <cache-root>`
+  3. auto-install pinned `nils-codex-cli@0.3.7` from crates.io via `cargo install --locked --root <cache-root>`
 - Useful overrides:
   - `CODEX_CLI_PACK_BIN=/absolute/path/to/codex-cli`
   - `CODEX_CLI_PACK_INSTALL_ROOT=/absolute/path/to/install-root` (default is cache under `$XDG_CACHE_HOME` or `~/.cache`)
