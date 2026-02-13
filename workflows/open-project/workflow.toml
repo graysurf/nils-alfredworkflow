@@ -1,7 +1,7 @@
 id = "open-project"
 name = "Open Project"
 bundle_id = "com.graysurf.open-project"
-version = "1.0.6"
+version = "1.0.7"
 script_filter = "script_filter.sh"
 action = "action_open.sh"
 rust_binary = "workflow-cli"
