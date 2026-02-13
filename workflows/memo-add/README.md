@@ -14,6 +14,7 @@ Capture memo text quickly into SQLite-backed `nils-memo-cli@0.3.7` storage.
 - Search flow supports `search` via dedicated `mmq` keyword and item-management routing.
 - Latest-list view (`mmr`) shows `db init` only when db is missing; otherwise shows db path + latest memo rows.
 - `mmr` recent rows support full action menu flow: Enter -> choose `copy` / `update` / `delete`.
+- UI rows show short item refs (`#<number>`, for example `#4`) while action tokens keep canonical `itm_XXXXXXXX`.
 - Delete intent is hard-delete (permanent remove, no undo).
 - Runtime parameters for DB path, source label, confirmation gate, and max input bytes.
 
@@ -58,7 +59,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 - Mutation/search intents: `update <item_id> <text>`, `delete <item_id>`, `copy <item_id>`, `search <query>`.
 - Optional search mode intent: `search --match <fts|prefix|contains> <query>` (`fts` default).
 - Keyword mutation shortcuts: `mmu <item_id> <text>`, `mmd <item_id>`, `mmc <item_id>`.
-- `search <query>` always keeps non-actionable rows with `autocomplete: item <item_id>` for safe follow-up actions.
+- `search <query>` always keeps non-actionable rows with `autocomplete: item <number>` for safe follow-up actions.
 - `search` (without query text) returns a guidance row and no executable action.
 - Copy actions: `copy::<item_id>` copies memo text (copy row subtitle shows preview), `copy-json::<item_id>` copies raw item JSON (via Cmd modifier on copy row).
 - `update <item_id>` without text shows guidance row and keeps autocomplete for second-step typing.

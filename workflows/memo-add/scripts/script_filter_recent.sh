@@ -24,6 +24,15 @@ fi
 
 query="$(printf '%s' "$query" | xargs)"
 
+first_token="${query%%[[:space:]]*}"
+first_token_lower="$(printf '%s' "$first_token" | tr '[:upper:]' '[:lower:]')"
+
+case "$first_token_lower" in
+item | update | delete | copy | search)
+  exec "$script_dir/script_filter.sh" "$query"
+  ;;
+esac
+
 # mmr <number> => route to item-id action menu.
 if [[ "$query" =~ ^[0-9]+$ ]]; then
   MEMO_QUERY_PREFIX="item" exec "$script_dir/script_filter.sh" "$query"

@@ -99,12 +99,14 @@ Malformed update/delete token shapes are handled as user errors.
 
 - Empty query with existing db includes a recent-records section so users can verify latest captures immediately.
 - Recent records default to `MEMO_RECENT_LIMIT=8` and are ordered by `created_at DESC`, then `item_id DESC`.
-- Recent rows are informational (`valid=false`) but include `autocomplete=item <item_id>` for item-level action routing.
+- Recent rows are informational (`valid=false`) but include `autocomplete=item <number>` for item-level action routing.
+- Recent/search row titles render short item refs (`#<number>`) for readability; internal action tokens remain canonical `itm_XXXXXXXX`.
 - `item <item_id>` intent renders an action menu in order: copy (action token) + update (autocomplete) + delete (action token).
 - Additional script-filters:
   - `mm` renders command-entry rows only (no query intent execution).
   - `mmr` forwards empty/non-numeric query to newest-first recent rows.
   - `mmr <number>` forwards numeric query to `item <number>` lookup.
+  - `mmr` passes through explicit intents (`item|update|delete|copy|search`) so Enter on autocomplete rows can continue multi-step flows.
   - `mma` forwards query to default add intent.
   - `mmu` forwards empty query to newest-first recent rows, otherwise prepends `update` before forwarding query.
   - `mmd` forwards empty query to newest-first recent rows, otherwise prepends `delete` before forwarding query.
@@ -114,7 +116,7 @@ Malformed update/delete token shapes are handled as user errors.
 - Copy row also provides a `cmd` modifier action token (`copy-json::<item_id>`) with JSON preview subtitle.
 - `update <item_id>` without text renders guidance/autocomplete instead of hard error row.
 - `search` without query text renders guidance row and no executable action token.
-- `search <query>` always returns non-destructive rows with `autocomplete=item <item_id>`.
+- `search <query>` always returns non-destructive rows with `autocomplete=item <number>`.
 - `search --match <fts|prefix|contains> <query>` is accepted for optional match mode override (default `fts`).
 - db path row is informational (`valid=false`), while `db init` stays actionable when db is missing.
 - Non-empty query defaults to add unless explicit `update` / `delete` / `copy` / `search` intent prefix is matched (for keyword wrappers / internal script-filter paths).

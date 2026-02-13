@@ -598,6 +598,18 @@ fn strip_intent<'a>(query: &'a str, intent: &str) -> Option<&'a str> {
     Some(parts.next().unwrap_or("").trim())
 }
 
+fn item_route_id(item_id: &str) -> String {
+    parse_item_id(item_id)
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| item_id.to_string())
+}
+
+fn item_display_id(item_id: &str) -> String {
+    parse_item_id(item_id)
+        .map(|id| format!("#{id}"))
+        .unwrap_or_else(|| item_id.to_string())
+}
+
 fn build_item_action_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, AppError> {
     let mut parts = rest.split_whitespace();
     let item_id_raw = parts.next().unwrap_or("").trim();
@@ -619,13 +631,15 @@ fn build_item_action_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feed
             ]));
         }
     };
+    let item_route = item_route_id(&item_id);
+    let item_display = item_display_id(&item_id);
 
     let detail = match execute_fetch_item(&item_id, None, config) {
         Ok(detail) => detail,
         Err(AppError::User(message)) => {
             return Ok(Feedback::new(vec![
                 Item::new("Memo item not found")
-                    .with_subtitle(format!("{message}: {item_id}"))
+                    .with_subtitle(format!("{message}: {item_display}"))
                     .with_valid(false),
             ]));
         }
@@ -635,7 +649,7 @@ fn build_item_action_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feed
     let raw_json_preview = render_item_detail_json(&detail);
 
     Ok(Feedback::new(vec![
-        Item::new(format!("Copy memo: {item_id}"))
+        Item::new(format!("Copy memo: {item_display}"))
             .with_subtitle(format!(
                 "Preview text: {} | Hold Cmd to copy raw JSON row.",
                 copy_text_preview
@@ -652,11 +666,11 @@ fn build_item_action_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feed
                     .with_valid(true),
             )
             .with_valid(true),
-        Item::new(format!("Update memo: {item_id}"))
+        Item::new(format!("Update memo: {item_display}"))
             .with_subtitle("Press Enter, then type the new text and press Enter again.")
-            .with_autocomplete(format!("update {item_id} "))
+            .with_autocomplete(format!("update {item_route} "))
             .with_valid(false),
-        Item::new(format!("Delete memo: {item_id}"))
+        Item::new(format!("Delete memo: {item_display}"))
             .with_subtitle("Press Enter to hard-delete this memo item.")
             .with_arg(build_delete_token(&item_id))
             .with_valid(true),
@@ -686,12 +700,14 @@ fn build_update_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
             ]));
         }
     };
+    let item_route = item_route_id(&item_id);
+    let item_display = item_display_id(&item_id);
 
     if text.is_empty() {
         return Ok(Feedback::new(vec![
-            Item::new(format!("Update memo: {item_id}"))
+            Item::new(format!("Update memo: {item_display}"))
                 .with_subtitle("Type new text after item id, then press Enter to update.")
-                .with_autocomplete(format!("update {item_id} "))
+                .with_autocomplete(format!("update {item_route} "))
                 .with_valid(false),
         ]));
     }
@@ -709,7 +725,7 @@ fn build_update_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
     }
 
     Ok(Feedback::new(vec![
-        Item::new(format!("Update memo: {item_id}"))
+        Item::new(format!("Update memo: {item_display}"))
             .with_subtitle(format!(
                 "Press Enter to update text ({}/{} bytes).",
                 text.len(),
@@ -741,9 +757,10 @@ fn build_delete_feedback(rest: &str) -> Result<Feedback, AppError> {
             ]));
         }
     };
+    let item_display = item_display_id(&item_id);
 
     Ok(Feedback::new(vec![
-        Item::new(format!("Delete memo: {item_id}"))
+        Item::new(format!("Delete memo: {item_display}"))
             .with_subtitle("Press Enter to hard-delete this memo item.")
             .with_arg(build_delete_token(&item_id))
             .with_valid(true),
@@ -771,13 +788,14 @@ fn build_copy_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, A
             ]));
         }
     };
+    let item_display = item_display_id(&item_id);
 
     let detail = match execute_fetch_item(&item_id, None, config) {
         Ok(detail) => detail,
         Err(AppError::User(message)) => {
             return Ok(Feedback::new(vec![
                 Item::new("Memo item not found")
-                    .with_subtitle(format!("{message}: {item_id}"))
+                    .with_subtitle(format!("{message}: {item_display}"))
                     .with_valid(false),
             ]));
         }
@@ -787,7 +805,7 @@ fn build_copy_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback, A
     let raw_json_preview = render_item_detail_json(&detail);
 
     Ok(Feedback::new(vec![
-        Item::new(format!("Copy memo: {item_id}"))
+        Item::new(format!("Copy memo: {item_display}"))
             .with_subtitle(format!(
                 "Preview text: {} | Hold Cmd to copy raw JSON row.",
                 copy_text_preview
@@ -844,11 +862,13 @@ fn build_search_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
 
     let mut items = Vec::with_capacity(rows.len());
     for row in rows {
+        let item_display = item_display_id(&row.item_id);
+        let item_route = item_route_id(&row.item_id);
         let preview = row.text_preview.trim();
         let title = if preview.is_empty() {
-            format!("Search {}: (empty memo)", row.item_id)
+            format!("Search {}: (empty memo)", item_display)
         } else {
-            format!("Search {}: {}", row.item_id, truncate_title(preview, 56))
+            format!("Search {}: {}", item_display, truncate_title(preview, 56))
         };
 
         let matched_fields = if row.matched_fields.is_empty() {
@@ -864,7 +884,7 @@ fn build_search_feedback(rest: &str, config: &RuntimeConfig) -> Result<Feedback,
                     "{} | fields {} | score {:.3} | Press Enter to manage",
                     row.created_at, matched_fields, row.score
                 ))
-                .with_autocomplete(format!("item {}", row.item_id))
+                .with_autocomplete(format!("item {}", item_route))
                 .with_valid(false),
         );
     }
@@ -979,11 +999,13 @@ fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppErr
     }
 
     for row in recent {
+        let item_display = item_display_id(&row.item_id);
+        let item_route = item_route_id(&row.item_id);
         let preview = row.text_preview.trim();
         let title = if preview.is_empty() {
-            format!("Recent {}: (empty memo)", row.item_id)
+            format!("Recent {}: (empty memo)", item_display)
         } else {
-            format!("Recent {}: {}", row.item_id, truncate_title(preview, 56))
+            format!("Recent {}: {}", item_display, truncate_title(preview, 56))
         };
 
         items.push(
@@ -993,7 +1015,7 @@ fn build_empty_query_feedback(config: &RuntimeConfig) -> Result<Feedback, AppErr
                     "{} | {} | Press Enter to manage",
                     row.created_at, row.state
                 ))
-                .with_autocomplete(format!("item {}", row.item_id))
+                .with_autocomplete(format!("item {}", item_route))
                 .with_valid(false),
         );
     }
@@ -1290,11 +1312,8 @@ mod tests {
 
         assert_eq!(feedback.items.len(), 1);
         assert_eq!(feedback.items[0].valid, Some(false));
-        assert_eq!(feedback.items[0].title, "Update memo: itm_00000002");
-        assert_eq!(
-            feedback.items[0].autocomplete.as_deref(),
-            Some("update itm_00000002 ")
-        );
+        assert_eq!(feedback.items[0].title, "Update memo: #2");
+        assert_eq!(feedback.items[0].autocomplete.as_deref(), Some("update 2 "));
     }
 
     #[test]
@@ -1308,9 +1327,11 @@ mod tests {
         let feedback = build_script_filter(&query, &config).expect("script filter");
 
         assert_eq!(feedback.items.len(), 3);
+        let expected_item_display = item_display_id(&add.item_id);
+        let expected_item_route = item_route_id(&add.item_id);
         assert_eq!(
             feedback.items[0].title,
-            format!("Copy memo: {}", add.item_id)
+            format!("Copy memo: {}", expected_item_display)
         );
         let expected_copy_arg = format!("copy::{}", add.item_id);
         assert_eq!(
@@ -1346,9 +1367,9 @@ mod tests {
 
         assert_eq!(
             feedback.items[1].title,
-            format!("Update memo: {}", add.item_id)
+            format!("Update memo: {}", expected_item_display)
         );
-        let expected_update_autocomplete = format!("update {} ", add.item_id);
+        let expected_update_autocomplete = format!("update {} ", expected_item_route);
         assert_eq!(
             feedback.items[1].autocomplete.as_deref(),
             Some(expected_update_autocomplete.as_str())
@@ -1357,7 +1378,7 @@ mod tests {
 
         assert_eq!(
             feedback.items[2].title,
-            format!("Delete memo: {}", add.item_id)
+            format!("Delete memo: {}", expected_item_display)
         );
         let expected_delete_arg = format!("delete::{}", add.item_id);
         assert_eq!(
@@ -1389,9 +1410,10 @@ mod tests {
         let feedback = build_script_filter(&query, &config).expect("script filter");
 
         assert_eq!(feedback.items.len(), 1);
+        let expected_item_display = item_display_id(&add.item_id);
         assert_eq!(
             feedback.items[0].title,
-            format!("Copy memo: {}", add.item_id)
+            format!("Copy memo: {}", expected_item_display)
         );
         let expected_copy_arg = format!("copy::{}", add.item_id);
         assert_eq!(
@@ -1425,7 +1447,7 @@ mod tests {
             "single search hit should keep selectable search row"
         );
         assert_eq!(feedback.items[0].valid, Some(false));
-        let expected_autocomplete = format!("item {}", add.item_id);
+        let expected_autocomplete = format!("item {}", item_route_id(&add.item_id));
         assert_eq!(
             feedback.items[0].autocomplete.as_deref(),
             Some(expected_autocomplete.as_str())
@@ -1452,7 +1474,7 @@ mod tests {
             .as_deref()
             .expect("search row should include autocomplete");
         assert!(
-            autocomplete.starts_with("item itm_"),
+            autocomplete.starts_with("item "),
             "multi-hit search rows should route to item intent"
         );
     }
@@ -1476,7 +1498,7 @@ mod tests {
         let prefix_feedback =
             build_script_filter("search --match prefix 12", &config).expect("prefix search");
         assert_eq!(prefix_feedback.items.len(), 1);
-        let expected_autocomplete = format!("item {}", add.item_id);
+        let expected_autocomplete = format!("item {}", item_route_id(&add.item_id));
         assert_eq!(
             prefix_feedback.items[0].autocomplete.as_deref(),
             Some(expected_autocomplete.as_str())
@@ -1501,7 +1523,7 @@ mod tests {
 
         let feedback = build_script_filter("search 12", &config).expect("prefix-by-default search");
         assert_eq!(feedback.items.len(), 1);
-        let expected_autocomplete = format!("item {}", add.item_id);
+        let expected_autocomplete = format!("item {}", item_route_id(&add.item_id));
         assert_eq!(
             feedback.items[0].autocomplete.as_deref(),
             Some(expected_autocomplete.as_str())

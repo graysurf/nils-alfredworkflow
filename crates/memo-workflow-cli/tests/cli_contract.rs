@@ -7,6 +7,22 @@ fn bin() -> String {
     env!("CARGO_BIN_EXE_memo-workflow-cli").to_string()
 }
 
+fn item_route_id(item_id: &str) -> String {
+    item_id
+        .strip_prefix("itm_")
+        .and_then(|raw| raw.parse::<u64>().ok())
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| item_id.to_string())
+}
+
+fn item_display_id(item_id: &str) -> String {
+    item_id
+        .strip_prefix("itm_")
+        .and_then(|raw| raw.parse::<u64>().ok())
+        .map(|id| format!("#{id}"))
+        .unwrap_or_else(|| item_id.to_string())
+}
+
 #[test]
 fn script_filter_returns_items_array() {
     let output = Command::new(bin())
@@ -150,7 +166,7 @@ fn script_filter_recent_rows_offer_manage_autocomplete() {
         .expect("items array");
 
     let expected_uid = format!("recent-{item_id}");
-    let expected_autocomplete = format!("item {item_id}");
+    let expected_autocomplete = format!("item {}", item_route_id(item_id));
     let has_manage_row = items.iter().any(|item| {
         item.get("uid").and_then(Value::as_str) == Some(expected_uid.as_str())
             && item.get("autocomplete").and_then(Value::as_str)
@@ -212,11 +228,11 @@ fn script_filter_item_intent_shows_copy_update_delete_menu_and_update_guidance()
         3,
         "item intent should render three menu rows"
     );
-    let expected_copy_title = format!("Copy memo: {item_id}");
+    let expected_copy_title = format!("Copy memo: {}", item_display_id(item_id));
     let expected_copy_arg = format!("copy::{item_id}");
     let expected_copy_json_arg = format!("copy-json::{item_id}");
-    let expected_update_title = format!("Update memo: {item_id}");
-    let expected_update_autocomplete = format!("update {item_id} ");
+    let expected_update_title = format!("Update memo: {}", item_display_id(item_id));
+    let expected_update_autocomplete = format!("update {} ", item_route_id(item_id));
     let expected_delete_arg = format!("delete::{item_id}");
     assert_eq!(
         menu_items[0].get("title").and_then(Value::as_str),
@@ -255,7 +271,7 @@ fn script_filter_item_intent_shows_copy_update_delete_menu_and_update_guidance()
         Some(expected_delete_arg.as_str())
     );
 
-    let update_guidance_query = format!("update {item_id}");
+    let update_guidance_query = format!("update {}", item_route_id(item_id));
     let update_guidance = Command::new(bin())
         .args(["script-filter", "--query", &update_guidance_query])
         .env("MEMO_DB_PATH", db_path)
@@ -288,7 +304,7 @@ fn script_filter_item_intent_shows_copy_update_delete_menu_and_update_guidance()
         Some(false)
     );
 
-    let update_execute_query = format!("update {item_id} changed text");
+    let update_execute_query = format!("update {} changed text", item_route_id(item_id));
     let update_execute = Command::new(bin())
         .args(["script-filter", "--query", &update_execute_query])
         .env("MEMO_DB_PATH", db_path)
@@ -793,7 +809,7 @@ fn script_filter_search_intent_uses_env_default_match_mode() {
         .and_then(Value::as_str)
         .unwrap_or_default();
     assert!(
-        autocomplete.starts_with("item itm_"),
+        autocomplete.starts_with("item "),
         "configured search mode should still route to item autocomplete"
     );
 }
@@ -838,7 +854,7 @@ fn script_filter_search_intent_keeps_search_row_for_single_hit() {
         .and_then(Value::as_str)
         .unwrap_or_default();
     assert!(
-        autocomplete.starts_with("item itm_"),
+        autocomplete.starts_with("item "),
         "single-hit search row should keep item autocomplete"
     );
 }
@@ -884,7 +900,7 @@ fn script_filter_search_intent_keeps_search_rows_for_multi_hit() {
         .and_then(Value::as_str)
         .unwrap_or_default();
     assert!(
-        autocomplete.starts_with("item itm_"),
+        autocomplete.starts_with("item "),
         "multi-hit search row should keep item autocomplete"
     );
 }
