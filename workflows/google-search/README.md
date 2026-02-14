@@ -14,6 +14,7 @@ Search web results from Alfred using Brave Search API and open selected links in
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
 - Script Filter queue policy: 1 second delay with initial immediate run disabled.
 - Script-level guardrails: async query coalescing (final query priority) and short TTL cache reduce duplicate API calls while typing.
+- Runtime orchestration is shared via `scripts/lib/script_filter_search_driver.sh`; Google-specific fetch/error mapping remains local.
 - Map common failures (missing API key, rate limiting, API unavailable, invalid config) to actionable Alfred messages.
 - Tune result count, safe search mode, and country bias through workflow variables.
 

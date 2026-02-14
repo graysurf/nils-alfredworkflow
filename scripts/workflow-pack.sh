@@ -110,18 +110,14 @@ package_one() {
     find "$stage_dir/scripts" -type f -name '*.sh' -exec chmod +x {} +
   fi
 
-  local shared_query_policy shared_async_coalesce
-  shared_query_policy="$repo_root/scripts/lib/script_filter_query_policy.sh"
-  shared_async_coalesce="$repo_root/scripts/lib/script_filter_async_coalesce.sh"
-  if [[ -d "$stage_dir/scripts" && -f "$shared_query_policy" ]]; then
+  local shared_lib_dir
+  shared_lib_dir="$repo_root/scripts/lib"
+  if [[ -d "$stage_dir/scripts" && -d "$shared_lib_dir" ]]; then
     mkdir -p "$stage_dir/scripts/lib"
-    cp "$shared_query_policy" "$stage_dir/scripts/lib/script_filter_query_policy.sh"
-    chmod +x "$stage_dir/scripts/lib/script_filter_query_policy.sh"
-  fi
-  if [[ -d "$stage_dir/scripts" && -f "$shared_async_coalesce" ]]; then
-    mkdir -p "$stage_dir/scripts/lib"
-    cp "$shared_async_coalesce" "$stage_dir/scripts/lib/script_filter_async_coalesce.sh"
-    chmod +x "$stage_dir/scripts/lib/script_filter_async_coalesce.sh"
+    if compgen -G "$shared_lib_dir/*.sh" >/dev/null; then
+      cp "$shared_lib_dir"/*.sh "$stage_dir/scripts/lib/"
+      find "$stage_dir/scripts/lib" -type f -name '*.sh' -exec chmod +x {} +
+    fi
   fi
 
   if [[ -d "$workflow_root/src/assets" ]]; then

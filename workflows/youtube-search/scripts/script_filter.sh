@@ -5,11 +5,16 @@ resolve_helper() {
   local helper_name="$1"
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local git_repo_root=""
+  git_repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
 
   local candidates=(
     "$script_dir/lib/$helper_name"
     "$script_dir/../../../scripts/lib/$helper_name"
   )
+  if [[ -n "$git_repo_root" ]]; then
+    candidates+=("$git_repo_root/scripts/lib/$helper_name")
+  fi
   local candidate
   for candidate in "${candidates[@]}"; do
     if [[ -f "$candidate" ]]; then
@@ -21,30 +26,30 @@ resolve_helper() {
   return 1
 }
 
-json_escape() {
-  local value="${1-}"
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
-  value="${value//$'\n'/ }"
-  value="${value//$'\r'/ }"
-  printf '%s' "$value"
-}
+error_json_helper="$(resolve_helper "script_filter_error_json.sh" || true)"
+if [[ -z "$error_json_helper" ]]; then
+  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate script_filter_error_json.sh runtime helper.","valid":false}]}\n'
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$error_json_helper"
+
+cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
+if [[ -z "$cli_resolver_helper" ]]; then
+  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$cli_resolver_helper"
 
 normalize_error_message() {
-  local value="${1-}"
-  value="$(printf '%s' "$value" | tr '\n\r' '  ' | sed 's/[[:space:]]\+/ /g; s/^[[:space:]]*//; s/[[:space:]]*$//')"
-  value="${value#error: }"
-  value="${value#Error: }"
-  printf '%s' "$value"
+  sfej_normalize_error_message "${1-}"
 }
 
 emit_error_item() {
   local title="$1"
   local subtitle="$2"
-  printf '{"items":[{"title":"%s","subtitle":"%s","valid":false}]}' \
-    "$(json_escape "$title")" \
-    "$(json_escape "$subtitle")"
-  printf '\n'
+  sfej_emit_error_item_json "$title" "$subtitle"
 }
 
 print_error_item() {
@@ -78,62 +83,28 @@ print_error_item() {
   emit_error_item "$title" "$subtitle"
 }
 
-clear_quarantine_if_needed() {
-  local cli_path="$1"
-
-  if [[ "$(uname -s 2>/dev/null || printf '')" != "Darwin" ]]; then
-    return 0
-  fi
-
-  if ! command -v xattr >/dev/null 2>&1; then
-    return 0
-  fi
-
-  # Release artifacts downloaded from GitHub may carry quarantine.
-  if xattr -p com.apple.quarantine "$cli_path" >/dev/null 2>&1; then
-    xattr -d com.apple.quarantine "$cli_path" >/dev/null 2>&1 || true
-  fi
-}
-
 resolve_youtube_cli() {
-  if [[ -n "${YOUTUBE_CLI_BIN:-}" && -x "${YOUTUBE_CLI_BIN}" ]]; then
-    clear_quarantine_if_needed "${YOUTUBE_CLI_BIN}"
-    printf '%s\n' "${YOUTUBE_CLI_BIN}"
-    return 0
-  fi
-
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
   local packaged_cli
   packaged_cli="$script_dir/../bin/youtube-cli"
-  if [[ -x "$packaged_cli" ]]; then
-    clear_quarantine_if_needed "$packaged_cli"
-    printf '%s\n' "$packaged_cli"
-    return 0
-  fi
 
   local repo_root
   repo_root="$(cd "$script_dir/../../.." && pwd)"
 
   local release_cli
   release_cli="$repo_root/target/release/youtube-cli"
-  if [[ -x "$release_cli" ]]; then
-    clear_quarantine_if_needed "$release_cli"
-    printf '%s\n' "$release_cli"
-    return 0
-  fi
 
   local debug_cli
   debug_cli="$repo_root/target/debug/youtube-cli"
-  if [[ -x "$debug_cli" ]]; then
-    clear_quarantine_if_needed "$debug_cli"
-    printf '%s\n' "$debug_cli"
-    return 0
-  fi
 
-  echo "youtube-cli binary not found (checked package/release/debug paths)" >&2
-  return 1
+  wfcr_resolve_binary \
+    "YOUTUBE_CLI_BIN" \
+    "$packaged_cli" \
+    "$release_cli" \
+    "$debug_cli" \
+    "youtube-cli binary not found (checked package/release/debug paths)"
 }
 
 youtube_search_fetch_json() {
@@ -175,6 +146,14 @@ fi
 # shellcheck disable=SC1090
 source "$async_coalesce_helper"
 
+search_driver_helper="$(resolve_helper "script_filter_search_driver.sh" || true)"
+if [[ -z "$search_driver_helper" ]]; then
+  emit_error_item "Workflow helper missing" "Cannot locate script_filter_search_driver.sh runtime helper."
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$search_driver_helper"
+
 query="$(sfqp_resolve_query_input "${1:-}")"
 trimmed_query="$(sfqp_trim "$query")"
 query="$trimmed_query"
@@ -192,61 +171,16 @@ if sfqp_is_short_query "$query" 2; then
   exit 0
 fi
 
-sfac_init_context "youtube-search" "nils-youtube-search-workflow"
-cache_ttl_seconds="$(sfac_resolve_positive_int_env "YOUTUBE_QUERY_CACHE_TTL_SECONDS" "10")"
-settle_seconds="$(sfac_resolve_non_negative_number_env "YOUTUBE_QUERY_COALESCE_SETTLE_SECONDS" "2")"
-rerun_seconds="$(sfac_resolve_non_negative_number_env "YOUTUBE_QUERY_COALESCE_RERUN_SECONDS" "0.4")"
-
-if sfac_load_cache_result "$query" "$cache_ttl_seconds"; then
-  if [[ "$SFAC_CACHE_STATUS" == "ok" ]]; then
-    printf '%s\n' "$SFAC_CACHE_PAYLOAD"
-  else
-    print_error_item "$SFAC_CACHE_PAYLOAD"
-  fi
-  exit 0
-fi
-
-if [[ "$settle_seconds" == "0" || "$settle_seconds" == "0.0" ]]; then
-  sync_err_file="${TMPDIR:-/tmp}/youtube-search-script-filter.sync.err.$$.$RANDOM"
-  if json_output="$(youtube_search_fetch_json "$query" 2>"$sync_err_file")"; then
-    if [[ "$cache_ttl_seconds" -gt 0 ]]; then
-      sfac_store_cache_result "$query" "ok" "$json_output" || true
-    fi
-    rm -f "$sync_err_file"
-    printf '%s\n' "$json_output"
-    exit 0
-  fi
-
-  err_msg="$(cat "$sync_err_file")"
-  rm -f "$sync_err_file"
-  if [[ "$cache_ttl_seconds" -gt 0 ]]; then
-    sfac_store_cache_result "$query" "err" "$err_msg" || true
-  fi
-  print_error_item "$err_msg"
-  exit 0
-fi
-
-if ! sfac_wait_for_final_query "$query" "$settle_seconds"; then
-  sfac_emit_pending_item_json \
-    "Searching YouTube..." \
-    "Waiting for final query before calling YouTube API." \
-    "$rerun_seconds"
-  exit 0
-fi
-
-final_err_file="${TMPDIR:-/tmp}/youtube-search-script-filter.final.err.$$.$RANDOM"
-if json_output="$(youtube_search_fetch_json "$query" 2>"$final_err_file")"; then
-  if [[ "$cache_ttl_seconds" -gt 0 ]]; then
-    sfac_store_cache_result "$query" "ok" "$json_output" || true
-  fi
-  rm -f "$final_err_file"
-  printf '%s\n' "$json_output"
-  exit 0
-fi
-
-err_msg="$(cat "$final_err_file")"
-rm -f "$final_err_file"
-if [[ "$cache_ttl_seconds" -gt 0 ]]; then
-  sfac_store_cache_result "$query" "err" "$err_msg" || true
-fi
-print_error_item "$err_msg"
+# Shared driver owns cache/coalesce orchestration only.
+# YouTube-specific backend fetch and error mapping remain local in this script.
+sfsd_run_search_flow \
+  "$query" \
+  "youtube-search" \
+  "nils-youtube-search-workflow" \
+  "YOUTUBE_QUERY_CACHE_TTL_SECONDS" \
+  "YOUTUBE_QUERY_COALESCE_SETTLE_SECONDS" \
+  "YOUTUBE_QUERY_COALESCE_RERUN_SECONDS" \
+  "Searching YouTube..." \
+  "Waiting for final query before calling YouTube API." \
+  "youtube_search_fetch_json" \
+  "print_error_item"

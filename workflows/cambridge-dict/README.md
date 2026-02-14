@@ -14,6 +14,7 @@ Search Cambridge Dictionary from Alfred with a two-stage flow (candidate -> defi
 - Press `Enter` on detail rows to open the entry URL from `arg`.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips backend calls.
 - Script-level guardrails: async query coalescing (final query priority) and short TTL cache reduce duplicate backend calls while typing.
+- Runtime orchestration is shared via `scripts/lib/script_filter_search_driver.sh`; Cambridge-specific fetch/error mapping remains local.
 - Uses `cambridge-cli` as the Alfred bridge and Playwright scraper backend.
 
 ## Configuration

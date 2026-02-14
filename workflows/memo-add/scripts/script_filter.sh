@@ -1,80 +1,67 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-json_escape() {
-  local value="${1-}"
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
-  value="${value//$'\n'/ }"
-  value="${value//$'\r'/ }"
-  printf '%s' "$value"
-}
-
-emit_error_item() {
-  local title="$1"
-  local subtitle="$2"
-  printf '{"items":[{"title":"%s","subtitle":"%s","valid":false}]}' \
-    "$(json_escape "$title")" \
-    "$(json_escape "$subtitle")"
-  printf '\n'
-}
-
-clear_quarantine_if_needed() {
-  local cli_path="$1"
-
-  if [[ "$(uname -s 2>/dev/null || printf '')" != "Darwin" ]]; then
-    return 0
-  fi
-
-  if ! command -v xattr >/dev/null 2>&1; then
-    return 0
-  fi
-
-  if xattr -p com.apple.quarantine "$cli_path" >/dev/null 2>&1; then
-    xattr -d com.apple.quarantine "$cli_path" >/dev/null 2>&1 || true
-  fi
-}
-
-resolve_memo_workflow_cli() {
-  if [[ -n "${MEMO_WORKFLOW_CLI_BIN:-}" && -x "${MEMO_WORKFLOW_CLI_BIN}" ]]; then
-    clear_quarantine_if_needed "${MEMO_WORKFLOW_CLI_BIN}"
-    printf '%s\n' "${MEMO_WORKFLOW_CLI_BIN}"
-    return 0
-  fi
-
+resolve_helper() {
+  local helper_name="$1"
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-  local packaged_cli
-  packaged_cli="$script_dir/../bin/memo-workflow-cli"
-  if [[ -x "$packaged_cli" ]]; then
-    clear_quarantine_if_needed "$packaged_cli"
-    printf '%s\n' "$packaged_cli"
-    return 0
-  fi
+  local candidates=(
+    "$script_dir/lib/$helper_name"
+    "$script_dir/../../../scripts/lib/$helper_name"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
 
-  local repo_root
-  repo_root="$(cd "$script_dir/../../.." && pwd)"
-
-  local release_cli
-  release_cli="$repo_root/target/release/memo-workflow-cli"
-  if [[ -x "$release_cli" ]]; then
-    clear_quarantine_if_needed "$release_cli"
-    printf '%s\n' "$release_cli"
-    return 0
-  fi
-
-  local debug_cli
-  debug_cli="$repo_root/target/debug/memo-workflow-cli"
-  if [[ -x "$debug_cli" ]]; then
-    clear_quarantine_if_needed "$debug_cli"
-    printf '%s\n' "$debug_cli"
-    return 0
-  fi
-
-  echo "memo-workflow-cli binary not found (checked MEMO_WORKFLOW_CLI_BIN/package/release/debug paths)" >&2
   return 1
 }
+
+error_json_helper="$(resolve_helper "script_filter_error_json.sh" || true)"
+if [[ -n "$error_json_helper" ]]; then
+  # shellcheck disable=SC1090
+  source "$error_json_helper"
+fi
+
+if ! declare -F sfej_emit_error_item_json >/dev/null 2>&1; then
+  sfej_fallback_json_escape() {
+    local value="${1-}"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    value="${value//$'\n'/ }"
+    value="${value//$'\r'/ }"
+    printf '%s' "$value"
+  }
+
+  sfej_emit_error_item_json() {
+    local title="${1-Error}"
+    local subtitle="${2-}"
+    printf '{"items":[{"title":"%s","subtitle":"%s","valid":false}]}' \
+      "$(sfej_fallback_json_escape "$title")" \
+      "$(sfej_fallback_json_escape "$subtitle")"
+    printf '\n'
+  }
+fi
+
+workflow_cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
+if [[ -z "$workflow_cli_resolver_helper" ]]; then
+  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$workflow_cli_resolver_helper"
+
+query_policy_helper="$(resolve_helper "script_filter_query_policy.sh" || true)"
+if [[ -z "$query_policy_helper" ]]; then
+  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate script_filter_query_policy.sh runtime helper."
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$query_policy_helper"
 
 map_error_title() {
   local message
@@ -93,24 +80,7 @@ map_error_title() {
   printf '%s\n' "Memo workflow error"
 }
 
-query=""
-query_provided=0
-if [[ $# -gt 0 ]]; then
-  query="${1-}"
-  query_provided=1
-fi
-# Alfred debug/log output may show '(null)' for missing argv.
-if [[ "$query" == "(null)" ]]; then
-  query=""
-  query_provided=0
-fi
-if [[ "$query_provided" -eq 0 && -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
-  query="${alfred_workflow_query}"
-elif [[ "$query_provided" -eq 0 && -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
-  query="${ALFRED_WORKFLOW_QUERY}"
-elif [[ "$query_provided" -eq 0 && -z "$query" && ! -t 0 ]]; then
-  query="$(cat)"
-fi
+query="$(sfqp_resolve_query_input_memo "$@")"
 
 query_prefix="${MEMO_QUERY_PREFIX:-}"
 if [[ -n "$query_prefix" ]]; then
@@ -124,21 +94,32 @@ fi
 err_file="${TMPDIR:-/tmp}/memo-add-script-filter.err.$$"
 trap 'rm -f "$err_file"' EXIT
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../../.." && pwd)"
+
 memo_workflow_cli=""
-if ! memo_workflow_cli="$(resolve_memo_workflow_cli 2>"$err_file")"; then
-  emit_error_item "memo-workflow-cli binary not found" "Re-import workflow package or set MEMO_WORKFLOW_CLI_BIN."
+if ! memo_workflow_cli="$(
+  wfcr_resolve_binary \
+    "MEMO_WORKFLOW_CLI_BIN" \
+    "$script_dir/../bin/memo-workflow-cli" \
+    "$repo_root/target/release/memo-workflow-cli" \
+    "$repo_root/target/debug/memo-workflow-cli" \
+    "memo-workflow-cli binary not found (checked MEMO_WORKFLOW_CLI_BIN/package/release/debug paths)" \
+    2>"$err_file"
+)"; then
+  sfej_emit_error_item_json "memo-workflow-cli binary not found" "Re-import workflow package or set MEMO_WORKFLOW_CLI_BIN."
   exit 0
 fi
 
 if json_output="$("$memo_workflow_cli" script-filter --query "$query" 2>"$err_file")"; then
   if [[ -z "$json_output" ]]; then
-    emit_error_item "Memo workflow error" "memo-workflow-cli returned empty response"
+    sfej_emit_error_item_json "Memo workflow error" "memo-workflow-cli returned empty response"
     exit 0
   fi
 
   if command -v jq >/dev/null 2>&1; then
     if ! jq -e '.items | type == "array"' >/dev/null <<<"$json_output"; then
-      emit_error_item "Memo workflow error" "memo-workflow-cli returned malformed Alfred JSON"
+      sfej_emit_error_item_json "Memo workflow error" "memo-workflow-cli returned malformed Alfred JSON"
       exit 0
     fi
   fi
@@ -149,4 +130,4 @@ fi
 
 err_msg="$(cat "$err_file")"
 [[ -n "$err_msg" ]] || err_msg="memo-workflow-cli script-filter failed"
-emit_error_item "$(map_error_title "$err_msg")" "$err_msg"
+sfej_emit_error_item_json "$(map_error_title "$err_msg")" "$err_msg"
