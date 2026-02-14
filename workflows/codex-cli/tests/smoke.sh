@@ -805,12 +805,20 @@ assert_jq_json "$save_yes_json" '.items[0].arg == "save::team-alpha.json::1"' "s
 save_yes_short_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "--yes team-alpha.json"; })"
 assert_jq_json "$save_yes_short_json" '.items[0].arg == "save::team-alpha.json::1"' "implicit --yes save mapping mismatch"
 
-remove_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove team-alpha"; })"
+remove_secret_dir="$tmp_dir/remove-secrets"
+mkdir -p "$remove_secret_dir"
+printf '{"email":"remove@example.com"}\n' >"$remove_secret_dir/team-alpha.json"
+
+remove_json="$({ CODEX_SECRET_DIR="$remove_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove team-alpha"; })"
 assert_jq_json "$remove_json" '.items[0].arg == "remove::team-alpha.json::0"' "remove command should normalize json suffix"
 assert_jq_json "$remove_json" '.items[1].arg == "remove::team-alpha.json::1"' "remove command should offer --yes variant"
 
-remove_yes_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove --yes team-alpha.json"; })"
+remove_yes_json="$({ CODEX_SECRET_DIR="$remove_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove --yes team-alpha.json"; })"
 assert_jq_json "$remove_yes_json" '.items[0].arg == "remove::team-alpha.json::1"' "remove --yes mapping mismatch"
+
+missing_remove_json="$({ CODEX_SECRET_DIR="$remove_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove team-missing"; })"
+assert_jq_json "$missing_remove_json" '.items[0].title == "Secret file not found"' "remove should fail when secret file is missing"
+assert_jq_json "$missing_remove_json" '.items[0].valid == false' "missing remove item must be invalid"
 
 invalid_remove_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove ../bad"; })"
 assert_jq_json "$invalid_remove_json" '.items[0].title == "Invalid secret file name"' "invalid remove file name should be rejected"
@@ -996,11 +1004,11 @@ assert_jq_json "$alias_save_json" '.items[1].arg == "save::team-alpha.json::1"' 
 alias_save_yes_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_save.sh" "--yes team-alpha.json"; })"
 assert_jq_json "$alias_save_yes_json" '.items[0].arg == "save::team-alpha.json::1"' "cxs --yes should map to save::...::1"
 
-alias_remove_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_remove.sh" "team-alpha"; })"
+alias_remove_json="$({ CODEX_SECRET_DIR="$remove_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_remove.sh" "team-alpha"; })"
 assert_jq_json "$alias_remove_json" '.items[0].arg == "remove::team-alpha.json::0"' "cxr wrapper should map to remove command"
 assert_jq_json "$alias_remove_json" '.items[1].arg == "remove::team-alpha.json::1"' "cxr wrapper should expose --yes variant"
 
-alias_remove_yes_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_remove.sh" "--yes team-alpha.json"; })"
+alias_remove_yes_json="$({ CODEX_SECRET_DIR="$remove_secret_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_remove.sh" "--yes team-alpha.json"; })"
 assert_jq_json "$alias_remove_yes_json" '.items[0].arg == "remove::team-alpha.json::1"' "cxr --yes should map to remove::...::1"
 
 unknown_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "totally-unknown-command"; })"
@@ -1052,13 +1060,28 @@ CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "save::team-alpha.json::1" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "auth save --yes team-alpha.json" ]] || fail "save --yes mapping mismatch"
 
-CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+remove_action_secret_dir="$tmp_dir/remove-action-secrets"
+mkdir -p "$remove_action_secret_dir"
+printf '{"email":"alpha@example.com"}\n' >"$remove_action_secret_dir/team-alpha.json"
+printf '{"email":"cancel@example.com"}\n' >"$remove_action_secret_dir/team-cancel.json"
+
+CODEX_SECRET_DIR="$remove_action_secret_dir" CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "remove::team-alpha.json::0" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "auth remove --yes team-alpha.json" ]] || fail "remove without yes should auto-confirm and promote to --yes"
 
-CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+CODEX_SECRET_DIR="$remove_action_secret_dir" CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "remove::team-alpha.json::1" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "auth remove --yes team-alpha.json" ]] || fail "remove --yes mapping mismatch"
+
+missing_remove_log_before="$(wc -l <"$action_log" | tr -d ' ')"
+set +e
+OSASCRIPT_STUB_FORCE_FAIL=1 CODEX_SECRET_DIR="$remove_action_secret_dir" CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/action_open.sh" "remove::team-missing.json::0" >/dev/null 2>&1
+missing_remove_rc=$?
+set -e
+[[ "$missing_remove_rc" -eq 66 ]] || fail "remove missing file should return 66"
+missing_remove_log_after="$(wc -l <"$action_log" | tr -d ' ')"
+[[ "$missing_remove_log_after" == "$missing_remove_log_before" ]] || fail "missing remove should not execute codex-cli auth remove"
 
 save_overwrite_secret_dir="$tmp_dir/save-overwrite-secrets"
 mkdir -p "$save_overwrite_secret_dir"
@@ -1089,7 +1112,7 @@ save_log_after="$(wc -l <"$action_log" | tr -d ' ')"
 
 remove_log_before="$(wc -l <"$action_log" | tr -d ' ')"
 set +e
-OSASCRIPT_STUB_FORCE_FAIL=1 CODEX_REMOVE_CONFIRM=1 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+OSASCRIPT_STUB_FORCE_FAIL=1 CODEX_SECRET_DIR="$remove_action_secret_dir" CODEX_REMOVE_CONFIRM=1 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "remove::team-cancel.json::0" >/dev/null 2>&1
 remove_cancel_rc=$?
 set -e

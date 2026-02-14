@@ -249,6 +249,23 @@ ensure_codex_secret_dir_exists() {
   return 1
 }
 
+ensure_remove_secret_exists() {
+  local secret="$1"
+  local secret_dir
+  if ! secret_dir="$(ensure_codex_secret_dir_env 2>/dev/null)"; then
+    echo "CODEX_SECRET_DIR is not configured; cannot remove ${secret}." >&2
+    return 66
+  fi
+
+  local secret_path="${secret_dir%/}/${secret}"
+  if [[ ! -f "$secret_path" ]]; then
+    echo "secret file does not exist: ${secret_path}" >&2
+    return 66
+  fi
+
+  return 0
+}
+
 secret_dir_has_saved_json() {
   local secret_dir="${1:-}"
   [[ -n "$secret_dir" ]] || return 1
@@ -793,6 +810,14 @@ remove::*)
   if [[ -z "$secret" || -z "$yes_flag" ]]; then
     echo "invalid remove action token: $action_token" >&2
     exit 2
+  fi
+
+  if ensure_remove_secret_exists "$secret"; then
+    :
+  else
+    remove_rc=$?
+    notify "Failed(${remove_rc}): auth remove ${secret}"
+    exit "$remove_rc"
   fi
 
   if confirm_remove_if_needed "$secret" "$yes_flag"; then
