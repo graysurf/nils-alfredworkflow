@@ -112,6 +112,7 @@ for required in \
   scripts/script_filter_diag.sh \
   scripts/script_filter_diag_all.sh \
   scripts/script_filter_save.sh \
+  scripts/script_filter_remove.sh \
   scripts/lib/codex_cli_runtime.sh \
   scripts/action_open.sh \
   scripts/prepare_package.sh \
@@ -127,6 +128,7 @@ for executable in \
   scripts/script_filter_diag.sh \
   scripts/script_filter_diag_all.sh \
   scripts/script_filter_save.sh \
+  scripts/script_filter_remove.sh \
   scripts/action_open.sh \
   scripts/prepare_package.sh \
   tests/smoke.sh; do
@@ -228,6 +230,9 @@ JSON
     ;;
   save)
     printf '{"ok":true,"cmd":"auth save","argv":"%s"}\n' "$*"
+    ;;
+  remove)
+    printf '{"ok":true,"cmd":"auth remove","argv":"%s"}\n' "$*"
     ;;
   use)
     [[ -n "${3:-}" ]] || {
@@ -800,6 +805,17 @@ assert_jq_json "$save_yes_json" '.items[0].arg == "save::team-alpha.json::1"' "s
 save_yes_short_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "--yes team-alpha.json"; })"
 assert_jq_json "$save_yes_short_json" '.items[0].arg == "save::team-alpha.json::1"' "implicit --yes save mapping mismatch"
 
+remove_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove team-alpha"; })"
+assert_jq_json "$remove_json" '.items[0].arg == "remove::team-alpha.json::0"' "remove command should normalize json suffix"
+assert_jq_json "$remove_json" '.items[1].arg == "remove::team-alpha.json::1"' "remove command should offer --yes variant"
+
+remove_yes_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove --yes team-alpha.json"; })"
+assert_jq_json "$remove_yes_json" '.items[0].arg == "remove::team-alpha.json::1"' "remove --yes mapping mismatch"
+
+invalid_remove_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "remove ../bad"; })"
+assert_jq_json "$invalid_remove_json" '.items[0].title == "Invalid secret file name"' "invalid remove file name should be rejected"
+assert_jq_json "$invalid_remove_json" '.items[0].valid == false' "invalid remove item must be invalid"
+
 use_secret_dir="$tmp_dir/secrets"
 mkdir -p "$use_secret_dir"
 printf '{"email":"alpha@example.com"}\n' >"$use_secret_dir/alpha.json"
@@ -980,6 +996,13 @@ assert_jq_json "$alias_save_json" '.items[1].arg == "save::team-alpha.json::1"' 
 alias_save_yes_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_save.sh" "--yes team-alpha.json"; })"
 assert_jq_json "$alias_save_yes_json" '.items[0].arg == "save::team-alpha.json::1"' "cxs --yes should map to save::...::1"
 
+alias_remove_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_remove.sh" "team-alpha"; })"
+assert_jq_json "$alias_remove_json" '.items[0].arg == "remove::team-alpha.json::0"' "cxr wrapper should map to remove command"
+assert_jq_json "$alias_remove_json" '.items[1].arg == "remove::team-alpha.json::1"' "cxr wrapper should expose --yes variant"
+
+alias_remove_yes_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter_remove.sh" "--yes team-alpha.json"; })"
+assert_jq_json "$alias_remove_yes_json" '.items[0].arg == "remove::team-alpha.json::1"' "cxr --yes should map to remove::...::1"
+
 unknown_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "totally-unknown-command"; })"
 assert_jq_json "$unknown_json" '.items[0].title | startswith("Unknown command:")' "unknown query should show guidance"
 
@@ -1028,6 +1051,14 @@ CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "save::team-alpha.json::1" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "auth save --yes team-alpha.json" ]] || fail "save --yes mapping mismatch"
+
+CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/action_open.sh" "remove::team-alpha.json::0" >/dev/null
+[[ "$(tail -n1 "$action_log")" == "auth remove team-alpha.json" ]] || fail "remove without yes mapping mismatch"
+
+CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/action_open.sh" "remove::team-alpha.json::1" >/dev/null
+[[ "$(tail -n1 "$action_log")" == "auth remove --yes team-alpha.json" ]] || fail "remove --yes mapping mismatch"
 
 save_overwrite_secret_dir="$tmp_dir/save-overwrite-secrets"
 mkdir -p "$save_overwrite_secret_dir"
@@ -1258,6 +1289,7 @@ assert_file "$packaged_dir/scripts/script_filter_auth_current.sh"
 assert_file "$packaged_dir/scripts/script_filter_diag.sh"
 assert_file "$packaged_dir/scripts/script_filter_diag_all.sh"
 assert_file "$packaged_dir/scripts/script_filter_save.sh"
+assert_file "$packaged_dir/scripts/script_filter_remove.sh"
 assert_file "$packaged_dir/scripts/lib/codex_cli_runtime.sh"
 assert_file "$packaged_dir/scripts/lib/script_filter_query_policy.sh"
 assert_file "$packaged_dir/scripts/action_open.sh"
@@ -1270,6 +1302,7 @@ assert_exec "$packaged_dir/scripts/script_filter_auth_current.sh"
 assert_exec "$packaged_dir/scripts/script_filter_diag.sh"
 assert_exec "$packaged_dir/scripts/script_filter_diag_all.sh"
 assert_exec "$packaged_dir/scripts/script_filter_save.sh"
+assert_exec "$packaged_dir/scripts/script_filter_remove.sh"
 assert_exec "$packaged_dir/bin/codex-cli"
 assert_file "$artifact_path"
 assert_file "$artifact_sha_path"
@@ -1281,14 +1314,14 @@ fi
 packaged_json_file="$tmp_dir/packaged.json"
 plist_to_json "$packaged_plist" >"$packaged_json_file"
 
-assert_jq_file "$packaged_json_file" '.objects | length == 9' "plist must contain seven script filters, one hotkey, and one action object"
-assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter")] | length == 7' "plist must expose seven script filter triggers"
+assert_jq_file "$packaged_json_file" '.objects | length == 10' "plist must contain eight script filters, one hotkey, and one action object"
+assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter")] | length == 8' "plist must expose eight script filter triggers"
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.trigger.hotkey")] | length == 1' "plist must expose one hotkey trigger for cxau"
-assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["cx","cxa","cxac","cxau","cxd","cxda","cxs"]' "workflow keywords must include cx/cxa/cxac/cxau/cxd/cxda/cxs"
+assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["cx","cxa","cxac","cxau","cxd","cxda","cxr","cxs"]' "workflow keywords must include cx/cxa/cxac/cxau/cxd/cxda/cxs/cxr"
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.queuedelaycustom] | all(. == 1)' "all codex script filters must use 1-second queue delay custom value"
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.queuedelaymode] | all(. == 0)' "all codex script filters must use queue delay mode 0"
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.queuedelayimmediatelyinitially] | all(. == false)' "all codex script filters must disable immediate initial run"
-assert_jq_file "$packaged_json_file" '.connections | length == 8' "plist must include seven scriptfilter-to-action connections and one hotkey route"
+assert_jq_file "$packaged_json_file" '.connections | length == 9' "plist must include eight scriptfilter-to-action connections and one hotkey route"
 assert_jq_file "$packaged_json_file" '.connections["771DC53D-E670-447A-9983-1E513A55CA1E"][0].destinationuid == "B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7"' "cxau hotkey must target cxau script filter"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig | length >= 4' "plist must expose codex workflow config variables"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_CLI_BIN") | .config.default == ""' "CODEX_CLI_BIN config row missing"
@@ -1311,6 +1344,8 @@ assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="C4A6E4D4-4C89-4
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="C4A6E4D4-4C89-4F8E-B6F8-2F1A7A5E6D09") | .config.scriptfile == "./scripts/script_filter_diag_all.sh"' "cxda script filter wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="A9F12D4E-1D99-4D7B-A950-6E84A583A9C2") | .config.keyword == "cxs"' "keyword trigger must include cxs"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="A9F12D4E-1D99-4D7B-A950-6E84A583A9C2") | .config.scriptfile == "./scripts/script_filter_save.sh"' "cxs script filter wiring mismatch"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="EC219E70-FAD4-4E58-A883-8E02D7E43630") | .config.keyword == "cxr"' "keyword trigger must include cxr"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="EC219E70-FAD4-4E58-A883-8E02D7E43630") | .config.scriptfile == "./scripts/script_filter_remove.sh"' "cxr script filter wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action wiring mismatch"
 assert_jq_file "$packaged_json_file" '.readme | contains("# Codex CLI - Alfred Workflow")' "readme heading should be synced from README.md"
 assert_jq_file "$packaged_json_file" '.readme | test("\\|\\s*-{3,}\\s*\\|") | not' "readme table separators must be downgraded"

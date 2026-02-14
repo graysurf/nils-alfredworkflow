@@ -739,6 +739,23 @@ save::*)
   fi
   exit $?
   ;;
+remove::*)
+  payload="${action_token#remove::}"
+  secret="${payload%::*}"
+  yes_flag="${payload##*::}"
+
+  if [[ -z "$secret" || -z "$yes_flag" ]]; then
+    echo "invalid remove action token: $action_token" >&2
+    exit 2
+  fi
+
+  if [[ "$yes_flag" == "1" ]]; then
+    run_codex_command "$codex_cli" "auth remove --yes $secret" auth remove --yes "$secret"
+  else
+    run_codex_command "$codex_cli" "auth remove $secret" auth remove "$secret"
+  fi
+  exit $?
+  ;;
 diag::default)
   run_codex_diag_command "$codex_cli" "default" "diag rate-limits --json" "cxd result" diag rate-limits --json
   exit $?
