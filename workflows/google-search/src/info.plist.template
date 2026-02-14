@@ -34,11 +34,24 @@
         <false/>
       </dict>
     </array>
+    <key>C3D0A8F1-3F8A-4DAA-9D5D-2A6C4F52A9E8</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
   </dict>
   <key>createdby</key>
   <string>graysurf</string>
   <key>description</key>
-  <string>Search Google results via Brave API and open selected links in your browser.</string>
+  <string>Search Google with two-stage suggestions (gg) and direct Brave mode (gb), then open selected links.</string>
   <key>disabled</key>
   <false/>
   <key>name</key>
@@ -97,6 +110,55 @@
     <dict>
       <key>config</key>
       <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>gb</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <false/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_direct.sh</string>
+        <key>subtext</key>
+        <string>Search with Brave directly</string>
+        <key>title</key>
+        <string>Google Search Direct</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>C3D0A8F1-3F8A-4DAA-9D5D-2A6C4F52A9E8</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
         <key>action</key>
         <integer>0</integer>
         <key>argument</key>
@@ -148,7 +210,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Set BRAVE_API_KEY and start searching with keyword gg.</string>
+  <string>Use gg for two-stage suggestions and gb for direct Brave search. Set BRAVE_API_KEY to open search results.</string>
   <key>uidata</key>
   <dict>
     <key>726AB578-5514-4DCE-9CCC-70123C3306BC</key>
@@ -164,6 +226,13 @@
       <integer>230</integer>
       <key>ypos</key>
       <integer>180</integer>
+    </dict>
+    <key>C3D0A8F1-3F8A-4DAA-9D5D-2A6C4F52A9E8</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>290</integer>
     </dict>
     <key>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</key>
     <dict>

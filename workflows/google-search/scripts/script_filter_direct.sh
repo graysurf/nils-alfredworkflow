@@ -53,10 +53,10 @@ emit_error_item() {
 }
 
 print_error_item() {
-  local raw_message="${1:-brave-cli query failed}"
+  local raw_message="${1:-brave-cli search failed}"
   local message
   message="$(normalize_error_message "$raw_message")"
-  [[ -n "$message" ]] || message="brave-cli query failed"
+  [[ -n "$message" ]] || message="brave-cli search failed"
 
   local title="Google Search error"
   local subtitle="$message"
@@ -65,13 +65,10 @@ print_error_item() {
 
   if [[ "$lower" == *"query must not be empty"* || "$lower" == *"query cannot be empty"* || "$lower" == *"empty query"* ]]; then
     title="Enter a search query"
-    subtitle="Type keywords after gg to get Google suggestions."
-  elif [[ "$lower" == *"google suggest request failed"* || "$lower" == *"invalid google suggest response"* || "$lower" == *"suggestions unavailable"* ]]; then
-    title="Google suggestions unavailable"
-    subtitle="Cannot fetch suggestions now. Retry or use gb for direct search."
+    subtitle="Type keywords after gg to search Google."
   elif [[ "$lower" == *"missing brave_api_key"* || "$lower" == *"brave_api_key is missing"* || "$lower" == *"brave api key is missing"* || "$lower" == *"brave_api_key is required"* ]]; then
     title="Brave API key is missing"
-    subtitle="Set BRAVE_API_KEY in workflow configuration to open selected suggestions."
+    subtitle="Set BRAVE_API_KEY in workflow configuration and retry."
   elif [[ "$lower" == *"quota"* || "$lower" == *"rate limit"* || "$lower" == *"rate-limit"* || "$lower" == *"too many requests"* || "$lower" == *"http 429"* || "$lower" == *"status 429"* ]]; then
     title="Brave API rate limited"
     subtitle="Too many requests in a short time. Retry shortly or lower BRAVE_MAX_RESULTS."
@@ -110,9 +107,9 @@ resolve_brave_cli() {
     "brave-cli binary not found (checked package/release/debug paths)"
 }
 
-google_query_fetch_json() {
+google_search_fetch_json() {
   local query="$1"
-  local err_file="${TMPDIR:-/tmp}/google-search-suggest-script-filter.err.$$.$RANDOM"
+  local err_file="${TMPDIR:-/tmp}/google-search-direct-script-filter.err.$$.$RANDOM"
 
   local brave_cli
   if ! brave_cli="$(resolve_brave_cli 2>"$err_file")"; then
@@ -122,7 +119,7 @@ google_query_fetch_json() {
   fi
 
   local json_output
-  if json_output="$("$brave_cli" query --input "$query" --mode alfred 2>"$err_file")"; then
+  if json_output="$("$brave_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
     rm -f "$err_file"
     if [[ -z "$json_output" ]]; then
       echo "brave-cli returned empty response" >&2
@@ -167,7 +164,7 @@ trimmed_query="$(sfqp_trim "$query")"
 query="$trimmed_query"
 
 if [[ -z "$query" ]]; then
-  emit_error_item "Enter a search query" "Type keywords after gg to get Google suggestions."
+  emit_error_item "Enter a search query" "Type keywords after gb to search Google directly."
   exit 0
 fi
 
@@ -175,7 +172,7 @@ if sfqp_is_short_query "$query" 2; then
   sfqp_emit_short_query_item_json \
     2 \
     "Keep typing (2+ chars)" \
-    "Type at least %s characters before fetching suggestions."
+    "Type at least %s characters before direct Google search."
   exit 0
 fi
 
@@ -183,12 +180,12 @@ fi
 # Google-specific backend fetch and error mapping remain local in this script.
 sfsd_run_search_flow \
   "$query" \
-  "google-search" \
-  "nils-google-search-workflow" \
+  "google-search-direct" \
+  "nils-google-search-direct-workflow" \
   "BRAVE_QUERY_CACHE_TTL_SECONDS" \
   "BRAVE_QUERY_COALESCE_SETTLE_SECONDS" \
   "BRAVE_QUERY_COALESCE_RERUN_SECONDS" \
-  "Fetching Google suggestions..." \
-  "Waiting for final query before fetching Google suggestions." \
-  "google_query_fetch_json" \
+  "Searching Google..." \
+  "Waiting for final query before calling Brave API (direct mode)." \
+  "google_search_fetch_json" \
   "print_error_item"

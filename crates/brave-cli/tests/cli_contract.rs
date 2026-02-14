@@ -63,3 +63,21 @@ fn alfred_mode_keeps_stderr_error_behavior() {
         "alfred mode should keep non-enveloped stderr error"
     );
 }
+
+#[test]
+fn query_mode_empty_input_returns_alfred_feedback_json() {
+    let output = run_cli(&["query", "--input", "   ", "--mode", "alfred"], &[]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(
+        output.stderr.is_empty(),
+        "query empty-input should not use stderr"
+    );
+
+    let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
+    assert!(
+        json.get("items")
+            .and_then(Value::as_array)
+            .is_some_and(|items| !items.is_empty()),
+        "query mode should return at least one guidance item"
+    );
+}

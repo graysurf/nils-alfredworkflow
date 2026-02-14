@@ -7,6 +7,7 @@ CLI backend for the `google-search` workflow using Brave Search API.
 | Command | Options | Description |
 | --- | --- | --- |
 | `brave-cli search` | `--query <QUERY>` | Search Brave web results and print Alfred Script Filter JSON. |
+| `brave-cli query` | `--input <QUERY_OR_TOKEN>` | Two-stage query mode: plain text returns Google suggestions; `res::<query>` returns Brave web results. |
 
 ## Environment Variables
 

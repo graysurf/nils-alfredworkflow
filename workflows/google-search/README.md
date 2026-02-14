@@ -1,6 +1,6 @@
 # Google Search - Alfred Workflow
 
-Search web results from Alfred using Brave Search API and open selected links in your browser.
+Search Google via Alfred with a two-stage suggestion flow (`gg`) plus a direct Brave-search mode (`gb`), then open selected links in your browser.
 
 ## Screenshot
 
@@ -8,8 +8,10 @@ Search web results from Alfred using Brave Search API and open selected links in
 
 ## Features
 
-- Trigger web search with `gg <query>`.
-- Show result title and snippet directly in Alfred.
+- Trigger two-stage search suggestions with `gg <query>`.
+- Suggest stage returns candidate queries and sets Alfred `autocomplete` tokens like `res::rust book`.
+- Search stage renders Brave web results after selecting a suggestion token.
+- Use `gb <query>` for direct Brave web search.
 - Open selected URL in your default browser with `Enter`.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
 - Script Filter queue policy: 1 second delay with initial immediate run disabled.
@@ -33,7 +35,8 @@ Set these via Alfred's "Configure Workflow..." UI:
 
 | Keyword | Behavior |
 |---|---|
-| `gg <query>` | Search and list web results, then open selected URL. |
+| `gg <query>` | Two-stage flow: first fetch Google suggestions, then load Brave web results through `res::` autocomplete token. |
+| `gb <query>` | Direct Brave mode: call `brave-cli search` immediately and open selected URL. |
 
 ## Advanced Runtime Parameters
 
