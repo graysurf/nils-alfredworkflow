@@ -369,6 +369,35 @@ store_diag_result() {
   fi
 }
 
+capture_command_output_with_stdout_priority() {
+  local __out_var="$1"
+  local __rc_var="$2"
+  shift 2
+
+  local stdout_file stderr_file
+  stdout_file="$(mktemp "${TMPDIR:-/tmp}/codex-diag-stdout.XXXXXX")"
+  stderr_file="$(mktemp "${TMPDIR:-/tmp}/codex-diag-stderr.XXXXXX")"
+
+  local capture_rc=0
+  set +e
+  "$@" >"$stdout_file" 2>"$stderr_file"
+  capture_rc=$?
+  set -e
+
+  local captured_stdout captured_stderr chosen_output
+  captured_stdout="$(cat "$stdout_file" 2>/dev/null || true)"
+  captured_stderr="$(cat "$stderr_file" 2>/dev/null || true)"
+  rm -f "$stdout_file" "$stderr_file"
+
+  chosen_output="$captured_stderr"
+  if [[ -n "$captured_stdout" ]]; then
+    chosen_output="$captured_stdout"
+  fi
+
+  printf -v "$__out_var" '%s' "$chosen_output"
+  printf -v "$__rc_var" '%s' "$capture_rc"
+}
+
 run_diag_cache_refresh_for_mode() {
   local mode="$1"
   local codex_cli
@@ -390,26 +419,17 @@ run_diag_cache_refresh_for_mode() {
     if secret_dir_has_saved_json "$resolved_secret_dir"; then
       summary="diag rate-limits --all --json"
       command="diag rate-limits --all --json"
-      set +e
-      output="$("$codex_cli" diag rate-limits --all --json 2>&1)"
-      rc=$?
-      set -e
+      capture_command_output_with_stdout_priority output rc "$codex_cli" diag rate-limits --all --json
     else
       summary="diag rate-limits --json (auth.json)"
       command="diag rate-limits --json"
-      set +e
-      output="$("$codex_cli" diag rate-limits --json 2>&1)"
-      rc=$?
-      set -e
+      capture_command_output_with_stdout_priority output rc "$codex_cli" diag rate-limits --json
     fi
     ;;
   *)
     summary="diag rate-limits --json"
     command="diag rate-limits --json"
-    set +e
-    output="$("$codex_cli" diag rate-limits --json 2>&1)"
-    rc=$?
-    set -e
+    capture_command_output_with_stdout_priority output rc "$codex_cli" diag rate-limits --json
     ;;
   esac
 
@@ -827,11 +847,9 @@ emit_diag_result_items() {
       "diag result"
   fi
 
-  if [[ "$rc" == "0" ]]; then
-    if [[ "$mode" == "all-json" || "$mode" == "default" ]]; then
-      if emit_diag_all_json_account_items "$lower_query" "$output_path"; then
-        return
-      fi
+  if [[ "$mode" == "all-json" || "$mode" == "default" ]]; then
+    if emit_diag_all_json_account_items "$lower_query" "$output_path"; then
+      return
     fi
   fi
 
@@ -1380,10 +1398,9 @@ build_diag_account_lookup_map() {
   [[ -n "$cache_paths" ]] || return 1
   IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
-  local mode rc
+  local mode
   mode="$(read_meta_value "$meta_path" mode)"
-  rc="$(read_meta_value "$meta_path" exit_code)"
-  [[ "$mode" == "all-json" && "$rc" == "0" ]] || return 1
+  [[ "$mode" == "all-json" ]] || return 1
 
   if ! jq -e '.results | type == "array"' "$output_path" >/dev/null 2>&1; then
     return 1
@@ -1485,10 +1502,9 @@ lookup_current_diag_meta() {
   [[ -n "$cache_paths" ]] || return 1
   IFS=$'\t' read -r meta_path output_path <<<"$cache_paths"
 
-  local mode rc
+  local mode
   mode="$(read_meta_value "$meta_path" mode)"
-  rc="$(read_meta_value "$meta_path" exit_code)"
-  [[ "$mode" == "all-json" && "$rc" == "0" ]] || return 1
+  [[ "$mode" == "all-json" ]] || return 1
 
   local dataset_filter
   if jq -e '.results | type == "array"' "$output_path" >/dev/null 2>&1; then
