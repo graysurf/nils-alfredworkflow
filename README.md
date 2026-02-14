@@ -27,7 +27,7 @@ Alfred workflows for macOS users.
 | [Epoch Converter](workflows/epoch-converter/README.md) | `ts` | Convert epoch/datetime values and copy selected output. | No |
 | [Multi Timezone](workflows/multi-timezone/README.md) | `tz` | Show current time across one or more IANA timezones and copy selected output. | Optional tuning: `TIMEZONE_CLI_BIN`, `MULTI_TZ_ZONES`, `MULTI_TZ_LOCAL_OVERRIDE` |
 | [Randomer](workflows/randomer/README.md) | `rr`, `rrv` | Generate random values by format and copy results. | No |
-| [Codex CLI](workflows/codex-cli/README.md) | `cx` | Run Codex auth (`login`, `use`, `save`) and diagnostics (`diag rate-limits`) commands from Alfred. | No (bundled `codex-cli@0.3.2`, macOS arm64) |
+| [Codex CLI](workflows/codex-cli/README.md) | `cx` | Run Codex auth (`login`, `use`, `save`) and diagnostics (`diag rate-limits`) commands from Alfred. | No |
 
 ## Troubleshooting
 
