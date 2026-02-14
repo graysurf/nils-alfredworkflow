@@ -146,7 +146,6 @@ pin_codex_cli() {
   local runtime_file="$repo_root/workflows/codex-cli/scripts/lib/codex_cli_runtime.sh"
   local readme_file="$repo_root/workflows/codex-cli/README.md"
   local plist_file="$repo_root/workflows/codex-cli/src/info.plist.template"
-  local binary_deps_file="$repo_root/BINARY_DEPENDENCIES.md"
 
   replace_in_file \
     "$runtime_file" \
@@ -177,12 +176,6 @@ pin_codex_cli() {
     'cargo install nils-codex-cli --version [0-9A-Za-z.+-]+' \
     "cargo install nils-codex-cli --version ${version}" \
     "codex plist install hint pin"
-
-  replace_in_file \
-    "$binary_deps_file" \
-    'nils-codex-cli[@.][0-9A-Za-z.+-]+' \
-    "nils-codex-cli@${version}" \
-    "binary dependencies codex pin"
 }
 
 pin_memo_cli() {
@@ -190,7 +183,7 @@ pin_memo_cli() {
   local crate_readme_file="$repo_root/crates/memo-workflow-cli/README.md"
   local workflow_readme_file="$repo_root/workflows/memo-add/README.md"
   local workflow_guide_file="$repo_root/docs/WORKFLOW_GUIDE.md"
-  local workflow_contract_file="$repo_root/docs/memo-workflow-contract.md"
+  local workflow_contract_file="$repo_root/crates/memo-workflow-cli/docs/workflow-contract.md"
 
   replace_in_file \
     "$cargo_file" \

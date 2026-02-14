@@ -895,9 +895,9 @@ dependencies = [
 
 [[package]]
 name = "nils-memo-cli"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae7c729f1da7fc5f4bc2f1b4311d9cbe28bcd5aab13d7c42bd0ec77182e55293"
+checksum = "85b4483d6710dc74198bd81c3ca3da672e75ec38967741b9398cb3afc7b605a6"
 dependencies = [
  "anyhow",
  "chrono",

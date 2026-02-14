@@ -2,7 +2,7 @@
 # Shared pinned codex-cli runtime metadata for this workflow.
 
 if [[ -z "${CODEX_CLI_PINNED_VERSION:-}" ]]; then
-  CODEX_CLI_PINNED_VERSION="0.3.7"
+  CODEX_CLI_PINNED_VERSION="0.3.8"
 fi
 
 if [[ -z "${CODEX_CLI_PINNED_CRATE:-}" ]]; then

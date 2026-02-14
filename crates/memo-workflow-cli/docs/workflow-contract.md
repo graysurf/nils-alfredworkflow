@@ -2,7 +2,7 @@
 
 ## Goal
 
-Provide a capture-first Alfred workflow for quick memo insertion backed by `nils-memo-cli@0.3.7`.
+Provide a capture-first Alfred workflow for quick memo insertion backed by `nils-memo-cli@0.3.8`.
 
 ## Primary user behavior
 
