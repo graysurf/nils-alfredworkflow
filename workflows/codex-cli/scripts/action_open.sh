@@ -452,6 +452,35 @@ copy_to_clipboard_best_effort() {
   return 1
 }
 
+capture_command_output_with_stdout_priority() {
+  local __out_var="$1"
+  local __rc_var="$2"
+  shift 2
+
+  local stdout_file stderr_file
+  stdout_file="$(mktemp "${TMPDIR:-/tmp}/codex-diag-stdout.XXXXXX")"
+  stderr_file="$(mktemp "${TMPDIR:-/tmp}/codex-diag-stderr.XXXXXX")"
+
+  local capture_rc=0
+  set +e
+  "$@" >"$stdout_file" 2>"$stderr_file"
+  capture_rc=$?
+  set -e
+
+  local captured_stdout captured_stderr chosen_output
+  captured_stdout="$(cat "$stdout_file" 2>/dev/null || true)"
+  captured_stderr="$(cat "$stderr_file" 2>/dev/null || true)"
+  rm -f "$stdout_file" "$stderr_file"
+
+  chosen_output="$captured_stderr"
+  if [[ -n "$captured_stdout" ]]; then
+    chosen_output="$captured_stdout"
+  fi
+
+  printf -v "$__out_var" '%s' "$chosen_output"
+  printf -v "$__rc_var" '%s' "$capture_rc"
+}
+
 run_codex_command() {
   local codex_cli="$1"
   local summary="$2"
@@ -482,10 +511,7 @@ run_codex_diag_command() {
   local output=""
   local rc=0
 
-  set +e
-  output="$("$codex_cli" "$@" 2>&1)"
-  rc=$?
-  set -e
+  capture_command_output_with_stdout_priority output rc "$codex_cli" "$@"
 
   store_diag_result "$mode" "$summary" "$*" "$rc" "$output"
   open_alfred_search_best_effort "$result_query"

@@ -427,6 +427,49 @@ exit 9
 EOS
 chmod +x "$tmp_dir/stubs/codex-cli-diag-all-json"
 
+cat >"$tmp_dir/stubs/codex-cli-diag-partial-fail" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ -n "${CODEX_STUB_LOG:-}" ]]; then
+  printf '%s\n' "$*" >>"$CODEX_STUB_LOG"
+fi
+if [[ "${1:-}" == "--version" ]]; then
+  echo "codex-cli ${CODEX_CLI_PINNED_VERSION}"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "current" && "${3:-}" == "--json" ]]; then
+  cat <<'JSON'
+{"schema_version":"codex-cli.auth.v1","command":"auth current","ok":true,"result":{"auth_file":"/tmp/auth.json","matched":true,"matched_secret":"beta.json","match_mode":"identity"}}
+JSON
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "current" ]]; then
+  echo "codex: /tmp/auth.json matches beta.json"
+  exit 0
+fi
+if [[ "${1:-}" == "diag" && "${2:-}" == "rate-limits" && "${3:-}" == "--all" && "${4:-}" == "--json" ]]; then
+  cat <<'JSON'
+{"schema_version":"1.0","command":"diag rate-limits --all --json","mode":"multi","ok":false,"results":[{"name":"sym","status":"ok","summary":{"non_weekly_label":"5h","non_weekly_remaining":76,"weekly_remaining":88,"weekly_reset_epoch":1771352340,"weekly_reset_local":"2026-02-18 02:19 +08:00"},"source":"sym.json","raw_usage":{"email":"sym@example.com"}},{"name":"poies","status":"ok","summary":{"non_weekly_label":"5h","non_weekly_remaining":48,"weekly_remaining":54,"weekly_reset_epoch":1771265976,"weekly_reset_local":"2026-02-17 02:19 +08:00"},"source":"poies.json","raw_usage":{"email":"poies@example.com"}},{"name":"expired","status":"error","summary":{"non_weekly_label":"5h","non_weekly_remaining":0,"weekly_remaining":0,"weekly_reset_epoch":1772000000,"weekly_reset_local":"-"},"source":"expired.json","raw_usage":{"email":"expired@example.com"}}]}
+JSON
+  echo "partial failure: expired.json token invalid" >&2
+  exit 1
+fi
+if [[ "${1:-}" == "diag" && "${2:-}" == "rate-limits" && "${3:-}" == "--json" ]]; then
+  cat <<'JSON'
+{"schema_version":"1.0","command":"diag rate-limits --json","mode":"single","ok":false,"result":{"name":"beta","status":"error","summary":{"non_weekly_label":"5h","non_weekly_remaining":0,"weekly_remaining":0,"weekly_reset_epoch":1772000000,"weekly_reset_local":"-"},"source":"beta.json","raw_usage":{"email":"beta@example.com"}}}
+JSON
+  echo "token expired for beta.json" >&2
+  exit 1
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "use" ]]; then
+  printf '{"ok":true,"cmd":"auth use","target":"%s","argv":"%s"}\n' "${3:-}" "$*"
+  exit 0
+fi
+echo "unexpected command: $*" >&2
+exit 9
+EOS
+chmod +x "$tmp_dir/stubs/codex-cli-diag-partial-fail"
+
 cat >"$tmp_dir/stubs/codex-cli-diag-plain" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -1088,6 +1131,28 @@ assert_jq_json "$alias_diag_all_result_json" '.items[0].title == "Diag result re
 assert_jq_json "$alias_diag_all_result_json" '.items | any(.title | test("^sym \\| 5h 76% \\([^)]*\\) \\| weekly 88% \\([^)]*\\)$"))' "cxda result should parse per-account rows"
 # shellcheck disable=SC2016
 assert_jq_json "$alias_diag_all_result_json" '.items | map(.title) as $titles | (($titles | map(startswith("poies | 5h 48%")) | index(true)) < ($titles | map(startswith("sym | 5h 76%")) | index(true)))' "cxda result should sort by earliest weekly reset first"
+
+partial_secret_dir="$tmp_dir/secrets-partial"
+mkdir -p "$partial_secret_dir"
+printf '{"email":"beta@example.com"}\n' >"$partial_secret_dir/beta.json"
+printf '{"email":"poies@example.com"}\n' >"$partial_secret_dir/poies.json"
+printf '{"email":"sym@example.com"}\n' >"$partial_secret_dir/sym.json"
+printf '{"email":"expired@example.com"}\n' >"$partial_secret_dir/expired.json"
+partial_cache_dir="$tmp_dir/diag-partial-cache"
+
+partial_cxda_json="$({ CODEX_SECRET_DIR="$partial_secret_dir" ALFRED_WORKFLOW_CACHE="$partial_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-partial-fail" "$workflow_dir/scripts/script_filter_diag_all.sh" ""; })"
+assert_jq_json "$partial_cxda_json" '.items | any(.title == "Diag failed (all-json, rc=1)")' "cxda should keep failed summary for partial failure payload"
+assert_jq_json "$partial_cxda_json" '.items | any(.title | startswith("poies | "))' "cxda should keep valid account rows when one account fails"
+assert_jq_json "$partial_cxda_json" '.items | any(.title | startswith("expired | "))' "cxda should render failed account rows"
+
+partial_cxd_json="$({ ALFRED_WORKFLOW_CACHE="$partial_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-partial-fail" "$workflow_dir/scripts/script_filter_diag.sh" ""; })"
+assert_jq_json "$partial_cxd_json" '.items | any(.title == "Diag failed (default, rc=1)")' "cxd should keep failed summary for non-zero default diag payload"
+assert_jq_json "$partial_cxd_json" '.items | any(.title | startswith("beta | status=error"))' "cxd should still parse result rows when default diag returns rc=1"
+
+partial_cxau_json="$({ CODEX_SECRET_DIR="$partial_secret_dir" ALFRED_WORKFLOW_CACHE="$partial_cache_dir" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-diag-partial-fail" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
+assert_jq_json "$partial_cxau_json" '.items[0].title == "Current: beta.json"' "cxau should keep current secret row during partial-failure diag cache"
+assert_jq_json "$partial_cxau_json" '.items | any(.title | startswith("poies.json | "))' "cxau should keep valid account metrics when one account fails"
+assert_jq_json "$partial_cxau_json" '.items | any(.title | startswith("expired.json | "))' "cxau should keep failed account rows visible when one account fails"
 
 use_secret_dir_ranked="$tmp_dir/secrets-ranked"
 mkdir -p "$use_secret_dir_ranked"
