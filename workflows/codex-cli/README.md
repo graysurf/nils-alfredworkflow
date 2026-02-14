@@ -82,6 +82,7 @@ cargo install nils-codex-cli --version 0.3.8
 | `CODEX_LOGIN_TIMEOUT_SECONDS` | No | `60` | Login timeout in seconds (`1..3600`). |
 | `CODEX_API_KEY` | No | empty | API key source for `auth login --api-key` (otherwise prompt on macOS). |
 | `CODEX_SAVE_CONFIRM` | No | `1` | Require confirmation for `save` without `--yes` (`0` disables). |
+| `CODEX_REMOVE_CONFIRM` | No | `1` | Require confirmation for `remove` without `--yes` (`0` disables). |
 
 ## Keywords
 
@@ -106,8 +107,9 @@ cargo install nils-codex-cli --version 0.3.8
 | `cx save team-alpha.json` | Run `codex-cli auth save team-alpha.json` (with confirmation) |
 | `cx save --yes team-alpha.json` | Run `codex-cli auth save --yes team-alpha.json` |
 | `cxs --yes team-alpha.json` | Alias of `cx save --yes team-alpha.json` |
-| `cx remove team-alpha.json` | Run `codex-cli auth remove team-alpha.json` |
+| `cx remove team-alpha.json` | Show confirmation dialog, then run `codex-cli auth remove --yes team-alpha.json` |
 | `cx remove --yes team-alpha.json` | Run `codex-cli auth remove --yes team-alpha.json` |
+| `cxr team-alpha.json` | Alias of `cx remove team-alpha.json` |
 | `cxr --yes team-alpha.json` | Alias of `cx remove --yes team-alpha.json` |
 | `cx use alpha` | Run `codex-cli auth use alpha` |
 | `cxau` | Show current JSON + all JSON secrets, then select to use |

@@ -400,6 +400,8 @@ into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
   action script prompts via AppleScript dialog.
 - `CODEX_SAVE_CONFIRM` (optional): default enabled (`1`); when enabled and `--yes` is not set,
   save action asks confirmation before writing.
+- `CODEX_REMOVE_CONFIRM` (optional): default enabled (`1`); when enabled and `--yes` is not set,
+  remove action asks confirmation, then executes `auth remove --yes`.
 - `CODEX_CLI_PACK_BIN` (packaging only, optional): explicit source binary path for bundling.
 - `CODEX_CLI_PACK_INSTALL_ROOT` (packaging only, optional): override the auto-install root used when
   pinned crates.io runtime install is needed.
@@ -479,6 +481,7 @@ Runtime checks:
 - `save` secret file names must reject path traversal and invalid characters.
 - `use` secret names must reject path traversal and invalid characters.
 - `save` without `--yes` should require explicit confirmation unless `CODEX_SAVE_CONFIRM=0`.
+- `remove` without `--yes` should require explicit confirmation unless `CODEX_REMOVE_CONFIRM=0`.
 - Login actions should honor `CODEX_LOGIN_TIMEOUT_SECONDS` (default 60s).
 - `diag --all --json` parsed rows should be sorted by earliest weekly reset first.
 - Action script must preserve non-zero exit status when `codex-cli` fails.

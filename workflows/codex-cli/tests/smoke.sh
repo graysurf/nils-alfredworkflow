@@ -1054,7 +1054,7 @@ CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
 
 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "remove::team-alpha.json::0" >/dev/null
-[[ "$(tail -n1 "$action_log")" == "auth remove team-alpha.json" ]] || fail "remove without yes mapping mismatch"
+[[ "$(tail -n1 "$action_log")" == "auth remove --yes team-alpha.json" ]] || fail "remove without yes should auto-confirm and promote to --yes"
 
 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "remove::team-alpha.json::1" >/dev/null
@@ -1086,6 +1086,16 @@ set -e
 [[ "$save_cancel_rc" -eq 130 ]] || fail "save cancellation should return 130"
 save_log_after="$(wc -l <"$action_log" | tr -d ' ')"
 [[ "$save_log_after" == "$save_log_before" ]] || fail "cancelled save should not execute codex-cli auth save"
+
+remove_log_before="$(wc -l <"$action_log" | tr -d ' ')"
+set +e
+OSASCRIPT_STUB_FORCE_FAIL=1 CODEX_REMOVE_CONFIRM=1 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
+  "$workflow_dir/scripts/action_open.sh" "remove::team-cancel.json::0" >/dev/null 2>&1
+remove_cancel_rc=$?
+set -e
+[[ "$remove_cancel_rc" -eq 130 ]] || fail "remove cancellation should return 130"
+remove_log_after="$(wc -l <"$action_log" | tr -d ' ')"
+[[ "$remove_log_after" == "$remove_log_before" ]] || fail "cancelled remove should not execute codex-cli auth remove"
 
 secret_home="$tmp_dir/home"
 mkdir -p "$secret_home"

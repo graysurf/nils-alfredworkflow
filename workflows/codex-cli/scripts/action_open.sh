@@ -88,6 +88,19 @@ save_confirmation_enabled() {
   esac
 }
 
+remove_confirmation_enabled() {
+  local raw="${CODEX_REMOVE_CONFIRM:-1}"
+  raw="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  case "$raw" in
+  0 | false | no | off)
+    return 1
+    ;;
+  *)
+    return 0
+    ;;
+  esac
+}
+
 confirm_save_if_needed() {
   local secret="$1"
   local yes_flag="$2"
@@ -118,6 +131,39 @@ EOF
 
   notify "Cancelled: auth save ${secret}"
   echo "auth save cancelled by user." >&2
+  return 130
+}
+
+confirm_remove_if_needed() {
+  local secret="$1"
+  local yes_flag="$2"
+
+  if [[ "$yes_flag" == "1" ]]; then
+    return 0
+  fi
+
+  if ! remove_confirmation_enabled; then
+    return 0
+  fi
+
+  if ! command -v osascript >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local escaped_secret
+  escaped_secret="$(printf '%s' "$secret" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+
+  if osascript >/dev/null 2>&1 <<EOF; then
+tell application "System Events"
+  activate
+  display dialog "Remove ${escaped_secret} from CODEX_SECRET_DIR?" buttons {"Cancel", "Remove"} default button "Remove" with icon caution
+end tell
+EOF
+    return 0
+  fi
+
+  notify "Cancelled: auth remove ${secret}"
+  echo "auth remove cancelled by user." >&2
   return 130
 }
 
@@ -749,7 +795,22 @@ remove::*)
     exit 2
   fi
 
-  if [[ "$yes_flag" == "1" ]]; then
+  if confirm_remove_if_needed "$secret" "$yes_flag"; then
+    :
+  else
+    exit $?
+  fi
+
+  effective_yes_flag="$yes_flag"
+  if [[ "$effective_yes_flag" != "1" ]]; then
+    # Alfred executes action_open non-interactively; after explicit dialog confirmation,
+    # force --yes to bypass codex-cli's terminal confirmation prompt.
+    if remove_confirmation_enabled && command -v osascript >/dev/null 2>&1; then
+      effective_yes_flag="1"
+    fi
+  fi
+
+  if [[ "$effective_yes_flag" == "1" ]]; then
     run_codex_command "$codex_cli" "auth remove --yes $secret" auth remove --yes "$secret"
   else
     run_codex_command "$codex_cli" "auth remove $secret" auth remove "$secret"
