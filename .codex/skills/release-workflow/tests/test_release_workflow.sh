@@ -18,6 +18,10 @@ if [[ ! -x "$entrypoint" ]]; then
   echo "error: entrypoint is not executable: $entrypoint" >&2
   exit 1
 fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "error: node is required for release-workflow package version sync checks" >&2
+  exit 1
+fi
 
 "$entrypoint" --help >/dev/null
 
@@ -86,6 +90,28 @@ script_filter = "script_filter.sh"
 action = "action_open.sh"
 EOF
 
+cat > package.json <<'EOF'
+{
+  "name": "release-workflow-test",
+  "version": "0.1.0"
+}
+EOF
+
+cat > package-lock.json <<'EOF'
+{
+  "name": "release-workflow-test",
+  "version": "0.1.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "release-workflow-test",
+      "version": "0.1.0"
+    }
+  }
+}
+EOF
+
 echo "hello" > README.md
 cargo check --workspace >/dev/null
 git add -A
@@ -102,14 +128,23 @@ if ! rg -n '^version = "0.1.0"$' Cargo.toml workflows/open-project/workflow.toml
   echo "error: dry-run should not mutate version files" >&2
   exit 1
 fi
+if ! rg -n '"version": "0.1.0"' package.json package-lock.json >/dev/null; then
+  echo "error: dry-run should not mutate package version files" >&2
+  exit 1
+fi
 
 "$entrypoint" v0.2.0 >/dev/null
 git rev-parse -q --verify refs/tags/v0.2.0 >/dev/null
 git ls-remote --exit-code --tags origin refs/tags/v0.2.0 >/dev/null
 rg -n '^version = "0.2.0"$' Cargo.toml workflows/open-project/workflow.toml Cargo.lock >/dev/null
+rg -n '"version": "0.2.0"' package.json package-lock.json >/dev/null
 git log -1 --pretty=%s | rg '^chore\(release\): bump version to 0.2.0$' >/dev/null
 if ! git diff-tree --no-commit-id --name-only -r HEAD | rg '^Cargo.lock$' >/dev/null; then
   echo "error: expected release bump commit to include Cargo.lock" >&2
+  exit 1
+fi
+if ! git diff-tree --no-commit-id --name-only -r HEAD | rg '^package-lock\.json$' >/dev/null; then
+  echo "error: expected release bump commit to include package-lock.json" >&2
   exit 1
 fi
 local_head="$(git rev-parse HEAD)"

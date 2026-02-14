@@ -12,6 +12,7 @@ Prereqs:
 - Run inside this repository git work tree.
 - `git` available on `PATH`.
 - `semantic-commit` available on `PATH` (used for automated version-bump commit when needed).
+- If tracked `package*.json` files are present: `node` available on `PATH` (used for JSON version sync).
 - Remote `origin` configured and reachable.
 - Release workflow listens on `v*` tags:
   - `.github/workflows/release.yml`
@@ -30,6 +31,7 @@ Outputs:
 - Syncs version values to the provided input version (`vX.Y.Z` -> `X.Y.Z`) for:
   - explicit `version = "..."` entries in tracked `Cargo.toml` files
   - tracked `workflows/*/workflow.toml` manifests (excluding `_template`)
+  - tracked root `package.json` and `package-lock.json` version fields
 - Refreshes tracked `Cargo.lock` workspace package versions when present.
 - Creates a version-bump commit when sync changes are needed.
 - Pushes the version-bump commit to the current upstream branch.
@@ -61,7 +63,7 @@ Failure modes:
 
 1. Validate repository state (`git` repo, clean tree, remote exists, upstream branch ready).
 2. Validate version format and tag uniqueness (local + remote).
-3. Sync versions (`Cargo.toml` + workflow manifests) to input semver and commit/push when needed.
+3. Sync versions (`Cargo.toml` + workflow manifests + root `package*.json`) to input semver and commit/push when needed.
 4. Create annotated tag `Release <version>`.
 5. Push tag to remote.
 6. Print success summary and release URL.

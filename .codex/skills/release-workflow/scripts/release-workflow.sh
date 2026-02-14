@@ -66,6 +66,38 @@ extract_version_value() {
   ' "$file"
 }
 
+extract_json_version() {
+  local file="$1"
+  node - "$file" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const data = JSON.parse(fs.readFileSync(file, "utf8"));
+if (typeof data.version === "string") {
+  process.stdout.write(data.version);
+}
+NODE
+}
+
+extract_package_lock_versions() {
+  local file="$1"
+  node - "$file" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const data = JSON.parse(fs.readFileSync(file, "utf8"));
+const topLevel = typeof data.version === "string" ? data.version : "";
+const rootPackage =
+  data &&
+  data.packages &&
+  typeof data.packages === "object" &&
+  data.packages[""] &&
+  typeof data.packages[""] === "object" &&
+  typeof data.packages[""].version === "string"
+    ? data.packages[""].version
+    : "";
+process.stdout.write(`${topLevel}|${rootPackage}`);
+NODE
+}
+
 set_explicit_version() {
   local file="$1"
   local target_version="$2"
@@ -95,10 +127,72 @@ set_explicit_version() {
   mv "$tmp_file" "$file"
 }
 
+set_package_json_version() {
+  local file="$1"
+  local target_version="$2"
+  if ! node - "$file" "$target_version" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const target = process.argv[3];
+const data = JSON.parse(fs.readFileSync(file, "utf8"));
+if (typeof data.version !== "string") {
+  process.exit(2);
+}
+if (data.version !== target) {
+  data.version = target;
+  fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
+}
+NODE
+  then
+    fail 1 "failed to update package version field in $file"
+  fi
+}
+
+set_package_lock_versions() {
+  local file="$1"
+  local target_version="$2"
+  if ! node - "$file" "$target_version" <<'NODE'
+const fs = require("fs");
+const file = process.argv[2];
+const target = process.argv[3];
+const data = JSON.parse(fs.readFileSync(file, "utf8"));
+let changed = false;
+
+if (typeof data.version === "string" && data.version !== target) {
+  data.version = target;
+  changed = true;
+}
+if (data && data.packages && typeof data.packages === "object") {
+  const rootPackage = data.packages[""];
+  if (rootPackage && typeof rootPackage === "object" && typeof rootPackage.version === "string" && rootPackage.version !== target) {
+    rootPackage.version = target;
+    changed = true;
+  }
+}
+
+if (changed) {
+  fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
+}
+NODE
+  then
+    fail 1 "failed to update package lock version fields in $file"
+  fi
+}
+
+add_version_target() {
+  local file="$1"
+  local kind="$2"
+  local description="$3"
+  VERSION_TARGET_FILES+=("$file")
+  VERSION_TARGET_KIND+=("$kind")
+  VERSION_TARGET_DESC+=("$description")
+}
+
 collect_version_targets() {
   local semver="$1"
-  local file current
+  local file current lock_versions lock_top_level lock_root
   VERSION_TARGET_FILES=()
+  VERSION_TARGET_KIND=()
   VERSION_TARGET_DESC=()
 
   while IFS= read -r file; do
@@ -106,8 +200,7 @@ collect_version_targets() {
     current="$(extract_version_value "$file")"
     [[ -n "$current" ]] || continue
     if [[ "$current" != "$semver" ]]; then
-      VERSION_TARGET_FILES+=("$file")
-      VERSION_TARGET_DESC+=("$file: $current -> $semver")
+      add_version_target "$file" "toml" "$file: $current -> $semver"
     fi
   done < <(git ls-files '*Cargo.toml')
 
@@ -116,13 +209,37 @@ collect_version_targets() {
     current="$(extract_version_value "$file")"
     [[ -n "$current" ]] || continue
     if [[ "$current" != "$semver" ]]; then
-      VERSION_TARGET_FILES+=("$file")
-      VERSION_TARGET_DESC+=("$file: $current -> $semver")
+      add_version_target "$file" "toml" "$file: $current -> $semver"
     fi
   done < <(
     git ls-files 'workflows/*/workflow.toml' \
       | awk '$0 != "workflows/_template/workflow.toml"'
   )
+
+  if git ls-files --error-unmatch package.json >/dev/null 2>&1 \
+    || git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+    command -v node >/dev/null 2>&1 || fail 3 "node is required to sync package*.json versions"
+  fi
+
+  if git ls-files --error-unmatch package.json >/dev/null 2>&1; then
+    current="$(extract_json_version package.json)"
+    [[ -n "$current" ]] || fail 1 "package.json is missing a string version field"
+    if [[ "$current" != "$semver" ]]; then
+      add_version_target "package.json" "package-json" "package.json: $current -> $semver"
+    fi
+  fi
+
+  if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+    lock_versions="$(extract_package_lock_versions package-lock.json)"
+    lock_top_level="${lock_versions%%|*}"
+    lock_root="${lock_versions#*|}"
+    if [[ "$lock_top_level" != "$semver" || "$lock_root" != "$semver" ]]; then
+      add_version_target \
+        "package-lock.json" \
+        "package-lock" \
+        "package-lock.json: version=${lock_top_level:-<missing>}, packages[\"\"].version=${lock_root:-<missing>} -> $semver"
+    fi
+  fi
 }
 
 refresh_cargo_lock_if_present() {
@@ -137,8 +254,7 @@ refresh_cargo_lock_if_present() {
   cargo update --workspace >/dev/null
 
   if ! git diff --quiet -- "$lock_file"; then
-    VERSION_TARGET_FILES+=("$lock_file")
-    VERSION_TARGET_DESC+=("$lock_file: sync workspace package versions to $semver")
+    add_version_target "$lock_file" "cargo-lock" "$lock_file: sync workspace package versions to $semver"
   fi
 }
 
@@ -245,8 +361,25 @@ if [[ "$dry_run" -eq 1 ]]; then
 fi
 
 if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
-  for target_file in "${VERSION_TARGET_FILES[@]}"; do
-    set_explicit_version "$target_file" "$semver"
+  for idx in "${!VERSION_TARGET_FILES[@]}"; do
+    target_file="${VERSION_TARGET_FILES[$idx]}"
+    target_kind="${VERSION_TARGET_KIND[$idx]}"
+    case "$target_kind" in
+      toml)
+        set_explicit_version "$target_file" "$semver"
+        ;;
+      package-json)
+        set_package_json_version "$target_file" "$semver"
+        ;;
+      package-lock)
+        set_package_lock_versions "$target_file" "$semver"
+        ;;
+      cargo-lock)
+        ;;
+      *)
+        fail 1 "unsupported version target kind '$target_kind' for $target_file"
+        ;;
+    esac
   done
 
   refresh_cargo_lock_if_present "$semver"
@@ -259,7 +392,7 @@ if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
   cat <<EOF | semantic-commit commit
 chore(release): bump version to ${semver}
 
-- Sync Cargo and workflow manifest versions to ${semver}.
+- Sync Cargo, workflow, and package manifest versions to ${semver}.
 - Refresh Cargo.lock workspace package versions when present.
 EOF
 
