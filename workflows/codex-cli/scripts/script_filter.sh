@@ -2099,6 +2099,38 @@ handle_remove_query() {
     return
   fi
 
+  local secret_dir
+  if ! secret_dir="$(resolve_codex_secret_dir)"; then
+    emit_item \
+      "No secret directory configured" \
+      "Set CODEX_SECRET_DIR or HOME/XDG_CONFIG_HOME before removing secrets." \
+      "" \
+      false \
+      "remove "
+    return
+  fi
+
+  if [[ ! -d "$secret_dir" ]]; then
+    emit_item \
+      "No secret directory found: ${secret_dir}" \
+      "Create it first and save a secret before running remove." \
+      "" \
+      false \
+      "remove "
+    return
+  fi
+
+  local secret_path="${secret_dir%/}/${normalized_secret}"
+  if [[ ! -f "$secret_path" ]]; then
+    emit_item \
+      "Secret file not found" \
+      "No file: ${secret_path}" \
+      "" \
+      false \
+      "remove ${normalized_secret}"
+    return
+  fi
+
   emit_item \
     "Run auth remove ${normalized_secret}" \
     "Remove ${normalized_secret} from CODEX_SECRET_DIR" \
