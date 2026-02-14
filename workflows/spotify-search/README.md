@@ -9,6 +9,7 @@ Search Spotify tracks from Alfred and play selected results in Spotify app.
 ## Features
 
 - Trigger Spotify search with `sp <query>`.
+- Includes an unassigned hotkey trigger that users can bind in Alfred.
 - Show track title and artist summary directly in Alfred.
 - Open selected result in Spotify app with `Enter`.
 - Map common failures (missing credentials, rate limit, API unavailable, invalid config) to actionable Alfred messages.
@@ -30,6 +31,11 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Keyword | Behavior |
 |---|---|
 | `sp <query>` | Search and list Spotify track results, then open selected result in Spotify app. |
+
+## Hotkey (Optional)
+
+- A hotkey trigger is included but ships unassigned by default.
+- Set it from Alfred Workflow canvas: click the Hotkey node, then record your preferred key combo.
 
 ## Advanced Runtime Parameters
 
