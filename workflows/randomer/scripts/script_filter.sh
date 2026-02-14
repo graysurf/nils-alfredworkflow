@@ -1,30 +1,50 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-json_escape() {
-  local value="${1-}"
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
-  value="${value//$'\n'/ }"
-  value="${value//$'\r'/ }"
-  printf '%s' "$value"
+resolve_helper() {
+  local helper_name="$1"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  local candidates=(
+    "$script_dir/lib/$helper_name"
+    "$script_dir/../../../scripts/lib/$helper_name"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
+error_json_helper="$(resolve_helper "script_filter_error_json.sh" || true)"
+if [[ -z "$error_json_helper" ]]; then
+  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate script_filter_error_json.sh runtime helper.","valid":false}]}\n'
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$error_json_helper"
+
+cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
+if [[ -z "$cli_resolver_helper" ]]; then
+  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$cli_resolver_helper"
+
 normalize_error_message() {
-  local value="${1-}"
-  value="$(printf '%s' "$value" | tr '\n\r' '  ' | sed 's/[[:space:]]\+/ /g; s/^[[:space:]]*//; s/[[:space:]]*$//')"
-  value="${value#error: }"
-  value="${value#Error: }"
-  printf '%s' "$value"
+  sfej_normalize_error_message "${1-}"
 }
 
 emit_error_item() {
   local title="$1"
   local subtitle="$2"
-  printf '{"items":[{"title":"%s","subtitle":"%s","valid":false}]}' \
-    "$(json_escape "$title")" \
-    "$(json_escape "$subtitle")"
-  printf '\n'
+  sfej_emit_error_item_json "$title" "$subtitle"
 }
 
 print_error_item() {
@@ -49,62 +69,28 @@ print_error_item() {
   emit_error_item "$title" "$subtitle"
 }
 
-clear_quarantine_if_needed() {
-  local cli_path="$1"
-
-  if [[ "$(uname -s 2>/dev/null || printf '')" != "Darwin" ]]; then
-    return 0
-  fi
-
-  if ! command -v xattr >/dev/null 2>&1; then
-    return 0
-  fi
-
-  # Release artifacts downloaded from GitHub may carry quarantine.
-  if xattr -p com.apple.quarantine "$cli_path" >/dev/null 2>&1; then
-    xattr -d com.apple.quarantine "$cli_path" >/dev/null 2>&1 || true
-  fi
-}
-
 resolve_randomer_cli() {
-  if [[ -n "${RANDOMER_CLI_BIN:-}" && -x "${RANDOMER_CLI_BIN}" ]]; then
-    clear_quarantine_if_needed "${RANDOMER_CLI_BIN}"
-    printf '%s\n' "${RANDOMER_CLI_BIN}"
-    return 0
-  fi
-
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
   local packaged_cli
   packaged_cli="$script_dir/../bin/randomer-cli"
-  if [[ -x "$packaged_cli" ]]; then
-    clear_quarantine_if_needed "$packaged_cli"
-    printf '%s\n' "$packaged_cli"
-    return 0
-  fi
 
   local repo_root
   repo_root="$(cd "$script_dir/../../.." && pwd)"
 
   local release_cli
   release_cli="$repo_root/target/release/randomer-cli"
-  if [[ -x "$release_cli" ]]; then
-    clear_quarantine_if_needed "$release_cli"
-    printf '%s\n' "$release_cli"
-    return 0
-  fi
 
   local debug_cli
   debug_cli="$repo_root/target/debug/randomer-cli"
-  if [[ -x "$debug_cli" ]]; then
-    clear_quarantine_if_needed "$debug_cli"
-    printf '%s\n' "$debug_cli"
-    return 0
-  fi
 
-  echo "randomer-cli binary not found (checked RANDOMER_CLI_BIN/package/release/debug paths)" >&2
-  return 1
+  wfcr_resolve_binary \
+    "RANDOMER_CLI_BIN" \
+    "$packaged_cli" \
+    "$release_cli" \
+    "$debug_cli" \
+    "randomer-cli binary not found (checked RANDOMER_CLI_BIN/package/release/debug paths)"
 }
 
 query="${1:-}"

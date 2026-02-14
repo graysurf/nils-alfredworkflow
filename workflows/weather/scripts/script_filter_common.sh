@@ -3,23 +3,52 @@ set -euo pipefail
 
 DEFAULT_CITY_FALLBACK="Tokyo"
 DEFAULT_LOCALE_FALLBACK="en"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../../.." && pwd)"
 
-json_escape() {
-  local value="${1-}"
-  value="${value//\\/\\\\}"
-  value="${value//\"/\\\"}"
-  value="${value//$'\n'/ }"
-  value="${value//$'\r'/ }"
-  printf '%s' "$value"
+resolve_helper() {
+  local helper_name="$1"
+  local candidate
+  local cwd_repo_root
+
+  for candidate in \
+    "$script_dir/lib/$helper_name" \
+    "$script_dir/../../../scripts/lib/$helper_name"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  if command -v git >/dev/null 2>&1; then
+    cwd_repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$cwd_repo_root" ]]; then
+      candidate="$cwd_repo_root/scripts/lib/$helper_name"
+      if [[ -f "$candidate" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+      fi
+    fi
+  fi
+
+  return 1
 }
 
-normalize_error_message() {
-  local value="${1-}"
-  value="$(printf '%s' "$value" | tr '\n\r' '  ' | sed 's/[[:space:]]\+/ /g; s/^[[:space:]]*//; s/[[:space:]]*$//')"
-  value="${value#error: }"
-  value="${value#Error: }"
-  printf '%s' "$value"
-}
+error_json_helper="$(resolve_helper "script_filter_error_json.sh" || true)"
+if [[ -z "$error_json_helper" ]]; then
+  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate script_filter_error_json.sh runtime helper.","valid":false}]}\n'
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$error_json_helper"
+
+cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
+if [[ -z "$cli_resolver_helper" ]]; then
+  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$cli_resolver_helper"
 
 trim_query() {
   local value="${1-}"
@@ -47,11 +76,7 @@ emit_single_item() {
   local title="$1"
   local subtitle="$2"
   local valid="$3"
-  printf '{"items":[{"title":"%s","subtitle":"%s","valid":%s}]}' \
-    "$(json_escape "$title")" \
-    "$(json_escape "$subtitle")" \
-    "$valid"
-  printf '\n'
+  sfej_emit_single_item_json "$title" "$subtitle" "$valid"
 }
 
 print_error_item() {
@@ -61,7 +86,7 @@ print_error_item() {
   local prefix
 
   prefix="$(period_title "$period")"
-  message="$(normalize_error_message "$raw_message")"
+  message="$(sfej_normalize_error_message "$raw_message")"
   [[ -n "$message" ]] || message="weather-cli failed"
 
   local title="${prefix} forecast error"
@@ -92,61 +117,13 @@ print_error_item() {
   emit_single_item "$title" "$subtitle" false
 }
 
-clear_quarantine_if_needed() {
-  local cli_path="$1"
-
-  if [[ "$(uname -s 2>/dev/null || printf '')" != "Darwin" ]]; then
-    return 0
-  fi
-
-  if ! command -v xattr >/dev/null 2>&1; then
-    return 0
-  fi
-
-  if xattr -p com.apple.quarantine "$cli_path" >/dev/null 2>&1; then
-    xattr -d com.apple.quarantine "$cli_path" >/dev/null 2>&1 || true
-  fi
-}
-
 resolve_weather_cli() {
-  if [[ -n "${WEATHER_CLI_BIN:-}" && -x "${WEATHER_CLI_BIN}" ]]; then
-    clear_quarantine_if_needed "${WEATHER_CLI_BIN}"
-    printf '%s\n' "${WEATHER_CLI_BIN}"
-    return 0
-  fi
-
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-  local packaged_cli
-  packaged_cli="$script_dir/../bin/weather-cli"
-  if [[ -x "$packaged_cli" ]]; then
-    clear_quarantine_if_needed "$packaged_cli"
-    printf '%s\n' "$packaged_cli"
-    return 0
-  fi
-
-  local repo_root
-  repo_root="$(cd "$script_dir/../../.." && pwd)"
-
-  local release_cli
-  release_cli="$repo_root/target/release/weather-cli"
-  if [[ -x "$release_cli" ]]; then
-    clear_quarantine_if_needed "$release_cli"
-    printf '%s\n' "$release_cli"
-    return 0
-  fi
-
-  local debug_cli
-  debug_cli="$repo_root/target/debug/weather-cli"
-  if [[ -x "$debug_cli" ]]; then
-    clear_quarantine_if_needed "$debug_cli"
-    printf '%s\n' "$debug_cli"
-    return 0
-  fi
-
-  echo "weather-cli binary not found (checked WEATHER_CLI_BIN/package/release/debug paths)" >&2
-  return 1
+  wfcr_resolve_binary \
+    "WEATHER_CLI_BIN" \
+    "$script_dir/../bin/weather-cli" \
+    "$repo_root/target/release/weather-cli" \
+    "$repo_root/target/debug/weather-cli" \
+    "weather-cli binary not found (checked WEATHER_CLI_BIN/package/release/debug paths)"
 }
 
 parse_lat_lon() {
@@ -415,7 +392,7 @@ for city in "${city_targets[@]}"; do
   fi
 
   err_msg="$(cat "$err_file")"
-  message="$(normalize_error_message "$err_msg")"
+  message="$(sfej_normalize_error_message "$err_msg")"
   [[ -n "$message" ]] || message="weather-cli failed"
   error_item="$(jq -nc --arg city "$city" --arg message "$message" '{title: ($city + ": forecast error"), subtitle: $message, valid: false}')"
   item_arrays+=("[$error_item]")

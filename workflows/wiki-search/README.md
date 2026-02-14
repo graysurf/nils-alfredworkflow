@@ -14,6 +14,7 @@ Search Wikipedia articles from Alfred and open selected pages in your browser.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
 - Script Filter queue policy: 1 second delay with initial immediate run disabled.
 - Script-level guardrails: async query coalescing (final query priority) and short TTL cache reduce duplicate API calls while typing.
+- Runtime orchestration is shared via `scripts/lib/script_filter_search_driver.sh`; Wikipedia-specific fetch/error mapping remains local.
 - Map common failures (invalid config, API unavailable) to actionable Alfred messages.
 - Tune language and result count through workflow variables.
 

@@ -1,9 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 1 || -z "${1:-}" ]]; then
-  echo "usage: action_copy.sh <value>" >&2
-  exit 2
+resolve_helper() {
+  local helper_name="$1"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  local candidates=(
+    "$script_dir/lib/$helper_name"
+    "$script_dir/../../../scripts/lib/$helper_name"
+  )
+
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+helper="$(resolve_helper "workflow_action_copy.sh" || true)"
+if [[ -z "$helper" ]]; then
+  echo "workflow_action_copy.sh helper not found" >&2
+  exit 1
 fi
 
-printf '%s' "$1" | pbcopy
+exec "$helper" "$@"

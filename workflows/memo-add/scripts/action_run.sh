@@ -6,62 +6,33 @@ if [[ $# -lt 1 || -z "${1:-}" ]]; then
   exit 2
 fi
 
-clear_quarantine_if_needed() {
-  local cli_path="$1"
-
-  if [[ "$(uname -s 2>/dev/null || printf '')" != "Darwin" ]]; then
-    return 0
-  fi
-
-  if ! command -v xattr >/dev/null 2>&1; then
-    return 0
-  fi
-
-  if xattr -p com.apple.quarantine "$cli_path" >/dev/null 2>&1; then
-    xattr -d com.apple.quarantine "$cli_path" >/dev/null 2>&1 || true
-  fi
-}
-
-resolve_memo_workflow_cli() {
-  if [[ -n "${MEMO_WORKFLOW_CLI_BIN:-}" && -x "${MEMO_WORKFLOW_CLI_BIN}" ]]; then
-    clear_quarantine_if_needed "${MEMO_WORKFLOW_CLI_BIN}"
-    printf '%s\n' "${MEMO_WORKFLOW_CLI_BIN}"
-    return 0
-  fi
-
+resolve_helper() {
+  local helper_name="$1"
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-  local packaged_cli
-  packaged_cli="$script_dir/../bin/memo-workflow-cli"
-  if [[ -x "$packaged_cli" ]]; then
-    clear_quarantine_if_needed "$packaged_cli"
-    printf '%s\n' "$packaged_cli"
-    return 0
-  fi
+  local candidates=(
+    "$script_dir/lib/$helper_name"
+    "$script_dir/../../../scripts/lib/$helper_name"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
 
-  local repo_root
-  repo_root="$(cd "$script_dir/../../.." && pwd)"
-
-  local release_cli
-  release_cli="$repo_root/target/release/memo-workflow-cli"
-  if [[ -x "$release_cli" ]]; then
-    clear_quarantine_if_needed "$release_cli"
-    printf '%s\n' "$release_cli"
-    return 0
-  fi
-
-  local debug_cli
-  debug_cli="$repo_root/target/debug/memo-workflow-cli"
-  if [[ -x "$debug_cli" ]]; then
-    clear_quarantine_if_needed "$debug_cli"
-    printf '%s\n' "$debug_cli"
-    return 0
-  fi
-
-  echo "memo-workflow-cli binary not found (checked MEMO_WORKFLOW_CLI_BIN/package/release/debug paths)" >&2
   return 1
 }
+
+workflow_cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
+if [[ -z "$workflow_cli_resolver_helper" ]]; then
+  echo "memo-workflow helper missing: workflow_cli_resolver.sh" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+source "$workflow_cli_resolver_helper"
 
 notify() {
   local message="$1"
@@ -74,7 +45,16 @@ notify() {
 }
 
 action_token="$1"
-memo_workflow_cli="$(resolve_memo_workflow_cli)"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../../.." && pwd)"
+memo_workflow_cli="$(
+  wfcr_resolve_binary \
+    "MEMO_WORKFLOW_CLI_BIN" \
+    "$script_dir/../bin/memo-workflow-cli" \
+    "$repo_root/target/release/memo-workflow-cli" \
+    "$repo_root/target/debug/memo-workflow-cli" \
+    "memo-workflow-cli binary not found (checked MEMO_WORKFLOW_CLI_BIN/package/release/debug paths)"
+)"
 
 set +e
 output="$("$memo_workflow_cli" action --token "$action_token" 2>&1)"

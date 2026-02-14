@@ -85,9 +85,20 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
 - Shared Script Filter runtime helpers are:
   - `scripts/lib/script_filter_query_policy.sh` (`sfqp_*`)
   - `scripts/lib/script_filter_async_coalesce.sh` (`sfac_*`)
-- `scripts/workflow-pack.sh` must stage both helper files into packaged workflows at `scripts/lib/`.
+- Additional workflow runtime helpers may live in `scripts/lib/` (for example resolver/error/driver helpers) when they are runtime mechanics rather than domain behavior.
+- `scripts/workflow-pack.sh` must stage `scripts/lib/*.sh` into packaged workflows at `scripts/lib/` via a deterministic rule (no per-file ad hoc list).
 - Script Filter adapters should resolve packaged helper first, then local-repo fallback for development/tests.
 - If a required helper file cannot be resolved at runtime, emit a non-crashing Alfred error item (`valid=false`) and exit successfully (`exit 0`).
+
+### `scripts/lib` extraction boundary
+
+- Extract to `scripts/lib` only when logic is both:
+  - Cross-workflow runtime mechanics (for example query normalization, cache/coalesce orchestration, binary resolver plumbing, JSON-safe emitters).
+  - Repeated in multiple workflows with identical or near-identical behavior.
+- Keep local in workflow scripts when logic is:
+  - Product/domain semantics (API-specific error mapping, ranking, rendering phrasing, business policy).
+  - Workflow-specific UX behavior that intentionally diverges.
+- Prefer thin local adapters over generic mega-helpers: shared helpers should expose deterministic primitives, while each workflow keeps its own domain rules and copy.
 
 ### `sfqp_*` query policy usage standard
 

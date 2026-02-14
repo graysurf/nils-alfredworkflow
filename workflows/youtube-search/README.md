@@ -14,6 +14,7 @@ Search YouTube videos from Alfred and open selected videos in your browser.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
 - Script Filter queue policy: 1 second delay with initial immediate run disabled.
 - Script-level guardrails: async query coalescing (final query priority) and short TTL cache reduce duplicate API calls while typing.
+- Runtime orchestration is shared via `scripts/lib/script_filter_search_driver.sh`; YouTube-specific fetch/error mapping remains local.
 - Map common failures (missing API key, quota exceeded, API unavailable, invalid config) to actionable Alfred messages.
 - Tune result count and region targeting through workflow variables.
 
