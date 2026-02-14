@@ -47,6 +47,19 @@
         <false/>
       </dict>
     </array>
+    <key>EC219E70-FAD4-4E58-A883-8E02D7E43630</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
     <key>B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7</key>
     <array>
       <dict>
@@ -157,7 +170,7 @@
         <key>scriptfile</key>
         <string>./scripts/script_filter.sh</string>
         <key>subtext</key>
-        <string>Evaluate and run codex-cli login/use/save/diag actions</string>
+        <string>Evaluate and run codex-cli login/use/save/remove/diag actions</string>
         <key>title</key>
         <string>Codex CLI</string>
         <key>type</key>
@@ -255,7 +268,7 @@
         <key>scriptfile</key>
         <string>./scripts/script_filter_auth.sh</string>
         <key>subtext</key>
-        <string>Alias of cx auth for login/use/save actions</string>
+        <string>Alias of cx auth for login/use/save/remove actions</string>
         <key>title</key>
         <string>Codex CLI Auth</string>
         <key>type</key>
@@ -498,6 +511,55 @@
     <dict>
       <key>config</key>
       <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <false/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>cxr</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <false/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_remove.sh</string>
+        <key>subtext</key>
+        <string>Alias of cx remove for secret delete actions</string>
+        <key>title</key>
+        <string>Codex CLI Remove</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>EC219E70-FAD4-4E58-A883-8E02D7E43630</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
         <key>concurrently</key>
         <false/>
         <key>escaping</key>
@@ -520,7 +582,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keywords cx / cxa / cxau / cxac / cxd / cxs / cxda to run codex-cli auth and diagnostics commands from Alfred.</string>
+  <string>Use keywords cx / cxa / cxau / cxac / cxd / cxs / cxr / cxda to run codex-cli auth and diagnostics commands from Alfred.</string>
   <key>uidata</key>
   <dict>
     <key>1B2C2CF8-9C9E-4E5E-AE2D-6F911B3A9D63</key>
@@ -578,6 +640,13 @@
       <integer>500</integer>
       <key>ypos</key>
       <integer>180</integer>
+    </dict>
+    <key>EC219E70-FAD4-4E58-A883-8E02D7E43630</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>530</integer>
     </dict>
     <key>F1C87F07-0D5E-4AC2-9EA5-4A0D695E4AB1</key>
     <dict>

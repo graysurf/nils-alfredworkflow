@@ -1033,8 +1033,8 @@ emit_assessment_items() {
     false \
     ""
   emit_item \
-    "Implemented now: auth save/use" \
-    "Use save [--yes] <secret.json> and use <secret> (or cxau) from Alfred." \
+    "Implemented now: auth save/use/remove" \
+    "Use save/remove [--yes] <secret.json> and use <secret> (or cxau) from Alfred." \
     "" \
     false \
     ""
@@ -1083,6 +1083,12 @@ emit_auth_action_items() {
     "" \
     false \
     "save "
+  emit_item \
+    "auth remove <secret.json>" \
+    "Type: remove team-alpha.json (or remove --yes team-alpha.json)" \
+    "" \
+    false \
+    "remove "
   emit_item \
     "auth use <secret>" \
     "Type: use alpha (or open cxau to pick from saved JSON secrets)." \
@@ -2035,6 +2041,81 @@ handle_save_query() {
   fi
 }
 
+handle_remove_query() {
+  local raw_query="$1"
+  local remainder
+  local yes_flag=0
+  local secret=""
+  local token
+  local seen_extra=0
+
+  remainder="$(printf '%s' "$raw_query" | sed -E 's/^[[:space:]]*(auth[[:space:]]+)?remove[[:space:]]*//I')"
+
+  # shellcheck disable=SC2206
+  local parts=($remainder)
+  for token in "${parts[@]}"; do
+    case "$token" in
+    --yes | -y)
+      yes_flag=1
+      ;;
+    *)
+      if [[ -z "$secret" ]]; then
+        secret="$token"
+      else
+        seen_extra=1
+      fi
+      ;;
+    esac
+  done
+
+  if [[ "$seen_extra" -eq 1 ]]; then
+    emit_item \
+      "Invalid auth remove arguments" \
+      "Usage: remove [--yes] <secret.json>" \
+      "" \
+      false \
+      "remove "
+    return
+  fi
+
+  if [[ -z "$secret" ]]; then
+    emit_item \
+      "Missing secret file name" \
+      "Usage: remove [--yes] <secret.json> (example: remove team-alpha.json)" \
+      "" \
+      false \
+      "remove "
+    return
+  fi
+
+  local normalized_secret
+  if ! normalized_secret="$(normalize_save_secret "$secret")"; then
+    emit_item \
+      "Invalid secret file name" \
+      "Use basename only, allowed chars: A-Z a-z 0-9 . _ @ - and suffix .json" \
+      "" \
+      false \
+      "remove "
+    return
+  fi
+
+  emit_item \
+    "Run auth remove ${normalized_secret}" \
+    "Remove ${normalized_secret} from CODEX_SECRET_DIR" \
+    "remove::${normalized_secret}::${yes_flag}" \
+    true \
+    "remove ${normalized_secret}"
+
+  if [[ "$yes_flag" -eq 0 ]]; then
+    emit_item \
+      "Run auth remove --yes ${normalized_secret}" \
+      "Skip interactive confirmation when removing ${normalized_secret}." \
+      "remove::${normalized_secret}::1" \
+      true \
+      "remove --yes ${normalized_secret}"
+  fi
+}
+
 emit_latest_diag_result_items_inline() {
   local expected_mode="${1:-}"
   local cache_paths meta_path output_path
@@ -2331,6 +2412,12 @@ if [[ "$lower_query" == save* || "$lower_query" == auth\ save* ]]; then
   exit 0
 fi
 
+if [[ "$lower_query" == remove* || "$lower_query" == auth\ remove* ]]; then
+  handle_remove_query "$trimmed_query"
+  end_items
+  exit 0
+fi
+
 if [[ "$lower_query" == --yes* || "$lower_query" == -y* ]]; then
   handle_save_query "save ${trimmed_query}"
   end_items
@@ -2345,7 +2432,7 @@ fi
 
 emit_item \
   "Unknown command: ${trimmed_query}" \
-  "Try: login, use <secret>, save <secret.json>, diag, or help (--assessment optional)." \
+  "Try: login, use <secret>, save/remove <secret.json>, diag, or help (--assessment optional)." \
   "" \
   false \
   "help"

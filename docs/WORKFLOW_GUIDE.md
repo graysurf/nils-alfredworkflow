@@ -379,13 +379,14 @@ Runtime checks:
 
 ## Codex CLI workflow details
 
-`workflows/codex-cli` bundles `codex-cli` from crate `nils-codex-cli@0.3.2`
+`workflows/codex-cli` bundles `codex-cli` from crate `nils-codex-cli@0.3.8`
 into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
 
 ### Environment variables
 
 - `CODEX_CLI_BIN` (optional): absolute executable path override for `codex-cli`.
-- `CODEX_SECRET_DIR` (optional): secret directory override for `auth save` / `auth use` / `diag` operations.
+- `CODEX_SECRET_DIR` (optional): secret directory override for `auth save` / `auth remove` / `auth use` /
+  `diag` operations.
   If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`.
 - `CODEX_SHOW_ASSESSMENT` (optional): default `0`; set to truthy value (`1/true/yes/on`) to show
   assessment rows by default in script filter results.
@@ -399,6 +400,8 @@ into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
   action script prompts via AppleScript dialog.
 - `CODEX_SAVE_CONFIRM` (optional): default enabled (`1`); when enabled and `--yes` is not set,
   save action asks confirmation before writing.
+- `CODEX_REMOVE_CONFIRM` (optional): default enabled (`1`); when enabled and `--yes` is not set,
+  remove action asks confirmation, then executes `auth remove --yes`.
 - `CODEX_CLI_PACK_BIN` (packaging only, optional): explicit source binary path for bundling.
 - `CODEX_CLI_PACK_INSTALL_ROOT` (packaging only, optional): override the auto-install root used when
   pinned crates.io runtime install is needed.
@@ -406,12 +409,13 @@ into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
 ### Alfred command flow
 
 - Keyword triggers:
-  - `cx`: command palette (auth/use/save/diag)
+  - `cx`: command palette (auth/use/save/remove/diag)
   - `cxa`: auth-focused alias
   - `cxau`: auth use-focused alias (current + all JSON picker)
   - `cxd`: diag-focused alias
   - `cxda`: diag all-accounts JSON-focused alias
   - `cxs`: save-focused alias
+  - `cxr`: remove-focused alias
 - Script filter adapter: `workflows/codex-cli/scripts/script_filter.sh` provides command
   assessment + executable items, plus cached diag result rendering.
 - Enter flow: `workflows/codex-cli/scripts/action_open.sh` runs mapped command tokens.
@@ -423,6 +427,7 @@ Supported actions in this workflow:
 - `auth login --device-code`
 - `auth use <secret>`
 - `auth save [--yes] <secret.json>`
+- `auth remove [--yes] <secret.json>`
 - `diag rate-limits` presets (`default`, `--cached`, `--one-line`, `--all`, `--all --json`,
   `--all --async --jobs 4`)
 
@@ -455,11 +460,11 @@ Runtime resolution order:
 2. bundled `./bin/codex-cli`
 3. `PATH` `codex-cli` fallback
 
-Packaging resolution order for bundled `codex-cli@0.3.2`:
+Packaging resolution order for bundled `codex-cli@0.3.8`:
 
 1. `CODEX_CLI_PACK_BIN` (if set)
 2. local `PATH` `codex-cli`
-3. auto-install pinned `nils-codex-cli@0.3.2` from crates.io via `cargo install --locked --root <cache-root>`
+3. auto-install pinned `nils-codex-cli@0.3.8` from crates.io via `cargo install --locked --root <cache-root>`
 
 ### Operator validation checklist
 
@@ -476,6 +481,7 @@ Runtime checks:
 - `save` secret file names must reject path traversal and invalid characters.
 - `use` secret names must reject path traversal and invalid characters.
 - `save` without `--yes` should require explicit confirmation unless `CODEX_SAVE_CONFIRM=0`.
+- `remove` without `--yes` should require explicit confirmation unless `CODEX_REMOVE_CONFIRM=0`.
 - Login actions should honor `CODEX_LOGIN_TIMEOUT_SECONDS` (default 60s).
 - `diag --all --json` parsed rows should be sorted by earliest weekly reset first.
 - Action script must preserve non-zero exit status when `codex-cli` fails.

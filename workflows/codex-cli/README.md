@@ -13,6 +13,7 @@ This workflow currently supports:
 - `auth login` (browser, `--api-key`, `--device-code`)
 - `auth use <secret>` (supports direct query and picker list)
 - `auth save [--yes] <secret.json>`
+- `auth remove [--yes] <secret.json>`
 - `auth current --json` quick inspection (`cxac`)
 - `diag rate-limits` presets:
   - default
@@ -81,18 +82,20 @@ cargo install nils-codex-cli --version 0.3.8
 | `CODEX_LOGIN_TIMEOUT_SECONDS` | No | `60` | Login timeout in seconds (`1..3600`). |
 | `CODEX_API_KEY` | No | empty | API key source for `auth login --api-key` (otherwise prompt on macOS). |
 | `CODEX_SAVE_CONFIRM` | No | `1` | Require confirmation for `save` without `--yes` (`0` disables). |
+| `CODEX_REMOVE_CONFIRM` | No | `1` | Require confirmation for `remove` without `--yes` (`0` disables). |
 
 ## Keywords
 
 | Keyword | Behavior |
 |---|---|
-| `cx` | Command palette for auth/save/diag actions. |
+| `cx` | Command palette for auth/save/remove/diag actions. |
 | `cxa` | Alias of `cx auth ...`. |
 | `cxau` | Alias of `cx auth use ...` (current + all JSON picker). |
 | `cxac` | Run `codex-cli auth current --json` and show raw result. |
 | `cxd` | Alias of `cx diag ...`. |
 | `cxda` | Alias of `cx diag all-json ...` (all-accounts JSON view). |
 | `cxs` | Alias of `cx save ...`. |
+| `cxr` | Alias of `cx remove ...`. |
 
 ## Query Examples
 
@@ -104,6 +107,10 @@ cargo install nils-codex-cli --version 0.3.8
 | `cx save team-alpha.json` | Run `codex-cli auth save team-alpha.json` (with confirmation) |
 | `cx save --yes team-alpha.json` | Run `codex-cli auth save --yes team-alpha.json` |
 | `cxs --yes team-alpha.json` | Alias of `cx save --yes team-alpha.json` |
+| `cx remove team-alpha.json` | Show confirmation dialog, then run `codex-cli auth remove --yes team-alpha.json` |
+| `cx remove --yes team-alpha.json` | Run `codex-cli auth remove --yes team-alpha.json` |
+| `cxr team-alpha.json` | Alias of `cx remove team-alpha.json` |
+| `cxr --yes team-alpha.json` | Alias of `cx remove --yes team-alpha.json` |
 | `cx use alpha` | Run `codex-cli auth use alpha` |
 | `cxau` | Show current JSON + all JSON secrets, then select to use |
 | `cxau alpha` | Run `codex-cli auth use alpha` directly |
