@@ -8,23 +8,32 @@ error-to-feedback mapping, and environment variable constraints.
 
 ## Keyword and Query Handling
 
-- Workflow keyword: `gg` (or the configured keyword in Alfred for this workflow object).
+- Workflow keyword (two-stage): `gg`.
+- Direct Brave-search keyword: `gb`.
 - Input query is read from Alfred script filter argument.
 - Query normalization:
   - Trim leading/trailing whitespace.
   - Preserve internal spacing and Unicode characters as provided by user input.
-- Empty query behavior:
-  - Do not call Brave Search API.
-  - Return one non-actionable Alfred item with:
-    - `title = "Enter a search query"`
-    - `subtitle = "Type keywords after gg to search Google."`
-- Short query behavior (`< 2` characters after trim):
-  - Do not call Brave Search API.
-  - Return one non-actionable Alfred item with:
-    - `title = "Keep typing (2+ chars)"`
-    - `subtitle = "Type at least 2 characters before searching Google."`
+
+Two-stage (`gg`) token grammar:
+
+- Suggest stage input: arbitrary query text (`rust`, `rust async`, ...).
+- Suggest stage output rows expose Alfred `autocomplete` tokens:
+  - `res::<QUERY>`
+- Search stage input: query string beginning with `res::`.
+- Search stage output rows map to Brave web search results.
+
+Direct mode (`gb`) behavior:
+
 - Query behavior (`>= 2` characters after trim):
   - Call Brave backend (`brave-cli search --query <query>`) to fetch web results.
+
+Shared empty/short query behavior in workflow script adapters:
+
+- Empty query:
+  - Return one non-actionable Alfred item.
+- Short query (`< 2` characters after trim):
+  - Return one non-actionable Alfred item and skip backend calls.
 
 ## Alfred Item JSON Contract
 
@@ -36,7 +45,18 @@ Top-level output must always be valid Alfred JSON:
 }
 ```
 
-Success item schema (web result):
+Suggest-stage item schema (two-stage `gg`):
+
+```json
+{
+  "title": "Suggestion text",
+  "subtitle": "Search \"Suggestion text\" | Press Tab to load search results",
+  "autocomplete": "res::Suggestion text",
+  "valid": false
+}
+```
+
+Search-stage success item schema (`gg` second stage and `gb` direct):
 
 ```json
 {
@@ -48,9 +68,14 @@ Success item schema (web result):
 
 Rules:
 
-- `title` is required and sourced from Brave result title.
-- `subtitle` is required and sourced from normalized + truncated result description/snippet.
-- `arg` is required for result items and must be the canonical result URL.
+- Suggest-stage rows:
+  - `title` is required and sourced from suggestion text.
+  - `autocomplete` is required and uses `res::<query>` grammar.
+  - `valid` must be `false` to force stage transition via autocomplete.
+- Search-stage rows:
+  - `title` is required and sourced from Brave result title.
+  - `subtitle` is required and sourced from normalized + truncated result description/snippet.
+  - `arg` is required for result items and must be the canonical result URL.
 
 Non-success informational/error items:
 
@@ -77,8 +102,9 @@ The workflow must never crash or emit non-JSON output for handled failures.
 
 | Scenario | Detection signal | Alfred title | Alfred subtitle | Item behavior |
 | --- | --- | --- | --- | --- |
-| Empty query | Query is empty after trim | `Enter a search query` | `Type keywords after gg to search Google.` | `valid: false` |
-| Short query | Query length is `1` after trim | `Keep typing (2+ chars)` | `Type at least 2 characters before searching Google.` | `valid: false` |
+| Empty query | Query is empty after trim | `Enter a search query` | Workflow-specific guidance (`gg` or `gb`) | `valid: false` |
+| Short query | Query length is `1` after trim | `Keep typing (2+ chars)` | Workflow-specific minimum-length guidance | `valid: false` |
+| Suggest backend unavailable | Google suggest request/parse failure | `Google suggestions unavailable` | Retry or use `gb` direct Brave search | `valid: false` |
 | Missing API key | `BRAVE_API_KEY` missing or empty | `Brave API key is missing` | `Set BRAVE_API_KEY in workflow configuration and retry.` | `valid: false` |
 | Quota/rate limited | Error includes quota/rate-limit/HTTP 429 signals | `Brave API quota exceeded` | `Rate quota is exhausted. Retry later or lower BRAVE_MAX_RESULTS.` | `valid: false` |
 | API unavailable | Transport/network/TLS/DNS failures or upstream `5xx` | `Brave API unavailable` | `Cannot reach Brave API now. Check network and retry.` | `valid: false` |

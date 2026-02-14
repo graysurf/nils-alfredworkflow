@@ -11,15 +11,18 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
    - `BRAVE_MAX_RESULTS` (optional)
    - `BRAVE_SAFESEARCH` (optional)
    - `BRAVE_COUNTRY` (optional)
-3. Confirm script-filter contract output is JSON:
+3. Confirm two-stage (`gg`) script-filter output is JSON:
    - `bash workflows/google-search/scripts/script_filter.sh "rust language" | jq -e '.items | type == "array"'`
-4. Confirm queue policy is synced:
+4. Confirm direct (`gb`) script-filter output is JSON:
+   - `bash workflows/google-search/scripts/script_filter_direct.sh "rust language" | jq -e '.items | type == "array"'`
+5. Confirm queue policy is synced:
    - `bash scripts/workflow-sync-script-filter-policy.sh --check --workflows google-search`
 
 ## Common failures and actions
 
 | Symptom in Alfred | Likely cause | Action |
 | --- | --- | --- |
+| `Google suggestions unavailable` | Suggest endpoint request failed or returned invalid payload. | Retry shortly, check network, or switch to direct Brave mode (`gb`). |
 | `Brave API key is missing` | `BRAVE_API_KEY` is empty/missing. | Set a valid token in workflow config, then retry. |
 | `Keep typing (2+ chars)` | Query is shorter than minimum length (`<2`). | Continue typing until at least 2 characters; no API request is sent before that. |
 | `Brave API quota exceeded` | Rate limit/quota exhausted (`429`/quota errors). | Wait and retry later, reduce query frequency, and lower `BRAVE_MAX_RESULTS`. |

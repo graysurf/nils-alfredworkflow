@@ -6,6 +6,8 @@ use brave_cli::{
     brave_api::{self, BraveApiError, WebSearchResult},
     config::{ConfigError, RuntimeConfig},
     feedback,
+    google_suggest::{self, DEFAULT_SUGGEST_MAX_RESULTS, GoogleSuggestError},
+    token::{self, QueryToken},
 };
 
 #[derive(Debug, Parser)]
@@ -26,6 +28,15 @@ enum Commands {
         #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
         mode: OutputMode,
     },
+    /// Query Google suggestions, then search selected tokenized query.
+    Query {
+        /// Query text from Alfred script filter.
+        #[arg(long)]
+        input: String,
+        /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
+        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
+        mode: OutputMode,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -39,12 +50,14 @@ impl Cli {
     fn command_name(&self) -> &'static str {
         match &self.command {
             Commands::Search { .. } => "search",
+            Commands::Query { .. } => "query",
         }
     }
 
     fn output_mode(&self) -> OutputMode {
         match &self.command {
             Commands::Search { mode, .. } => *mode,
+            Commands::Query { mode, .. } => *mode,
         }
     }
 }
@@ -90,6 +103,17 @@ impl AppError {
         }
     }
 
+    fn from_google_suggest(error: GoogleSuggestError) -> Self {
+        match error {
+            GoogleSuggestError::Transport { .. } => {
+                AppError::runtime("google suggest request failed")
+            }
+            GoogleSuggestError::InvalidResponse(_) => {
+                AppError::runtime("invalid google suggest response")
+            }
+        }
+    }
+
     fn exit_code(&self) -> i32 {
         match self.kind {
             ErrorKind::User => 2,
@@ -129,17 +153,24 @@ fn main() {
 }
 
 fn run(cli: Cli) -> Result<String, AppError> {
-    run_with(cli, RuntimeConfig::from_env, brave_api::search_web)
+    run_with(
+        cli,
+        RuntimeConfig::from_env,
+        brave_api::search_web,
+        google_suggest::fetch_suggestions,
+    )
 }
 
-fn run_with<LoadConfig, SearchWeb>(
+fn run_with<LoadConfig, SearchWeb, FetchSuggestions>(
     cli: Cli,
     load_config: LoadConfig,
     search_web: SearchWeb,
+    fetch_suggestions: FetchSuggestions,
 ) -> Result<String, AppError>
 where
     LoadConfig: Fn() -> Result<RuntimeConfig, ConfigError>,
     SearchWeb: Fn(&RuntimeConfig, &str) -> Result<Vec<WebSearchResult>, BraveApiError>,
+    FetchSuggestions: Fn(&str, u8) -> Result<Vec<String>, GoogleSuggestError>,
 {
     match cli.command {
         Commands::Search { query, mode } => {
@@ -153,6 +184,24 @@ where
 
             let payload = feedback::search_results_to_feedback(&results);
             render_feedback(mode, "search", payload)
+        }
+        Commands::Query { input, mode } => {
+            let payload = match token::parse_query_token(&input) {
+                QueryToken::Empty => feedback::empty_input_feedback(),
+                QueryToken::SearchMissingQuery => feedback::missing_search_target_feedback(),
+                QueryToken::Suggest { query } => {
+                    let suggestions = fetch_suggestions(&query, DEFAULT_SUGGEST_MAX_RESULTS)
+                        .map_err(AppError::from_google_suggest)?;
+                    feedback::suggestions_to_feedback(&query, &suggestions)
+                }
+                QueryToken::Search { query } => {
+                    let config = load_config().map_err(AppError::from_config)?;
+                    let results = search_web(&config, &query).map_err(AppError::from_brave_api)?;
+                    feedback::search_results_to_feedback(&results)
+                }
+            };
+
+            render_feedback(mode, "query", payload)
         }
     }
 }
@@ -245,6 +294,13 @@ mod tests {
         }
     }
 
+    fn fixture_suggestions(
+        _query: &str,
+        _max_results: u8,
+    ) -> Result<Vec<String>, GoogleSuggestError> {
+        Ok(vec!["rust language".to_string(), "rust book".to_string()])
+    }
+
     #[test]
     fn main_search_command_outputs_feedback_json_contract() {
         let cli = Cli::parse_from(["brave-cli", "search", "--query", "rust"]);
@@ -259,6 +315,7 @@ mod tests {
                     description: "Build reliable software".to_string(),
                 }])
             },
+            fixture_suggestions,
         )
         .expect("search should succeed");
 
@@ -274,7 +331,7 @@ mod tests {
         );
         assert_eq!(
             first_item.get("subtitle").and_then(Value::as_str),
-            Some("Build reliable software")
+            Some("rust-lang.org | Build reliable software")
         );
         assert_eq!(
             first_item.get("arg").and_then(Value::as_str),
@@ -303,6 +360,7 @@ mod tests {
                     description: "Build reliable software".to_string(),
                 }])
             },
+            fixture_suggestions,
         )
         .expect("search should succeed");
 
@@ -326,8 +384,13 @@ mod tests {
     fn main_rejects_empty_query_as_user_error() {
         let cli = Cli::parse_from(["brave-cli", "search", "--query", "   "]);
 
-        let err = run_with(cli, || Ok(fixture_config()), |_, _| Ok(Vec::new()))
-            .expect_err("empty query should fail");
+        let err = run_with(
+            cli,
+            || Ok(fixture_config()),
+            |_, _| Ok(Vec::new()),
+            fixture_suggestions,
+        )
+        .expect_err("empty query should fail");
 
         assert_eq!(err.kind, ErrorKind::User);
         assert_eq!(err.message, "query must not be empty");
@@ -342,6 +405,7 @@ mod tests {
             cli,
             || Err(ConfigError::MissingApiKey),
             |_, _| Ok(Vec::new()),
+            fixture_suggestions,
         )
         .expect_err("missing config should fail");
 
@@ -363,6 +427,7 @@ mod tests {
                     message: "rate limit exceeded".to_string(),
                 })
             },
+            fixture_suggestions,
         )
         .expect_err("api errors should fail");
 
@@ -384,6 +449,7 @@ mod tests {
                         .expect_err("fixture must produce parse error"),
                 ))
             },
+            fixture_suggestions,
         )
         .expect_err("invalid response should fail");
 
@@ -398,6 +464,103 @@ mod tests {
             .expect_err("help should exit through clap error");
 
         assert_eq!(help.kind(), clap::error::ErrorKind::DisplayHelp);
+    }
+
+    #[test]
+    fn main_query_suggest_mode_maps_to_autocomplete_rows() {
+        let cli = Cli::parse_from(["brave-cli", "query", "--input", "rust"]);
+
+        let output = run_with(
+            cli,
+            || Ok(fixture_config()),
+            |_, _| Ok(Vec::new()),
+            fixture_suggestions,
+        )
+        .expect("query suggest should succeed");
+
+        let json: Value = serde_json::from_str(&output).expect("output should be json");
+        let first_item = json
+            .get("items")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .expect("suggest item should exist");
+
+        assert_eq!(
+            first_item.get("title").and_then(Value::as_str),
+            Some("rust")
+        );
+        assert_eq!(
+            first_item.get("autocomplete").and_then(Value::as_str),
+            Some("res::rust")
+        );
+        assert_eq!(
+            first_item.get("valid").and_then(Value::as_bool),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn main_query_search_mode_routes_res_token_to_brave_search() {
+        let cli = Cli::parse_from(["brave-cli", "query", "--input", "res::rust book"]);
+
+        let output = run_with(
+            cli,
+            || Ok(fixture_config()),
+            |_, query| {
+                assert_eq!(query, "rust book");
+                Ok(vec![WebSearchResult {
+                    title: "Rust Book".to_string(),
+                    url: "https://doc.rust-lang.org/book/".to_string(),
+                    description: "Official Rust guide".to_string(),
+                }])
+            },
+            fixture_suggestions,
+        )
+        .expect("query search should succeed");
+
+        let json: Value = serde_json::from_str(&output).expect("output should be json");
+        let first_item = json
+            .get("items")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .expect("result item should exist");
+
+        assert_eq!(
+            first_item.get("title").and_then(Value::as_str),
+            Some("Rust Book")
+        );
+        assert_eq!(
+            first_item.get("arg").and_then(Value::as_str),
+            Some("https://doc.rust-lang.org/book/")
+        );
+    }
+
+    #[test]
+    fn main_query_empty_input_returns_guidance_without_external_calls() {
+        let cli = Cli::parse_from(["brave-cli", "query", "--input", "   "]);
+
+        let output = run_with(
+            cli,
+            || Ok(fixture_config()),
+            |_, _| Ok(Vec::new()),
+            |_, _| Ok(Vec::new()),
+        )
+        .expect("query empty input should succeed");
+
+        let json: Value = serde_json::from_str(&output).expect("output should be json");
+        let first_item = json
+            .get("items")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .expect("guidance item should exist");
+        assert_eq!(
+            first_item.get("title").and_then(Value::as_str),
+            Some("Type a query for suggestions")
+        );
+        assert_eq!(
+            first_item.get("valid").and_then(Value::as_bool),
+            Some(false)
+        );
     }
 
     #[test]
