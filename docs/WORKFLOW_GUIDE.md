@@ -174,6 +174,41 @@ Runtime checks:
 - API/network failures must return non-actionable error items.
 - Empty API results must return a clear `No articles found` guidance item.
 
+## Bilibili Search workflow details
+
+`workflows/bilibili-search` is a dedicated workflow that uses `bilibili-cli` for bilibili
+suggestion API-backed search feedback.
+
+### Environment variables
+
+- `BILIBILI_UID` (optional): bilibili UID passed as suggest endpoint `userid` for personalized
+  ranking.
+- `BILIBILI_MAX_RESULTS` (optional): default `10`, clamped to `1..20`.
+- `BILIBILI_TIMEOUT_MS` (optional): default `8000`, clamped to `1000..30000`.
+- `BILIBILI_USER_AGENT` (optional): explicit User-Agent override.
+- `BILIBILI_CLI_BIN` (optional): executable path override for `bilibili-cli`.
+
+### Alfred command flow
+
+- Keyword trigger: `bl`.
+- Script filter adapter: `workflows/bilibili-search/scripts/script_filter.sh` ->
+  `bilibili-cli query --input "<query>" --mode alfred`.
+- Enter flow: `workflows/bilibili-search/scripts/action_open.sh` opens selected `arg` URL.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/bilibili-search/tests/smoke.sh`
+- `scripts/workflow-test.sh --id bilibili-search`
+- `scripts/workflow-pack.sh --id bilibili-search`
+
+Runtime checks:
+
+- Script filter must always return valid Alfred JSON fallback items on failure.
+- Invalid `BILIBILI_MAX_RESULTS`/`BILIBILI_TIMEOUT_MS` must map to config guidance rows.
+- Empty suggest results must still expose a direct-search fallback row.
+
 ## Cambridge Dict workflow details
 
 `workflows/cambridge-dict` is a dedicated workflow that uses `cambridge-cli` plus a bundled
