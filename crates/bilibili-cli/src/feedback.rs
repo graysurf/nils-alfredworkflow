@@ -6,7 +6,7 @@ use crate::bilibili_api::SuggestionTerm;
 const NO_SUGGESTIONS_TITLE: &str = "No suggestions found";
 const NO_SUGGESTIONS_SUBTITLE: &str = "Press Enter to search bilibili directly.";
 const DIRECT_SEARCH_TITLE: &str = "Search bilibili directly";
-const RESULT_SUBTITLE_PREFIX: &str = "Search 哔哩哔哩 for ";
+const RESULT_SUBTITLE_PREFIX: &str = "Search bilibili for ";
 const ERROR_TITLE: &str = "Bilibili search failed";
 const SUBTITLE_MAX_CHARS: usize = 120;
 

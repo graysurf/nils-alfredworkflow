@@ -52,7 +52,7 @@ Success item schema (suggestion row):
 ```json
 {
   "title": "Suggestion text",
-  "subtitle": "Search 哔哩哔哩 for Suggestion text",
+  "subtitle": "Search bilibili for Suggestion text",
   "arg": "https://search.bilibili.com/all?keyword=<percent-encoded-query>",
   "autocomplete": "Suggestion text"
 }
