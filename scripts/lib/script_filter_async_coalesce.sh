@@ -171,6 +171,7 @@ sfac_read_latest_request() {
   [[ -n "$seq" && -n "$updated" ]] || return 1
   [[ "$updated" =~ ^[0-9]+$ ]] || return 1
 
+  # shellcheck disable=SC2034 # Exposed for callers that inspect the request snapshot fields.
   SFAC_REQUEST_SEQ="$seq"
   SFAC_REQUEST_UPDATED="$updated"
   SFAC_REQUEST_QUERY="$query"
