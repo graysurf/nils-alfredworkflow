@@ -510,7 +510,7 @@ assert_jq_file "$packaged_json_file" '.connections["C3D0A8F1-3F8A-4DAA-9D5D-2A6C
 assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["BRAVE_API_KEY","BRAVE_COUNTRY","BRAVE_MAX_RESULTS","BRAVE_SAFESEARCH"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="BRAVE_API_KEY") | .config.required == true' "BRAVE_API_KEY must be required"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="BRAVE_MAX_RESULTS") | .config.default == "10"' "BRAVE_MAX_RESULTS default must be 10"
-assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="BRAVE_SAFESEARCH") | .config.default == "moderate"' "BRAVE_SAFESEARCH default must be moderate"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="BRAVE_SAFESEARCH") | .config.default == "off"' "BRAVE_SAFESEARCH default must be off"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="BRAVE_COUNTRY") | .config.required == false' "BRAVE_COUNTRY must be optional"
 
 echo "ok: google-search smoke test"

@@ -134,7 +134,7 @@ The workflow must never crash or emit non-JSON output for handled failures.
 
 - Optional safe-search mode.
 - Allowed values: `strict`, `moderate`, `off`.
-- Default: `moderate`.
+- Default: `off`.
 - Invalid values return an actionable config error item (`Invalid Brave workflow config`).
 
 ### `BRAVE_COUNTRY` (optional)

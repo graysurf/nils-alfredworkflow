@@ -12,8 +12,8 @@ assets = ["src/assets/icon.png"]
 BRAVE_API_KEY = ""
 # Optional: defaults to 10; effective range is clamped to 1-20.
 BRAVE_MAX_RESULTS = "10"
-# Optional: strict|moderate|off. Defaults to moderate.
-BRAVE_SAFESEARCH = "moderate"
+# Optional: strict|moderate|off. Defaults to off.
+BRAVE_SAFESEARCH = "off"
 # Optional: ISO 3166-1 alpha-2 country code, uppercase (for example US, TW, JP).
 BRAVE_COUNTRY = ""
 

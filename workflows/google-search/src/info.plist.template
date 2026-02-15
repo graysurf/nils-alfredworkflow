@@ -290,7 +290,7 @@
       <key>config</key>
       <dict>
         <key>default</key>
-        <string>moderate</string>
+        <string>off</string>
         <key>placeholder</key>
         <string>strict|moderate|off</string>
         <key>required</key>

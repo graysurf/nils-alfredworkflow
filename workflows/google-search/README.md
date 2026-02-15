@@ -28,7 +28,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 |---|---|---|---|
 | `BRAVE_API_KEY` | Yes | (empty) | Brave Search API subscription token. |
 | `BRAVE_MAX_RESULTS` | No | `10` | Max results per query. Effective range is clamped to `1..20`. |
-| `BRAVE_SAFESEARCH` | No | `moderate` | Safe search mode: `strict`, `moderate`, or `off`. |
+| `BRAVE_SAFESEARCH` | No | `off` | Safe search mode: `strict`, `moderate`, or `off`. |
 | `BRAVE_COUNTRY` | No | (empty) | Optional uppercase ISO 3166-1 alpha-2 country code (for example `US`, `TW`, `JP`). |
 
 ## Keyword

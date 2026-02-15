@@ -10,7 +10,7 @@ const COUNTRY_ENV: &str = "BRAVE_COUNTRY";
 const MIN_COUNT: i32 = 1;
 const MAX_COUNT: i32 = 20;
 pub const DEFAULT_COUNT: u8 = 10;
-pub const DEFAULT_SAFESEARCH: SafeSearch = SafeSearch::Moderate;
+pub const DEFAULT_SAFESEARCH: SafeSearch = SafeSearch::Off;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SafeSearch {
