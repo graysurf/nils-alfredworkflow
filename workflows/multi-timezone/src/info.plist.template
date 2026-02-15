@@ -48,7 +48,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>tz</string>
+        <string>tz||timezone</string>
         <key>queuedelaycustom</key>
         <integer>3</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -106,7 +106,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword tz. Query value overrides MULTI_TZ_ZONES. Empty query falls back to local timezone detection chain.</string>
+  <string>Use keyword tz or timezone. Query value overrides MULTI_TZ_ZONES. Empty query falls back to local timezone detection chain.</string>
   <key>uidata</key>
   <dict>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>

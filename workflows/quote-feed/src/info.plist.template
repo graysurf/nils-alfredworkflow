@@ -48,7 +48,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>qq</string>
+        <string>qq||quote</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -106,7 +106,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword qq to browse cached quotes and copy one to clipboard.</string>
+  <string>Use keyword qq or quote to browse cached quotes and copy one to clipboard.</string>
   <key>uidata</key>
   <dict>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>

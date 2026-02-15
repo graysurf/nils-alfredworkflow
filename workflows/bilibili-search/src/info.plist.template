@@ -61,7 +61,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>bl</string>
+        <string>bl||bilibili</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -148,7 +148,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword bl to search bilibili suggestions and open selected results in your browser.</string>
+  <string>Use keyword bl or bilibili to search suggestions and open selected results in your browser.</string>
   <key>uidata</key>
   <dict>
     <key>87216367-7582-4063-82EB-5FE728B55FDA</key>

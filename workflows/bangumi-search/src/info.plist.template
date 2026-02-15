@@ -126,7 +126,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>bgm||bgmb||bgma||bgmm||bgmg||bgmr</string>
+        <string>bgm||bangumi||bgmb||bgma||bgmm||bgmg||bgmr</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -458,7 +458,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use bgm for all subjects, or bgmb/bgma/bgmm/bgmg/bgmr for fixed type shortcuts.</string>
+  <string>Use bgm or bangumi for all subjects, or bgmb/bgma/bgmm/bgmg/bgmr for fixed type shortcuts.</string>
   <key>uidata</key>
   <dict>
     <key>A4B4AF35-4AAB-4578-BF85-B2C36C3ED01B</key>

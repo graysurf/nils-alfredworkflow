@@ -61,7 +61,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>yt</string>
+        <string>yt||youtube</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -148,7 +148,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Set YOUTUBE_API_KEY and start searching with keyword yt.</string>
+  <string>Set YOUTUBE_API_KEY and start searching with keyword yt or youtube.</string>
   <key>uidata</key>
   <dict>
     <key>FF12E9FF-DD14-4C26-83F1-280FFEA92CCF</key>

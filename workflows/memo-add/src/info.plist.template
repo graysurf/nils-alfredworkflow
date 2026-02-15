@@ -126,7 +126,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>mm</string>
+        <string>mm||memo</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -478,7 +478,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keywords mm/mmr/mma/mmu/mmd/mmc/mmq for memo workflows.</string>
+  <string>Use keywords mm or memo / mmr / mma / mmu / mmd / mmc / mmq for memo workflows.</string>
   <key>uidata</key>
   <dict>
     <key>2C5B0C3B-925A-4E91-9F79-9E1E1BEA4E11</key>

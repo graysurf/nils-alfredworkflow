@@ -61,7 +61,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>sp</string>
+        <string>sp||spotify</string>
         <key>queuedelaycustom</key>
         <integer>3</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -148,7 +148,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET and start searching with keyword sp.</string>
+  <string>Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET and start searching with keyword sp or spotify.</string>
   <key>uidata</key>
   <dict>
     <key>B8F6A479-8A88-4515-9D4D-6A0422CFEA2D</key>

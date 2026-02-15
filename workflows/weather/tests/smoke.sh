@@ -588,7 +588,7 @@ assert_jq_file "$packaged_json_file" '.objects | length >= 3' "packaged plist mi
 assert_jq_file "$packaged_json_file" '.connections | length >= 2' "packaged plist missing connections"
 
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TODAY_UID\") | .config.scriptfile == \"./scripts/script_filter_today.sh\"" "today script filter scriptfile mismatch"
-assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TODAY_UID\") | .config.keyword == \"wt\"" "today keyword must be wt"
+assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TODAY_UID\") | .config.keyword == \"wt||weather\"" "today keyword must be wt||weather"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$TODAY_UID\") | .config.scriptargtype == 1" "today script filter must pass query via argv"
 
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$WEEK_UID\") | .config.scriptfile == \"./scripts/script_filter_week.sh\"" "week script filter scriptfile mismatch"

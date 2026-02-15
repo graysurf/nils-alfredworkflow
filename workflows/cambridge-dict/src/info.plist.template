@@ -61,7 +61,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>cd</string>
+        <string>cd||cambridge</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -148,7 +148,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword cd, pick a candidate, then Alfred autocomplete token def::WORD shows detail rows.</string>
+  <string>Use keyword cd or cambridge, pick a candidate, then Alfred autocomplete token def::WORD shows detail rows.</string>
   <key>uidata</key>
   <dict>
     <key>A2EAAEA3-DE10-4407-BF6A-828CF4789D7A</key>
