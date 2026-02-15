@@ -443,7 +443,7 @@ Runtime checks:
 ## Memo Add workflow details
 
 `workflows/memo-add` is a dedicated workflow that uses `memo-workflow-cli` and
-`nils-memo-cli@0.3.8` storage primitives for fast memo capture/search.
+`nils-memo-cli@0.4.0` storage primitives for fast memo capture/search.
 
 ### Environment variables
 
