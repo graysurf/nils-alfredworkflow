@@ -156,10 +156,12 @@ fn search_v0_with_client(
     config: &RuntimeConfig,
     query: &ParsedInput,
 ) -> Result<Vec<BangumiSubject>, BangumiApiError> {
+    let limit = config.max_results.clamp(1, 20);
     let response = client
         .post(V0_SEARCH_ENDPOINT)
+        .query(&[("limit", limit), ("offset", 0_u8)])
         .headers(build_headers(config))
-        .json(&build_v0_request_payload(query, config.max_results))
+        .json(&build_v0_request_payload(query))
         .send()
         .map_err(|source| BangumiApiError::Transport { source })?;
 
@@ -192,7 +194,7 @@ fn search_legacy_with_client(
     parse_legacy_search_response(status_code, &body, query.subject_type)
 }
 
-pub fn build_v0_request_payload(query: &ParsedInput, max_results: u8) -> Value {
+pub fn build_v0_request_payload(query: &ParsedInput) -> Value {
     let mut filter = serde_json::Map::new();
     if let Some(subject_type) = query.subject_type.as_bangumi_type() {
         filter.insert("type".to_string(), serde_json::json!([subject_type]));
@@ -201,7 +203,6 @@ pub fn build_v0_request_payload(query: &ParsedInput, max_results: u8) -> Value {
     serde_json::json!({
         "keyword": query.keyword,
         "sort": "match",
-        "limit": max_results,
         "filter": Value::Object(filter),
     })
 }
@@ -453,14 +454,17 @@ mod tests {
     }
 
     #[test]
-    fn bangumi_api_build_v0_payload_uses_keyword_limit_and_type_filter() {
-        let payload = build_v0_request_payload(&fixture_query(SubjectType::Anime), 9);
+    fn bangumi_api_build_v0_payload_uses_keyword_and_type_filter() {
+        let payload = build_v0_request_payload(&fixture_query(SubjectType::Anime));
 
         assert_eq!(
             payload.get("keyword").and_then(Value::as_str),
             Some("naruto")
         );
-        assert_eq!(payload.get("limit").and_then(Value::as_u64), Some(9));
+        assert!(
+            payload.get("limit").is_none(),
+            "limit must be passed via URL query params for v0 endpoint"
+        );
         assert_eq!(
             payload.pointer("/filter/type/0").and_then(Value::as_u64),
             Some(2)
@@ -469,7 +473,7 @@ mod tests {
 
     #[test]
     fn bangumi_api_build_v0_payload_omits_type_filter_for_all_query() {
-        let payload = build_v0_request_payload(&fixture_query(SubjectType::All), 10);
+        let payload = build_v0_request_payload(&fixture_query(SubjectType::All));
 
         assert!(
             payload

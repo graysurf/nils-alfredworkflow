@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shared query coalescing helpers for Alfred Script Filter workflows.
-# This helper keeps final-query priority by waiting a short settle window
-# and only allowing the latest request in that window to reach the backend.
+# This helper keeps final-query priority by using a queue-safe settle window:
+# latest query must remain unchanged for N seconds before backend dispatch.
 
 sfac_json_escape() {
   local value="${1-}"
@@ -169,8 +169,12 @@ sfac_read_latest_request() {
   query="$(sed -n '3p' "$request_file")"
 
   [[ -n "$seq" && -n "$updated" ]] || return 1
+  [[ "$updated" =~ ^[0-9]+$ ]] || return 1
 
+  # shellcheck disable=SC2034 # Exposed for callers that inspect the request snapshot fields.
   SFAC_REQUEST_SEQ="$seq"
+  SFAC_REQUEST_UPDATED="$updated"
+  SFAC_REQUEST_QUERY="$query"
   return 0
 }
 
@@ -178,18 +182,39 @@ sfac_wait_for_final_query() {
   local query="$1"
   local settle_seconds="${2:-0}"
 
-  local request_seq
-  request_seq="$(sfac_write_latest_request "$query")" || return 1
-
-  if [[ "$settle_seconds" != "0" && "$settle_seconds" != "0.0" ]]; then
-    sleep "$settle_seconds"
+  if [[ ! "$settle_seconds" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    settle_seconds="0"
   fi
 
+  if [[ "$settle_seconds" == "0" || "$settle_seconds" == "0.0" ]]; then
+    sfac_write_latest_request "$query" >/dev/null || true
+    return 0
+  fi
+
+  local now
+  now="$(sfac_now_epoch_seconds)"
+
   if ! sfac_read_latest_request; then
+    sfac_write_latest_request "$query" >/dev/null || return 1
     return 1
   fi
 
-  [[ "$SFAC_REQUEST_SEQ" == "$request_seq" ]]
+  if [[ "$SFAC_REQUEST_QUERY" != "$query" ]]; then
+    sfac_write_latest_request "$query" >/dev/null || return 1
+    return 1
+  fi
+
+  local age_seconds
+  age_seconds=$((now - SFAC_REQUEST_UPDATED))
+  if [[ "$age_seconds" -lt 0 ]]; then
+    age_seconds=0
+  fi
+
+  if awk -v age="$age_seconds" -v settle="$settle_seconds" 'BEGIN { exit !(age >= settle) }'; then
+    return 0
+  fi
+
+  return 1
 }
 
 sfac_store_cache_result() {

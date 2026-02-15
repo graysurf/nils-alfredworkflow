@@ -307,17 +307,15 @@ assert_jq_json "$cache_probe_second" '.items[0].autocomplete == "res::cache-hit"
 [[ "$(wc -l <"$cache_probe_log")" -eq 1 ]] || fail "gg same-query cache should avoid duplicate brave-cli invocation"
 
 coalesce_probe_log="$tmp_dir/brave-coalesce-probe.log"
-coalesce_first_out="$tmp_dir/coalesce-first.json"
-BRAVE_STUB_LOG="$coalesce_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=1 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" \
-  "$workflow_dir/scripts/script_filter.sh" "mayda" >"$coalesce_first_out" &
-coalesce_pid=$!
-sleep 0.1
+coalesce_pending_a="$({ BRAVE_STUB_LOG="$coalesce_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=1 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "mayda"; })"
+coalesce_pending_b="$({ BRAVE_STUB_LOG="$coalesce_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=1 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "mayday"; })"
+sleep 1.1
 coalesce_result="$({ BRAVE_STUB_LOG="$coalesce_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=1 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "mayday"; })"
-wait "$coalesce_pid"
 
-coalesce_pending_a="$(cat "$coalesce_first_out")"
 assert_jq_json "$coalesce_pending_a" '.items[0].title == "Fetching Google suggestions..."' "gg coalesce first pending title mismatch"
 assert_jq_json "$coalesce_pending_a" '.items[0].valid == false' "gg coalesce first pending item must be invalid"
+assert_jq_json "$coalesce_pending_b" '.items[0].title == "Fetching Google suggestions..."' "gg coalesce second pending title mismatch"
+assert_jq_json "$coalesce_pending_b" '.items[0].valid == false' "gg coalesce second pending item must be invalid"
 assert_jq_json "$coalesce_result" '.items[0].autocomplete == "res::mayday"' "gg coalesce final result query mismatch"
 [[ "$(grep -c -- '--input mayda --mode' "$coalesce_probe_log" || true)" -eq 0 ]] || fail "gg coalesce should avoid mayda backend invocation"
 [[ "$(grep -c -- '--input mayday' "$coalesce_probe_log" || true)" -eq 1 ]] || fail "gg coalesce should invoke mayday exactly once"

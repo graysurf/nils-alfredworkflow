@@ -88,6 +88,8 @@ for required in \
   scripts/script_filter_music.sh \
   scripts/script_filter_game.sh \
   scripts/script_filter_real.sh \
+  scripts/action_clear_cache.sh \
+  scripts/action_clear_cache_dir.sh \
   scripts/action_open.sh \
   scripts/bangumi_scraper.mjs \
   scripts/lib/bangumi_routes.mjs \
@@ -105,6 +107,8 @@ for executable in \
   scripts/script_filter_music.sh \
   scripts/script_filter_game.sh \
   scripts/script_filter_real.sh \
+  scripts/action_clear_cache.sh \
+  scripts/action_clear_cache_dir.sh \
   scripts/action_open.sh \
   scripts/bangumi_scraper.mjs \
   scripts/tests/bangumi_scraper_contract.test.mjs \
@@ -210,6 +214,31 @@ OPEN_STUB_OUT="$tmp_dir/open-arg.txt" PATH="$tmp_dir/bin:$PATH" \
   "$workflow_dir/scripts/action_open.sh" "$action_arg"
 [[ "$(cat "$tmp_dir/open-arg.txt")" == "$action_arg" ]] || fail "action_open.sh must pass URL to open"
 
+cache_clear_arg="__BANGUMI_CLEAR_CACHE__"
+cache_state_dir="$ALFRED_WORKFLOW_CACHE/script-filter-async-coalesce/bangumi-search"
+mkdir -p "$cache_state_dir/cache"
+printf '%s\n' "dummy" >"$cache_state_dir/request.latest"
+printf '%s\n' "payload" >"$cache_state_dir/cache/dummy.payload"
+printf '%s\t%s\n' "0" "ok" >"$cache_state_dir/cache/dummy.meta"
+
+OPEN_STUB_OUT="$tmp_dir/open-clear-cache.txt" PATH="$tmp_dir/bin:$PATH" \
+  "$workflow_dir/scripts/action_open.sh" "$cache_clear_arg"
+[[ ! -d "$cache_state_dir" ]] || fail "clear-cache action must remove bangumi query cache state directory"
+[[ ! -f "$tmp_dir/open-clear-cache.txt" ]] || fail "clear-cache action must not call open"
+
+cache_clear_dir_arg="__BANGUMI_CLEAR_CACHE_DIR__"
+cache_dir_target="$tmp_dir/bangumi-cache-dir"
+mkdir -p "$cache_dir_target/sub"
+printf '%s\n' "image-cache" >"$cache_dir_target/sub/sample.txt"
+
+OPEN_STUB_OUT="$tmp_dir/open-clear-cache-dir.txt" BANGUMI_CACHE_DIR="$cache_dir_target" PATH="$tmp_dir/bin:$PATH" \
+  "$workflow_dir/scripts/action_open.sh" "$cache_clear_dir_arg"
+[[ -d "$cache_dir_target" ]] || fail "clear-cache-dir action must keep cache directory path"
+if find "$cache_dir_target" -mindepth 1 -print -quit | grep -q .; then
+  fail "clear-cache-dir action must remove contents under BANGUMI_CACHE_DIR"
+fi
+[[ ! -f "$tmp_dir/open-clear-cache-dir.txt" ]] || fail "clear-cache-dir action must not call open"
+
 cat >"$tmp_dir/stubs/bangumi-cli-ok" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -281,11 +310,42 @@ assert_jq_json "$invalid_config_json" '.items[0].title == "Invalid Bangumi workf
 empty_query_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "   "; })"
 assert_jq_json "$empty_query_json" '.items[0].title == "Enter a search query"' "empty query guidance title mismatch"
 assert_jq_json "$empty_query_json" '.items[0].valid == false' "empty query item must be invalid"
+assert_jq_json "$empty_query_json" '.items | any(.title == "Clear Bangumi query cache" and .arg == "__BANGUMI_CLEAR_CACHE__" and .valid == true)' "empty query must include clear-cache quick action"
+assert_jq_json "$empty_query_json" '.items | any(.title == "Clear Bangumi cache dir" and .arg == "__BANGUMI_CLEAR_CACHE_DIR__" and .valid == true)' "empty query must include clear-cache-dir quick action"
+assert_jq_json "$empty_query_json" '.items[3].title == "Bangumi Search (Anime)" and .items[3].autocomplete == "anime " and .items[3].valid == false' "empty query category item order mismatch: anime should be first category row"
+assert_jq_json "$empty_query_json" '.items[4].title == "Bangumi Search (Game)" and .items[4].autocomplete == "game " and .items[4].valid == false' "empty query category item order mismatch: game should be second category row"
+assert_jq_json "$empty_query_json" '.items[5].title == "Bangumi Search (Music)" and .items[5].autocomplete == "music " and .items[5].valid == false' "empty query category item order mismatch: music should be third category row"
+assert_jq_json "$empty_query_json" '.items[6].title == "Bangumi Search (Book)" and .items[6].autocomplete == "book " and .items[6].valid == false' "empty query category item order mismatch: book should be fourth category row"
+assert_jq_json "$empty_query_json" '.items[7].title == "Bangumi Search (Real)" and .items[7].autocomplete == "real " and .items[7].valid == false' "empty query category item order mismatch: real should be fifth category row"
 
 short_query_log="$tmp_dir/bangumi-short-query.log"
 short_query_json="$({ BANGUMI_STUB_LOG="$short_query_log" BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "a"; })"
 assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"' "short query guidance title mismatch"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke bangumi-cli backend"
+
+clear_cache_log="$tmp_dir/bangumi-clear-cache.log"
+clear_cache_json="$({ BANGUMI_STUB_LOG="$clear_cache_log" BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "clear cache"; })"
+assert_jq_json "$clear_cache_json" '.items[0].title == "Clear Bangumi query cache"' "clear-cache command title mismatch"
+assert_jq_json "$clear_cache_json" '.items[0].arg == "__BANGUMI_CLEAR_CACHE__"' "clear-cache command arg wiring mismatch"
+assert_jq_json "$clear_cache_json" '.items[0].valid == true' "clear-cache command item must be actionable"
+[[ ! -s "$clear_cache_log" ]] || fail "clear-cache command should not invoke bangumi-cli backend"
+
+clear_cache_dir_log="$tmp_dir/bangumi-clear-cache-dir.log"
+clear_cache_dir_json="$({ BANGUMI_STUB_LOG="$clear_cache_dir_log" BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "clear cache dir"; })"
+assert_jq_json "$clear_cache_dir_json" '.items[0].title == "Clear Bangumi cache dir"' "clear-cache-dir command title mismatch"
+assert_jq_json "$clear_cache_dir_json" '.items[0].arg == "__BANGUMI_CLEAR_CACHE_DIR__"' "clear-cache-dir command arg wiring mismatch"
+assert_jq_json "$clear_cache_dir_json" '.items[0].valid == true' "clear-cache-dir command item must be actionable"
+[[ ! -s "$clear_cache_dir_log" ]] || fail "clear-cache-dir command should not invoke bangumi-cli backend"
+
+clear_cache_shortcut_log="$tmp_dir/bangumi-clear-cache-shortcut.log"
+clear_cache_shortcut_json="$({ BANGUMI_STUB_LOG="$clear_cache_shortcut_log" BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_book.sh" "clear cache"; })"
+assert_jq_json "$clear_cache_shortcut_json" '.items[0].arg == "__BANGUMI_CLEAR_CACHE__"' "clear-cache command must bypass default type wrappers"
+[[ ! -s "$clear_cache_shortcut_log" ]] || fail "clear-cache command via wrappers should not invoke bangumi-cli backend"
+
+clear_cache_dir_shortcut_log="$tmp_dir/bangumi-clear-cache-dir-shortcut.log"
+clear_cache_dir_shortcut_json="$({ BANGUMI_STUB_LOG="$clear_cache_dir_shortcut_log" BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_book.sh" "clear cache dir"; })"
+assert_jq_json "$clear_cache_dir_shortcut_json" '.items[0].arg == "__BANGUMI_CLEAR_CACHE_DIR__"' "clear-cache-dir command must bypass default type wrappers"
+[[ ! -s "$clear_cache_dir_shortcut_log" ]] || fail "clear-cache-dir command via wrappers should not invoke bangumi-cli backend"
 
 default_cache_log="$tmp_dir/bangumi-default-cache.log"
 {
@@ -307,6 +367,20 @@ opt_in_cache_log="$tmp_dir/bangumi-opt-in-cache.log"
 opt_in_cache_hits="$(wc -l <"$opt_in_cache_log" | tr -d '[:space:]')"
 [[ "$opt_in_cache_hits" == "1" ]] || fail "query cache should work when BANGUMI_QUERY_CACHE_TTL_SECONDS is explicitly set"
 
+coalesce_queue_log="$tmp_dir/bangumi-coalesce-queue.log"
+coalesce_queue_se="$({ BANGUMI_STUB_LOG="$coalesce_queue_log" BANGUMI_QUERY_CACHE_TTL_SECONDS=0 BANGUMI_QUERY_COALESCE_SETTLE_SECONDS=1 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "se"; })"
+coalesce_queue_sev="$({ BANGUMI_STUB_LOG="$coalesce_queue_log" BANGUMI_QUERY_CACHE_TTL_SECONDS=0 BANGUMI_QUERY_COALESCE_SETTLE_SECONDS=1 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "sev"; })"
+coalesce_queue_seven_pending="$({ BANGUMI_STUB_LOG="$coalesce_queue_log" BANGUMI_QUERY_CACHE_TTL_SECONDS=0 BANGUMI_QUERY_COALESCE_SETTLE_SECONDS=1 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "seven"; })"
+sleep 1.1
+coalesce_queue_seven_final="$({ BANGUMI_STUB_LOG="$coalesce_queue_log" BANGUMI_QUERY_CACHE_TTL_SECONDS=0 BANGUMI_QUERY_COALESCE_SETTLE_SECONDS=1 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "seven"; })"
+assert_jq_json "$coalesce_queue_se" '.items[0].title == "Searching Bangumi..." and .items[0].valid == false' "coalesce queue-mode probe (se) must return pending item"
+assert_jq_json "$coalesce_queue_sev" '.items[0].title == "Searching Bangumi..." and .items[0].valid == false' "coalesce queue-mode probe (sev) must return pending item"
+assert_jq_json "$coalesce_queue_seven_pending" '.items[0].title == "Searching Bangumi..." and .items[0].valid == false' "coalesce queue-mode probe (seven pending) must return pending item"
+assert_jq_json "$coalesce_queue_seven_final" '.items[0].subtitle == "query=seven"' "coalesce queue-mode probe must resolve final query"
+[[ "$(grep -c -- '--input se --mode alfred' "$coalesce_queue_log" || true)" -eq 0 ]] || fail "coalesce queue-mode should not invoke backend for se"
+[[ "$(grep -c -- '--input sev --mode alfred' "$coalesce_queue_log" || true)" -eq 0 ]] || fail "coalesce queue-mode should not invoke backend for sev"
+[[ "$(grep -c -- '--input seven --mode alfred' "$coalesce_queue_log" || true)" -eq 1 ]] || fail "coalesce queue-mode should invoke backend for seven exactly once"
+
 book_shortcut_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_book.sh" "三体"; })"
 assert_jq_json "$book_shortcut_json" '.items[0].subtitle == "query=book 三体"' "book shortcut must inject default type"
 
@@ -324,6 +398,12 @@ assert_jq_json "$real_shortcut_json" '.items[0].subtitle == "query=real interste
 
 book_shortcut_override_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_book.sh" "anime naruto"; })"
 assert_jq_json "$book_shortcut_override_json" '.items[0].subtitle == "query=anime naruto"' "explicit subject type should override shortcut default"
+
+book_alias_keyword_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" alfred_workflow_keyword="bgmb" "$workflow_dir/scripts/script_filter.sh" "三体"; })"
+assert_jq_json "$book_alias_keyword_json" '.items[0].subtitle == "query=book 三体"' "bgmb alias keyword should inject book default type via primary script filter"
+
+anime_alias_keyword_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" ALFRED_WORKFLOW_KEYWORD="BGMA" "$workflow_dir/scripts/script_filter.sh" "eva"; })"
+assert_jq_json "$anime_alias_keyword_json" '.items[0].subtitle == "query=anime eva"' "bgma alias keyword should inject anime default type case-insensitively"
 
 make_layout_cli() {
   local target="$1"
@@ -412,6 +492,8 @@ assert_file "$packaged_dir/scripts/script_filter_anime.sh"
 assert_file "$packaged_dir/scripts/script_filter_music.sh"
 assert_file "$packaged_dir/scripts/script_filter_game.sh"
 assert_file "$packaged_dir/scripts/script_filter_real.sh"
+assert_file "$packaged_dir/scripts/action_clear_cache.sh"
+assert_file "$packaged_dir/scripts/action_clear_cache_dir.sh"
 assert_file "$packaged_dir/scripts/bangumi_scraper.mjs"
 assert_file "$packaged_dir/scripts/lib/bangumi_routes.mjs"
 assert_file "$packaged_dir/scripts/lib/extract_search.mjs"
@@ -430,17 +512,17 @@ assert_jq_file "$packaged_json_file" '.objects | length > 0' "packaged plist mis
 assert_jq_file "$packaged_json_file" '.connections | length > 0' "packaged plist missing connections"
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.type] | all(. == 8)' "script filter objects must be external script type=8"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script filter scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "bgm"' "keyword trigger must be bgm"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "bgm||bgmb||bgma||bgmm||bgmg||bgmr"' "primary keyword trigger must include bgm + typed aliases"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201") | .config.scriptfile == "./scripts/script_filter_book.sh"' "book script filter scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201") | .config.keyword == "bgmb"' "keyword trigger must be bgmb"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201") | .config.keyword == "__bgmb_disabled__"' "secondary bgmb entrypoint should be disabled to keep bgm command order deterministic"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="912ADAAE-E70D-4B1E-A138-E7F3D0D670F2") | .config.scriptfile == "./scripts/script_filter_anime.sh"' "anime script filter scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="912ADAAE-E70D-4B1E-A138-E7F3D0D670F2") | .config.keyword == "bgma"' "keyword trigger must be bgma"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="912ADAAE-E70D-4B1E-A138-E7F3D0D670F2") | .config.keyword == "__bgma_disabled__"' "secondary bgma entrypoint should be disabled to keep bgm command order deterministic"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9") | .config.scriptfile == "./scripts/script_filter_music.sh"' "music script filter scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9") | .config.keyword == "bgmm"' "keyword trigger must be bgmm"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9") | .config.keyword == "__bgmm_disabled__"' "secondary bgmm entrypoint should be disabled to keep bgm command order deterministic"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6") | .config.scriptfile == "./scripts/script_filter_game.sh"' "game script filter scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6") | .config.keyword == "bgmg"' "keyword trigger must be bgmg"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6") | .config.keyword == "__bgmg_disabled__"' "secondary bgmg entrypoint should be disabled to keep bgm command order deterministic"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="F3F8745F-C75C-4058-BCE5-7F95A77A9C3E") | .config.scriptfile == "./scripts/script_filter_real.sh"' "real script filter scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="F3F8745F-C75C-4058-BCE5-7F95A77A9C3E") | .config.keyword == "bgmr"' "keyword trigger must be bgmr"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="F3F8745F-C75C-4058-BCE5-7F95A77A9C3E") | .config.keyword == "__bgmr_disabled__"' "secondary bgmr entrypoint should be disabled to keep bgm command order deterministic"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelaycustom == 1' "script filter queue delay custom must be 1 second"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelayimmediatelyinitially == false' "script filter must disable immediate initial run"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action scriptfile wiring mismatch"

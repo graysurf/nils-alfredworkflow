@@ -10,9 +10,12 @@ Search Bangumi subjects from Alfred via `bangumi-cli` (API-first path), then ope
 
 - Trigger Bangumi search with `bgm <query>` (`all` mode).
 - Fixed type shortcuts: `bgmb`, `bgma`, `bgmm`, `bgmg`, `bgmr`.
+- Built-in cache maintenance command: `bgm clear cache`.
+- Built-in cache-dir maintenance command: `bgm clear cache dir`.
+- `bgm` empty query menu uses deterministic order; type-category quick rows are pinned at the bottom.
 - Support typed prefixes in one input grammar: `[type] query`.
 - Type mapping: `all`, `book`, `anime`, `music`, `game`, `real`.
-- Script-level guardrails: async query coalescing and TTL cache for repeated typing.
+- Script-level guardrails: queue-safe async query coalescing and TTL cache for repeated typing.
 - Runtime orchestration is shared via `scripts/lib/script_filter_search_driver.sh`; Bangumi API fetch/error mapping remains local.
 - API-first production path: `script_filter.sh` calls `bangumi-cli query` only.
 - Playwright scraper scaffold exists for future handoff and is disabled by default.
@@ -48,6 +51,8 @@ Set these via Alfred's "Configure Workflow..." UI:
 | `bgm music <query>` | Search Bangumi `music` subjects only. |
 | `bgm game <query>` | Search Bangumi `game` subjects only. |
 | `bgm real <query>` | Search Bangumi `real` subjects only. |
+| `bgm clear cache` | Clear local `bangumi-search` Script Filter query cache files. |
+| `bgm clear cache dir` | Clear files under `BANGUMI_CACHE_DIR` (if configured). |
 
 ## URL behavior and fallback
 
@@ -62,7 +67,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 |---|---|
 | `BANGUMI_CLI_BIN` | Optional absolute executable override for `bangumi-cli`. |
 | `BANGUMI_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits). |
-| `BANGUMI_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. |
+| `BANGUMI_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. Shared coalesce helper uses non-blocking stability checks so queued typing does not dispatch prefix queries early. |
 | `BANGUMI_QUERY_COALESCE_RERUN_SECONDS` | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`. |
 | `BANGUMI_SCRAPER_ENABLE` | Future bridge feature flag. Default disabled; do not enable in production yet. |
 
