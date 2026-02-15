@@ -211,6 +211,47 @@ Runtime checks:
 - Missing Node/Playwright runtime must map to actionable non-crashing error items.
 - Smoke tests remain deterministic and offline by default (fixture/stub based, no live Cambridge request).
 
+## Bangumi Search workflow details
+
+`workflows/bangumi-search` is a dedicated workflow that uses `bangumi-cli` for API-first Bangumi
+subject search. It also includes a future Playwright bridge scaffold (`scripts/bangumi_scraper.mjs`)
+that is currently disabled by default.
+
+### Environment variables
+
+- `BANGUMI_API_KEY` (optional): API token for authenticated requests; default empty.
+- `BANGUMI_MAX_RESULTS` (optional): default `10`, clamped to `1..20`.
+- `BANGUMI_TIMEOUT_MS` (optional): default `8000`, clamped to `1000..30000`.
+- `BANGUMI_USER_AGENT` (optional): explicit User-Agent override; default empty (use CLI default).
+- `BANGUMI_CACHE_DIR` (optional): image-cache directory override.
+- `BANGUMI_IMAGE_CACHE_TTL_SECONDS` (optional): default `86400`.
+- `BANGUMI_IMAGE_CACHE_MAX_MB` (optional): default `128`.
+- `BANGUMI_API_FALLBACK` (optional): `auto`, `never`, or `always`; default `auto`.
+- `BANGUMI_CLI_BIN` (optional): executable path override for `bangumi-cli`.
+
+### Alfred command flow
+
+- Keyword trigger: `bgm`.
+- Script filter adapter: `workflows/bangumi-search/scripts/script_filter.sh` ->
+  `bangumi-cli query --input "<query>" --mode alfred`.
+- Enter flow: `workflows/bangumi-search/scripts/action_open.sh` opens selected `arg` URL.
+- Type grammar: `[type] query`, where type is one of `all|book|anime|music|game|real`.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `node --test workflows/bangumi-search/scripts/tests/bangumi_scraper_contract.test.mjs`
+- `bash workflows/bangumi-search/tests/smoke.sh`
+- `scripts/workflow-test.sh --id bangumi-search`
+- `scripts/workflow-pack.sh --id bangumi-search`
+
+Runtime checks:
+
+- Script filter must always return valid Alfred JSON fallback items on failure.
+- `scripts/script_filter.sh` must not reference `bangumi_scraper.mjs` in default runtime path.
+- Playwright bridge scaffold remains disabled by default unless explicit rollout gates are met.
+
 ## Epoch Converter workflow details
 
 `workflows/epoch-converter` is a local conversion workflow that uses `epoch-cli` for epoch/datetime

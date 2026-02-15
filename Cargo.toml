@@ -3,6 +3,7 @@ members = [
   "crates/alfred-core",
   "crates/alfred-plist",
   "crates/brave-cli",
+  "crates/bangumi-cli",
   "crates/cambridge-cli",
   "crates/epoch-cli",
   "crates/market-cli",
