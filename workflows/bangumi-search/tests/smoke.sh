@@ -83,6 +83,11 @@ for required in \
   src/info.plist.template \
   src/assets/icon.png \
   scripts/script_filter.sh \
+  scripts/script_filter_book.sh \
+  scripts/script_filter_anime.sh \
+  scripts/script_filter_music.sh \
+  scripts/script_filter_game.sh \
+  scripts/script_filter_real.sh \
   scripts/action_open.sh \
   scripts/bangumi_scraper.mjs \
   scripts/lib/bangumi_routes.mjs \
@@ -95,6 +100,11 @@ done
 
 for executable in \
   scripts/script_filter.sh \
+  scripts/script_filter_book.sh \
+  scripts/script_filter_anime.sh \
+  scripts/script_filter_music.sh \
+  scripts/script_filter_game.sh \
+  scripts/script_filter_real.sh \
   scripts/action_open.sh \
   scripts/bangumi_scraper.mjs \
   scripts/tests/bangumi_scraper_contract.test.mjs \
@@ -277,6 +287,24 @@ short_query_json="$({ BANGUMI_STUB_LOG="$short_query_log" BANGUMI_CLI_BIN="$tmp_
 assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"' "short query guidance title mismatch"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke bangumi-cli backend"
 
+book_shortcut_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_book.sh" "三体"; })"
+assert_jq_json "$book_shortcut_json" '.items[0].subtitle == "query=book 三体"' "book shortcut must inject default type"
+
+anime_shortcut_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_anime.sh" "evangelion"; })"
+assert_jq_json "$anime_shortcut_json" '.items[0].subtitle == "query=anime evangelion"' "anime shortcut must inject default type"
+
+music_shortcut_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_music.sh" "utada"; })"
+assert_jq_json "$music_shortcut_json" '.items[0].subtitle == "query=music utada"' "music shortcut must inject default type"
+
+game_shortcut_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_game.sh" "zelda"; })"
+assert_jq_json "$game_shortcut_json" '.items[0].subtitle == "query=game zelda"' "game shortcut must inject default type"
+
+real_shortcut_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_real.sh" "interstellar"; })"
+assert_jq_json "$real_shortcut_json" '.items[0].subtitle == "query=real interstellar"' "real shortcut must inject default type"
+
+book_shortcut_override_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_book.sh" "anime naruto"; })"
+assert_jq_json "$book_shortcut_override_json" '.items[0].subtitle == "query=anime naruto"' "explicit subject type should override shortcut default"
+
 make_layout_cli() {
   local target="$1"
   local marker="$2"
@@ -358,6 +386,12 @@ assert_file "$packaged_plist"
 assert_file "$packaged_dir/icon.png"
 assert_file "$packaged_dir/assets/icon.png"
 assert_file "$packaged_dir/bin/bangumi-cli"
+assert_file "$packaged_dir/scripts/script_filter.sh"
+assert_file "$packaged_dir/scripts/script_filter_book.sh"
+assert_file "$packaged_dir/scripts/script_filter_anime.sh"
+assert_file "$packaged_dir/scripts/script_filter_music.sh"
+assert_file "$packaged_dir/scripts/script_filter_game.sh"
+assert_file "$packaged_dir/scripts/script_filter_real.sh"
 assert_file "$packaged_dir/scripts/bangumi_scraper.mjs"
 assert_file "$packaged_dir/scripts/lib/bangumi_routes.mjs"
 assert_file "$packaged_dir/scripts/lib/extract_search.mjs"
@@ -377,10 +411,25 @@ assert_jq_file "$packaged_json_file" '.connections | length > 0' "packaged plist
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.type] | all(. == 8)' "script filter objects must be external script type=8"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script filter scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "bgm"' "keyword trigger must be bgm"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201") | .config.scriptfile == "./scripts/script_filter_book.sh"' "book script filter scriptfile wiring mismatch"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201") | .config.keyword == "bgmb"' "keyword trigger must be bgmb"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="912ADAAE-E70D-4B1E-A138-E7F3D0D670F2") | .config.scriptfile == "./scripts/script_filter_anime.sh"' "anime script filter scriptfile wiring mismatch"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="912ADAAE-E70D-4B1E-A138-E7F3D0D670F2") | .config.keyword == "bgma"' "keyword trigger must be bgma"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9") | .config.scriptfile == "./scripts/script_filter_music.sh"' "music script filter scriptfile wiring mismatch"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9") | .config.keyword == "bgmm"' "keyword trigger must be bgmm"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6") | .config.scriptfile == "./scripts/script_filter_game.sh"' "game script filter scriptfile wiring mismatch"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6") | .config.keyword == "bgmg"' "keyword trigger must be bgmg"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="F3F8745F-C75C-4058-BCE5-7F95A77A9C3E") | .config.scriptfile == "./scripts/script_filter_real.sh"' "real script filter scriptfile wiring mismatch"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="F3F8745F-C75C-4058-BCE5-7F95A77A9C3E") | .config.keyword == "bgmr"' "keyword trigger must be bgmr"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelaycustom == 1' "script filter queue delay custom must be 1 second"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelayimmediatelyinitially == false' "script filter must disable immediate initial run"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"
+assert_jq_file "$packaged_json_file" '.connections["B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing book script-filter to action connection"
+assert_jq_file "$packaged_json_file" '.connections["912ADAAE-E70D-4B1E-A138-E7F3D0D670F2"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing anime script-filter to action connection"
+assert_jq_file "$packaged_json_file" '.connections["8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing music script-filter to action connection"
+assert_jq_file "$packaged_json_file" '.connections["D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing game script-filter to action connection"
+assert_jq_file "$packaged_json_file" '.connections["F3F8745F-C75C-4058-BCE5-7F95A77A9C3E"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing real script-filter to action connection"
 assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[].variable] | sort == ["BANGUMI_API_FALLBACK","BANGUMI_API_KEY","BANGUMI_CACHE_DIR","BANGUMI_IMAGE_CACHE_MAX_MB","BANGUMI_IMAGE_CACHE_TTL_SECONDS","BANGUMI_MAX_RESULTS","BANGUMI_TIMEOUT_MS","BANGUMI_USER_AGENT"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="BANGUMI_MAX_RESULTS") | .config.default == "10"' "BANGUMI_MAX_RESULTS default must be 10"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="BANGUMI_TIMEOUT_MS") | .config.default == "8000"' "BANGUMI_TIMEOUT_MS default must be 8000"

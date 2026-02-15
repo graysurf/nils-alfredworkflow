@@ -8,7 +8,8 @@ Search Bangumi subjects from Alfred via `bangumi-cli` (API-first path), then ope
 
 ## Features
 
-- Trigger Bangumi search with `bgm <query>`.
+- Trigger Bangumi search with `bgm <query>` (`all` mode).
+- Fixed type shortcuts: `bgmb`, `bgma`, `bgmm`, `bgmg`, `bgmr`.
 - Support typed prefixes in one input grammar: `[type] query`.
 - Type mapping: `all`, `book`, `anime`, `music`, `game`, `real`.
 - Script-level guardrails: async query coalescing and TTL cache for repeated typing.
@@ -36,6 +37,11 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Keyword | Behavior |
 |---|---|
 | `bgm <query>` | Search in default `all` mode and list Bangumi subjects. |
+| `bgmb <query>` | Search Bangumi `book` subjects only. |
+| `bgma <query>` | Search Bangumi `anime` subjects only. |
+| `bgmm <query>` | Search Bangumi `music` subjects only. |
+| `bgmg <query>` | Search Bangumi `game` subjects only. |
+| `bgmr <query>` | Search Bangumi `real` subjects only. |
 | `bgm all <query>` | Explicit `all` mode search. |
 | `bgm book <query>` | Search Bangumi `book` subjects only. |
 | `bgm anime <query>` | Search Bangumi `anime` subjects only. |

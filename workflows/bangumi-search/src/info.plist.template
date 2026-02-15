@@ -34,6 +34,71 @@
         <false/>
       </dict>
     </array>
+    <key>B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>912ADAAE-E70D-4B1E-A138-E7F3D0D670F2</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>F3F8745F-C75C-4058-BCE5-7F95A77A9C3E</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
   </dict>
   <key>createdby</key>
   <string>graysurf</string>
@@ -97,6 +162,251 @@
     <dict>
       <key>config</key>
       <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>bgmb</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <false/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_book.sh</string>
+        <key>subtext</key>
+        <string>Search Bangumi books</string>
+        <key>title</key>
+        <string>Bangumi Search (Book)</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>bgma</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <false/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_anime.sh</string>
+        <key>subtext</key>
+        <string>Search Bangumi anime</string>
+        <key>title</key>
+        <string>Bangumi Search (Anime)</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>912ADAAE-E70D-4B1E-A138-E7F3D0D670F2</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>bgmm</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <false/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_music.sh</string>
+        <key>subtext</key>
+        <string>Search Bangumi music</string>
+        <key>title</key>
+        <string>Bangumi Search (Music)</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>bgmg</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <false/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_game.sh</string>
+        <key>subtext</key>
+        <string>Search Bangumi games</string>
+        <key>title</key>
+        <string>Bangumi Search (Game)</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>alfredfiltersresults</key>
+        <false/>
+        <key>alfredfiltersresultsmatchmode</key>
+        <integer>0</integer>
+        <key>argumenttreatemptyqueryasnil</key>
+        <true/>
+        <key>argumenttrimmode</key>
+        <integer>0</integer>
+        <key>argumenttype</key>
+        <integer>1</integer>
+        <key>escaping</key>
+        <integer>102</integer>
+        <key>keyword</key>
+        <string>bgmr</string>
+        <key>queuedelaycustom</key>
+        <integer>1</integer>
+        <key>queuedelayimmediatelyinitially</key>
+        <false/>
+        <key>queuedelaymode</key>
+        <integer>0</integer>
+        <key>queuemode</key>
+        <integer>1</integer>
+        <key>runningsubtext</key>
+        <string></string>
+        <key>script</key>
+        <string></string>
+        <key>scriptargtype</key>
+        <integer>1</integer>
+        <key>scriptfile</key>
+        <string>./scripts/script_filter_real.sh</string>
+        <key>subtext</key>
+        <string>Search Bangumi real/live-action</string>
+        <key>title</key>
+        <string>Bangumi Search (Real)</string>
+        <key>type</key>
+        <integer>8</integer>
+        <key>withspace</key>
+        <true/>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.input.scriptfilter</string>
+      <key>uid</key>
+      <string>F3F8745F-C75C-4058-BCE5-7F95A77A9C3E</string>
+      <key>version</key>
+      <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
         <key>action</key>
         <integer>0</integer>
         <key>argument</key>
@@ -148,7 +458,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword bgm to search Bangumi subjects with optional type prefixes (all/book/anime/music/game/real).</string>
+  <string>Use bgm for all subjects, or bgmb/bgma/bgmm/bgmg/bgmr for fixed type shortcuts.</string>
   <key>uidata</key>
   <dict>
     <key>A4B4AF35-4AAB-4578-BF85-B2C36C3ED01B</key>
@@ -164,6 +474,41 @@
       <integer>230</integer>
       <key>ypos</key>
       <integer>180</integer>
+    </dict>
+    <key>B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>250</integer>
+    </dict>
+    <key>912ADAAE-E70D-4B1E-A138-E7F3D0D670F2</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>320</integer>
+    </dict>
+    <key>8C8FD5A4-4C37-4ED4-A8E8-3D613F2CE8B9</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>390</integer>
+    </dict>
+    <key>D9C69B12-6594-4A0A-B0AA-4F6B3DEFD5A6</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>460</integer>
+    </dict>
+    <key>F3F8745F-C75C-4058-BCE5-7F95A77A9C3E</key>
+    <dict>
+      <key>xpos</key>
+      <integer>230</integer>
+      <key>ypos</key>
+      <integer>530</integer>
     </dict>
     <key>D7E624DB-D4AB-4D53-8C03-D051A1A97A4A</key>
     <dict>

@@ -86,6 +86,44 @@ print_error_item() {
   emit_error_item "$title" "$subtitle"
 }
 
+query_has_explicit_subject_type() {
+  local query_lower
+  query_lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ "$query_lower" =~ ^\[[[:space:]]*(all|book|anime|music|game|real)[[:space:]]*\][[:space:]]+ ]]; then
+    return 0
+  fi
+
+  if [[ "$query_lower" =~ ^(all|book|anime|music|game|real): ]]; then
+    return 0
+  fi
+
+  if [[ "$query_lower" =~ ^(all|book|anime|music|game|real)([[:space:]]+|$) ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+apply_default_subject_type() {
+  local default_type="$1"
+  local query="$2"
+
+  case "$default_type" in
+  all | book | anime | music | game | real) ;;
+  *)
+    printf '%s\n' "$query"
+    return 0
+    ;;
+  esac
+
+  if query_has_explicit_subject_type "$query"; then
+    printf '%s\n' "$query"
+  else
+    printf '%s %s\n' "$default_type" "$query"
+  fi
+}
+
 resolve_bangumi_cli() {
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -185,6 +223,12 @@ if sfqp_is_short_query "$query" 2; then
     "Keep typing (2+ chars)" \
     "Type at least %s characters before searching Bangumi."
   exit 0
+fi
+
+default_subject_type="$(sfqp_trim "${BANGUMI_DEFAULT_TYPE:-}")"
+if [[ -n "$default_subject_type" ]]; then
+  default_subject_type="$(printf '%s' "$default_subject_type" | tr '[:upper:]' '[:lower:]')"
+  query="$(apply_default_subject_type "$default_subject_type" "$query")"
 fi
 
 # Shared driver owns cache/coalesce orchestration only.
