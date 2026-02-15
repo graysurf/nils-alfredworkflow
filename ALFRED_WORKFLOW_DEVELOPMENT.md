@@ -117,8 +117,9 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
 - Async flow contract:
   1. Shared driver (`sfsd_run_search_flow`) checks cache before settle-window final-query coalescing.
   2. For live-typing suggest/search Script Filters, keep default cache TTL at `0` to avoid stale prefix hits.
-  3. If query is not final yet, return pending row via `sfac_emit_pending_item_json` with `rerun`.
-  4. On backend completion, write cache via `sfac_store_cache_result` for both success (`ok`) and error (`err`) paths.
+  3. Shared coalesce helper must be queue-safe: settle-window checks are non-blocking and require the latest query to remain unchanged for `settle` seconds.
+  4. If query is not final yet, return pending row via `sfac_emit_pending_item_json` with `rerun`.
+  5. On backend completion, write cache via `sfac_store_cache_result` for both success (`ok`) and error (`err`) paths.
 
 ### `sfsd_run_search_flow` cache policy standard
 

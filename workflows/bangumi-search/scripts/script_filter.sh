@@ -52,6 +52,9 @@ emit_error_item() {
   sfej_emit_error_item_json "$title" "$subtitle"
 }
 
+BANGUMI_CLEAR_CACHE_ACTION_ARG="__BANGUMI_CLEAR_CACHE__"
+BANGUMI_CLEAR_CACHE_DIR_ACTION_ARG="__BANGUMI_CLEAR_CACHE_DIR__"
+
 print_error_item() {
   local raw_message="${1:-bangumi-cli query failed}"
   local message
@@ -84,6 +87,79 @@ print_error_item() {
   fi
 
   emit_error_item "$title" "$subtitle"
+}
+
+normalize_query_command() {
+  local value="$1"
+  value="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+  value="${value//-/ }"
+  value="${value//_/ }"
+  value="$(printf '%s' "$value" | tr -s '[:space:]' ' ')"
+  sfqp_trim "$value"
+}
+
+is_clear_cache_command() {
+  local normalized
+  normalized="$(normalize_query_command "$1")"
+  case "$normalized" in
+  "clear cache" | "cache clear")
+    return 0
+    ;;
+  esac
+  return 1
+}
+
+is_clear_cache_dir_command() {
+  local normalized
+  normalized="$(normalize_query_command "$1")"
+  case "$normalized" in
+  "clear cache dir" | "clear cachedir" | "cache dir clear" | "cachedir clear")
+    return 0
+    ;;
+  esac
+  return 1
+}
+
+emit_clear_cache_item_json() {
+  printf '{"items":[{"title":"Clear Bangumi query cache","subtitle":"Press Enter to remove local bangumi-search cache files.","arg":"%s","valid":true}]}\n' \
+    "$BANGUMI_CLEAR_CACHE_ACTION_ARG"
+}
+
+emit_clear_cache_dir_item_json() {
+  printf '{"items":[{"title":"Clear Bangumi cache dir","subtitle":"Press Enter to remove files under BANGUMI_CACHE_DIR (if configured).","arg":"%s","valid":true}]}\n' \
+    "$BANGUMI_CLEAR_CACHE_DIR_ACTION_ARG"
+}
+
+emit_empty_query_items_json() {
+  printf '{"items":[{"title":"Enter a search query","subtitle":"Type keywords after bgm to search Bangumi.","valid":false},{"title":"Clear Bangumi query cache","subtitle":"Press Enter to remove local bangumi-search cache files.","arg":"%s","valid":true},{"title":"Clear Bangumi cache dir","subtitle":"Press Enter to remove files under BANGUMI_CACHE_DIR (if configured).","arg":"%s","valid":true},{"title":"Bangumi Search (Anime)","subtitle":"Type and search anime via bgm anime <query>.","autocomplete":"anime ","valid":false,"skipknowledge":true},{"title":"Bangumi Search (Game)","subtitle":"Type and search games via bgm game <query>.","autocomplete":"game ","valid":false,"skipknowledge":true},{"title":"Bangumi Search (Music)","subtitle":"Type and search music via bgm music <query>.","autocomplete":"music ","valid":false,"skipknowledge":true},{"title":"Bangumi Search (Book)","subtitle":"Type and search books via bgm book <query>.","autocomplete":"book ","valid":false,"skipknowledge":true},{"title":"Bangumi Search (Real)","subtitle":"Type and search real/live-action via bgm real <query>.","autocomplete":"real ","valid":false,"skipknowledge":true}]}\n' \
+    "$BANGUMI_CLEAR_CACHE_ACTION_ARG" \
+    "$BANGUMI_CLEAR_CACHE_DIR_ACTION_ARG"
+}
+
+resolve_keyword_default_subject_type() {
+  local keyword="${alfred_workflow_keyword:-${ALFRED_WORKFLOW_KEYWORD:-}}"
+  keyword="$(printf '%s' "$keyword" | tr '[:upper:]' '[:lower:]')"
+
+  case "$keyword" in
+  bgmb)
+    printf '%s\n' "book"
+    ;;
+  bgma)
+    printf '%s\n' "anime"
+    ;;
+  bgmm)
+    printf '%s\n' "music"
+    ;;
+  bgmg)
+    printf '%s\n' "game"
+    ;;
+  bgmr)
+    printf '%s\n' "real"
+    ;;
+  *)
+    printf '%s\n' ""
+    ;;
+  esac
 }
 
 query_has_explicit_subject_type() {
@@ -213,7 +289,17 @@ trimmed_query="$(sfqp_trim "$query")"
 query="$trimmed_query"
 
 if [[ -z "$query" ]]; then
-  emit_error_item "Enter a search query" "Type keywords after bgm to search Bangumi."
+  emit_empty_query_items_json
+  exit 0
+fi
+
+if is_clear_cache_command "$query"; then
+  emit_clear_cache_item_json
+  exit 0
+fi
+
+if is_clear_cache_dir_command "$query"; then
+  emit_clear_cache_dir_item_json
   exit 0
 fi
 
@@ -226,6 +312,9 @@ if sfqp_is_short_query "$query" 2; then
 fi
 
 default_subject_type="$(sfqp_trim "${BANGUMI_DEFAULT_TYPE:-}")"
+if [[ -z "$default_subject_type" ]]; then
+  default_subject_type="$(resolve_keyword_default_subject_type)"
+fi
 if [[ -n "$default_subject_type" ]]; then
   default_subject_type="$(printf '%s' "$default_subject_type" | tr '[:upper:]' '[:lower:]')"
   query="$(apply_default_subject_type "$default_subject_type" "$query")"

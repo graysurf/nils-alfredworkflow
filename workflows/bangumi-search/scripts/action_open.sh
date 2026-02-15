@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+BANGUMI_CLEAR_CACHE_ACTION_ARG="__BANGUMI_CLEAR_CACHE__"
+BANGUMI_CLEAR_CACHE_DIR_ACTION_ARG="__BANGUMI_CLEAR_CACHE_DIR__"
+
 resolve_helper() {
   local helper_name="$1"
   local script_dir
@@ -21,6 +24,21 @@ resolve_helper() {
 
   return 1
 }
+
+if [[ $# -lt 1 || -z "${1:-}" ]]; then
+  echo "usage: action_open.sh <url>" >&2
+  exit 2
+fi
+
+if [[ "${1:-}" == "$BANGUMI_CLEAR_CACHE_ACTION_ARG" ]]; then
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  exec "$script_dir/action_clear_cache.sh"
+fi
+
+if [[ "${1:-}" == "$BANGUMI_CLEAR_CACHE_DIR_ACTION_ARG" ]]; then
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  exec "$script_dir/action_clear_cache_dir.sh"
+fi
 
 helper="$(resolve_helper "workflow_action_open_url.sh" || true)"
 if [[ -z "$helper" ]]; then

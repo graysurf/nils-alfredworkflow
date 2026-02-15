@@ -126,7 +126,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>bgm</string>
+        <string>bgm||bgmb||bgma||bgmm||bgmg||bgmr</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -175,7 +175,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>bgmb</string>
+        <string>__bgmb_disabled__</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -224,7 +224,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>bgma</string>
+        <string>__bgma_disabled__</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -273,7 +273,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>bgmm</string>
+        <string>__bgmm_disabled__</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -322,7 +322,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>bgmg</string>
+        <string>__bgmg_disabled__</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -371,7 +371,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>bgmr</string>
+        <string>__bgmr_disabled__</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
