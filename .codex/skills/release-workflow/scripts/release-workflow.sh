@@ -98,6 +98,11 @@ process.stdout.write(`${topLevel}|${rootPackage}`);
 NODE
 }
 
+extract_bangumi_user_agent_placeholder_version() {
+  local file="$1"
+  sed -n 's#.*<string>nils-bangumi-cli/\([^<]*\)</string>.*#\1#p' "$file" | head -n1
+}
+
 set_explicit_version() {
   local file="$1"
   local target_version="$2"
@@ -179,6 +184,34 @@ NODE
   fi
 }
 
+set_bangumi_user_agent_placeholder_version() {
+  local file="$1"
+  local target_version="$2"
+  local tmp_file
+  tmp_file="$(mktemp)"
+
+  if ! awk -v target="$target_version" '
+    BEGIN { replaced = 0 }
+    {
+      if (!replaced && $0 ~ /<string>nils-bangumi-cli\/[^<]+<\/string>/) {
+        sub(/<string>nils-bangumi-cli\/[^<]+<\/string>/, "<string>nils-bangumi-cli/" target "</string>")
+        replaced = 1
+      }
+      print $0
+    }
+    END {
+      if (!replaced) {
+        exit 2
+      }
+    }
+  ' "$file" >"$tmp_file"; then
+    rm -f "$tmp_file"
+    fail 1 "failed to update Bangumi User-Agent placeholder in $file"
+  fi
+
+  mv "$tmp_file" "$file"
+}
+
 add_version_target() {
   local file="$1"
   local kind="$2"
@@ -238,6 +271,18 @@ collect_version_targets() {
         "package-lock.json" \
         "package-lock" \
         "package-lock.json: version=${lock_top_level:-<missing>}, packages[\"\"].version=${lock_root:-<missing>} -> $semver"
+    fi
+  fi
+
+  local bangumi_info_file="workflows/bangumi-search/src/info.plist.template"
+  if git ls-files --error-unmatch "$bangumi_info_file" >/dev/null 2>&1; then
+    current="$(extract_bangumi_user_agent_placeholder_version "$bangumi_info_file")"
+    [[ -n "$current" ]] || fail 1 "${bangumi_info_file} is missing nils-bangumi-cli/<version> placeholder"
+    if [[ "$current" != "$semver" ]]; then
+      add_version_target \
+        "$bangumi_info_file" \
+        "bangumi-user-agent" \
+        "${bangumi_info_file}: BANGUMI_USER_AGENT placeholder nils-bangumi-cli/${current} -> nils-bangumi-cli/${semver}"
     fi
   fi
 }
@@ -374,6 +419,9 @@ if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
       package-lock)
         set_package_lock_versions "$target_file" "$semver"
         ;;
+      bangumi-user-agent)
+        set_bangumi_user_agent_placeholder_version "$target_file" "$semver"
+        ;;
       cargo-lock)
         ;;
       *)
@@ -392,7 +440,7 @@ if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
   cat <<EOF | semantic-commit commit
 chore(release): bump version to ${semver}
 
-- Sync Cargo, workflow, and package manifest versions to ${semver}.
+- Sync Cargo, workflow, package, and Bangumi UA placeholder versions to ${semver}.
 - Refresh Cargo.lock workspace package versions when present.
 EOF
 

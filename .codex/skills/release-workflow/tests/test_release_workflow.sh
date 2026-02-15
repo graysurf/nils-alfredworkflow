@@ -90,6 +90,18 @@ script_filter = "script_filter.sh"
 action = "action_open.sh"
 EOF
 
+mkdir -p workflows/bangumi-search/src
+cat > workflows/bangumi-search/src/info.plist.template <<'EOF'
+<plist>
+  <dict>
+    <key>label</key>
+    <string>BANGUMI_USER_AGENT</string>
+    <key>placeholder</key>
+    <string>nils-bangumi-cli/0.1.0</string>
+  </dict>
+</plist>
+EOF
+
 cat > package.json <<'EOF'
 {
   "name": "release-workflow-test",
@@ -132,12 +144,17 @@ if ! rg -n '"version": "0.1.0"' package.json package-lock.json >/dev/null; then
   echo "error: dry-run should not mutate package version files" >&2
   exit 1
 fi
+if ! rg -n 'nils-bangumi-cli/0.1.0' workflows/bangumi-search/src/info.plist.template >/dev/null; then
+  echo "error: dry-run should not mutate bangumi user-agent placeholder" >&2
+  exit 1
+fi
 
 "$entrypoint" v0.2.0 >/dev/null
 git rev-parse -q --verify refs/tags/v0.2.0 >/dev/null
 git ls-remote --exit-code --tags origin refs/tags/v0.2.0 >/dev/null
 rg -n '^version = "0.2.0"$' Cargo.toml workflows/open-project/workflow.toml Cargo.lock >/dev/null
 rg -n '"version": "0.2.0"' package.json package-lock.json >/dev/null
+rg -n 'nils-bangumi-cli/0.2.0' workflows/bangumi-search/src/info.plist.template >/dev/null
 git log -1 --pretty=%s | rg '^chore\(release\): bump version to 0.2.0$' >/dev/null
 if ! git diff-tree --no-commit-id --name-only -r HEAD | rg '^Cargo.lock$' >/dev/null; then
   echo "error: expected release bump commit to include Cargo.lock" >&2
@@ -145,6 +162,10 @@ if ! git diff-tree --no-commit-id --name-only -r HEAD | rg '^Cargo.lock$' >/dev/
 fi
 if ! git diff-tree --no-commit-id --name-only -r HEAD | rg '^package-lock\.json$' >/dev/null; then
   echo "error: expected release bump commit to include package-lock.json" >&2
+  exit 1
+fi
+if ! git diff-tree --no-commit-id --name-only -r HEAD | rg '^workflows/bangumi-search/src/info\.plist\.template$' >/dev/null; then
+  echo "error: expected release bump commit to include bangumi user-agent placeholder file" >&2
   exit 1
 fi
 local_head="$(git rev-parse HEAD)"
