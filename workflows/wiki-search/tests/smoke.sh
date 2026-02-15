@@ -101,7 +101,7 @@ manifest="$workflow_dir/workflow.toml"
 [[ "$(toml_string "$manifest" script_filter)" == "script_filter.sh" ]] || fail "script_filter mismatch"
 [[ "$(toml_string "$manifest" action)" == "action_open.sh" ]] || fail "action mismatch"
 
-for variable in WIKI_LANGUAGE WIKI_MAX_RESULTS; do
+for variable in WIKI_LANGUAGE WIKI_LANGUAGE_OPTIONS WIKI_MAX_RESULTS; do
   if ! rg -n "^${variable}[[:space:]]*=" "$manifest" >/dev/null; then
     fail "missing env var in workflow.toml: $variable"
   fi
@@ -186,7 +186,7 @@ cat >"$tmp_dir/stubs/wiki-cli-ok" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ -n "${WIKI_STUB_LOG:-}" ]]; then
-  printf '%s\n' "$*" >>"$WIKI_STUB_LOG"
+  printf '%s | lang=%s\n' "$*" "${WIKI_LANGUAGE:-}" >>"$WIKI_STUB_LOG"
 fi
 [[ "${1:-}" == "search" ]] || exit 9
 [[ "${2:-}" == "--query" ]] || exit 9
@@ -241,7 +241,7 @@ assert_jq_json "$unavailable_json" '.items[0].valid == false' "unavailable item 
 
 invalid_config_json="$({ WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-invalid-config" "$workflow_dir/scripts/script_filter.sh" "rust"; })"
 assert_jq_json "$invalid_config_json" '.items[0].title == "Invalid Wiki workflow config"' "invalid config title mapping mismatch"
-assert_jq_json "$invalid_config_json" '.items[0].subtitle | contains("WIKI_LANGUAGE")' "invalid config subtitle should mention WIKI_LANGUAGE"
+assert_jq_json "$invalid_config_json" '.items[0].subtitle | contains("WIKI_LANGUAGE_OPTIONS")' "invalid config subtitle should mention WIKI_LANGUAGE_OPTIONS"
 
 empty_query_json="$({ WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" "$workflow_dir/scripts/script_filter.sh" "   "; })"
 assert_jq_json "$empty_query_json" '.items[0].title == "Enter a search query"' "empty query guidance title mismatch"
@@ -252,6 +252,41 @@ short_query_json="$({ WIKI_STUB_LOG="$short_query_log" WIKI_CLI_BIN="$tmp_dir/st
 assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"' "short query guidance title mismatch"
 assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke wiki-cli backend"
+
+cat >"$tmp_dir/stubs/wiki-requery-cmd" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$1" >"$WIKI_REQUERY_OUT"
+EOS
+chmod +x "$tmp_dir/stubs/wiki-requery-cmd"
+
+WIKI_REQUERY_OUT="$tmp_dir/wiki-requery.out" WIKI_REQUERY_COMMAND="$tmp_dir/stubs/wiki-requery-cmd" \
+  "$workflow_dir/scripts/action_open.sh" "wiki-requery:zh:rust language"
+[[ "$(cat "$tmp_dir/wiki-requery.out")" == "wk rust language" ]] || fail "action_open.sh should trigger direct requery text"
+
+override_state_file="$ALFRED_WORKFLOW_CACHE/wiki-language-override.state"
+[[ -f "$override_state_file" ]] || fail "language override state file should exist after requery action"
+[[ "$(sed -n '1p' "$override_state_file")" == "zh" ]] || fail "language override state must store selected language"
+
+override_lang_log="$tmp_dir/wiki-override-lang.log"
+{
+  WIKI_LANGUAGE="en" WIKI_STUB_LOG="$override_lang_log" WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "rust" >/dev/null
+}
+override_first_line="$(sed -n '1p' "$override_lang_log")"
+[[ "$override_first_line" == *"lang=zh"* ]] || fail "script_filter must apply override language after requery action"
+
+empty_query_json="$({ WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" "$workflow_dir/scripts/script_filter.sh" "   "; })"
+assert_jq_json "$empty_query_json" '.items[0].title == "Enter a search query"' "empty query guidance title mismatch"
+[[ ! -f "$override_state_file" ]] || fail "empty query should clear language override state"
+
+default_lang_log="$tmp_dir/wiki-default-lang.log"
+{
+  WIKI_LANGUAGE="en" WIKI_STUB_LOG="$default_lang_log" WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "rust" >/dev/null
+}
+default_first_line="$(sed -n '1p' "$default_lang_log")"
+[[ "$default_first_line" == *"lang=en"* ]] || fail "script_filter should use default WIKI_LANGUAGE when no override"
 
 default_cache_log="$tmp_dir/wiki-default-cache.log"
 {
@@ -378,9 +413,11 @@ assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-4
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.type == 8' "action node must be external script type=8"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"
-assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["WIKI_LANGUAGE","WIKI_MAX_RESULTS"]' "user configuration variables mismatch"
+assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["WIKI_LANGUAGE","WIKI_LANGUAGE_OPTIONS","WIKI_MAX_RESULTS"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WIKI_LANGUAGE") | .config.default == "en"' "WIKI_LANGUAGE default must be en"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WIKI_LANGUAGE") | .config.required == false' "WIKI_LANGUAGE must be optional"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WIKI_LANGUAGE_OPTIONS") | .config.default == "zh,en"' "WIKI_LANGUAGE_OPTIONS default must be zh,en"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WIKI_LANGUAGE_OPTIONS") | .config.required == false' "WIKI_LANGUAGE_OPTIONS must be optional"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WIKI_MAX_RESULTS") | .config.default == "10"' "WIKI_MAX_RESULTS default must be 10"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="WIKI_MAX_RESULTS") | .config.required == false' "WIKI_MAX_RESULTS must be optional"
 

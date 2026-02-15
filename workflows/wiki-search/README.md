@@ -11,6 +11,8 @@ Search Wikipedia articles from Alfred and open selected pages in your browser.
 - Trigger wiki search with `wk <query>`.
 - Show article title and cleaned snippet directly in Alfred.
 - Open selected Wikipedia article URL in your default browser with `Enter`.
+- Language switch rows support ordered multi-language requery (for example `zh,en` keeps `zh` then `en`).
+- Press `Enter` on a language row to directly requery the same keywords in that language.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
 - Script Filter queue policy: 1 second delay with initial immediate run disabled.
 - Script-level guardrails: async query coalescing (final query priority) and short TTL cache reduce duplicate API calls while typing.
@@ -25,6 +27,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `WIKI_LANGUAGE` | No | `en` | Optional lowercase Wikipedia language code. Effective format is clamped to `^[a-z]{2,12}$`. |
+| `WIKI_LANGUAGE_OPTIONS` | No | `zh,en` | Optional comma/newline list of switch-row languages. Row order follows this config exactly. |
 | `WIKI_MAX_RESULTS` | No | `10` | Max results per query. Effective range is clamped to `1..20`. |
 
 ## Keyword
@@ -38,6 +41,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `WIKI_CLI_BIN` | Optional override path for `wiki-cli` (useful for local debugging). |
+| `WIKI_REQUERY_COMMAND` | Optional override command used by `action_open.sh` to trigger requery (test/debug helper). |
 | `WIKI_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits). |
 | `WIKI_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. |
 | `WIKI_QUERY_COALESCE_RERUN_SECONDS` | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`. |

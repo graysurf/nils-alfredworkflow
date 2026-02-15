@@ -6,12 +6,14 @@
 //! - `git`: git metadata helpers and GitHub URL normalization.
 //! - `feedback`: Alfred item assembly.
 //! - `output_contract`: shared output modes + JSON envelope helpers.
+//! - `list_parser`: ordered comma/newline list parsing utilities.
 
 pub mod config;
 pub mod discovery;
 pub mod error;
 pub mod feedback;
 pub mod git;
+pub mod list_parser;
 pub mod output_contract;
 pub mod usage_log;
 
@@ -26,6 +28,7 @@ pub use feedback::{
     no_projects_feedback, subtitle_format,
 };
 pub use git::{github_url_for_project, normalize_github_remote};
+pub use list_parser::{parse_ordered_list_with, split_ordered_list};
 pub use output_contract::{
     ENVELOPE_SCHEMA_VERSION, EnvelopePayloadKind, OutputMode, OutputModeSelectionError,
     build_error_details_json, build_error_envelope, build_success_envelope, redact_sensitive,

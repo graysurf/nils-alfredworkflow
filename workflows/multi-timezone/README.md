@@ -12,7 +12,7 @@ Show current time across one or more IANA timezones and copy a selected value.
 - Supports comma/newline separated IANA timezone IDs (for example `Asia/Taipei,America/New_York`).
 - Query input overrides configured workflow default zones.
 - Empty query + empty config uses fallback chain (default `MULTI_TZ_LOCAL_OVERRIDE=Europe/London`).
-- Output order is deterministic and follows input order.
+- Output order is deterministic and follows input order (shared `nils-workflow-common` ordered-list parser standard).
 - Press `Enter` on any row to copy selected payload via `pbcopy`.
 
 ## Configuration

@@ -155,6 +155,7 @@ mod tests {
     fn fixture_config(language: &str, max_results: u8) -> RuntimeConfig {
         RuntimeConfig {
             language: language.to_string(),
+            language_options: vec![language.to_string()],
             max_results,
         }
     }

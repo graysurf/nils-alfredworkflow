@@ -252,6 +252,9 @@ success_json="$({ TIMEZONE_CLI_BIN="$tmp_dir/stubs/timezone-cli-ok" "$workflow_d
 assert_jq_json "$success_json" '.items | type == "array" and length == 3' "script_filter success must output three-item array"
 assert_jq_json "$success_json" '[.items[].uid] == ["Asia/Taipei","America/New_York","Europe/London"]' "script_filter must preserve query order"
 
+mixed_query_json="$({ TIMEZONE_CLI_BIN="$tmp_dir/stubs/timezone-cli-ok" "$workflow_dir/scripts/script_filter.sh" $' , Asia/Taipei,\n,America/New_York ,,Europe/London '; })"
+assert_jq_json "$mixed_query_json" '[.items[].uid] == ["Asia/Taipei","America/New_York","Europe/London"]' "script_filter must preserve mixed-separator query order"
+
 config_json="$({ TIMEZONE_CLI_BIN="$tmp_dir/stubs/timezone-cli-ok" MULTI_TZ_ZONES=$'Asia/Taipei\nAmerica/New_York,Europe/London' "$workflow_dir/scripts/script_filter.sh" ""; })"
 assert_jq_json "$config_json" '[.items[].uid] == ["Asia/Taipei","America/New_York","Europe/London"]' "script_filter must preserve config order"
 

@@ -15,6 +15,7 @@ row ordering, Alfred item JSON shape, copy-action behavior, and error mapping.
   2. Workflow config field `MULTI_TZ_ZONES` when query is empty.
   3. Local-timezone detection fallback chain when both are empty.
 - Supported separators in query/config values: comma (`,`) and newline (`\n`).
+- Tokenization and ordering semantics are shared through `nils-workflow-common` ordered-list parser utilities.
 - Timezone IDs must be valid IANA zone names (for example `Asia/Taipei`).
 
 ## Local Timezone Detection Fallback Chain

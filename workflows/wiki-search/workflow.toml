@@ -10,6 +10,8 @@ assets = ["src/assets/icon.png"]
 [env]
 # Optional: lowercase Wikipedia language code used as the subdomain (for example en, zh, ja). Defaults to en.
 WIKI_LANGUAGE = "en"
+# Optional: comma/newline separated Wikipedia language options used by switch rows, preserving configured order.
+WIKI_LANGUAGE_OPTIONS = "zh,en"
 # Optional: maximum number of results to return. Parsed as base-10 integer and clamped to 1..20. Defaults to 10.
 WIKI_MAX_RESULTS = "10"
 

@@ -100,6 +100,22 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
   - Workflow-specific UX behavior that intentionally diverges.
 - Prefer thin local adapters over generic mega-helpers: shared helpers should expose deterministic primitives, while each workflow keeps its own domain rules and copy.
 
+### Ordered config list parsing standard
+
+- For workflow config/query lists that support comma/newline input (for example timezone IDs, language options), use the shared parser from `nils-workflow-common`:
+  - `split_ordered_list`
+  - `parse_ordered_list_with`
+- Parsing rules are normative:
+  - separators: comma (`,`) and newline (`\\n`)
+  - trim per-token surrounding whitespace
+  - ignore empty tokens
+  - preserve non-empty token order exactly as provided
+- Keep domain validation local to each workflow crate (for example IANA timezone parse, wiki language-code validation); shared parser owns tokenization/order only.
+- When both query list and config list are supported, query-over-config precedence must preserve source order unchanged.
+- Required coverage for workflows relying on ordered lists:
+  - unit tests for parser/validator edge cases
+  - workflow smoke assertions that emitted row order matches input/config order
+
 ### `sfqp_*` query policy usage standard
 
 - Normalize input via `sfqp_resolve_query_input` and `sfqp_trim` before validation/backend calls.

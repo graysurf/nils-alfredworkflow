@@ -5,6 +5,7 @@ Shared open-project domain and output-contract utilities reused by workflow crat
 ## Public API Summary
 
 - Configuration: `RuntimeConfig` plus defaults/helpers (`parse_project_dirs`, `expand_home_tokens`).
+- Ordered list parsing: `split_ordered_list` and `parse_ordered_list_with` for deterministic comma/newline config lists.
 - Project discovery: `Project`, `discover_projects`, `filter_projects`.
 - Alfred feedback assembly: `build_feedback`, `build_script_filter_feedback`, and `Feedback` re-export.
 - Git + errors: `github_url_for_project`, `normalize_github_remote`, `WorkflowError`.
