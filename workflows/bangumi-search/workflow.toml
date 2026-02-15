@@ -1,0 +1,30 @@
+id = "bangumi-search"
+name = "Bangumi Search"
+bundle_id = "com.graysurf.bangumi-search"
+version = "1.1.0"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "bangumi-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional: Bangumi API key. Keep empty to use anonymous API mode.
+BANGUMI_API_KEY = ""
+# Optional: maximum number of results to return. Parsed as base-10 integer and clamped to 1..20.
+BANGUMI_MAX_RESULTS = "10"
+# Optional: request timeout in milliseconds. Parsed as base-10 integer and clamped to 1000..30000.
+BANGUMI_TIMEOUT_MS = "8000"
+# Optional: explicit User-Agent override. Keep empty to use bangumi-cli default UA.
+BANGUMI_USER_AGENT = ""
+# Optional: explicit cache directory for image cache artifacts.
+BANGUMI_CACHE_DIR = ""
+# Optional: image cache TTL in seconds. Parsed as base-10 integer and clamped to >= 0.
+BANGUMI_IMAGE_CACHE_TTL_SECONDS = "86400"
+# Optional: image cache max size in MB. Parsed as base-10 integer and clamped to 1..1024.
+BANGUMI_IMAGE_CACHE_MAX_MB = "128"
+# Optional: API fallback policy. Allowed values: auto, never, always.
+BANGUMI_API_FALLBACK = "auto"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

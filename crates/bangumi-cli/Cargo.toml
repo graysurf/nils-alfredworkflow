@@ -1,0 +1,30 @@
+[package]
+name = "nils-bangumi-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Bangumi search CLI for subject discovery workflows."
+
+[lib]
+name = "bangumi_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bangumi-cli"
+path = "src/main.rs"
+
+[features]
+default = []
+scraper-bridge = []
+
+[dependencies]
+alfred-core = { package = "nils-alfred-core", path = "../alfred-core", version = "1.0.3" }
+clap.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
