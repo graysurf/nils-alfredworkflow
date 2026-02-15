@@ -512,7 +512,7 @@ assert_jq_file "$packaged_json_file" '.objects | length > 0' "packaged plist mis
 assert_jq_file "$packaged_json_file" '.connections | length > 0' "packaged plist missing connections"
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.type] | all(. == 8)' "script filter objects must be external script type=8"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script filter scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "bgm||bgmb||bgma||bgmm||bgmg||bgmr"' "primary keyword trigger must include bgm + typed aliases"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "bgm||bangumi||bgmb||bgma||bgmm||bgmg||bgmr"' "primary keyword trigger must include bgm + typed aliases"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201") | .config.scriptfile == "./scripts/script_filter_book.sh"' "book script filter scriptfile wiring mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="B48A5D8C-5F5E-4709-A8A2-1BDB89E4E201") | .config.keyword == "__bgmb_disabled__"' "secondary bgmb entrypoint should be disabled to keep bgm command order deterministic"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="912ADAAE-E70D-4B1E-A138-E7F3D0D670F2") | .config.scriptfile == "./scripts/script_filter_anime.sh"' "anime script filter scriptfile wiring mismatch"

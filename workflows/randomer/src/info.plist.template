@@ -84,7 +84,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>rr</string>
+        <string>rr||random</string>
         <key>queuedelaycustom</key>
         <integer>3</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -243,7 +243,7 @@
   <string>Randomer format generator.
 
 Keywords:
-- rr
+- rr or random
 - rrv
 
 Behavior:

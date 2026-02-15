@@ -61,7 +61,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>wt</string>
+        <string>wt||weather</string>
         <key>queuedelaycustom</key>
         <integer>2</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -168,7 +168,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Keywords:\n- wt (today forecast)\n- ww (pick city then 7-day forecast)\n\nType a city name or lat,lon (for example 25.03,121.56).</string>
+  <string>Keywords:\n- wt or weather (today forecast)\n- ww (pick city then 7-day forecast)\n\nType a city name or lat,lon (for example 25.03,121.56).</string>
   <key>uidata</key>
   <dict>
     <key>B1A11A4C-5F5D-4E8D-8E68-2AD5A95E95E1</key>

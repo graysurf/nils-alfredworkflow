@@ -61,7 +61,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>wk</string>
+        <string>wk||wiki</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -148,7 +148,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keyword wk to search Wikipedia. Configure language and result count in workflow variables.</string>
+  <string>Use keyword wk or wiki to search Wikipedia. Configure language and result count in workflow variables.</string>
   <key>uidata</key>
   <dict>
     <key>87216367-7582-4063-82EB-5FE728B55FDA</key>

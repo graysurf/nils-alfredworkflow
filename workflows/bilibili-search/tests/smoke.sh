@@ -349,7 +349,7 @@ with open(sys.argv[2], 'w', encoding='utf-8') as dst:
 PY
 fi
 
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "bl"' "keyword trigger must be bl"
+assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "bl||bilibili"' "keyword trigger must be bl"
 assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["BILIBILI_MAX_RESULTS","BILIBILI_TIMEOUT_MS","BILIBILI_UID","BILIBILI_USER_AGENT"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script_filter path mismatch"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action script path mismatch"

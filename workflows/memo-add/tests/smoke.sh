@@ -587,9 +587,9 @@ PY
 fi
 
 assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 7' "scriptfilter count mismatch"
-assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["mm","mma","mmc","mmd","mmq","mmr","mmu"]' "keyword wiring mismatch"
-assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm") | .config.scriptfile == "./scripts/script_filter_entry.sh"' "mm keyword should use command-entry script"
-assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm") | .config.withspace == false' "mm keyword should keep no-space suffix routing"
+assert_jq_json "$packaged_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.keyword] | sort == ["mma","mmc","mmd","mmq","mmr","mmu","mm||memo"]' "keyword wiring mismatch"
+assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm||memo") | .config.scriptfile == "./scripts/script_filter_entry.sh"' "mm keyword should use command-entry script"
+assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mm||memo") | .config.withspace == false' "mm keyword should keep no-space suffix routing"
 assert_jq_json "$packaged_json" '.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "mmq") | .config.scriptfile == "./scripts/script_filter_search.sh"' "mmq keyword should use search script"
 assert_jq_json "$packaged_json" '.connections | length == 7' "connection wiring mismatch"
 assert_jq_json "$packaged_json" '[.userconfigurationconfig[].variable] | sort == ["MEMO_DB_PATH","MEMO_MAX_INPUT_BYTES","MEMO_RECENT_LIMIT","MEMO_REQUIRE_CONFIRM","MEMO_SEARCH_MATCH","MEMO_SOURCE","MEMO_WORKFLOW_CLI_BIN"]' "plist variable list mismatch"

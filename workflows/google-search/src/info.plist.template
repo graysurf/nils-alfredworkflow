@@ -74,7 +74,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>gg</string>
+        <string>gg||google</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -210,7 +210,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use gg for two-stage suggestions and gb for direct Brave search. Set BRAVE_API_KEY to open search results.</string>
+  <string>Use gg or google for two-stage suggestions and gb for direct Brave search. Set BRAVE_API_KEY to open search results.</string>
   <key>uidata</key>
   <dict>
     <key>726AB578-5514-4DCE-9CCC-70123C3306BC</key>

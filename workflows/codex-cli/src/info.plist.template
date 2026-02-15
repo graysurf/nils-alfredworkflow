@@ -152,7 +152,7 @@
         <key>escaping</key>
         <integer>102</integer>
         <key>keyword</key>
-        <string>cx</string>
+        <string>cx||codex</string>
         <key>queuedelaycustom</key>
         <integer>1</integer>
         <key>queuedelayimmediatelyinitially</key>
@@ -582,7 +582,7 @@
     </dict>
   </array>
   <key>readme</key>
-  <string>Use keywords cx / cxa / cxau / cxac / cxd / cxs / cxr / cxda to run codex-cli auth and diagnostics commands from Alfred.</string>
+  <string>Use keywords cx or codex / cxa / cxau / cxac / cxd / cxs / cxr / cxda to run codex-cli auth and diagnostics commands from Alfred.</string>
   <key>uidata</key>
   <dict>
     <key>1B2C2CF8-9C9E-4E5E-AE2D-6F911B3A9D63</key>
