@@ -119,7 +119,7 @@ web search feedback while keeping the Alfred workflow name/keyword oriented to G
 
 - `BRAVE_API_KEY` (required): Brave Search API subscription token.
 - `BRAVE_MAX_RESULTS` (optional): default `10`, clamped to `1..20`.
-- `BRAVE_SAFESEARCH` (optional): `strict`, `moderate`, or `off`; default `moderate`.
+- `BRAVE_SAFESEARCH` (optional): `strict`, `moderate`, or `off`; default `off`.
 - `BRAVE_COUNTRY` (optional): 2-letter country code, uppercased before request.
 
 ### Alfred command flow
@@ -136,6 +136,58 @@ Run these before packaging/release:
 - `bash workflows/google-search/tests/smoke.sh`
 - `scripts/workflow-test.sh --id google-search`
 - `scripts/workflow-pack.sh --id google-search`
+
+Runtime checks:
+
+- Missing `BRAVE_API_KEY` must return an Alfred error item (not malformed JSON).
+- Quota/rate-limit and API/network failures must return non-actionable error items.
+- Empty API results must return a clear `No results found` guidance item.
+
+## Netflix Search workflow details
+
+`workflows/netflix-search` is a dedicated workflow that uses `brave-cli` and enforces
+Netflix title-page query scoping:
+- single-query country map:
+  - mapped catalog regions -> `site:netflix.com/<country>/title`
+  - `US` and other/unmapped country codes -> `site:netflix.com/title`
+- runtime fallback:
+  - if Brave returns `422 validate request parameter` for `BRAVE_COUNTRY`, retry once without
+    `BRAVE_COUNTRY` while keeping the same Netflix site scope.
+
+### Environment variables
+
+- `BRAVE_API_KEY` (required): Brave Search API subscription token.
+- `BRAVE_MAX_RESULTS` (optional): default `10`, clamped to `1..20`.
+- `BRAVE_SAFESEARCH` (optional): `strict`, `moderate`, or `off`; default `off`.
+- `NETFLIX_CATALOG_REGION` (optional): 2-letter catalog region code for Netflix site scope; falls back to
+  `BRAVE_COUNTRY` when unset/invalid.
+- `BRAVE_COUNTRY` (optional): 2-letter country code for Brave ranking/locale bias.
+
+Recommended usage:
+
+- `NETFLIX_CATALOG_REGION=VN` (content/catalog region target)
+- `BRAVE_COUNTRY` optional (Brave ranking/language bias)
+
+### Alfred command flow
+
+- Keyword triggers: `nf`, `netflix`.
+- Script filter adapter: `workflows/netflix-search/scripts/script_filter.sh` ->
+  `brave-cli search --query "<country-mapped netflix title query>"`.
+- Enter flow: `workflows/netflix-search/scripts/action_open.sh` opens selected `arg` URL.
+
+### Operator validation checklist
+
+Run these before packaging/release:
+
+- `bash workflows/netflix-search/tests/smoke.sh`
+- `scripts/workflow-test.sh --id netflix-search`
+- `scripts/workflow-pack.sh --id netflix-search`
+
+Optional manual maintenance:
+
+- `scripts/netflix-country-probe.sh` (two-stage probe: URL pre-check, then Brave search for non-NotFound countries)
+- `scripts/netflix-country-probe.sh --apply` (apply suggested allowlist to
+  `workflows/netflix-search/scripts/country_map.sh`)
 
 Runtime checks:
 

@@ -100,6 +100,16 @@
 - This is optional maintainer validation for `weather-cli` provider/fallback/contract behavior.
 - It is not required for commit gates or CI pass/fail.
 
+### Netflix country-map probe (optional manual)
+
+- Manual probe + allowlist recommendation:
+  - `bash scripts/netflix-country-probe.sh`
+  - Two-stage probe: URL pre-check first, then Brave search probe only for non-`NotFound` countries.
+  - `US` is treated as forced-global and skips search probe.
+- Apply suggested allowlist to Netflix workflow runtime map:
+  - `bash scripts/netflix-country-probe.sh --apply`
+- This is optional maintainer maintenance and is not required for commit gates or CI pass/fail.
+
 ## Coverage (optional)
 
 - Install tools:
