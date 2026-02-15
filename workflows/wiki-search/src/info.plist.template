@@ -200,6 +200,27 @@
       <key>config</key>
       <dict>
         <key>default</key>
+        <string>zh,en</string>
+        <key>placeholder</key>
+        <string>zh,en</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional comma/newline list of Wikipedia language options shown in switch rows. Row order follows this value exactly (for example zh,en).</string>
+      <key>label</key>
+      <string>WIKI_LANGUAGE_OPTIONS</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>WIKI_LANGUAGE_OPTIONS</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
         <string>10</string>
         <key>placeholder</key>
         <string>1-20</string>

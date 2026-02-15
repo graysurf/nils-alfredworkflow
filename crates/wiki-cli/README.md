@@ -10,7 +10,7 @@ CLI backend for the `wiki-search` workflow.
 
 ## Environment Variables
 
-- Optional: `WIKI_LANGUAGE`, `WIKI_MAX_RESULTS`
+- Optional: `WIKI_LANGUAGE`, `WIKI_LANGUAGE_OPTIONS`, `WIKI_MAX_RESULTS`
 
 ## Output Contract
 

@@ -1,5 +1,6 @@
 use chrono_tz::Tz;
 use thiserror::Error;
+use workflow_common::split_ordered_list;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimezoneEntry {
@@ -24,17 +25,12 @@ pub enum ParseError {
 pub fn parse_timezone_list(raw: &str) -> Result<Vec<TimezoneEntry>, ParseError> {
     let mut entries = Vec::new();
 
-    for token in raw.split([',', '\n']) {
-        let trimmed = token.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        let tz = trimmed
+    for token in split_ordered_list(raw) {
+        let tz = token
             .parse::<Tz>()
-            .map_err(|_| ParseError::InvalidTimezone(trimmed.to_string()))?;
+            .map_err(|_| ParseError::InvalidTimezone(token.clone()))?;
 
-        entries.push(TimezoneEntry::new(trimmed.to_string(), tz));
+        entries.push(TimezoneEntry::new(token, tz));
     }
 
     if entries.is_empty() && !raw.trim().is_empty() {

@@ -151,7 +151,12 @@ where
             let config = load_config().map_err(AppError::from_config)?;
             let results = search_articles(&config, query).map_err(AppError::from_wiki_api)?;
 
-            let payload = feedback::search_results_to_feedback(&config.language, &results);
+            let payload = feedback::search_results_to_feedback(
+                &config.language,
+                query,
+                &config.language_options,
+                &results,
+            );
             render_feedback(mode, "search", payload)
         }
     }
@@ -237,6 +242,7 @@ mod tests {
     fn fixture_config() -> RuntimeConfig {
         RuntimeConfig {
             language: "en".to_string(),
+            language_options: Vec::new(),
             max_results: 5,
         }
     }
@@ -277,6 +283,50 @@ mod tests {
             first_item.get("arg").and_then(Value::as_str),
             Some("https://en.wikipedia.org/?curid=36192")
         );
+    }
+
+    #[test]
+    fn main_search_rows_include_configured_language_switch_items_in_order() {
+        let cli = Cli::parse_from(["wiki-cli", "search", "--query", "rust"]);
+
+        let output = run_with(
+            cli,
+            || {
+                Ok(RuntimeConfig {
+                    language: "en".to_string(),
+                    language_options: vec!["zh".to_string(), "en".to_string(), "ja".to_string()],
+                    max_results: 5,
+                })
+            },
+            |_, _| {
+                Ok(vec![WikiSearchResult {
+                    title: "Rust".to_string(),
+                    snippet: "Systems language".to_string(),
+                    pageid: 123,
+                }])
+            },
+        )
+        .expect("search should succeed");
+
+        let json: Value = serde_json::from_str(&output).expect("output must be JSON");
+        let items = json
+            .get("items")
+            .and_then(Value::as_array)
+            .expect("items should be array");
+
+        assert_eq!(
+            items[0].get("title").and_then(Value::as_str),
+            Some("Search in zh Wikipedia")
+        );
+        assert_eq!(
+            items[1].get("title").and_then(Value::as_str),
+            Some("Current language: en")
+        );
+        assert_eq!(
+            items[2].get("title").and_then(Value::as_str),
+            Some("Search in ja Wikipedia")
+        );
+        assert_eq!(items[3].get("title").and_then(Value::as_str), Some("Rust"));
     }
 
     #[test]
