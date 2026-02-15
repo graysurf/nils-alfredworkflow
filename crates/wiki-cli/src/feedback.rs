@@ -74,27 +74,29 @@ fn no_results_item() -> Item {
 }
 
 fn language_switch_items(current_language: &str, query: &str, options: &[String]) -> Vec<Item> {
-    options
-        .iter()
-        .map(|candidate| {
-            if candidate == current_language {
-                return Item::new(format!("{LANGUAGE_CURRENT_TITLE_PREFIX} {candidate}"))
-                    .with_subtitle(format!("Searching Wikipedia in {candidate}."))
-                    .with_valid(false);
-            }
+    let mut items = Vec::with_capacity(options.len() + 1);
+    items.push(
+        Item::new(format!(
+            "{LANGUAGE_CURRENT_TITLE_PREFIX} {current_language}"
+        ))
+        .with_subtitle(format!("Searching Wikipedia in {current_language}."))
+        .with_valid(false),
+    );
 
-            let subtitle = single_line_subtitle(
-                &format!("Press Enter to requery \"{query}\" in {candidate}."),
-                SUBTITLE_MAX_CHARS,
-            );
-            Item::new(format!(
-                "{LANGUAGE_SWITCH_TITLE_PREFIX} {candidate} Wikipedia"
-            ))
-            .with_subtitle(subtitle)
-            .with_arg(switch_language_arg(candidate, query))
-            .with_valid(true)
-        })
-        .collect()
+    items.extend(options.iter().map(|candidate| {
+        let subtitle = single_line_subtitle(
+            &format!("Press Enter to requery \"{query}\" in {candidate}."),
+            SUBTITLE_MAX_CHARS,
+        );
+        Item::new(format!(
+            "{LANGUAGE_SWITCH_TITLE_PREFIX} {candidate} Wikipedia"
+        ))
+        .with_subtitle(subtitle)
+        .with_arg(switch_language_arg(candidate, query))
+        .with_valid(true)
+    }));
+
+    items
 }
 
 fn switch_language_arg(language: &str, query: &str) -> String {
@@ -177,7 +179,10 @@ mod tests {
     fn feedback_maps_result_to_alfred_item() {
         let feedback =
             search_results_to_feedback("en", "rust", &[], &[fixture_result("A language")]);
-        let item = feedback.items.first().expect("expected one item");
+        let item = feedback
+            .items
+            .get(1)
+            .expect("expected current-language row and one result");
 
         assert_eq!(item.title, "Rust (programming language)");
         assert_eq!(item.subtitle.as_deref(), Some("A language"));
@@ -192,7 +197,7 @@ mod tests {
         let snippet = "<span class=\"searchmatch\">Rust</span> &amp; systems\nprogramming &quot;language&quot;\t".repeat(20);
 
         let feedback = search_results_to_feedback("en", "rust", &[], &[fixture_result(&snippet)]);
-        let subtitle = feedback.items[0]
+        let subtitle = feedback.items[1]
             .subtitle
             .as_deref()
             .expect("subtitle should exist")
@@ -200,7 +205,7 @@ mod tests {
 
         let feedback_again =
             search_results_to_feedback("en", "rust", &[], &[fixture_result(&snippet)]);
-        let subtitle_again = feedback_again.items[0]
+        let subtitle_again = feedback_again.items[1]
             .subtitle
             .as_deref()
             .expect("subtitle should exist")
@@ -221,7 +226,10 @@ mod tests {
     #[test]
     fn feedback_no_results_item_is_invalid_and_has_expected_title() {
         let feedback = search_results_to_feedback("en", "rust", &[], &[]);
-        let item = feedback.items.first().expect("fallback item should exist");
+        let item = feedback
+            .items
+            .get(1)
+            .expect("fallback item should exist after current-language row");
 
         assert_eq!(item.title, NO_RESULTS_TITLE);
         assert_eq!(item.subtitle.as_deref(), Some(NO_RESULTS_SUBTITLE));
@@ -233,7 +241,10 @@ mod tests {
     fn feedback_empty_snippet_uses_fallback_subtitle() {
         let feedback =
             search_results_to_feedback("en", "rust", &[], &[fixture_result("  <b> </b>  ")]);
-        let item = feedback.items.first().expect("expected one item");
+        let item = feedback
+            .items
+            .get(1)
+            .expect("expected current-language row and one result");
 
         assert_eq!(item.subtitle.as_deref(), Some(EMPTY_DESCRIPTION_SUBTITLE));
     }
@@ -243,12 +254,14 @@ mod tests {
         let options = vec!["zh".to_string(), "en".to_string(), "ja".to_string()];
         let feedback = search_results_to_feedback("en", "rust", &options, &[]);
 
-        assert_eq!(feedback.items[0].title, "Search in zh Wikipedia");
-        assert_eq!(feedback.items[1].title, "Current language: en");
-        assert_eq!(feedback.items[2].title, "Search in ja Wikipedia");
-        assert_eq!(feedback.items[0].valid, Some(true));
-        assert_eq!(feedback.items[1].valid, Some(false));
+        assert_eq!(feedback.items[0].title, "Current language: en");
+        assert_eq!(feedback.items[1].title, "Search in zh Wikipedia");
+        assert_eq!(feedback.items[2].title, "Search in en Wikipedia");
+        assert_eq!(feedback.items[3].title, "Search in ja Wikipedia");
+        assert_eq!(feedback.items[0].valid, Some(false));
+        assert_eq!(feedback.items[1].valid, Some(true));
         assert_eq!(feedback.items[2].valid, Some(true));
+        assert_eq!(feedback.items[3].valid, Some(true));
     }
 
     #[test]
@@ -257,8 +270,12 @@ mod tests {
         let feedback = search_results_to_feedback("en", "rust lang", &options, &[]);
 
         assert_eq!(
-            feedback.items[0].arg.as_deref(),
+            feedback.items[1].arg.as_deref(),
             Some("wiki-requery:zh:rust lang")
+        );
+        assert_eq!(
+            feedback.items[2].arg.as_deref(),
+            Some("wiki-requery:en:rust lang")
         );
     }
 

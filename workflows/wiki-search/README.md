@@ -11,7 +11,8 @@ Search Wikipedia articles from Alfred and open selected pages in your browser.
 - Trigger wiki search with `wk <query>`.
 - Show article title and cleaned snippet directly in Alfred.
 - Open selected Wikipedia article URL in your default browser with `Enter`.
-- Language switch rows support ordered multi-language requery (for example `zh,en` keeps `zh` then `en`).
+- `Current language` row is always pinned to the first item.
+- Language switch rows list all configured languages in `WIKI_LANGUAGE_OPTIONS` order (for example `zh,en` keeps `zh` then `en`).
 - Press `Enter` on a language row to directly requery the same keywords in that language.
 - Short query guard: `<2` characters shows `Keep typing (2+ chars)` and skips API calls.
 - Script Filter queue policy: 1 second delay with initial immediate run disabled.

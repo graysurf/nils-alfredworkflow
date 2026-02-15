@@ -28,6 +28,7 @@ environment variable constraints.
   - Resolve active language:
     - default from `WIKI_LANGUAGE`
     - if action path writes a valid override state, use the override language
+  - Render `Current language` row as the first item.
   - Render language-switch rows from `WIKI_LANGUAGE_OPTIONS` preserving configured order.
   - Call MediaWiki Action API `https://{language}.wikipedia.org/w/api.php` with:
     - `action=query`
@@ -78,8 +79,9 @@ Language-switch row schema:
 
 Rules:
 
+- `Current language` row must always be the first item, non-actionable (`valid: false`), and omit `arg`.
 - Language-switch rows must follow `WIKI_LANGUAGE_OPTIONS` order exactly.
-- Current active language row must be non-actionable (`valid: false`) and omit `arg`.
+- Language-switch rows must be actionable (`valid: true`) and include requery payload `arg`.
 - Selecting a language-switch row must trigger direct requery of the same query text via workflow action script.
 - Requery payload format is `wiki-requery:<language>:<query>`.
 

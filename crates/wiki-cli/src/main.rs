@@ -265,22 +265,22 @@ mod tests {
         .expect("search should succeed");
 
         let json: Value = serde_json::from_str(&output).expect("output must be JSON");
-        let first_item = json
+        let result_item = json
             .get("items")
             .and_then(Value::as_array)
-            .and_then(|items| items.first())
-            .expect("first item should exist");
+            .and_then(|items| items.iter().find(|item| item.get("arg").is_some()))
+            .expect("result item should exist");
 
         assert_eq!(
-            first_item.get("title").and_then(Value::as_str),
+            result_item.get("title").and_then(Value::as_str),
             Some("Rust (programming language)")
         );
         assert_eq!(
-            first_item.get("subtitle").and_then(Value::as_str),
+            result_item.get("subtitle").and_then(Value::as_str),
             Some("A language empowering everyone")
         );
         assert_eq!(
-            first_item.get("arg").and_then(Value::as_str),
+            result_item.get("arg").and_then(Value::as_str),
             Some("https://en.wikipedia.org/?curid=36192")
         );
     }
@@ -316,17 +316,21 @@ mod tests {
 
         assert_eq!(
             items[0].get("title").and_then(Value::as_str),
-            Some("Search in zh Wikipedia")
-        );
-        assert_eq!(
-            items[1].get("title").and_then(Value::as_str),
             Some("Current language: en")
         );
         assert_eq!(
+            items[1].get("title").and_then(Value::as_str),
+            Some("Search in zh Wikipedia")
+        );
+        assert_eq!(
             items[2].get("title").and_then(Value::as_str),
+            Some("Search in en Wikipedia")
+        );
+        assert_eq!(
+            items[3].get("title").and_then(Value::as_str),
             Some("Search in ja Wikipedia")
         );
-        assert_eq!(items[3].get("title").and_then(Value::as_str), Some("Rust"));
+        assert_eq!(items[4].get("title").and_then(Value::as_str), Some("Rust"));
     }
 
     #[test]
