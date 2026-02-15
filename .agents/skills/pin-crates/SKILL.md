@@ -61,7 +61,7 @@ Failure modes:
 
 ## Scripts (only entrypoints)
 
-- `<PROJECT_ROOT>/.codex/skills/pin-crates/scripts/pin-crates.sh`
+- `<PROJECT_ROOT>/.agents/skills/pin-crates/scripts/pin-crates.sh`
 
 ## Workflow
 

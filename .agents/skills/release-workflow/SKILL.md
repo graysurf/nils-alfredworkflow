@@ -58,7 +58,7 @@ Failure modes:
 
 ## Scripts (only entrypoints)
 
-- `<PROJECT_ROOT>/.codex/skills/release-workflow/scripts/release-workflow.sh`
+- `<PROJECT_ROOT>/.agents/skills/release-workflow/scripts/release-workflow.sh`
 
 ## Workflow
 
