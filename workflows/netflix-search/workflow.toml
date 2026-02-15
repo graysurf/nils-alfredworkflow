@@ -1,0 +1,26 @@
+id = "netflix-search"
+name = "Netflix Search"
+bundle_id = "com.graysurf.netflix-search"
+version = "0.1.0"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "brave-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Required: Brave Search API subscription token.
+BRAVE_API_KEY = ""
+# Optional: defaults to 10; effective range is clamped to 1-20.
+BRAVE_MAX_RESULTS = "10"
+# Optional: strict|moderate|off. Defaults to off.
+BRAVE_SAFESEARCH = "off"
+# Optional: ISO 3166-1 alpha-2 catalog region code for Netflix site scope.
+# If unset/invalid, falls back to BRAVE_COUNTRY.
+NETFLIX_CATALOG_REGION = ""
+# Optional: ISO 3166-1 alpha-2 country code, uppercase (for example US, TW, JP),
+# used only for Brave ranking/locale bias.
+BRAVE_COUNTRY = ""
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

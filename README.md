@@ -15,6 +15,7 @@ Alfred workflows for macOS users.
 | Workflow | Keyword(s) | What it does | Requires setup |
 | --- | --- | --- | --- |
 | [Google Search](workflows/google-search/README.md) | `gg` | Search web results (Brave backend) and open selected links. | `BRAVE_API_KEY` |
+| [Netflix Search](workflows/netflix-search/README.md) | `nf`, `netflix` | Search Netflix title pages (`site:netflix.com/title`) and open selected links. | `BRAVE_API_KEY` |
 | [YouTube Search](workflows/youtube-search/README.md) | `yt` | Search YouTube videos and open selected videos in browser. | `YOUTUBE_API_KEY` |
 | [Spotify Search](workflows/spotify-search/README.md) | `sp` | Search Spotify tracks and open selected results in Spotify app. | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |
 | [Wiki Search](workflows/wiki-search/README.md) | `wk` | Search Wikipedia articles and open selected page links. | No |
