@@ -1,0 +1,17 @@
+id = "imdb-search"
+name = "IMDb Search"
+bundle_id = "com.graysurf.imdb-search"
+version = "0.1.0"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional IMDb category used in find URL (`tt`, `nm`, `co`, `ev`, `ep`, `kw`). Defaults to `tt`.
+IMDB_SEARCH_SECTION = "tt"
+# Optional maximum suggestions returned by Script Filter (clamped to 1..20). Defaults to 8.
+IMDB_MAX_RESULTS = "8"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

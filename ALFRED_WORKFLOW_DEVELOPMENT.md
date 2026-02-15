@@ -198,6 +198,7 @@ xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
 - `workflows/codex-cli/TROUBLESHOOTING.md`
 - `workflows/epoch-converter/TROUBLESHOOTING.md`
 - `workflows/google-search/TROUBLESHOOTING.md`
+- `workflows/imdb-search/TROUBLESHOOTING.md`
 - `workflows/market-expression/TROUBLESHOOTING.md`
 - `workflows/memo-add/TROUBLESHOOTING.md`
 - `workflows/multi-timezone/TROUBLESHOOTING.md`

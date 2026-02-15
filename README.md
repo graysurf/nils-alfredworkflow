@@ -18,6 +18,7 @@ Alfred workflows for macOS users.
 | [YouTube Search](workflows/youtube-search/README.md) | `yt` | Search YouTube videos and open selected videos in browser. | `YOUTUBE_API_KEY` |
 | [Spotify Search](workflows/spotify-search/README.md) | `sp` | Search Spotify tracks and open selected results in Spotify app. | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |
 | [Wiki Search](workflows/wiki-search/README.md) | `wk` | Search Wikipedia articles and open selected page links. | No |
+| [IMDb Search](workflows/imdb-search/README.md) | `im`, `imdb` | Search IMDb and open result pages in browser. | Optional: `IMDB_SEARCH_SECTION` |
 | [Bilibili Search](workflows/bilibili-search/README.md) | `bl` | Search bilibili suggestions and open selected search links in browser. | Optional: `BILIBILI_UID` |
 | [Bangumi Search](workflows/bangumi-search/README.md) | `bgm` | Search Bangumi subjects and open selected subject pages in browser. | Optional: `BANGUMI_API_KEY` |
 | [Weather Forecast](workflows/weather/README.md) | `wt`, `ww` | Show today rows then hourly (`wt`) / city picker then 7-day (`ww`) forecasts, then copy selected rows. | Optional tuning: `WEATHER_CLI_BIN` |
