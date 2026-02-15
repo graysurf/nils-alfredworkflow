@@ -253,6 +253,26 @@ assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"'
 assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke wiki-cli backend"
 
+default_cache_log="$tmp_dir/wiki-default-cache.log"
+{
+  WIKI_STUB_LOG="$default_cache_log" WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" \
+    env -u WIKI_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "rust" >/dev/null
+  WIKI_STUB_LOG="$default_cache_log" WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" \
+    env -u WIKI_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "rust" >/dev/null
+}
+default_cache_hits="$(wc -l <"$default_cache_log" | tr -d '[:space:]')"
+[[ "$default_cache_hits" == "2" ]] || fail "default query cache must be disabled for wiki-search"
+
+opt_in_cache_log="$tmp_dir/wiki-opt-in-cache.log"
+{
+  WIKI_STUB_LOG="$opt_in_cache_log" WIKI_QUERY_CACHE_TTL_SECONDS=10 WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "rust" >/dev/null
+  WIKI_STUB_LOG="$opt_in_cache_log" WIKI_QUERY_CACHE_TTL_SECONDS=10 WIKI_CLI_BIN="$tmp_dir/stubs/wiki-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "rust" >/dev/null
+}
+opt_in_cache_hits="$(wc -l <"$opt_in_cache_log" | tr -d '[:space:]')"
+[[ "$opt_in_cache_hits" == "1" ]] || fail "query cache should work when WIKI_QUERY_CACHE_TTL_SECONDS is explicitly set"
+
 make_layout_cli() {
   local target="$1"
   local marker="$2"

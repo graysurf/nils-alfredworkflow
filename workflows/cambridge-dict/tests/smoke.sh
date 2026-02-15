@@ -324,6 +324,26 @@ assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"'
 assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke cambridge-cli backend"
 
+default_cache_log="$tmp_dir/cambridge-default-cache.log"
+{
+  CAMBRIDGE_STUB_LOG="$default_cache_log" CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" \
+    env -u CAMBRIDGE_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "open" >/dev/null
+  CAMBRIDGE_STUB_LOG="$default_cache_log" CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" \
+    env -u CAMBRIDGE_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "open" >/dev/null
+}
+default_cache_hits="$(wc -l <"$default_cache_log" | tr -d '[:space:]')"
+[[ "$default_cache_hits" == "2" ]] || fail "default query cache must be disabled for cambridge-dict"
+
+opt_in_cache_log="$tmp_dir/cambridge-opt-in-cache.log"
+{
+  CAMBRIDGE_STUB_LOG="$opt_in_cache_log" CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=10 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "open" >/dev/null
+  CAMBRIDGE_STUB_LOG="$opt_in_cache_log" CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=10 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "open" >/dev/null
+}
+opt_in_cache_hits="$(wc -l <"$opt_in_cache_log" | tr -d '[:space:]')"
+[[ "$opt_in_cache_hits" == "1" ]] || fail "query cache should work when CAMBRIDGE_QUERY_CACHE_TTL_SECONDS is explicitly set"
+
 make_layout_cli() {
   local target="$1"
   local marker="$2"

@@ -288,6 +288,16 @@ assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"'
 assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "gg short query guidance subtitle must mention minimum length"
 [[ ! -s "$short_query_log" ]] || fail "gg short query should not invoke brave-cli backend"
 
+default_cache_log="$tmp_dir/brave-default-cache.log"
+{
+  BRAVE_STUB_LOG="$default_cache_log" BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" \
+    env -u BRAVE_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "cache-hit-default" >/dev/null
+  BRAVE_STUB_LOG="$default_cache_log" BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" \
+    env -u BRAVE_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "cache-hit-default" >/dev/null
+}
+default_cache_hits="$(wc -l <"$default_cache_log" | tr -d '[:space:]')"
+[[ "$default_cache_hits" == "2" ]] || fail "default query cache must be disabled for google-search suggest flow"
+
 cache_probe_log="$tmp_dir/brave-cache-probe.log"
 cache_probe_first="$({ BRAVE_STUB_LOG="$cache_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=30 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "cache-hit"; })"
 assert_jq_json "$cache_probe_first" '.items[0].autocomplete == "res::cache-hit"' "gg cache probe first response mismatch"
@@ -340,6 +350,26 @@ direct_short_query_json="$({ BRAVE_STUB_LOG="$direct_short_query_log" BRAVE_CLI_
 assert_jq_json "$direct_short_query_json" '.items[0].title == "Keep typing (2+ chars)"' "gb short query guidance title mismatch"
 assert_jq_json "$direct_short_query_json" '.items[0].subtitle | contains("2")' "gb short query guidance subtitle must mention minimum length"
 [[ ! -s "$direct_short_query_log" ]] || fail "gb short query should not invoke brave-cli backend"
+
+direct_default_cache_log="$tmp_dir/brave-direct-default-cache.log"
+{
+  BRAVE_STUB_LOG="$direct_default_cache_log" BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" \
+    env -u BRAVE_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter_direct.sh" "cache-hit-direct" >/dev/null
+  BRAVE_STUB_LOG="$direct_default_cache_log" BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" \
+    env -u BRAVE_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter_direct.sh" "cache-hit-direct" >/dev/null
+}
+direct_default_cache_hits="$(wc -l <"$direct_default_cache_log" | tr -d '[:space:]')"
+[[ "$direct_default_cache_hits" == "2" ]] || fail "default query cache must be disabled for google-search direct flow"
+
+direct_opt_in_cache_log="$tmp_dir/brave-direct-opt-in-cache.log"
+{
+  BRAVE_STUB_LOG="$direct_opt_in_cache_log" BRAVE_QUERY_CACHE_TTL_SECONDS=30 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" \
+    "$workflow_dir/scripts/script_filter_direct.sh" "cache-hit-direct" >/dev/null
+  BRAVE_STUB_LOG="$direct_opt_in_cache_log" BRAVE_QUERY_CACHE_TTL_SECONDS=30 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" \
+    "$workflow_dir/scripts/script_filter_direct.sh" "cache-hit-direct" >/dev/null
+}
+direct_opt_in_cache_hits="$(wc -l <"$direct_opt_in_cache_log" | tr -d '[:space:]')"
+[[ "$direct_opt_in_cache_hits" == "1" ]] || fail "direct flow query cache should work when BRAVE_QUERY_CACHE_TTL_SECONDS is explicitly set"
 
 make_layout_cli() {
   local target="$1"

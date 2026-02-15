@@ -287,6 +287,26 @@ short_query_json="$({ BANGUMI_STUB_LOG="$short_query_log" BANGUMI_CLI_BIN="$tmp_
 assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"' "short query guidance title mismatch"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke bangumi-cli backend"
 
+default_cache_log="$tmp_dir/bangumi-default-cache.log"
+{
+  BANGUMI_STUB_LOG="$default_cache_log" BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" \
+    env -u BANGUMI_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "anime naruto" >/dev/null
+  BANGUMI_STUB_LOG="$default_cache_log" BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" \
+    env -u BANGUMI_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "anime naruto" >/dev/null
+}
+default_cache_hits="$(wc -l <"$default_cache_log" | tr -d '[:space:]')"
+[[ "$default_cache_hits" == "2" ]] || fail "default query cache must be disabled for bangumi-search"
+
+opt_in_cache_log="$tmp_dir/bangumi-opt-in-cache.log"
+{
+  BANGUMI_STUB_LOG="$opt_in_cache_log" BANGUMI_QUERY_CACHE_TTL_SECONDS=10 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "anime naruto" >/dev/null
+  BANGUMI_STUB_LOG="$opt_in_cache_log" BANGUMI_QUERY_CACHE_TTL_SECONDS=10 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "anime naruto" >/dev/null
+}
+opt_in_cache_hits="$(wc -l <"$opt_in_cache_log" | tr -d '[:space:]')"
+[[ "$opt_in_cache_hits" == "1" ]] || fail "query cache should work when BANGUMI_QUERY_CACHE_TTL_SECONDS is explicitly set"
+
 book_shortcut_json="$({ BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter_book.sh" "三体"; })"
 assert_jq_json "$book_shortcut_json" '.items[0].subtitle == "query=book 三体"' "book shortcut must inject default type"
 

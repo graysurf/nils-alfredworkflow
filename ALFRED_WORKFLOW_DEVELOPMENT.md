@@ -111,13 +111,24 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
 - Initialize workflow-scoped context before cache/coalesce operations:
   - `sfac_init_context "<workflow-id>" "<fallback-cache-dir>"`
 - Resolve tunables with helper validators (avoid inline parsing):
-  - cache TTL: `sfac_resolve_positive_int_env "<PREFIX>_QUERY_CACHE_TTL_SECONDS" "10"`
+  - cache TTL: `sfac_resolve_positive_int_env "<PREFIX>_QUERY_CACHE_TTL_SECONDS" "0"`
   - settle window: `sfac_resolve_non_negative_number_env "<PREFIX>_QUERY_COALESCE_SETTLE_SECONDS" "2"`
   - rerun interval: `sfac_resolve_non_negative_number_env "<PREFIX>_QUERY_COALESCE_RERUN_SECONDS" "0.4"`
 - Async flow contract:
-  1. Try `sfac_load_cache_result`.
-  2. If query is not final yet, return pending row via `sfac_emit_pending_item_json` with `rerun`.
-  3. On backend completion, write cache via `sfac_store_cache_result` for both success (`ok`) and error (`err`) paths.
+  1. Shared driver (`sfsd_run_search_flow`) checks cache before settle-window final-query coalescing.
+  2. For live-typing suggest/search Script Filters, keep default cache TTL at `0` to avoid stale prefix hits.
+  3. If query is not final yet, return pending row via `sfac_emit_pending_item_json` with `rerun`.
+  4. On backend completion, write cache via `sfac_store_cache_result` for both success (`ok`) and error (`err`) paths.
+
+### `sfsd_run_search_flow` cache policy standard
+
+- Workflows using `sfsd_run_search_flow` must treat `<PREFIX>_QUERY_CACHE_TTL_SECONDS` as opt-in.
+- Do not hardcode non-zero TTL defaults in workflow scripts; rely on shared default `0`.
+- If enabling non-zero TTL for a workflow:
+  - Document the tradeoff in workflow `README.md` advanced runtime section.
+  - Add smoke coverage for both paths:
+    - default/unset TTL does not cache repeated same-query calls.
+    - explicit non-zero TTL does cache repeated same-query calls.
 
 ### Workflow package/install command standard (macOS)
 

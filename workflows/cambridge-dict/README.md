@@ -40,7 +40,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 |---|---|
 | `CAMBRIDGE_CLI_BIN` | Optional absolute executable path override for `cambridge-cli`. |
 | `CAMBRIDGE_SCRAPER_SCRIPT` | Exported by `script_filter.sh` to point to bundled `scripts/cambridge_scraper.mjs`. |
-| `CAMBRIDGE_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `10`. |
+| `CAMBRIDGE_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits). |
 | `CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. |
 | `CAMBRIDGE_QUERY_COALESCE_RERUN_SECONDS` | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`. |
 

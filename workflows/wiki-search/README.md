@@ -38,7 +38,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 |---|---|
 | `WIKI_CLI_BIN` | Optional override path for `wiki-cli` (useful for local debugging). |
-| `WIKI_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `10`. |
+| `WIKI_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits). |
 | `WIKI_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. |
 | `WIKI_QUERY_COALESCE_RERUN_SECONDS` | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`. |
 

@@ -42,7 +42,10 @@ sfsd_run_search_flow() {
 
   sfac_init_context "$workflow_key" "$cache_fallback"
   local cache_ttl_seconds settle_seconds rerun_seconds
-  cache_ttl_seconds="$(sfac_resolve_positive_int_env "$cache_ttl_env" "10")"
+  # Keep same-query cache disabled by default for live-typing Script Filters.
+  # Current flow checks cache before settle-window coalescing; defaulting to 0
+  # avoids stale prefix hits surfacing ahead of the final query.
+  cache_ttl_seconds="$(sfac_resolve_positive_int_env "$cache_ttl_env" "0")"
   settle_seconds="$(sfac_resolve_non_negative_number_env "$settle_env" "2")"
   rerun_seconds="$(sfac_resolve_non_negative_number_env "$rerun_env" "0.4")"
 

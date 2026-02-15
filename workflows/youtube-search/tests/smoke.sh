@@ -241,6 +241,26 @@ assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"'
 assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke youtube-cli backend"
 
+default_cache_log="$tmp_dir/youtube-default-cache.log"
+{
+  YOUTUBE_STUB_LOG="$default_cache_log" YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-ok" \
+    env -u YOUTUBE_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "lofi" >/dev/null
+  YOUTUBE_STUB_LOG="$default_cache_log" YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-ok" \
+    env -u YOUTUBE_QUERY_CACHE_TTL_SECONDS "$workflow_dir/scripts/script_filter.sh" "lofi" >/dev/null
+}
+default_cache_hits="$(wc -l <"$default_cache_log" | tr -d '[:space:]')"
+[[ "$default_cache_hits" == "2" ]] || fail "default query cache must be disabled for youtube-search"
+
+opt_in_cache_log="$tmp_dir/youtube-opt-in-cache.log"
+{
+  YOUTUBE_STUB_LOG="$opt_in_cache_log" YOUTUBE_QUERY_CACHE_TTL_SECONDS=10 YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "lofi" >/dev/null
+  YOUTUBE_STUB_LOG="$opt_in_cache_log" YOUTUBE_QUERY_CACHE_TTL_SECONDS=10 YOUTUBE_CLI_BIN="$tmp_dir/stubs/youtube-cli-ok" \
+    "$workflow_dir/scripts/script_filter.sh" "lofi" >/dev/null
+}
+opt_in_cache_hits="$(wc -l <"$opt_in_cache_log" | tr -d '[:space:]')"
+[[ "$opt_in_cache_hits" == "1" ]] || fail "query cache should work when YOUTUBE_QUERY_CACHE_TTL_SECONDS is explicitly set"
+
 make_layout_cli() {
   local target="$1"
   local marker="$2"
