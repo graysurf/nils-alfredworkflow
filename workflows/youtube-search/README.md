@@ -43,6 +43,22 @@ Set these via Alfred's "Configure Workflow..." UI:
 | `YOUTUBE_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `2`. |
 | `YOUTUBE_QUERY_COALESCE_RERUN_SECONDS` | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`. |
 
+## macOS Gatekeeper acceptance (optional manual)
+
+For one-time quarantine cleanup and smoke validation after install:
+
+```bash
+WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
+  [ -f "$p" ] || continue
+  bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
+  [ "$bid" = "com.graysurf.youtube-search" ] && dirname "$p"
+done | head -n1)"
+
+[ -n "$WORKFLOW_DIR" ] || { echo "youtube-search workflow not found"; exit 1; }
+xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
+"$WORKFLOW_DIR/scripts/script_filter.sh" "rust tutorial" | jq -e '.items | type == "array"'
+```
+
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

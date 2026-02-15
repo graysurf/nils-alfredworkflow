@@ -57,6 +57,13 @@ After installing workflow artifact into Alfred, install workflow-local Playwrigh
 
 Live scraping checks are intentionally not part of default smoke gates.
 
+### Change-scoped checks
+
+- If changes include `workflows/cambridge-dict/scripts/` or root `package.json`, run:
+  - `npm run test:cambridge-scraper`
+- If changes include any files under `workflows/cambridge-dict/`, run:
+  - `bash workflows/cambridge-dict/tests/smoke.sh`
+
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

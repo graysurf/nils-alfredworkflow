@@ -55,6 +55,12 @@ Set these via Alfred's `Configure Workflow...` UI:
 - `scripts/workflow-test.sh --id weather`
 - `scripts/workflow-pack.sh --id weather`
 
+## Optional live smoke (maintainer)
+
+- `bash scripts/weather-cli-live-smoke.sh`
+- This live check is optional maintainer validation for provider/fallback/contract behavior.
+- It is not required for commit gates or CI pass/fail.
+
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).

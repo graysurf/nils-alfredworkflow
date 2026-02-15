@@ -38,6 +38,12 @@ Set these via Alfred's "Configure Workflow..." UI:
 - `scripts/workflow-test.sh --id market-expression`
 - `scripts/workflow-pack.sh --id market-expression`
 
+## Optional live smoke (maintainer)
+
+- `bash scripts/market-cli-live-smoke.sh`
+- This live check is optional maintainer validation for provider freshness/contract behavior.
+- It is not required for commit gates or CI pass/fail.
+
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
