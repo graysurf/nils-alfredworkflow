@@ -10,7 +10,7 @@
 
 - If Rust/cargo (or required cargo tools) are not installed yet, run:
   - `scripts/setup-rust-tooling.sh`
-- For Node + Playwright scraper tooling (`cambridge-dict`), run:
+- For workflows that use Node + Playwright tooling, run:
   - `scripts/setup-node-playwright.sh`
   - Add `--install-browser` only when you need live Playwright scraping checks.
 - Manual setup fallback:
@@ -63,10 +63,8 @@
   - `scripts/workflow-lint.sh`
   - `cargo test --workspace`
   - `scripts/workflow-test.sh`
-- For changes under `workflows/cambridge-dict/scripts/` or `package.json`:
-  - `npm run test:cambridge-scraper`
-- For changes under `workflows/cambridge-dict/`:
-  - `bash workflows/cambridge-dict/tests/smoke.sh`
+- For workflow-specific or CLI-specific checks (for example live smoke or probe scripts), run the
+  validation steps documented in the corresponding `workflows/<workflow-id>/README.md`.
 
 ### Alfred Script Filter guardrail
 
@@ -86,29 +84,11 @@
 - Run CI-style tests + generate JUnit:
   - `cargo nextest run --profile ci --workspace`
 
-### Market CLI live smoke (optional manual)
+### Workflow-specific optional manual checks
 
-- Live endpoint sanity check script:
-  - `bash scripts/market-cli-live-smoke.sh`
-- This is optional maintainer validation for `market-cli` provider freshness/contract behavior.
-- It is not required for commit gates or CI pass/fail.
-
-### Weather CLI live smoke (optional manual)
-
-- Live endpoint sanity check script:
-  - `bash scripts/weather-cli-live-smoke.sh`
-- This is optional maintainer validation for `weather-cli` provider/fallback/contract behavior.
-- It is not required for commit gates or CI pass/fail.
-
-### Netflix country-map probe (optional manual)
-
-- Manual probe + allowlist recommendation:
-  - `bash scripts/netflix-country-probe.sh`
-  - Two-stage probe: URL pre-check first, then Brave search probe only for non-`NotFound` countries.
-  - `US` is treated as forced-global and skips search probe.
-- Apply suggested allowlist to Netflix workflow runtime map:
-  - `bash scripts/netflix-country-probe.sh --apply`
-- This is optional maintainer maintenance and is not required for commit gates or CI pass/fail.
+- Workflow/CLI-specific optional checks (for example live endpoint smoke tests and probe scripts)
+  are maintained in each workflow README.
+- Reference workflow docs under `workflows/<workflow-id>/README.md`.
 
 ## Coverage (optional)
 
@@ -129,9 +109,9 @@
 ## Packaging
 
 - Pack one workflow:
-  - `scripts/workflow-pack.sh --id open-project`
+  - `scripts/workflow-pack.sh --id <workflow-id>`
 - Pack and install:
-  - `scripts/workflow-pack.sh --id open-project --install`
+  - `scripts/workflow-pack.sh --id <workflow-id> --install`
 - Pack all workflows:
   - `scripts/workflow-pack.sh --all`
 
@@ -155,7 +135,7 @@
 - Dry-run publish checks (all crates from `release/crates-io-publish-order.txt`):
   - `scripts/publish-crates.sh --dry-run`
 - Dry-run publish checks (single crate):
-  - `scripts/publish-crates.sh --dry-run --crates "nils-weather-cli"`
+  - `scripts/publish-crates.sh --dry-run --crates "<crate-name>"`
 - Publish all crates in dependency order:
   - `CARGO_REGISTRY_TOKEN=... scripts/publish-crates.sh --publish`
 - Publish a subset:
@@ -163,19 +143,8 @@
 
 ## macOS acceptance (Gatekeeper / quarantine)
 
-- For workflows that bundle executables (for example `youtube-search`), include a quarantine check during final acceptance on macOS.
-- Recommended one-time cleanup + smoke check for `youtube-search` after install:
-
-  ```bash
-  WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
-    [ -f "$p" ] || continue
-    bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
-    [ "$bid" = "com.graysurf.youtube-search" ] && dirname "$p"
-  done | head -n1)"
-
-  [ -n "$WORKFLOW_DIR" ] || { echo "youtube-search workflow not found"; exit 1; }
-  xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
-  "$WORKFLOW_DIR/scripts/script_filter.sh" "rust tutorial" | jq -e '.items | type == "array"'
-  ```
-
-- If Gatekeeper still blocks execution, start with `ALFRED_WORKFLOW_DEVELOPMENT.md` and then follow the matching workflow-local troubleshooting file (`workflows/<workflow-id>/TROUBLESHOOTING.md`).
+- For workflows that bundle executables, include a quarantine check during final acceptance on
+  macOS.
+- If Gatekeeper blocks execution, start with `ALFRED_WORKFLOW_DEVELOPMENT.md` and then follow the
+  matching workflow-local troubleshooting file (`workflows/<workflow-id>/TROUBLESHOOTING.md`) and
+  README acceptance steps.
