@@ -1,0 +1,23 @@
+[package]
+name = "nils-bilibili-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Bilibili suggestion CLI for Alfred workflow integration."
+
+[lib]
+name = "bilibili_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bilibili-cli"
+path = "src/main.rs"
+
+[dependencies]
+alfred-core = { package = "nils-alfred-core", path = "../alfred-core", version = "1.0.3" }
+clap.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

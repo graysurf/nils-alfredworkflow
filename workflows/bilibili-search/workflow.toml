@@ -1,0 +1,22 @@
+id = "bilibili-search"
+name = "Bilibili Search"
+bundle_id = "com.graysurf.bilibili-search"
+version = "1.1.1"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+rust_binary = "bilibili-cli"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional: bilibili UID used as suggest endpoint userid parameter for personalized ranking.
+BILIBILI_UID = ""
+# Optional: maximum number of suggestion rows returned by CLI. Parsed as base-10 integer and clamped to 1..20.
+BILIBILI_MAX_RESULTS = "10"
+# Optional: request timeout in milliseconds. Parsed as base-10 integer and clamped to 1000..30000.
+BILIBILI_TIMEOUT_MS = "8000"
+# Optional: explicit User-Agent override. Keep empty to use bilibili-cli default UA.
+BILIBILI_USER_AGENT = ""
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"

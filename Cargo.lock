@@ -857,6 +857,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nils-bilibili-cli"
+version = "1.1.1"
+dependencies = [
+ "clap",
+ "nils-alfred-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "nils-brave-cli"
 version = "1.1.1"
 dependencies = [
