@@ -137,7 +137,7 @@ resolve_preferred_codex_auth_file() {
   local auth_candidates=(
     "${HOME%/}/.config/codex-kit/auth.json"
     "${HOME%/}/.config/codex/auth.json"
-    "${HOME%/}/.codex/auth.json"
+    "${HOME%/}/.agents/auth.json"
   )
   local candidate_auth
   for candidate_auth in "${auth_candidates[@]}"; do

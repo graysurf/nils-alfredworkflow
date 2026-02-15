@@ -14,7 +14,7 @@ threshold_percent=50
 min_success_calls=2
 delay_ms=350
 apply_mode=0
-report_dir="${CODEX_HOME:-$HOME/.codex}/out/netflix-country-probe"
+report_dir="${AGENTS_HOME:-$HOME/.agents}/out/netflix-country-probe"
 brave_cli_override=""
 url_probe_title_id="80057281"
 
@@ -32,7 +32,7 @@ Options:
   --threshold N            Minimum hit ratio (0..100) to suggest allowlist. Default: 50
   --min-success-calls N    Minimum successful API calls required per country. Default: 2
   --delay-ms N             Sleep between requests in milliseconds. Default: 350
-  --report-dir PATH        Output directory. Default: $CODEX_HOME/out/netflix-country-probe
+  --report-dir PATH        Output directory. Default: $AGENTS_HOME/out/netflix-country-probe
   --brave-cli PATH         Override brave-cli binary path.
   --apply                  Apply suggested allowlist to workflows/netflix-search/scripts/country_map.sh
   -h, --help               Show this help.

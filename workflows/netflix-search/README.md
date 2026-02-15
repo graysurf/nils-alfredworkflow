@@ -74,8 +74,8 @@ Probe is two-stage:
 
 Probe output is written to:
 
-- `$CODEX_HOME/out/netflix-country-probe/netflix-country-probe-<timestamp>.md`
-- `$CODEX_HOME/out/netflix-country-probe/netflix-country-allowlist-<timestamp>.txt`
+- `$AGENTS_HOME/out/netflix-country-probe/netflix-country-probe-<timestamp>.md`
+- `$AGENTS_HOME/out/netflix-country-probe/netflix-country-allowlist-<timestamp>.txt`
 
 After reviewing the report, apply suggested allowlist to runtime map:
 

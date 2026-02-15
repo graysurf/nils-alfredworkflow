@@ -616,7 +616,7 @@ if [[ "${1:-}" == "--version" ]]; then
   exit 0
 fi
 preferred_auth="${HOME}/.config/codex-kit/auth.json"
-fallback_auth="${HOME}/.codex/auth.json"
+fallback_auth="${HOME}/.agents/auth.json"
 if [[ "${1:-}" == "auth" && "${2:-}" == "current" && "${3:-}" == "--json" ]]; then
   if [[ "${CODEX_AUTH_FILE:-}" == "$preferred_auth" ]]; then
     cat <<JSON
@@ -910,9 +910,9 @@ assert_jq_json "$auth_current_short_json" '.items[0].title == "Keep typing (2+ c
 [[ ! -s "$auth_current_short_log" ]] || fail "cxac short query should not invoke codex-cli auth current"
 
 auth_prefer_home="$tmp_dir/home-auth-prefer"
-mkdir -p "$auth_prefer_home/.config/codex-kit" "$auth_prefer_home/.codex" "$auth_prefer_home/.config/codex_secrets"
+mkdir -p "$auth_prefer_home/.config/codex-kit" "$auth_prefer_home/.agents" "$auth_prefer_home/.config/codex_secrets"
 printf '{"token":"preferred"}\n' >"$auth_prefer_home/.config/codex-kit/auth.json"
-printf '{"token":"fallback"}\n' >"$auth_prefer_home/.codex/auth.json"
+printf '{"token":"fallback"}\n' >"$auth_prefer_home/.agents/auth.json"
 printf '{"email":"plus@example.com"}\n' >"$auth_prefer_home/.config/codex_secrets/plus.json"
 auth_current_prefer_env_json="$({ HOME="$auth_prefer_home" PATH="/usr/bin:/bin:/usr/sbin:/sbin" CODEX_AUTH_FILE="" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-prefers-env-auth-file" "$workflow_dir/scripts/script_filter_auth_current.sh" ""; })"
 assert_jq_json "$auth_current_prefer_env_json" '.items[0].title == "Current: plus.json"' "cxac should prefer ~/.config/codex-kit/auth.json when CODEX_AUTH_FILE is unset"
