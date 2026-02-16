@@ -42,6 +42,64 @@ In scope:
 Out of scope:
 - Detailed troubleshooting knowledge base content.
 
+### No-duplication migration rule
+
+- During documentation migration, keep one canonical owner per operational fact.
+- Do not mirror workflow-specific details into this global file when the workflow-local docs already own them.
+- If content is stale, duplicated, or conflicts with workflow-local docs, remove it instead of copying it forward.
+- Reintroducing a central workflow-details encyclopedia is disallowed.
+
+## Troubleshooting Routing Policy
+
+- Use a two-layer troubleshooting route:
+  - Global standards and shared playbooks: `ALFRED_WORKFLOW_DEVELOPMENT.md`
+  - Workflow-specific runbooks: `workflows/<workflow-id>/TROUBLESHOOTING.md`
+- Routing rules:
+  1. Cross-workflow failures (Script Filter contract, queue policy, packaging wiring, Gatekeeper) start from global standards.
+  2. Workflow-specific failures (keyword flow, workflow env vars, provider/API behavior) start from workflow-local troubleshooting.
+  3. If scope is unclear, start global then jump to the workflow-local `Quick operator checks`.
+- Navigation shortcuts:
+  - List workflow-local troubleshooting docs: `rg --files workflows | rg 'TROUBLESHOOTING\.md$'`
+  - Open target runbook: `workflows/<workflow-id>/TROUBLESHOOTING.md`
+
+## Workflow Onboarding And Packaging Governance
+
+### Add a new workflow
+
+1. `cargo run -p xtask -- workflow new --id <workflow-id>`
+2. Edit `workflows/<workflow-id>/workflow.toml`.
+3. Update `workflows/<workflow-id>/scripts/*.sh` adapters.
+4. Implement or reuse shared logic in `crates/workflow-common` where applicable.
+5. Validate and package:
+   - `cargo run -p xtask -- workflow lint --id <workflow-id>`
+   - `cargo run -p xtask -- workflow test --id <workflow-id>`
+   - `cargo run -p xtask -- workflow pack --id <workflow-id> --install`
+
+### Manifest contract
+
+Required keys in `workflow.toml`:
+- `id`
+- `name`
+- `bundle_id`
+- `version`
+- `script_filter`
+- `action`
+
+Optional keys:
+- `rust_binary`
+- `assets`
+- `readme_source`
+
+### README sync during packaging
+
+- `scripts/workflow-pack.sh` auto-syncs workflow README into packaged `info.plist` readme when `workflows/<id>/README.md` exists.
+- `readme_source` can override the source path (relative to workflow root) when README is not at the default location.
+- Pack runs `nils-workflow-readme-cli convert` to copy README content into packaged `info.plist`.
+- Markdown tables are normalized during sync, so packaged Alfred readme should not contain `|---|` separators.
+- If README references local images (for example `./screenshot.png`), keep those files in workflow root so packaging can stage them into `build/workflows/<id>/pkg/`.
+- Validation command:
+  - `bash -c 'scripts/workflow-pack.sh --id codex-cli && plutil -convert json -o - build/workflows/codex-cli/pkg/info.plist | jq -r ".readme" | rg -n "# Codex CLI - Alfred Workflow|\\|---\\|"'`
+
 ## Shared Troubleshooting Standards
 
 Use these standards in all workflow troubleshooting documents.
@@ -220,7 +278,7 @@ xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
 
 ### Reference policy
 
-- Active entry-point documents (`README.md`, `DEVELOPMENT.md`, `docs/WORKFLOW_GUIDE.md`, `AGENT_DOCS.toml`) must link to:
+- Active entry-point documents (`README.md`, `DEVELOPMENT.md`, `AGENT_DOCS.toml`, and `workflows/<workflow-id>/README.md`) must link to:
   - `ALFRED_WORKFLOW_DEVELOPMENT.md` for global standards.
   - `workflows/<workflow-id>/TROUBLESHOOTING.md` for workflow-specific operations.
 

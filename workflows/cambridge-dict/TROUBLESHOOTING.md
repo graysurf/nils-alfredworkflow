@@ -47,7 +47,7 @@ Use this when anti-bot/cookie/network volatility makes the workflow unstable.
 2. Revert Cambridge workflow changeset(s), including:
    - `workflows/cambridge-dict/`
    - `crates/cambridge-cli/docs/workflow-contract.md`
-   - docs updates in `README.md`, `docs/WORKFLOW_GUIDE.md`, and `TROUBLESHOOTING.md`
+   - docs updates in `README.md`, `TROUBLESHOOTING.md`, and `ALFRED_WORKFLOW_DEVELOPMENT.md` (if changed)
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`

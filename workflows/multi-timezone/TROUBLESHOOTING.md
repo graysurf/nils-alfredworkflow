@@ -59,7 +59,7 @@ Use this when timezone output is unstable or local fallback behavior regresses.
    - `workflows/multi-timezone/`
    - `crates/timezone-cli/`
    - workspace member changes in `Cargo.toml`
-   - docs updates tied to rollout (`crates/timezone-cli/docs/workflow-contract.md`, `docs/WORKFLOW_GUIDE.md`, and troubleshooting references)
+   - docs updates tied to rollout (`crates/timezone-cli/docs/workflow-contract.md`, `workflows/multi-timezone/README.md`, `workflows/multi-timezone/TROUBLESHOOTING.md`, and `ALFRED_WORKFLOW_DEVELOPMENT.md` if changed)
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`

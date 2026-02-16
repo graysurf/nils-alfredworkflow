@@ -51,7 +51,7 @@ Use this when API regressions or operator load rises above acceptable threshold.
 2. Revert Bangumi workflow changeset(s), including:
    - `workflows/bangumi-search/`
    - `crates/bangumi-cli/`
-   - docs updates in `docs/WORKFLOW_GUIDE.md`
+   - docs updates in `workflows/bangumi-search/README.md`, `workflows/bangumi-search/TROUBLESHOOTING.md`, and `ALFRED_WORKFLOW_DEVELOPMENT.md` (if changed)
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`

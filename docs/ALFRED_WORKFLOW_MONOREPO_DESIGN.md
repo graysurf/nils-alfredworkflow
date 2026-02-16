@@ -36,11 +36,11 @@
 |-- Cargo.lock
 |-- rust-toolchain.toml
 |-- README.md
+|-- ALFRED_WORKFLOW_DEVELOPMENT.md
 |-- docs/
 |   |-- ALFRED_WORKFLOW_MONOREPO_DESIGN.md
 |   |-- ARCHITECTURE.md
-|   |-- RELEASE.md
-|   `-- WORKFLOW_GUIDE.md
+|   `-- RELEASE.md
 |-- crates/
 |   |-- alfred-core/                 # Shared Alfred models: items, variables, feedback JSON
 |   |-- alfred-plist/                # info.plist template/render/validation helpers

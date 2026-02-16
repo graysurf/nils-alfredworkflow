@@ -53,7 +53,7 @@ Use this when API failures are sustained or workflow usability drops sharply.
    - `workflows/bilibili-search/`
    - `crates/bilibili-cli/`
    - workspace membership in `Cargo.toml`
-   - docs updates tied to rollout (`docs/WORKFLOW_GUIDE.md`, workflow/local docs)
+   - docs updates tied to rollout (`workflows/bilibili-search/README.md`, `workflows/bilibili-search/TROUBLESHOOTING.md`, and `ALFRED_WORKFLOW_DEVELOPMENT.md` if changed)
 3. Rebuild and validate rollback state:
    - `scripts/workflow-lint.sh`
    - `scripts/workflow-test.sh`
