@@ -11,6 +11,9 @@ assets = ["src/assets/icon.png"]
 # End users normally don't need this because codex-cli is bundled in package/bin.
 # Optional absolute path override for runtime debugging/fallback.
 CODEX_CLI_BIN = ""
+# Auth file used by codex-cli auth/diag commands.
+# Resolution order: configured value (this variable) -> inherited env CODEX_AUTH_FILE -> ~/.codex/auth.json.
+CODEX_AUTH_FILE = ""
 # Optional secret directory override for auth save/use/diag operations.
 # Leave empty to auto-fallback to $XDG_CONFIG_HOME/codex_secrets or ~/.config/codex_secrets.
 CODEX_SECRET_DIR = ""

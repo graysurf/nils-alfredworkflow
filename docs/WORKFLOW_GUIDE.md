@@ -513,6 +513,9 @@ into the packaged `.alfredworkflow` artifact (release-coupled runtime version).
 ### Environment variables
 
 - `CODEX_CLI_BIN` (optional): absolute executable path override for `codex-cli`.
+- `CODEX_AUTH_FILE` (optional): auth file path used by `codex-cli` auth/diag commands.
+  Resolution order: configured value -> inherited env `CODEX_AUTH_FILE` -> `~/.codex/auth.json`.
+  Supports `~` expansion in workflow variable values.
 - `CODEX_SECRET_DIR` (optional): secret directory override for `auth save` / `auth remove` / `auth use` /
   `diag` operations.
   If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`.

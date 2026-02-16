@@ -35,10 +35,43 @@ clear_quarantine_if_needed() {
   fi
 }
 
+trim() {
+  local value="${1-}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+expand_home_path() {
+  local value="${1-}"
+
+  if [[ "$value" == "~" && -n "${HOME:-}" ]]; then
+    printf '%s\n' "${HOME%/}"
+    return 0
+  fi
+
+  if [[ "$value" == "~/"* && -n "${HOME:-}" ]]; then
+    printf '%s/%s\n' "${HOME%/}" "${value#\~/}"
+    return 0
+  fi
+
+  printf '%s\n' "$value"
+}
+
+resolve_codex_cli_override() {
+  local configured="${CODEX_CLI_BIN:-}"
+  configured="$(trim "$configured")"
+  configured="$(expand_home_path "$configured")"
+  [[ -n "$configured" ]] || return 1
+  printf '%s\n' "$configured"
+}
+
 resolve_codex_cli() {
-  if [[ -n "${CODEX_CLI_BIN:-}" && -x "${CODEX_CLI_BIN}" ]]; then
-    clear_quarantine_if_needed "${CODEX_CLI_BIN}"
-    printf '%s\n' "${CODEX_CLI_BIN}"
+  local configured_cli=""
+  configured_cli="$(resolve_codex_cli_override || true)"
+  if [[ -n "$configured_cli" && -x "$configured_cli" ]]; then
+    clear_quarantine_if_needed "$configured_cli"
+    printf '%s\n' "$configured_cli"
     return 0
   fi
 
@@ -181,46 +214,35 @@ resolve_default_codex_secret_dir() {
   return 1
 }
 
-resolve_preferred_codex_auth_file() {
-  [[ -n "${HOME:-}" ]] || return 1
+resolve_codex_auth_file_env_value() {
+  local configured="${CODEX_AUTH_FILE:-}"
+  configured="$(trim "$configured")"
+  configured="$(expand_home_path "$configured")"
 
-  local auth_candidates=(
-    "${HOME%/}/.config/codex-kit/auth.json"
-    "${HOME%/}/.config/codex/auth.json"
-    "${HOME%/}/.agents/auth.json"
-  )
-  local candidate_auth
-  for candidate_auth in "${auth_candidates[@]}"; do
-    if [[ -f "$candidate_auth" ]]; then
-      printf '%s\n' "$candidate_auth"
-      return 0
-    fi
-  done
+  if [[ -n "$configured" ]]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+
+  if [[ -n "${HOME:-}" ]]; then
+    printf '%s/.codex/auth.json\n' "${HOME%/}"
+    return 0
+  fi
 
   return 1
 }
 
 ensure_codex_auth_file_env() {
-  local configured="${CODEX_AUTH_FILE:-}"
-  configured="$(printf '%s' "$configured" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
-  if [[ -n "$configured" ]]; then
-    export CODEX_AUTH_FILE="$configured"
-    return 0
-  fi
-
-  local preferred_auth=""
-  preferred_auth="$(resolve_preferred_codex_auth_file || true)"
-  if [[ -n "$preferred_auth" ]]; then
-    export CODEX_AUTH_FILE="$preferred_auth"
-    return 0
-  fi
-
-  return 1
+  local configured=""
+  configured="$(resolve_codex_auth_file_env_value || true)"
+  [[ -n "$configured" ]] || return 1
+  export CODEX_AUTH_FILE="$configured"
+  return 0
 }
 
 ensure_codex_secret_dir_env() {
   local configured="${CODEX_SECRET_DIR:-}"
-  configured="$(printf '%s' "$configured" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  configured="$(trim "$configured")"
 
   if [[ -z "$configured" ]]; then
     configured="$(resolve_default_codex_secret_dir || true)"
@@ -230,6 +252,7 @@ ensure_codex_secret_dir_env() {
     return 1
   fi
 
+  configured="$(expand_home_path "$configured")"
   export CODEX_SECRET_DIR="$configured"
   printf '%s\n' "$configured"
 }
@@ -295,10 +318,10 @@ validate_use_secret_name() {
 resolve_workflow_cache_dir() {
   local candidate
   for candidate in \
-    "${alfred_workflow_cache:-}" \
     "${ALFRED_WORKFLOW_CACHE:-}" \
-    "${alfred_workflow_data:-}" \
-    "${ALFRED_WORKFLOW_DATA:-}"; do
+    "${alfred_workflow_cache:-}" \
+    "${ALFRED_WORKFLOW_DATA:-}" \
+    "${alfred_workflow_data:-}"; do
     if [[ -n "$candidate" ]]; then
       printf '%s\n' "$candidate"
       return 0
