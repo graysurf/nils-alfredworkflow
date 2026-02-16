@@ -87,18 +87,18 @@ expand_home_path() {
   local value="${1-}"
 
   case "$value" in
-    "~")
-      if [[ -n "${HOME:-}" ]]; then
-        printf '%s\n' "${HOME%/}"
-        return 0
-      fi
-      ;;
-    \~/*)
-      if [[ -n "${HOME:-}" ]]; then
-        printf '%s/%s\n' "${HOME%/}" "${value#\~/}"
-        return 0
-      fi
-      ;;
+  "~")
+    if [[ -n "${HOME:-}" ]]; then
+      printf '%s\n' "${HOME%/}"
+      return 0
+    fi
+    ;;
+  \~/*)
+    if [[ -n "${HOME:-}" ]]; then
+      printf '%s/%s\n' "${HOME%/}" "${value#\~/}"
+      return 0
+    fi
+    ;;
   esac
 
   printf '%s\n' "$value"
