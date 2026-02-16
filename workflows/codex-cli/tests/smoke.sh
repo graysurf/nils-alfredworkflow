@@ -1090,7 +1090,7 @@ CODEX_AUTH_FILE="$custom_auth_file" CODEX_AUTH_FILE_OUT="$auth_file_out" CODEX_C
 
 tilde_home="$tmp_dir/home-tilde-auth"
 mkdir -p "$tilde_home/.codex"
-HOME="$tilde_home" CODEX_AUTH_FILE="~/.codex/auth-from-tilde.json" CODEX_AUTH_FILE_OUT="$auth_file_out" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-capture-auth-file" \
+HOME="$tilde_home" CODEX_AUTH_FILE=\~/.codex/auth-from-tilde.json CODEX_AUTH_FILE_OUT="$auth_file_out" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-capture-auth-file" \
   "$workflow_dir/scripts/action_open.sh" "use::alpha" >/dev/null
 [[ "$(cat "$auth_file_out")" == "set:$tilde_home/.codex/auth-from-tilde.json" ]] || fail "auth use should expand CODEX_AUTH_FILE starting with ~/"
 
