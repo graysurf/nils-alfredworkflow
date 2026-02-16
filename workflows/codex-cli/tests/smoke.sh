@@ -148,6 +148,9 @@ fi
 if ! rg -n '^CODEX_CLI_BIN[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
   fail "CODEX_CLI_BIN default must be empty"
 fi
+if ! rg -n '^CODEX_AUTH_FILE[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
+  fail "CODEX_AUTH_FILE default must be empty"
+fi
 if ! rg -n '^CODEX_SECRET_DIR[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
   fail "CODEX_SECRET_DIR default must be empty"
 fi
@@ -364,6 +367,29 @@ echo "unexpected command: $*" >&2
 exit 9
 EOS
 chmod +x "$tmp_dir/stubs/codex-cli-capture-secret-dir"
+
+cat >"$tmp_dir/stubs/codex-cli-capture-auth-file" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "--version" ]]; then
+  echo "codex-cli ${CODEX_CLI_PINNED_VERSION}"
+  exit 0
+fi
+if [[ "${1:-}" == "auth" && "${2:-}" == "use" ]]; then
+  if [[ -n "${CODEX_AUTH_FILE_OUT:-}" ]]; then
+    if [[ -n "${CODEX_AUTH_FILE+x}" ]]; then
+      printf 'set:%s\n' "${CODEX_AUTH_FILE}" >"$CODEX_AUTH_FILE_OUT"
+    else
+      printf 'unset\n' >"$CODEX_AUTH_FILE_OUT"
+    fi
+  fi
+  printf '{"ok":true,"cmd":"auth use","target":"%s","argv":"%s"}\n' "${3:-}" "$*"
+  exit 0
+fi
+echo "unexpected command: $*" >&2
+exit 9
+EOS
+chmod +x "$tmp_dir/stubs/codex-cli-capture-auth-file"
 
 cat >"$tmp_dir/stubs/codex-cli-save-requires-yes" <<'EOS'
 #!/usr/bin/env bash
@@ -615,26 +641,26 @@ if [[ "${1:-}" == "--version" ]]; then
   echo "codex-cli ${CODEX_CLI_PINNED_VERSION}"
   exit 0
 fi
-preferred_auth="${HOME}/.config/codex-kit/auth.json"
-fallback_auth="${HOME}/.agents/auth.json"
+preferred_auth="${HOME}/.codex/auth.json"
+legacy_auth="${HOME}/.config/codex-kit/auth.json"
 if [[ "${1:-}" == "auth" && "${2:-}" == "current" && "${3:-}" == "--json" ]]; then
-  if [[ "${CODEX_AUTH_FILE:-}" == "$preferred_auth" ]]; then
+  if [[ -z "${CODEX_AUTH_FILE:-}" || "${CODEX_AUTH_FILE:-}" == "$preferred_auth" ]]; then
     cat <<JSON
 {"schema_version":"codex-cli.auth.v1","command":"auth current","ok":true,"result":{"auth_file":"$preferred_auth","matched":true,"matched_secret":"plus.json","match_mode":"identity"}}
 JSON
     exit 0
   fi
   cat <<JSON
-{"schema_version":"codex-cli.auth.v1","command":"auth current","ok":false,"error":{"code":"secret-not-matched","message":"$fallback_auth does not match any known secret","details":{"auth_file":"$fallback_auth","matched":false}}}
+{"schema_version":"codex-cli.auth.v1","command":"auth current","ok":false,"error":{"code":"secret-not-matched","message":"unexpected CODEX_AUTH_FILE override","details":{"auth_file":"${CODEX_AUTH_FILE}","matched":false}}}
 JSON
   exit 2
 fi
 if [[ "${1:-}" == "auth" && "${2:-}" == "current" ]]; then
-  if [[ "${CODEX_AUTH_FILE:-}" == "$preferred_auth" ]]; then
+  if [[ -z "${CODEX_AUTH_FILE:-}" || "${CODEX_AUTH_FILE:-}" == "$preferred_auth" ]]; then
     echo "codex: $preferred_auth matches plus.json"
     exit 0
   fi
-  echo "codex: $fallback_auth does not match any known secret"
+  echo "codex: unexpected CODEX_AUTH_FILE override: ${CODEX_AUTH_FILE:-unset} (legacy=$legacy_auth)"
   exit 2
 fi
 if [[ "${1:-}" == "auth" && "${2:-}" == "use" ]]; then
@@ -653,7 +679,7 @@ if [[ "${1:-}" == "--version" ]]; then
   echo "codex-cli ${CODEX_CLI_PINNED_VERSION}"
   exit 0
 fi
-preferred_auth="${HOME}/.config/codex-kit/auth.json"
+preferred_auth="${HOME}/.codex/auth.json"
 if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
   expected_secret_dir="${XDG_CONFIG_HOME%/}/codex_secrets"
 else
@@ -910,15 +936,15 @@ assert_jq_json "$auth_current_short_json" '.items[0].title == "Keep typing (2+ c
 [[ ! -s "$auth_current_short_log" ]] || fail "cxac short query should not invoke codex-cli auth current"
 
 auth_prefer_home="$tmp_dir/home-auth-prefer"
-mkdir -p "$auth_prefer_home/.config/codex-kit" "$auth_prefer_home/.agents" "$auth_prefer_home/.config/codex_secrets"
-printf '{"token":"preferred"}\n' >"$auth_prefer_home/.config/codex-kit/auth.json"
-printf '{"token":"fallback"}\n' >"$auth_prefer_home/.agents/auth.json"
+mkdir -p "$auth_prefer_home/.codex" "$auth_prefer_home/.config/codex-kit" "$auth_prefer_home/.config/codex_secrets"
+printf '{"token":"preferred"}\n' >"$auth_prefer_home/.codex/auth.json"
+printf '{"token":"legacy"}\n' >"$auth_prefer_home/.config/codex-kit/auth.json"
 printf '{"email":"plus@example.com"}\n' >"$auth_prefer_home/.config/codex_secrets/plus.json"
 auth_current_prefer_env_json="$({ HOME="$auth_prefer_home" PATH="/usr/bin:/bin:/usr/sbin:/sbin" CODEX_AUTH_FILE="" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-prefers-env-auth-file" "$workflow_dir/scripts/script_filter_auth_current.sh" ""; })"
-assert_jq_json "$auth_current_prefer_env_json" '.items[0].title == "Current: plus.json"' "cxac should prefer ~/.config/codex-kit/auth.json when CODEX_AUTH_FILE is unset"
+assert_jq_json "$auth_current_prefer_env_json" '.items[0].title == "Current: plus.json"' "cxac should follow codex-cli default auth file when CODEX_AUTH_FILE is unset"
 
 auth_use_prefer_env_json="$({ HOME="$auth_prefer_home" PATH="/usr/bin:/bin:/usr/sbin:/sbin" CODEX_AUTH_FILE="" CODEX_SECRET_DIR="$auth_prefer_home/.config/codex_secrets" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-prefers-env-auth-file" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
-assert_jq_json "$auth_use_prefer_env_json" '.items[0].title == "Current: plus.json"' "cxau should prefer ~/.config/codex-kit/auth.json when CODEX_AUTH_FILE is unset"
+assert_jq_json "$auth_use_prefer_env_json" '.items[0].title == "Current: plus.json"' "cxau should follow codex-cli default auth file when CODEX_AUTH_FILE is unset"
 
 auth_current_default_secret_dir_json="$({ HOME="$auth_prefer_home" PATH="/usr/bin:/bin:/usr/sbin:/sbin" CODEX_AUTH_FILE="" CODEX_SECRET_DIR="" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-requires-secret-dir" "$workflow_dir/scripts/script_filter_auth_current.sh" ""; })"
 assert_jq_json "$auth_current_default_secret_dir_json" '.items[0].title == "Current: plus.json"' "cxac should fallback CODEX_SECRET_DIR to ~/.config/codex_secrets when unset"
@@ -1051,6 +1077,22 @@ CODEX_API_KEY="sk-test-smoke-key" CODEX_STUB_LOG="$action_log" CODEX_STDIN_OUT="
 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "use::alpha" >/dev/null
 [[ "$(tail -n1 "$action_log")" == "auth use alpha" ]] || fail "use mapping mismatch"
+
+auth_file_out="$tmp_dir/auth-file.out"
+env -u CODEX_AUTH_FILE CODEX_AUTH_FILE_OUT="$auth_file_out" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-capture-auth-file" \
+  "$workflow_dir/scripts/action_open.sh" "use::alpha" >/dev/null
+[[ "$(cat "$auth_file_out")" == "set:${HOME%/}/.codex/auth.json" ]] || fail "auth use should fallback CODEX_AUTH_FILE to ~/.codex/auth.json when unset"
+
+custom_auth_file="$tmp_dir/custom-auth.json"
+CODEX_AUTH_FILE="$custom_auth_file" CODEX_AUTH_FILE_OUT="$auth_file_out" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-capture-auth-file" \
+  "$workflow_dir/scripts/action_open.sh" "use::alpha" >/dev/null
+[[ "$(cat "$auth_file_out")" == "set:$custom_auth_file" ]] || fail "auth use should keep explicit CODEX_AUTH_FILE override"
+
+tilde_home="$tmp_dir/home-tilde-auth"
+mkdir -p "$tilde_home/.codex"
+HOME="$tilde_home" CODEX_AUTH_FILE=\~/.codex/auth-from-tilde.json CODEX_AUTH_FILE_OUT="$auth_file_out" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-capture-auth-file" \
+  "$workflow_dir/scripts/action_open.sh" "use::alpha" >/dev/null
+[[ "$(cat "$auth_file_out")" == "set:$tilde_home/.codex/auth-from-tilde.json" ]] || fail "auth use should expand CODEX_AUTH_FILE starting with ~/"
 
 CODEX_STUB_LOG="$action_log" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" \
   "$workflow_dir/scripts/action_open.sh" "save::team-alpha.json::0" >/dev/null
@@ -1356,8 +1398,9 @@ assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workfl
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.queuedelayimmediatelyinitially] | all(. == false)' "all codex script filters must disable immediate initial run"
 assert_jq_file "$packaged_json_file" '.connections | length == 9' "plist must include eight scriptfilter-to-action connections and one hotkey route"
 assert_jq_file "$packaged_json_file" '.connections["771DC53D-E670-447A-9983-1E513A55CA1E"][0].destinationuid == "B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7"' "cxau hotkey must target cxau script filter"
-assert_jq_file "$packaged_json_file" '.userconfigurationconfig | length >= 4' "plist must expose codex workflow config variables"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig | length >= 5' "plist must expose codex workflow config variables"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_CLI_BIN") | .config.default == ""' "CODEX_CLI_BIN config row missing"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_AUTH_FILE") | .config.default == ""' "CODEX_AUTH_FILE config row missing"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_SECRET_DIR") | .config.default == ""' "CODEX_SECRET_DIR config row missing"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_SHOW_ASSESSMENT") | .config.default == "0"' "CODEX_SHOW_ASSESSMENT config row missing"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_DIAG_CACHE_TTL_SECONDS") | .config.default == "300"' "CODEX_DIAG_CACHE_TTL_SECONDS config row missing"

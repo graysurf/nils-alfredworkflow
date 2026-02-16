@@ -75,6 +75,7 @@ cargo install nils-codex-cli --version 0.4.0
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `CODEX_CLI_BIN` | No | empty | Optional absolute path override for `codex-cli`. |
+| `CODEX_AUTH_FILE` | No | empty | Auth file path used by `codex-cli` auth/diag commands. Resolution order: configured value -> inherited env `CODEX_AUTH_FILE` -> `~/.codex/auth.json`. Supports `~` expansion. |
 | `CODEX_SECRET_DIR` | No | empty | Optional secret directory override. If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`. |
 | `CODEX_SHOW_ASSESSMENT` | No | `0` | Show assessment rows in Alfred list (`1/true/yes/on` to enable). |
 | `CODEX_DIAG_CACHE_TTL_SECONDS` | No | `300` | Diag cache TTL for `cxau`/`cxd`/`cxda` (`0` means always refresh before render). |

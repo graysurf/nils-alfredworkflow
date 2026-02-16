@@ -79,6 +79,39 @@ json_escape() {
   printf '%s' "$value"
 }
 
+trim() {
+  sfqp_trim "${1-}"
+}
+
+expand_home_path() {
+  local value="${1-}"
+
+  case "$value" in
+  "~")
+    if [[ -n "${HOME:-}" ]]; then
+      printf '%s\n' "${HOME%/}"
+      return 0
+    fi
+    ;;
+  \~/*)
+    if [[ -n "${HOME:-}" ]]; then
+      printf '%s/%s\n' "${HOME%/}" "${value#\~/}"
+      return 0
+    fi
+    ;;
+  esac
+
+  printf '%s\n' "$value"
+}
+
+resolve_codex_cli_override() {
+  local configured="${CODEX_CLI_BIN:-}"
+  configured="$(trim "$configured")"
+  configured="$(expand_home_path "$configured")"
+  [[ -n "$configured" ]] || return 1
+  printf '%s\n' "$configured"
+}
+
 begin_items() {
   ITEM_COUNT=0
   printf '{"items":['
@@ -106,8 +139,10 @@ end_items() {
 }
 
 resolve_codex_cli_path() {
-  if [[ -n "${CODEX_CLI_BIN:-}" && -x "${CODEX_CLI_BIN}" ]]; then
-    printf '%s\n' "${CODEX_CLI_BIN}"
+  local configured_cli=""
+  configured_cli="$(resolve_codex_cli_override || true)"
+  if [[ -n "$configured_cli" && -x "$configured_cli" ]]; then
+    printf '%s\n' "$configured_cli"
     return 0
   fi
 
@@ -131,25 +166,6 @@ resolve_codex_cli_path() {
   return 1
 }
 
-resolve_preferred_codex_auth_file() {
-  [[ -n "${HOME:-}" ]] || return 1
-
-  local auth_candidates=(
-    "${HOME%/}/.config/codex-kit/auth.json"
-    "${HOME%/}/.config/codex/auth.json"
-    "${HOME%/}/.agents/auth.json"
-  )
-  local candidate_auth
-  for candidate_auth in "${auth_candidates[@]}"; do
-    if [[ -f "$candidate_auth" ]]; then
-      printf '%s\n' "$candidate_auth"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
 resolve_default_codex_secret_dir() {
   if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
     printf '%s/codex_secrets\n' "${XDG_CONFIG_HOME%/}"
@@ -164,33 +180,42 @@ resolve_default_codex_secret_dir() {
   return 1
 }
 
-ensure_codex_auth_file_env() {
+resolve_codex_auth_file_env_value() {
   local configured="${CODEX_AUTH_FILE:-}"
-  configured="$(printf '%s' "$configured" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  configured="$(trim "$configured")"
+  configured="$(expand_home_path "$configured")"
+
   if [[ -n "$configured" ]]; then
-    export CODEX_AUTH_FILE="$configured"
+    printf '%s\n' "$configured"
     return 0
   fi
 
-  local preferred_auth=""
-  preferred_auth="$(resolve_preferred_codex_auth_file || true)"
-  if [[ -n "$preferred_auth" ]]; then
-    export CODEX_AUTH_FILE="$preferred_auth"
+  if [[ -n "${HOME:-}" ]]; then
+    printf '%s/.codex/auth.json\n' "${HOME%/}"
     return 0
   fi
 
   return 1
 }
 
+ensure_codex_auth_file_env() {
+  local configured=""
+  configured="$(resolve_codex_auth_file_env_value || true)"
+  [[ -n "$configured" ]] || return 1
+  export CODEX_AUTH_FILE="$configured"
+  return 0
+}
+
 ensure_codex_secret_dir_env() {
   local configured="${CODEX_SECRET_DIR:-}"
-  configured="$(printf '%s' "$configured" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+  configured="$(trim "$configured")"
 
   if [[ -z "$configured" ]]; then
     configured="$(resolve_default_codex_secret_dir || true)"
   fi
 
   [[ -n "$configured" ]] || return 1
+  configured="$(expand_home_path "$configured")"
   export CODEX_SECRET_DIR="$configured"
   return 0
 }
