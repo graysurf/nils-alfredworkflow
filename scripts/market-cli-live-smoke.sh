@@ -127,8 +127,8 @@ run_check() {
   if (
     cd "$repo_root"
     MARKET_CACHE_DIR="$cache_dir" \
-      alfred_workflow_cache="$cache_dir" \
-      alfred_workflow_data="$cache_dir" \
+      ALFRED_WORKFLOW_CACHE="$cache_dir" \
+      ALFRED_WORKFLOW_DATA="$cache_dir" \
       "$@"
   ) >"$stdout_file" 2>"$stderr_file"; then
     local validation

@@ -10,7 +10,7 @@ CLI backend for the `quote-feed` workflow.
 
 ## Environment Variables
 
-- Optional: `QUOTE_DISPLAY_COUNT`, `QUOTE_REFRESH_INTERVAL`, `QUOTE_FETCH_COUNT`, `QUOTE_MAX_ENTRIES`, `QUOTE_DATA_DIR`, `alfred_workflow_data`
+- Optional: `QUOTE_DISPLAY_COUNT`, `QUOTE_REFRESH_INTERVAL`, `QUOTE_FETCH_COUNT`, `QUOTE_MAX_ENTRIES`, `QUOTE_DATA_DIR`, `ALFRED_WORKFLOW_DATA`
 
 ## Output Contract
 

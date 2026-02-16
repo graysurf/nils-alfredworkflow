@@ -133,16 +133,6 @@ strip_ansi() {
 
 resolve_workflow_cache_dir() {
   if declare -F sfac_resolve_workflow_cache_dir >/dev/null 2>&1; then
-    if [[ -n "${ALFRED_WORKFLOW_CACHE:-}" ]]; then
-      alfred_workflow_cache="${ALFRED_WORKFLOW_CACHE}" sfac_resolve_workflow_cache_dir "nils-codex-cli-workflow"
-      return 0
-    fi
-
-    if [[ -n "${ALFRED_WORKFLOW_DATA:-}" ]]; then
-      alfred_workflow_data="${ALFRED_WORKFLOW_DATA}" sfac_resolve_workflow_cache_dir "nils-codex-cli-workflow"
-      return 0
-    fi
-
     sfac_resolve_workflow_cache_dir "nils-codex-cli-workflow"
     return 0
   fi
@@ -150,9 +140,7 @@ resolve_workflow_cache_dir() {
   local candidate
   for candidate in \
     "${ALFRED_WORKFLOW_CACHE:-}" \
-    "${alfred_workflow_cache:-}" \
-    "${ALFRED_WORKFLOW_DATA:-}" \
-    "${alfred_workflow_data:-}"; do
+    "${ALFRED_WORKFLOW_DATA:-}"; do
     if [[ -n "$candidate" ]]; then
       printf '%s\n' "$candidate"
       return 0

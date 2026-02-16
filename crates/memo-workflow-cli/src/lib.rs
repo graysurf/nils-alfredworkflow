@@ -1131,18 +1131,16 @@ fn truncate_title(input: &str, max_chars: usize) -> String {
 }
 
 fn resolve_db_path() -> PathBuf {
+    let home = env::var("HOME").ok();
+
     if let Some(path) = non_empty_env("MEMO_DB_PATH") {
-        return PathBuf::from(path);
+        return PathBuf::from(expand_home_path(&path, home.as_deref()));
     }
 
-    for env_key in [
-        "alfred_workflow_data",
-        "ALFRED_WORKFLOW_DATA",
-        "alfred_workflow_cache",
-        "ALFRED_WORKFLOW_CACHE",
-    ] {
+    for env_key in ["ALFRED_WORKFLOW_DATA", "ALFRED_WORKFLOW_CACHE"] {
         if let Some(path) = non_empty_env(env_key) {
-            return PathBuf::from(path).join("memo.db");
+            let expanded = expand_home_path(&path, home.as_deref());
+            return PathBuf::from(expanded).join("memo.db");
         }
     }
 
@@ -1240,6 +1238,24 @@ fn non_empty_env(key: &str) -> Option<String> {
         return None;
     }
     Some(value.to_string())
+}
+
+fn expand_home_path(raw: &str, home: Option<&str>) -> String {
+    let trimmed = raw.trim();
+    let Some(home) = home.map(str::trim).filter(|value| !value.is_empty()) else {
+        return trimmed.to_string();
+    };
+
+    let home = home.trim_end_matches('/');
+    let mut expanded = trimmed.replace("$HOME", home);
+
+    if expanded == "~" {
+        expanded = home.to_string();
+    } else if let Some(rest) = expanded.strip_prefix("~/") {
+        expanded = format!("{home}/{rest}");
+    }
+
+    expanded
 }
 
 fn parse_bool(raw: &str) -> Option<bool> {
@@ -1748,6 +1764,18 @@ mod tests {
         assert_eq!(parse_bool("false"), Some(false));
         assert_eq!(parse_bool("0"), Some(false));
         assert_eq!(parse_bool("unknown"), None);
+    }
+
+    #[test]
+    fn expand_home_path_supports_tilde_prefix() {
+        assert_eq!(
+            expand_home_path("~/memo.db", Some("/tmp/home")),
+            "/tmp/home/memo.db"
+        );
+        assert_eq!(
+            expand_home_path("$HOME/memo.db", Some("/tmp/home")),
+            "/tmp/home/memo.db"
+        );
     }
 
     #[test]

@@ -16,7 +16,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
    - `bash workflows/quote-feed/scripts/script_filter.sh "" | jq -e '.items | type == "array"'`
 4. Confirm cache files are written to the workflow storage path:
    - preferred when set: `$QUOTE_DATA_DIR/quotes.txt` and `$QUOTE_DATA_DIR/quotes.timestamp`
-   - otherwise preferred: `$alfred_workflow_data/quotes.txt` and `$alfred_workflow_data/quotes.timestamp`
+   - otherwise preferred: `$ALFRED_WORKFLOW_DATA/quotes.txt` and `$ALFRED_WORKFLOW_DATA/quotes.timestamp`
    - fallback: `${TMPDIR:-/tmp}/nils-quote-feed/quotes.txt` and `${TMPDIR:-/tmp}/nils-quote-feed/quotes.timestamp`
 
 ## Common failures and actions

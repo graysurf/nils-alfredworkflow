@@ -5,8 +5,9 @@ pub const WEATHER_CACHE_TTL_SECS: u64 = 30 * 60;
 
 pub const WEATHER_CACHE_DIR_ENV: &str = "WEATHER_CACHE_DIR";
 pub const WEATHER_CACHE_TTL_SECS_ENV: &str = "WEATHER_CACHE_TTL_SECS";
-const ALFRED_WORKFLOW_CACHE_ENV: &str = "alfred_workflow_cache";
-const ALFRED_WORKFLOW_DATA_ENV: &str = "alfred_workflow_data";
+const ALFRED_WORKFLOW_CACHE_ENV: &str = "ALFRED_WORKFLOW_CACHE";
+const ALFRED_WORKFLOW_DATA_ENV: &str = "ALFRED_WORKFLOW_DATA";
+const HOME_ENV: &str = "HOME";
 
 pub const PROVIDER_TIMEOUT_SECS: u64 = 3;
 pub const PROVIDER_RETRY_MAX_ATTEMPTS: usize = 2;
@@ -43,6 +44,7 @@ impl RuntimeConfig {
 }
 
 fn resolve_cache_dir(env_map: &HashMap<String, String>) -> PathBuf {
+    let home = env_map.get(HOME_ENV).map(String::as_str);
     env_map
         .get(WEATHER_CACHE_DIR_ENV)
         .or_else(|| env_map.get(ALFRED_WORKFLOW_CACHE_ENV))
@@ -50,8 +52,27 @@ fn resolve_cache_dir(env_map: &HashMap<String, String>) -> PathBuf {
         .map(String::as_str)
         .map(str::trim)
         .filter(|value| !value.is_empty())
+        .map(|value| expand_home_path(value, home))
         .map(PathBuf::from)
         .unwrap_or_else(|| std::env::temp_dir().join("nils-weather-cli"))
+}
+
+fn expand_home_path(raw: &str, home: Option<&str>) -> String {
+    let trimmed = raw.trim();
+    let Some(home) = home.map(str::trim).filter(|value| !value.is_empty()) else {
+        return trimmed.to_string();
+    };
+
+    let home = home.trim_end_matches('/');
+    let mut expanded = trimmed.replace("$HOME", home);
+
+    if expanded == "~" {
+        expanded = home.to_string();
+    } else if let Some(rest) = expanded.strip_prefix("~/") {
+        expanded = format!("{home}/{rest}");
+    }
+
+    expanded
 }
 
 fn resolve_cache_ttl_secs(env_map: &HashMap<String, String>) -> u64 {
@@ -111,6 +132,16 @@ mod tests {
         ]);
 
         assert_eq!(config.cache_dir, PathBuf::from("/tmp/weather-cache"));
+    }
+
+    #[test]
+    fn config_expands_home_prefix_for_weather_cache_dir() {
+        let config = RuntimeConfig::from_pairs(vec![
+            (HOME_ENV, "/tmp/home"),
+            (WEATHER_CACHE_DIR_ENV, "~/.cache/weather"),
+        ]);
+
+        assert_eq!(config.cache_dir, PathBuf::from("/tmp/home/.cache/weather"));
     }
 
     #[test]

@@ -12,8 +12,7 @@ pub const BANGUMI_IMAGE_CACHE_TTL_SECONDS_ENV: &str = "BANGUMI_IMAGE_CACHE_TTL_S
 pub const BANGUMI_IMAGE_CACHE_MAX_MB_ENV: &str = "BANGUMI_IMAGE_CACHE_MAX_MB";
 pub const BANGUMI_API_FALLBACK_ENV: &str = "BANGUMI_API_FALLBACK";
 
-const ALFRED_WORKFLOW_CACHE_ENV: &str = "alfred_workflow_cache";
-const ALFRED_WORKFLOW_CACHE_ENV_UPPER: &str = "ALFRED_WORKFLOW_CACHE";
+const ALFRED_WORKFLOW_CACHE_ENV: &str = "ALFRED_WORKFLOW_CACHE";
 const XDG_CACHE_HOME_ENV: &str = "XDG_CACHE_HOME";
 const HOME_ENV: &str = "HOME";
 
@@ -131,12 +130,12 @@ fn resolve_user_agent(env_map: &HashMap<String, String>) -> String {
 
 fn resolve_cache_dir(env_map: &HashMap<String, String>) -> Result<PathBuf, ConfigError> {
     if let Some(explicit) = non_empty_env(env_map, BANGUMI_CACHE_DIR_ENV) {
-        return Ok(PathBuf::from(explicit));
+        let home = non_empty_env(env_map, HOME_ENV);
+        let expanded = expand_home_path(&explicit, home.as_deref());
+        return Ok(PathBuf::from(expanded));
     }
 
-    if let Some(alfred_cache) = non_empty_env(env_map, ALFRED_WORKFLOW_CACHE_ENV)
-        .or_else(|| non_empty_env(env_map, ALFRED_WORKFLOW_CACHE_ENV_UPPER))
-    {
+    if let Some(alfred_cache) = non_empty_env(env_map, ALFRED_WORKFLOW_CACHE_ENV) {
         return Ok(PathBuf::from(alfred_cache).join("bangumi-cli"));
     }
 
@@ -218,6 +217,24 @@ fn non_empty_env(env_map: &HashMap<String, String>, key: &str) -> Option<String>
     normalized(env_map.get(key).map(String::as_str))
 }
 
+fn expand_home_path(raw: &str, home: Option<&str>) -> String {
+    let trimmed = raw.trim();
+    let Some(home) = home.map(str::trim).filter(|value| !value.is_empty()) else {
+        return trimmed.to_string();
+    };
+
+    let home = home.trim_end_matches('/');
+    let mut expanded = trimmed.replace("$HOME", home);
+
+    if expanded == "~" {
+        expanded = home.to_string();
+    } else if let Some(rest) = expanded.strip_prefix("~/") {
+        expanded = format!("{home}/{rest}");
+    }
+
+    expanded
+}
+
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ConfigError {
     #[error("invalid BANGUMI_MAX_RESULTS: {0}")]
@@ -231,7 +248,7 @@ pub enum ConfigError {
     #[error("invalid BANGUMI_API_FALLBACK: {0} (expected auto, never, or always)")]
     InvalidApiFallback(String),
     #[error(
-        "unable to resolve cache directory (set BANGUMI_CACHE_DIR, alfred_workflow_cache, XDG_CACHE_HOME, or HOME)"
+        "unable to resolve cache directory (set BANGUMI_CACHE_DIR, ALFRED_WORKFLOW_CACHE, XDG_CACHE_HOME, or HOME)"
     )]
     MissingCacheHome,
 }
@@ -385,24 +402,24 @@ mod tests {
     }
 
     #[test]
-    fn cache_dir_resolution_uses_alfred_workflow_cache_subdir_when_available() {
+    fn cache_dir_resolution_expands_home_prefix_for_explicit_path() {
         let config = RuntimeConfig::from_pairs(vec![
             (HOME_ENV, "/tmp/home"),
-            (ALFRED_WORKFLOW_CACHE_ENV, "/tmp/alfred-cache"),
+            (BANGUMI_CACHE_DIR_ENV, "~/.cache/bangumi-cli"),
         ])
         .expect("config should parse");
 
         assert_eq!(
             config.cache_dir,
-            PathBuf::from("/tmp/alfred-cache").join("bangumi-cli")
+            PathBuf::from("/tmp/home/.cache/bangumi-cli")
         );
     }
 
     #[test]
-    fn cache_dir_resolution_supports_uppercase_alfred_workflow_cache_alias() {
+    fn cache_dir_resolution_uses_alfred_workflow_cache_subdir_when_available() {
         let config = RuntimeConfig::from_pairs(vec![
             (HOME_ENV, "/tmp/home"),
-            (ALFRED_WORKFLOW_CACHE_ENV_UPPER, "/tmp/alfred-cache"),
+            (ALFRED_WORKFLOW_CACHE_ENV, "/tmp/alfred-cache"),
         ])
         .expect("config should parse");
 

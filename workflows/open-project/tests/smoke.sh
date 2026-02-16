@@ -80,6 +80,18 @@ echo "$script_filter_output" | jq -e '.items[0].title == "alpha-repo"' >/dev/nul
 echo "$script_filter_output" | jq -e '.items[0].arg == $path' --arg path "$repo_path" >/dev/null
 echo "$script_filter_output" | jq -e '.items[0].mods.shift.icon.path == "assets/icon-github.png"' >/dev/null
 
+resolver_home="$tmp_dir/home-resolver"
+mkdir -p "$resolver_home/.local/bin"
+ln -s "$repo_root/target/debug/workflow-cli" "$resolver_home/.local/bin/workflow-cli"
+script_filter_tilde_bin_output="$({
+  HOME="$resolver_home" \
+    PROJECT_DIRS="$project_root" \
+    USAGE_FILE="$usage_file" \
+    WORKFLOW_CLI_BIN="~/.local/bin/workflow-cli" \
+    "$workflow_dir/scripts/script_filter.sh" ""
+})"
+echo "$script_filter_tilde_bin_output" | jq -e '.items[0].title == "alpha-repo"' >/dev/null
+
 github_filter_output="$({
   PROJECT_DIRS="$project_root" \
     USAGE_FILE="$usage_file" \
@@ -89,6 +101,15 @@ github_filter_output="$({
 echo "$github_filter_output" | jq -e '.items[0].icon.path == "assets/icon-github.png"' >/dev/null
 
 env VSCODE_PATH=/usr/bin/true "$workflow_dir/scripts/action_open.sh" "$repo_path" >/dev/null
+vscode_home="$tmp_dir/home-vscode"
+mkdir -p "$vscode_home/.local/bin"
+cat >"$vscode_home/.local/bin/code" <<'EOS'
+#!/usr/bin/env bash
+exit 0
+EOS
+chmod +x "$vscode_home/.local/bin/code"
+env HOME="$vscode_home" VSCODE_PATH=\~/.local/bin/code \
+  "$workflow_dir/scripts/action_open.sh" "$repo_path" >/dev/null
 recorded_path="$("$workflow_dir/scripts/action_record_usage.sh" "$repo_path")"
 [[ "$recorded_path" == "$repo_path" ]]
 

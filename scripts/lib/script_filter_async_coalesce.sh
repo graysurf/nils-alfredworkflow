@@ -67,9 +67,7 @@ sfac_resolve_workflow_cache_dir() {
 
   local candidate
   for candidate in \
-    "${alfred_workflow_cache:-}" \
     "${ALFRED_WORKFLOW_CACHE:-}" \
-    "${alfred_workflow_data:-}" \
     "${ALFRED_WORKFLOW_DATA:-}"; do
     if [[ -n "$candidate" ]]; then
       printf '%s\n' "$candidate"

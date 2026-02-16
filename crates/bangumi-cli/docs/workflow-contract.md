@@ -88,7 +88,7 @@ Rules:
 | `BANGUMI_MAX_RESULTS` | No | `10` | Base-10 integer, clamped to `1..20`. |
 | `BANGUMI_TIMEOUT_MS` | No | `8000` | Base-10 integer milliseconds, clamped to `1000..30000`. |
 | `BANGUMI_USER_AGENT` | No | `` | Optional explicit UA override; empty means built-in default UA. |
-| `BANGUMI_CACHE_DIR` | No | `` | Cache dir precedence: explicit var -> Alfred cache (`alfred_workflow_cache/bangumi-cli`) -> `${XDG_CACHE_HOME:-$HOME/.cache}/nils-bangumi-cli`. |
+| `BANGUMI_CACHE_DIR` | No | `` | Cache dir precedence: explicit var -> Alfred cache (`ALFRED_WORKFLOW_CACHE/bangumi-cli`) -> `${XDG_CACHE_HOME:-$HOME/.cache}/nils-bangumi-cli`. |
 | `BANGUMI_IMAGE_CACHE_TTL_SECONDS` | No | `86400` | Base-10 integer seconds, clamped to `>= 0`. |
 | `BANGUMI_IMAGE_CACHE_MAX_MB` | No | `128` | Base-10 integer, clamped to `1..1024`. |
 | `BANGUMI_API_FALLBACK` | No | `auto` | Allowed values: `auto`, `never`, `always`. |

@@ -5,8 +5,9 @@ pub const FX_TTL_SECS: u64 = 24 * 60 * 60;
 pub const CRYPTO_TTL_SECS: u64 = 5 * 60;
 
 pub const MARKET_CACHE_DIR_ENV: &str = "MARKET_CACHE_DIR";
-const ALFRED_WORKFLOW_CACHE_ENV: &str = "alfred_workflow_cache";
-const ALFRED_WORKFLOW_DATA_ENV: &str = "alfred_workflow_data";
+const ALFRED_WORKFLOW_CACHE_ENV: &str = "ALFRED_WORKFLOW_CACHE";
+const ALFRED_WORKFLOW_DATA_ENV: &str = "ALFRED_WORKFLOW_DATA";
+const HOME_ENV: &str = "HOME";
 
 pub const PROVIDER_TIMEOUT_SECS: u64 = 6;
 pub const PROVIDER_RETRY_MAX_ATTEMPTS: usize = 3;
@@ -39,6 +40,7 @@ impl RuntimeConfig {
 }
 
 fn resolve_cache_dir(env_map: &HashMap<String, String>) -> PathBuf {
+    let home = env_map.get(HOME_ENV).map(String::as_str);
     env_map
         .get(MARKET_CACHE_DIR_ENV)
         .or_else(|| env_map.get(ALFRED_WORKFLOW_CACHE_ENV))
@@ -46,8 +48,27 @@ fn resolve_cache_dir(env_map: &HashMap<String, String>) -> PathBuf {
         .map(String::as_str)
         .map(str::trim)
         .filter(|value| !value.is_empty())
+        .map(|value| expand_home_path(value, home))
         .map(PathBuf::from)
         .unwrap_or_else(|| std::env::temp_dir().join("nils-market-cli"))
+}
+
+fn expand_home_path(raw: &str, home: Option<&str>) -> String {
+    let trimmed = raw.trim();
+    let Some(home) = home.map(str::trim).filter(|value| !value.is_empty()) else {
+        return trimmed.to_string();
+    };
+
+    let home = home.trim_end_matches('/');
+    let mut expanded = trimmed.replace("$HOME", home);
+
+    if expanded == "~" {
+        expanded = home.to_string();
+    } else if let Some(rest) = expanded.strip_prefix("~/") {
+        expanded = format!("{home}/{rest}");
+    }
+
+    expanded
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,6 +116,16 @@ mod tests {
         ]);
 
         assert_eq!(config.cache_dir, PathBuf::from("/tmp/market-cache"));
+    }
+
+    #[test]
+    fn config_expands_home_prefix_for_market_cache_dir() {
+        let config = RuntimeConfig::from_pairs(vec![
+            (HOME_ENV, "/tmp/home"),
+            (MARKET_CACHE_DIR_ENV, "~/.cache/market"),
+        ]);
+
+        assert_eq!(config.cache_dir, PathBuf::from("/tmp/home/.cache/market"));
     }
 
     #[test]

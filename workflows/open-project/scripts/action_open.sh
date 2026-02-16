@@ -1,6 +1,26 @@
 #!/bin/sh
 set -eu
 
+resolve_helper() {
+  helper_name="$1"
+
+  script_dir=$(
+    CDPATH=
+    cd -- "$(dirname -- "$0")" && pwd
+  )
+
+  for candidate in \
+    "$script_dir/lib/$helper_name" \
+    "$script_dir/../../../scripts/lib/$helper_name"; do
+    if [ -f "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 if [ "$#" -lt 1 ] || [ -z "$1" ]; then
   echo "usage: action_open.sh <project-path>" >&2
   exit 2
@@ -12,7 +32,16 @@ if [ -z "$project_path" ] || [ ! -d "$project_path" ]; then
   exit 2
 fi
 
-vscode_bin="${VSCODE_PATH:-/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code}"
+workflow_cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
+if [ -z "$workflow_cli_resolver_helper" ]; then
+  echo "error: workflow helper missing: workflow_cli_resolver.sh" >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+. "$workflow_cli_resolver_helper"
+
+vscode_bin_raw="${VSCODE_PATH:-/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code}"
+vscode_bin="$(wfcr_expand_home_path "$vscode_bin_raw")"
 
 if [ -x "$vscode_bin" ]; then
   exec "$vscode_bin" "$project_path"

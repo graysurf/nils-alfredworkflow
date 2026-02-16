@@ -32,7 +32,7 @@ All `script_filter.sh` code paths must emit valid Alfred JSON:
 - Cache is local-first and served immediately from quote storage.
 - Runtime storage location:
   - preferred when set: `$QUOTE_DATA_DIR/quotes.txt` and `$QUOTE_DATA_DIR/quotes.timestamp`
-  - otherwise preferred: `$alfred_workflow_data/quotes.txt` and `$alfred_workflow_data/quotes.timestamp`
+  - otherwise preferred: `$ALFRED_WORKFLOW_DATA/quotes.txt` and `$ALFRED_WORKFLOW_DATA/quotes.timestamp`
   - fallback: `${TMPDIR:-/tmp}/nils-quote-feed/quotes.txt` and `${TMPDIR:-/tmp}/nils-quote-feed/quotes.timestamp`
 - Refresh decision:
   - refresh runs only when `now - last_refresh > QUOTE_REFRESH_INTERVAL`.
@@ -52,8 +52,8 @@ Legacy storage definitions come from `/Users/terry/.config/zsh/bootstrap/quote-i
 
 | Storage concern | Legacy bootstrap storage | New quote-feed workflow storage |
 | --- | --- | --- |
-| Quotes file | `$ZDOTDIR/assets/quotes.txt` | preferred `$QUOTE_DATA_DIR/quotes.txt` (when set), otherwise `$alfred_workflow_data/quotes.txt`; fallback `${TMPDIR:-/tmp}/nils-quote-feed/quotes.txt` |
-| Refresh timestamp | `$ZSH_CACHE_DIR/quotes.timestamp` | preferred `$QUOTE_DATA_DIR/quotes.timestamp` (when set), otherwise `$alfred_workflow_data/quotes.timestamp`; fallback `${TMPDIR:-/tmp}/nils-quote-feed/quotes.timestamp` |
+| Quotes file | `$ZDOTDIR/assets/quotes.txt` | preferred `$QUOTE_DATA_DIR/quotes.txt` (when set), otherwise `$ALFRED_WORKFLOW_DATA/quotes.txt`; fallback `${TMPDIR:-/tmp}/nils-quote-feed/quotes.txt` |
+| Refresh timestamp | `$ZSH_CACHE_DIR/quotes.timestamp` | preferred `$QUOTE_DATA_DIR/quotes.timestamp` (when set), otherwise `$ALFRED_WORKFLOW_DATA/quotes.timestamp`; fallback `${TMPDIR:-/tmp}/nils-quote-feed/quotes.timestamp` |
 | Runtime trigger | Shell login init (`zsh`) | Alfred keyword runtime (`qq`) |
 
 Migration guidance:

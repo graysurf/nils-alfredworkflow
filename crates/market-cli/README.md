@@ -13,7 +13,7 @@ CLI backend for market data (`fx`, `crypto`) and market-expression workflow supp
 ## Environment Variables
 
 - Optional cache override: `MARKET_CACHE_DIR`
-- Alfred fallback cache paths: `alfred_workflow_cache`, `alfred_workflow_data`
+- Alfred fallback cache paths: `ALFRED_WORKFLOW_CACHE`, `ALFRED_WORKFLOW_DATA`
 
 ## Output Contract
 

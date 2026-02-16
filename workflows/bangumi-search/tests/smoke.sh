@@ -239,6 +239,19 @@ if find "$cache_dir_target" -mindepth 1 -print -quit | grep -q .; then
 fi
 [[ ! -f "$tmp_dir/open-clear-cache-dir.txt" ]] || fail "clear-cache-dir action must not call open"
 
+tilde_home="$tmp_dir/home-cache-dir"
+tilde_cache_dir="$tilde_home/.cache/bangumi-dir"
+mkdir -p "$tilde_cache_dir/sub"
+printf '%s\n' "image-cache" >"$tilde_cache_dir/sub/sample.txt"
+
+OPEN_STUB_OUT="$tmp_dir/open-clear-cache-dir-tilde.txt" HOME="$tilde_home" BANGUMI_CACHE_DIR=\~/.cache/bangumi-dir PATH="$tmp_dir/bin:$PATH" \
+  "$workflow_dir/scripts/action_open.sh" "$cache_clear_dir_arg"
+[[ -d "$tilde_cache_dir" ]] || fail "clear-cache-dir action must resolve home-prefixed BANGUMI_CACHE_DIR"
+if find "$tilde_cache_dir" -mindepth 1 -print -quit | grep -q .; then
+  fail "clear-cache-dir action must remove contents under home-prefixed BANGUMI_CACHE_DIR"
+fi
+[[ ! -f "$tmp_dir/open-clear-cache-dir-tilde.txt" ]] || fail "clear-cache-dir action must not call open for home-prefixed cache dir"
+
 cat >"$tmp_dir/stubs/bangumi-cli-ok" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail

@@ -20,8 +20,29 @@ wfcr_clear_quarantine_if_needed() {
   fi
 }
 
+wfcr_expand_home_path() {
+  value="${1-}"
+
+  case "$value" in
+  "~")
+    if [ -n "${HOME:-}" ]; then
+      printf '%s\n' "${HOME%/}"
+      return 0
+    fi
+    ;;
+  "~/"*)
+    if [ -n "${HOME:-}" ]; then
+      printf '%s/%s\n' "${HOME%/}" "${value#\~/}"
+      return 0
+    fi
+    ;;
+  esac
+
+  printf '%s\n' "$value"
+}
+
 wfcr_try_candidate() {
-  candidate="${1-}"
+  candidate="$(wfcr_expand_home_path "${1-}")"
   if [ -z "$candidate" ] || [ ! -x "$candidate" ]; then
     return 1
   fi

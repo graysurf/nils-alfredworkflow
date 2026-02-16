@@ -85,10 +85,18 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
 - Shared Script Filter runtime helpers are:
   - `scripts/lib/script_filter_query_policy.sh` (`sfqp_*`)
   - `scripts/lib/script_filter_async_coalesce.sh` (`sfac_*`)
+- Shared path resolver helper is:
+  - `scripts/lib/workflow_cli_resolver.sh` (`wfcr_*`)
 - Additional workflow runtime helpers may live in `scripts/lib/` (for example resolver/error/driver helpers) when they are runtime mechanics rather than domain behavior.
 - `scripts/workflow-pack.sh` must stage `scripts/lib/*.sh` into packaged workflows at `scripts/lib/` via a deterministic rule (no per-file ad hoc list).
 - Script Filter adapters should resolve packaged helper first, then local-repo fallback for development/tests.
 - If a required helper file cannot be resolved at runtime, emit a non-crashing Alfred error item (`valid=false`) and exit successfully (`exit 0`).
+
+### Path config expansion standard
+
+- Any workflow shell adapter that accepts path-like env overrides (for example `*_CLI_BIN`, `*_PATH`, `*_DIR`, `*_FILE`) must normalize `~/...` via `wfcr_expand_home_path` before `-x`, `-f`, `-d`, or command execution checks.
+- Avoid local ad-hoc `~` expansion snippets in workflow scripts when `wfcr_expand_home_path` is available.
+- Rust config parsers for path-like env values must expand `~/...` (and keep behavior consistent with shell adapters) before building `PathBuf` values.
 
 ### `scripts/lib` extraction boundary
 

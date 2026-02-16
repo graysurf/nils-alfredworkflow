@@ -56,12 +56,13 @@ impl RuntimeConfig {
     ) -> Self {
         let project_roots = parse_project_dirs(project_dirs, home);
         let usage_file = PathBuf::from(expand_home_tokens(usage_file, home));
+        let vscode_path = expand_home_tokens(vscode_path, home);
         let max_results = parse_max_results(max_results);
 
         Self {
             project_roots,
             usage_file,
-            vscode_path: vscode_path.to_string(),
+            vscode_path,
             max_results,
         }
     }
@@ -129,6 +130,18 @@ mod tests {
         assert_eq!(dirs[0], PathBuf::from("/Users/tester/One"));
         assert_eq!(dirs[1], PathBuf::from("/Users/tester/Two"));
         assert_eq!(dirs[2], PathBuf::from("/tmp/Three"));
+    }
+
+    #[test]
+    fn expands_home_tokens_for_vscode_path() {
+        let config = RuntimeConfig::from_values(
+            "/Users/tester",
+            "$HOME/One",
+            "$HOME/.usage.log",
+            "~/.local/bin/code",
+            "30",
+        );
+        assert_eq!(config.vscode_path, "/Users/tester/.local/bin/code");
     }
 
     #[test]

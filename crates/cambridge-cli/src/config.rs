@@ -9,6 +9,7 @@ const TIMEOUT_MS_ENV: &str = "CAMBRIDGE_TIMEOUT_MS";
 const HEADLESS_ENV: &str = "CAMBRIDGE_HEADLESS";
 const NODE_BIN_ENV: &str = "CAMBRIDGE_NODE_BIN";
 const SCRAPER_SCRIPT_ENV: &str = "CAMBRIDGE_SCRAPER_SCRIPT";
+const HOME_ENV: &str = "HOME";
 
 const MIN_RESULTS: i32 = 1;
 const MAX_RESULTS: i32 = 20;
@@ -76,15 +77,17 @@ impl RuntimeConfig {
             .into_iter()
             .map(|(key, value)| (key.into(), value.into()))
             .collect();
+        let home = env_map.get(HOME_ENV).map(String::as_str);
 
         Ok(Self {
             dict_mode: parse_dict_mode(env_map.get(DICT_MODE_ENV).map(String::as_str))?,
             max_results: parse_max_results(env_map.get(MAX_RESULTS_ENV).map(String::as_str))?,
             timeout_ms: parse_timeout_ms(env_map.get(TIMEOUT_MS_ENV).map(String::as_str))?,
             headless: parse_headless(env_map.get(HEADLESS_ENV).map(String::as_str))?,
-            node_bin: parse_node_bin(env_map.get(NODE_BIN_ENV).map(String::as_str)),
+            node_bin: parse_node_bin(env_map.get(NODE_BIN_ENV).map(String::as_str), home),
             scraper_script: parse_scraper_script(
                 env_map.get(SCRAPER_SCRIPT_ENV).map(String::as_str),
+                home,
             )?,
         })
     }
@@ -136,25 +139,44 @@ fn parse_headless(raw: Option<&str>) -> Result<bool, ConfigError> {
     }
 }
 
-fn parse_node_bin(raw: Option<&str>) -> String {
+fn parse_node_bin(raw: Option<&str>, home: Option<&str>) -> String {
     raw.map(str::trim)
         .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned)
+        .map(|value| expand_home_path(value, home))
         .unwrap_or_else(|| DEFAULT_NODE_BIN.to_string())
 }
 
-fn parse_scraper_script(raw: Option<&str>) -> Result<PathBuf, ConfigError> {
+fn parse_scraper_script(raw: Option<&str>, home: Option<&str>) -> Result<PathBuf, ConfigError> {
     let value = raw
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .ok_or(ConfigError::MissingScraperScript)?;
 
-    let path = PathBuf::from(value);
+    let expanded = expand_home_path(value, home);
+    let path = PathBuf::from(&expanded);
     if !path.is_file() {
-        return Err(ConfigError::ScraperScriptNotFound(value.to_string()));
+        return Err(ConfigError::ScraperScriptNotFound(expanded));
     }
 
     Ok(path)
+}
+
+fn expand_home_path(raw: &str, home: Option<&str>) -> String {
+    let trimmed = raw.trim();
+    let Some(home) = home.map(str::trim).filter(|value| !value.is_empty()) else {
+        return trimmed.to_string();
+    };
+
+    let home = home.trim_end_matches('/');
+    let mut expanded = trimmed.replace("$HOME", home);
+
+    if expanded == "~" {
+        expanded = home.to_string();
+    } else if let Some(rest) = expanded.strip_prefix("~/") {
+        expanded = format!("{home}/{rest}");
+    }
+
+    expanded
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -318,6 +340,19 @@ mod tests {
     }
 
     #[test]
+    fn config_expands_home_prefix_for_node_bin() {
+        let (_dir, script_path) = fixture_script();
+        let config = RuntimeConfig::from_pairs(vec![
+            (HOME_ENV, "/tmp/home"),
+            (NODE_BIN_ENV, "~/.local/bin/node"),
+            (SCRAPER_SCRIPT_ENV, script_path.as_str()),
+        ])
+        .expect("node bin should parse");
+
+        assert_eq!(config.node_bin, "/tmp/home/.local/bin/node");
+    }
+
+    #[test]
     fn config_requires_scraper_script_path() {
         let err = RuntimeConfig::from_pairs(Vec::<(String, String)>::new())
             .expect_err("missing script should fail");
@@ -334,5 +369,21 @@ mod tests {
             err,
             ConfigError::ScraperScriptNotFound("/tmp/no-such-script.mjs".to_string())
         );
+    }
+
+    #[test]
+    fn config_expands_home_prefix_for_scraper_script_path() {
+        let home = tempdir().expect("create home dir");
+        let script_path = home.path().join(".cambridge").join("scraper.mjs");
+        fs::create_dir_all(script_path.parent().expect("script parent")).expect("create dir");
+        fs::write(&script_path, "console.log('{}');").expect("write script");
+
+        let config = RuntimeConfig::from_pairs(vec![
+            (HOME_ENV, home.path().to_string_lossy().as_ref()),
+            (SCRAPER_SCRIPT_ENV, "~/.cambridge/scraper.mjs"),
+        ])
+        .expect("scraper script should parse");
+
+        assert_eq!(config.scraper_script, script_path);
     }
 }

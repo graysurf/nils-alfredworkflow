@@ -7,8 +7,9 @@ const DISPLAY_COUNT_ENV: &str = "QUOTE_DISPLAY_COUNT";
 const REFRESH_INTERVAL_ENV: &str = "QUOTE_REFRESH_INTERVAL";
 const FETCH_COUNT_ENV: &str = "QUOTE_FETCH_COUNT";
 const MAX_ENTRIES_ENV: &str = "QUOTE_MAX_ENTRIES";
-const ALFRED_WORKFLOW_DATA_ENV: &str = "alfred_workflow_data";
+const ALFRED_WORKFLOW_DATA_ENV: &str = "ALFRED_WORKFLOW_DATA";
 const QUOTE_DATA_DIR_ENV: &str = "QUOTE_DATA_DIR";
+const HOME_ENV: &str = "HOME";
 
 const DISPLAY_MIN: i32 = 1;
 const DISPLAY_MAX: i32 = 20;
@@ -87,15 +88,35 @@ impl RuntimeConfig {
 }
 
 fn parse_data_dir(env_map: &HashMap<String, String>) -> PathBuf {
+    let home = env_map.get(HOME_ENV).map(String::as_str);
     let selected = env_map
         .get(QUOTE_DATA_DIR_ENV)
         .or_else(|| env_map.get(ALFRED_WORKFLOW_DATA_ENV))
         .map(String::as_str)
         .map(str::trim)
         .filter(|value| !value.is_empty())
+        .map(|value| expand_home_path(value, home))
         .map(PathBuf::from);
 
     selected.unwrap_or_else(|| std::env::temp_dir().join("nils-quote-feed"))
+}
+
+fn expand_home_path(raw: &str, home: Option<&str>) -> String {
+    let trimmed = raw.trim();
+    let Some(home) = home.map(str::trim).filter(|value| !value.is_empty()) else {
+        return trimmed.to_string();
+    };
+
+    let home = home.trim_end_matches('/');
+    let mut expanded = trimmed.replace("$HOME", home);
+
+    if expanded == "~" {
+        expanded = home.to_string();
+    } else if let Some(rest) = expanded.strip_prefix("~/") {
+        expanded = format!("{home}/{rest}");
+    }
+
+    expanded
 }
 
 fn parse_clamped_count(
@@ -197,6 +218,17 @@ mod tests {
         .expect("explicit quote data dir should parse");
 
         assert_eq!(config.data_dir, PathBuf::from("/tmp/custom-quote-feed"));
+    }
+
+    #[test]
+    fn config_expands_home_prefix_for_quote_data_dir() {
+        let config = RuntimeConfig::from_pairs(vec![
+            (HOME_ENV, "/tmp/home"),
+            (QUOTE_DATA_DIR_ENV, "~/.quote-feed"),
+        ])
+        .expect("quote data dir should parse");
+
+        assert_eq!(config.data_dir, PathBuf::from("/tmp/home/.quote-feed"));
     }
 
     #[test]
