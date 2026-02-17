@@ -6,7 +6,7 @@
 - Rust crate versions are workspace-driven via `Cargo.toml` (`[workspace.package].version`).
 - Release tag input (`vX.Y.Z`) is treated as the source for both (`X.Y.Z`).
 
-When using `.agents/skills/release-workflow/scripts/release-workflow.sh`, the script will:
+When using `.agents/skills/nils-alfredworkflow-release-workflow/scripts/nils-alfredworkflow-release-workflow.sh`, the script will:
 
 1. Sync explicit `version = "..."` entries in tracked `Cargo.toml` files.
 2. Sync tracked `workflows/*/workflow.toml` versions (excluding `_template`).
