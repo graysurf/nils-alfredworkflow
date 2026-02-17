@@ -90,19 +90,22 @@ pub fn parse_query_input(raw_input: &str) -> Result<ParsedInput, InputError> {
         });
     }
 
-    if let Some((prefix, rest)) = input.split_once(':')
-        && !prefix.contains(char::is_whitespace)
-    {
-        let subject_type = parse_type_token(prefix)?;
-        let keyword = rest.trim();
-        if keyword.is_empty() {
-            return Err(InputError::MissingQueryAfterType(prefix.to_string()));
-        }
+    if let Some((prefix, rest)) = input.split_once(':') {
+        let prefix = prefix.trim();
+        if !prefix.is_empty()
+            && !prefix.contains(char::is_whitespace)
+            && let Some(subject_type) = SubjectType::parse_token(prefix)
+        {
+            let keyword = rest.trim();
+            if keyword.is_empty() {
+                return Err(InputError::MissingQueryAfterType(prefix.to_string()));
+            }
 
-        return Ok(ParsedInput {
-            subject_type,
-            keyword: keyword.to_string(),
-        });
+            return Ok(ParsedInput {
+                subject_type,
+                keyword: keyword.to_string(),
+            });
+        }
     }
 
     let mut parts = input.split_whitespace();
@@ -185,6 +188,14 @@ mod tests {
     }
 
     #[test]
+    fn input_parser_supports_colon_type_prefix_with_surrounding_whitespace() {
+        let parsed = parse_query_input("music : cowboy bebop").expect("query should parse");
+
+        assert_eq!(parsed.subject_type, SubjectType::Music);
+        assert_eq!(parsed.keyword, "cowboy bebop");
+    }
+
+    #[test]
     fn input_parser_supports_bracket_type_prefix_in_query_mode() {
         let parsed = parse_query_input("[game] zelda").expect("query should parse");
 
@@ -198,6 +209,14 @@ mod tests {
 
         assert_eq!(parsed.subject_type, SubjectType::All);
         assert_eq!(parsed.keyword, "fate stay night");
+    }
+
+    #[test]
+    fn input_parser_treats_unknown_colon_prefix_as_plain_query() {
+        let parsed = parse_query_input("fate:zero").expect("query should parse");
+
+        assert_eq!(parsed.subject_type, SubjectType::All);
+        assert_eq!(parsed.keyword, "fate:zero");
     }
 
     #[test]
