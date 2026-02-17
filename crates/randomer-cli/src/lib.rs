@@ -1,7 +1,7 @@
 use std::fmt;
 
 use alfred_core::{Feedback, Item, ItemIcon, ItemModifier};
-use rand::Rng;
+use rand::{Rng, RngExt};
 use uuid::Uuid;
 
 const UNIT_LETTER_VALUES: [u32; 26] = [
