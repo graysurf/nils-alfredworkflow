@@ -1,5 +1,5 @@
 ---
-name: pin-crates
+name: nils-alfredworkflow-pin-crates
 description: Pin managed crates and workflow runtime crate versions to an exact release.
 ---
 
@@ -61,7 +61,7 @@ Failure modes:
 
 ## Scripts (only entrypoints)
 
-- `<PROJECT_ROOT>/.agents/skills/pin-crates/scripts/pin-crates.sh`
+- `<PROJECT_ROOT>/.agents/skills/nils-alfredworkflow-pin-crates/scripts/nils-alfredworkflow-pin-crates.sh`
 
 ## Workflow
 
