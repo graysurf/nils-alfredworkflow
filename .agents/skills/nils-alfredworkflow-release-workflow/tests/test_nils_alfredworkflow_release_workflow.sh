@@ -3,14 +3,14 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 skill_root="$(cd "${script_dir}/.." && pwd)"
-entrypoint="${skill_root}/scripts/release-workflow.sh"
+entrypoint="${skill_root}/scripts/nils-alfredworkflow-release-workflow.sh"
 
 if [[ ! -f "${skill_root}/SKILL.md" ]]; then
   echo "error: missing SKILL.md" >&2
   exit 1
 fi
 if [[ ! -f "$entrypoint" ]]; then
-  echo "error: missing scripts/release-workflow.sh" >&2
+  echo "error: missing scripts/nils-alfredworkflow-release-workflow.sh" >&2
   exit 1
 fi
 
@@ -19,7 +19,7 @@ if [[ ! -x "$entrypoint" ]]; then
   exit 1
 fi
 if ! command -v node >/dev/null 2>&1; then
-  echo "error: node is required for release-workflow package version sync checks" >&2
+  echo "error: node is required for nils-alfredworkflow-release-workflow package version sync checks" >&2
   exit 1
 fi
 

@@ -1,5 +1,5 @@
 ---
-name: release-workflow
+name: nils-alfredworkflow-release-workflow
 description: Create and push a release tag to trigger GitHub Release workflow.
 ---
 
@@ -58,7 +58,7 @@ Failure modes:
 
 ## Scripts (only entrypoints)
 
-- `<PROJECT_ROOT>/.agents/skills/release-workflow/scripts/release-workflow.sh`
+- `<PROJECT_ROOT>/.agents/skills/nils-alfredworkflow-release-workflow/scripts/nils-alfredworkflow-release-workflow.sh`
 
 ## Workflow
 

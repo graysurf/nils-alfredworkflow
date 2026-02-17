@@ -87,7 +87,7 @@ script_filter_tilde_bin_output="$({
   HOME="$resolver_home" \
     PROJECT_DIRS="$project_root" \
     USAGE_FILE="$usage_file" \
-    WORKFLOW_CLI_BIN="~/.local/bin/workflow-cli" \
+    WORKFLOW_CLI_BIN=\~/.local/bin/workflow-cli \
     "$workflow_dir/scripts/script_filter.sh" ""
 })"
 echo "$script_filter_tilde_bin_output" | jq -e '.items[0].title == "alpha-repo"' >/dev/null
