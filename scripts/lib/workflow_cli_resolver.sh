@@ -30,7 +30,7 @@ wfcr_expand_home_path() {
       return 0
     fi
     ;;
-  "~/"*)
+  \~/*)
     if [ -n "${HOME:-}" ]; then
       printf '%s/%s\n' "${HOME%/}" "${value#\~/}"
       return 0
