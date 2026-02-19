@@ -42,18 +42,15 @@
 
 ### Documentation placement
 
-- Policy spec: `docs/specs/crate-docs-placement-policy.md`
-- Legacy root doc lifecycle decision (normative): root compatibility stubs are not kept; migrate references to canonical crate docs, then remove the root legacy file. See `docs/specs/crate-docs-placement-policy.md` (`Legacy root doc lifecycle decision`) and `docs/reports/crate-doc-migration-inventory.md` (`Legacy root docs removal status`).
-- This section is normative for all contributors when adding a new crate or a new markdown file.
-- For every new publishable crate, you must add `crates/<crate-name>/README.md` and `crates/<crate-name>/docs/README.md` in the same change before adding crate-specific docs.
-- Crate-owned docs must live under `crates/<crate-name>/docs/`; do not place crate-owned docs under root `docs/`.
-- For every new markdown file, classify it as workspace-level or crate-specific first, then place it in the canonical path defined by the policy.
+- Canonical policy: `docs/specs/crate-docs-placement-policy.md`
+- Required placement gate before commit: `bash scripts/docs-placement-audit.sh --strict`
+- Placement rule: crate-owned docs belong in `crates/<crate-name>/docs/`; workspace-level docs belong in allowed root `docs/` categories.
 
 #### Contributor checklist (required before commit)
 
 - [ ] For every new publishable crate, required docs exist: `crates/<crate-name>/README.md` and `crates/<crate-name>/docs/README.md`.
-- [ ] For every new markdown file, ownership/path classification is complete (`workspace-level` vs `crate-specific`) and crate-specific files are not under root `docs/`.
-- [ ] Run documentation placement audit before commit: `bash scripts/docs-placement-audit.sh --strict`.
+- [ ] For every new markdown file, ownership/path classification is complete (`workspace-level` vs `crate-specific`) and the file path follows the policy.
+- [ ] Documentation placement audit passes: `bash scripts/docs-placement-audit.sh --strict`.
 
 ## Testing
 

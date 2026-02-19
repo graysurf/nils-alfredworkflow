@@ -9,7 +9,7 @@
 
 ### Allowed root docs categories (workspace-level only)
 
-- `docs/ARCHITECTURE.md`, `docs/ALFRED_WORKFLOW_MONOREPO_DESIGN.md`, `ALFRED_WORKFLOW_DEVELOPMENT.md`, and similar repository-wide architecture or workflow guides.
+- `docs/ARCHITECTURE.md`, `ALFRED_WORKFLOW_DEVELOPMENT.md`, and similar repository-wide architecture or workflow guides.
 - `docs/specs/*.md` for shared standards that are not owned by a single crate.
 - `docs/plans/*.md` for implementation planning.
 - `docs/reports/*.md` for audit/inventory/report outputs.

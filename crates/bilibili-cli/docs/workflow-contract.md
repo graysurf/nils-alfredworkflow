@@ -105,6 +105,17 @@ The workflow must never crash or emit non-JSON output for handled failures.
 - Optional explicit User-Agent override for API requests.
 - Empty value uses CLI default UA.
 
+## Legacy Parity Baseline
+
+This contract intentionally preserves behavior from the previous
+`alfred-web-search-suggest` bilibili workflow baseline:
+
+- Suggest endpoint: `https://s.search.bilibili.com/main/suggest`
+- Required query parameter: `term`
+- Optional query parameter: `userid`
+- Suggestion row source: `result.tag[].value`
+- Direct-search URL pattern: `https://search.bilibili.com/all?keyword=<query>`
+
 ## Compatibility Notes
 
 - Contract targets Alfred 5 script filter JSON shape.

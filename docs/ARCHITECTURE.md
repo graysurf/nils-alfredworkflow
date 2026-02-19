@@ -1,11 +1,14 @@
 # Architecture
 
-This repository follows a workflow-monorepo pattern:
+Repository architecture baseline:
 
-- Shared logic stays in Rust crates under `crates/`.
-- Alfred integration scripts stay thin under `workflows/<id>/scripts`.
-- Packaging and validation run from deterministic shell entrypoints under `scripts/`.
-- `xtask` provides one stable command surface for developer workflows.
-- Runtime target is Alfred on macOS; Linux support is retained for development/CI validation.
+- Workspace monorepo with shared Rust crates under `crates/`.
+- Workflow adapters under `workflows/<id>/scripts` stay thin; domain logic lives in Rust crates.
+- Shared runtime shell mechanics live in `scripts/lib/`.
+- Packaging and validation use deterministic entrypoints under `scripts/` and `xtask`.
+- Runtime target is Alfred on macOS; development/CI validation supports Linux and macOS.
 
-See `docs/ALFRED_WORKFLOW_MONOREPO_DESIGN.md` for the full design baseline.
+For operator standards and command gates, see:
+
+- `ALFRED_WORKFLOW_DEVELOPMENT.md`
+- `DEVELOPMENT.md`
