@@ -77,8 +77,8 @@ pub fn parse_query_input(raw_input: &str) -> Result<ParsedInput, InputError> {
 
     if let Some(stripped) = input.strip_prefix('[')
         && let Some((token, rest)) = stripped.split_once(']')
+        && let Some(subject_type) = SubjectType::parse_token(token)
     {
-        let subject_type = parse_type_token(token)?;
         let keyword = rest.trim();
         if keyword.is_empty() {
             return Err(InputError::MissingQueryAfterType(format!("[{}]", token)));
@@ -201,6 +201,14 @@ mod tests {
 
         assert_eq!(parsed.subject_type, SubjectType::Game);
         assert_eq!(parsed.keyword, "zelda");
+    }
+
+    #[test]
+    fn input_parser_treats_unknown_bracket_prefix_as_plain_query() {
+        let parsed = parse_query_input("[manga] berserk").expect("query should parse");
+
+        assert_eq!(parsed.subject_type, SubjectType::All);
+        assert_eq!(parsed.keyword, "[manga] berserk");
     }
 
     #[test]
