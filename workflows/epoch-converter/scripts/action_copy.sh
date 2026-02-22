@@ -1,30 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-resolve_helper() {
-  local helper_name="$1"
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-  local candidates=(
-    "$script_dir/lib/$helper_name"
-    "$script_dir/../../../scripts/lib/$helper_name"
-  )
+loader_path=""
+for candidate in \
+  "$script_dir/lib/workflow_helper_loader.sh" \
+  "$script_dir/../../../scripts/lib/workflow_helper_loader.sh"; do
+  if [[ -f "$candidate" ]]; then
+    loader_path="$candidate"
+    break
+  fi
+done
 
-  local candidate
-  for candidate in "${candidates[@]}"; do
-    if [[ -f "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
+if [[ -z "$loader_path" ]]; then
+  echo "Workflow helper missing: Cannot locate workflow_helper_loader.sh runtime helper." >&2
+  exit 1
+fi
 
-  return 1
-}
+# shellcheck disable=SC1090
+source "$loader_path"
 
-helper="$(resolve_helper "workflow_action_copy.sh" || true)"
+helper="$(wfhl_resolve_helper_path "$script_dir" "workflow_action_copy.sh" off || true)"
 if [[ -z "$helper" ]]; then
-  echo "workflow_action_copy.sh helper not found" >&2
+  wfhl_print_missing_helper_stderr "workflow_action_copy.sh"
   exit 1
 fi
 

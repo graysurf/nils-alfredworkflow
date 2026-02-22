@@ -7,6 +7,10 @@ Starter scaffold for creating a new workflow in this monorepo.
 - Includes baseline workflow files: `workflow.toml`, `src/info.plist.template`, `scripts/`, and `tests/smoke.sh`.
 - Keeps script-filter and action script structure aligned with existing workflows.
 - Uses the same packaging conventions expected by `scripts/workflow-pack.sh`.
+- Script entrypoints default to shared foundation bootstrap:
+  - `scripts/lib/workflow_helper_loader.sh`
+  - `scripts/lib/script_filter_cli_driver.sh` (script filter safety guard)
+  - `scripts/lib/workflow_smoke_helpers.sh` (smoke helper scaffolding)
 
 ## Template Parameters
 
@@ -31,6 +35,9 @@ Update these fields before packaging a new workflow:
 
 - This folder is a template, not a final end-user workflow.
 - After scaffolding, replace placeholder values (for example `__WORKFLOW_ID__`) and update scripts/tests accordingly.
+- Preserve shared-vs-local extraction boundary during customization:
+  - keep helper wiring and guard mechanics shared;
+  - keep domain/provider semantics local to the workflow script.
 - Every new workflow README must include a `## Troubleshooting` section that links to `./TROUBLESHOOTING.md`.
 
 ## Troubleshooting

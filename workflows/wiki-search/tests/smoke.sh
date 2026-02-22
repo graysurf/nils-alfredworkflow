@@ -5,76 +5,15 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 workflow_dir="$(cd "$script_dir/.." && pwd)"
 repo_root="$(cd "$workflow_dir/../.." && pwd)"
 
-fail() {
-  echo "error: $*" >&2
+smoke_helper="$repo_root/scripts/lib/workflow_smoke_helpers.sh"
+
+if [[ ! -f "$smoke_helper" ]]; then
+  echo "missing required helper: $smoke_helper" >&2
   exit 1
-}
+fi
 
-require_bin() {
-  local binary="$1"
-  command -v "$binary" >/dev/null 2>&1 || fail "missing required binary: $binary"
-}
-
-assert_file() {
-  local path="$1"
-  [[ -f "$path" ]] || fail "missing required file: $path"
-}
-
-assert_exec() {
-  local path="$1"
-  [[ -x "$path" ]] || fail "script must be executable: $path"
-}
-
-toml_string() {
-  local file="$1"
-  local key="$2"
-  awk -F'=' -v key="$key" '
-    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
-      value=$2
-      sub(/^[[:space:]]*/, "", value)
-      sub(/[[:space:]]*$/, "", value)
-      gsub(/^"|"$/, "", value)
-      print value
-      exit
-    }
-  ' "$file"
-}
-
-plist_to_json() {
-  local plist_file="$1"
-  if command -v plutil >/dev/null 2>&1; then
-    plutil -convert json -o - "$plist_file"
-    return
-  fi
-
-  python3 - "$plist_file" <<'PY'
-import json
-import plistlib
-import sys
-
-with open(sys.argv[1], 'rb') as f:
-    payload = plistlib.load(f)
-print(json.dumps(payload))
-PY
-}
-
-assert_jq_file() {
-  local file="$1"
-  local filter="$2"
-  local message="$3"
-  if ! jq -e "$filter" "$file" >/dev/null; then
-    fail "$message (jq: $filter)"
-  fi
-}
-
-assert_jq_json() {
-  local json_payload="$1"
-  local filter="$2"
-  local message="$3"
-  if ! jq -e "$filter" >/dev/null <<<"$json_payload"; then
-    fail "$message (jq: $filter)"
-  fi
-}
+# shellcheck disable=SC1090
+source "$smoke_helper"
 
 for required in \
   workflow.toml \

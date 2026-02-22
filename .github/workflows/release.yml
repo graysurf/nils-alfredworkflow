@@ -23,7 +23,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install codex-cli for packaging
-        run: cargo install nils-codex-cli --version 0.3.2 --locked
+        run: |
+          source scripts/lib/codex_cli_version.sh
+          cargo install "${CODEX_CLI_CRATE}" --version "${CODEX_CLI_VERSION}" --locked
 
       - name: Package all workflows
         run: scripts/workflow-pack.sh --all

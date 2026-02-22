@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 WIKI_REQUERY_PREFIX="wiki-requery:"
 
 resolve_cache_dir() {
@@ -101,30 +103,27 @@ if [[ "$1" == "$WIKI_REQUERY_PREFIX"* ]]; then
   exit 0
 fi
 
-resolve_helper() {
-  local helper_name="$1"
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+loader_path=""
+for candidate in \
+  "$script_dir/lib/workflow_helper_loader.sh" \
+  "$script_dir/../../../scripts/lib/workflow_helper_loader.sh"; do
+  if [[ -f "$candidate" ]]; then
+    loader_path="$candidate"
+    break
+  fi
+done
 
-  local candidates=(
-    "$script_dir/lib/$helper_name"
-    "$script_dir/../../../scripts/lib/$helper_name"
-  )
+if [[ -z "$loader_path" ]]; then
+  echo "Workflow helper missing: Cannot locate workflow_helper_loader.sh runtime helper." >&2
+  exit 1
+fi
 
-  local candidate
-  for candidate in "${candidates[@]}"; do
-    if [[ -f "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
+# shellcheck disable=SC1090
+source "$loader_path"
 
-  return 1
-}
-
-helper="$(resolve_helper "workflow_action_open_url.sh" || true)"
+helper="$(wfhl_resolve_helper_path "$script_dir" "workflow_action_open_url.sh" off || true)"
 if [[ -z "$helper" ]]; then
-  echo "workflow_action_open_url.sh helper not found" >&2
+  wfhl_print_missing_helper_stderr "workflow_action_open_url.sh"
   exit 1
 fi
 

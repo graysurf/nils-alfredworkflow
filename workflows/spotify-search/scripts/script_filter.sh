@@ -1,46 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-resolve_helper() {
-  local helper_name="$1"
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local git_repo_root=""
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+workflow_helper_loader="$script_dir/lib/workflow_helper_loader.sh"
+if [[ ! -f "$workflow_helper_loader" ]]; then
+  workflow_helper_loader="$script_dir/../../../scripts/lib/workflow_helper_loader.sh"
+fi
+if [[ ! -f "$workflow_helper_loader" ]]; then
   git_repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
-
-  local candidates=(
-    "$script_dir/lib/$helper_name"
-    "$script_dir/../../../scripts/lib/$helper_name"
-  )
-  if [[ -n "$git_repo_root" ]]; then
-    candidates+=("$git_repo_root/scripts/lib/$helper_name")
+  if [[ -n "$git_repo_root" && -f "$git_repo_root/scripts/lib/workflow_helper_loader.sh" ]]; then
+    workflow_helper_loader="$git_repo_root/scripts/lib/workflow_helper_loader.sh"
   fi
-  local candidate
-  for candidate in "${candidates[@]}"; do
-    if [[ -f "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-error_json_helper="$(resolve_helper "script_filter_error_json.sh" || true)"
-if [[ -z "$error_json_helper" ]]; then
-  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate script_filter_error_json.sh runtime helper.","valid":false}]}\n'
+fi
+if [[ ! -f "$workflow_helper_loader" ]]; then
+  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate workflow_helper_loader.sh runtime helper.","valid":false}]}\n'
   exit 0
 fi
 # shellcheck disable=SC1090
-source "$error_json_helper"
+source "$workflow_helper_loader"
 
-cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
-if [[ -z "$cli_resolver_helper" ]]; then
+if ! wfhl_source_helper "$script_dir" "script_filter_error_json.sh"; then
+  wfhl_emit_missing_helper_item_json "script_filter_error_json.sh"
+  exit 0
+fi
+
+if ! wfhl_source_helper "$script_dir" "workflow_cli_resolver.sh"; then
   sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
   exit 0
 fi
-# shellcheck disable=SC1090
-source "$cli_resolver_helper"
 
 normalize_error_message() {
   sfej_normalize_error_message "${1-}"
@@ -113,48 +101,78 @@ resolve_spotify_cli() {
     "spotify-cli binary not found (checked SPOTIFY_CLI_BIN/package/release/debug paths)"
 }
 
-query="${1:-}"
-if [[ -z "$query" && -n "${alfred_workflow_query:-}" ]]; then
-  query="${alfred_workflow_query}"
-elif [[ -z "$query" && -n "${ALFRED_WORKFLOW_QUERY:-}" ]]; then
-  query="${ALFRED_WORKFLOW_QUERY}"
-elif [[ -z "$query" && ! -t 0 ]]; then
-  stdin_query="$(cat)"
-  query="$stdin_query"
+spotify_search_fetch_json() {
+  local query="$1"
+  local err_file="${TMPDIR:-/tmp}/spotify-search-script-filter.err.$$.$RANDOM"
+
+  local spotify_cli
+  if ! spotify_cli="$(resolve_spotify_cli 2>"$err_file")"; then
+    cat "$err_file" >&2
+    rm -f "$err_file"
+    return 1
+  fi
+
+  local json_output
+  if json_output="$("$spotify_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
+    rm -f "$err_file"
+    if [[ -z "$json_output" ]]; then
+      echo "spotify-cli returned empty response" >&2
+      return 1
+    fi
+
+    if command -v jq >/dev/null 2>&1; then
+      if ! jq -e '.items | type == "array"' >/dev/null <<<"$json_output"; then
+        echo "spotify-cli returned malformed Alfred JSON" >&2
+        return 1
+      fi
+    fi
+
+    printf '%s\n' "$json_output"
+    return 0
+  fi
+
+  cat "$err_file" >&2
+  rm -f "$err_file"
+  return 1
+}
+
+if ! wfhl_source_helper "$script_dir" "script_filter_query_policy.sh"; then
+  emit_error_item "Workflow helper missing" "Cannot locate script_filter_query_policy.sh runtime helper."
+  exit 0
 fi
 
-trimmed_query="$(printf '%s' "$query" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+if ! wfhl_source_helper "$script_dir" "script_filter_async_coalesce.sh"; then
+  emit_error_item "Workflow helper missing" "Cannot locate script_filter_async_coalesce.sh runtime helper."
+  exit 0
+fi
+
+if ! wfhl_source_helper "$script_dir" "script_filter_search_driver.sh"; then
+  emit_error_item "Workflow helper missing" "Cannot locate script_filter_search_driver.sh runtime helper."
+  exit 0
+fi
+
+query="$(sfqp_resolve_query_input "${1:-}")"
+trimmed_query="$(sfqp_trim "$query")"
 if [[ -z "$trimmed_query" ]]; then
   emit_error_item "Enter a search query" "Type keywords after sp to search Spotify tracks."
   exit 0
 fi
 
-err_file="${TMPDIR:-/tmp}/spotify-search-script-filter.err.$$"
-trap 'rm -f "$err_file"' EXIT
+# Keep Spotify search immediate by default while preserving optional env overrides.
+: "${SPOTIFY_QUERY_CACHE_TTL_SECONDS:=0}"
+: "${SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS:=0}"
+: "${SPOTIFY_QUERY_COALESCE_RERUN_SECONDS:=0.4}"
 
-spotify_cli=""
-if ! spotify_cli="$(resolve_spotify_cli 2>"$err_file")"; then
-  err_msg="$(cat "$err_file")"
-  print_error_item "$err_msg"
-  exit 0
-fi
-
-if json_output="$("$spotify_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
-  if [[ -z "$json_output" ]]; then
-    print_error_item "spotify-cli returned empty response"
-    exit 0
-  fi
-
-  if command -v jq >/dev/null 2>&1; then
-    if ! jq -e '.items | type == "array"' >/dev/null <<<"$json_output"; then
-      print_error_item "spotify-cli returned malformed Alfred JSON"
-      exit 0
-    fi
-  fi
-
-  printf '%s\n' "$json_output"
-  exit 0
-fi
-
-err_msg="$(cat "$err_file")"
-print_error_item "$err_msg"
+# Shared driver owns cache/coalesce orchestration only.
+# Spotify-specific backend fetch and error mapping remain local in this script.
+sfsd_run_search_flow \
+  "$query" \
+  "spotify-search" \
+  "nils-spotify-search-workflow" \
+  "SPOTIFY_QUERY_CACHE_TTL_SECONDS" \
+  "SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS" \
+  "SPOTIFY_QUERY_COALESCE_RERUN_SECONDS" \
+  "Searching Spotify..." \
+  "Waiting for final query before calling Spotify API." \
+  "spotify_search_fetch_json" \
+  "print_error_item"
