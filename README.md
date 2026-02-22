@@ -6,7 +6,7 @@ Alfred workflows for macOS users.
 
 ## Install
 
-1. Download a `.alfredworkflow` package from the [Releases](../../releases) page.
+1. Download a `.alfredworkflow` package from the [Releases](https://github.com/graysurf/nils-alfredworkflow/releases) page.
 2. Double-click the package to import it into Alfred.
 3. For API-based workflows, open Alfred's `Configure Workflow...` and fill in required credentials.
 
@@ -33,27 +33,19 @@ Alfred workflows for macOS users.
 | [Randomer](workflows/randomer/README.md) | `rr`, `rrv`, `random` | Generate random values by format and copy results. | No |
 | [Codex CLI](workflows/codex-cli/README.md) | `cx`, `codex` | Run Codex auth (`login`, `use`, `save`) and diagnostics (`diag rate-limits`) commands from Alfred. | No |
 
-## Shared Foundation Guardrails
+## macOS Gatekeeper standalone script
 
-- Shared foundation extraction boundary and migration constraints:
-  - `docs/specs/workflow-shared-foundations-policy.md`
-- Default workflow bootstrap pattern uses:
-  - `scripts/lib/workflow_helper_loader.sh`
-  - `scripts/lib/workflow_smoke_helpers.sh`
-- Enforcement hooks:
-  - `bash scripts/workflow-shared-foundation-audit.sh --check`
-  - `bash scripts/workflow-sync-script-filter-policy.sh --check`
+- Script asset: `workflow-clear-quarantine-standalone.sh` from [Releases](https://github.com/graysurf/nils-alfredworkflow/releases)
+- Bulk fix (safe when some workflows are not installed):
+  `chmod +x ./workflow-clear-quarantine-standalone.sh && ./workflow-clear-quarantine-standalone.sh --all`
+- Single workflow fix:
+  `./workflow-clear-quarantine-standalone.sh --id <workflow-id>`
+- Repository checkout helper (for maintainers):
+  `scripts/workflow-clear-quarantine.sh --id <workflow-id>`
 
 ## Troubleshooting
 
 - Global standards and shared operator playbooks: [ALFRED_WORKFLOW_DEVELOPMENT.md](ALFRED_WORKFLOW_DEVELOPMENT.md)
 - Workflow-specific runtime failures: `workflows/<workflow-id>/TROUBLESHOOTING.md`
-- macOS Gatekeeper standalone script asset: `workflow-clear-quarantine-standalone.sh` from [Releases](../../releases)
-- macOS Gatekeeper standalone bulk fix (safe when some workflows are not installed):
-  `chmod +x ./workflow-clear-quarantine-standalone.sh && ./workflow-clear-quarantine-standalone.sh --all`
-- macOS Gatekeeper standalone single-workflow fix:
-  `./workflow-clear-quarantine-standalone.sh --id <workflow-id>`
-- Repository checkout helper (for maintainers):
-  `scripts/workflow-clear-quarantine.sh --id <workflow-id>`
 - List all workflow-local troubleshooting docs quickly:
   `rg --files workflows | rg 'TROUBLESHOOTING\.md$'`
