@@ -152,10 +152,15 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
   - `scripts/lib/workflow_smoke_helpers.sh`
 - Shared path resolver helper is:
   - `scripts/lib/workflow_cli_resolver.sh` (`wfcr_*`)
+- Bundled runtime adapters that execute files under `../bin/*` must:
+  - source `workflow_cli_resolver.sh`
+  - resolve runtime candidates through `wfcr_resolve_binary`
 - Additional workflow runtime helpers may live in `scripts/lib/` (for example resolver/error/driver helpers) when they are runtime mechanics rather than domain behavior.
 - `scripts/workflow-pack.sh` must stage `scripts/lib/*.sh` into packaged workflows at `scripts/lib/` via a deterministic rule (no per-file ad hoc list).
 - Script Filter adapters should resolve packaged helper first, then local-repo fallback for development/tests.
 - If a required helper file cannot be resolved at runtime, emit a non-crashing Alfred error item (`valid=false`) and exit successfully (`exit 0`).
+- Resolver policy validation command:
+  - `bash scripts/workflow-cli-resolver-audit.sh --check`
 
 ### Path config expansion standard
 

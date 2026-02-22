@@ -52,6 +52,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 "$repo_root/scripts/cli-standards-audit.sh"
 "$repo_root/scripts/docs-placement-audit.sh"
 bash "$repo_root/scripts/workflow-shared-foundation-audit.sh" --check
+bash "$repo_root/scripts/workflow-cli-resolver-audit.sh" --check
 
 if command -v shellcheck >/dev/null 2>&1; then
   mapfile -t sh_files < <(find "$repo_root/scripts" "$repo_root/workflows" -type f -name '*.sh' | sort)

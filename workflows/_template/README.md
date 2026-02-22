@@ -11,6 +11,7 @@ Starter scaffold for creating a new workflow in this monorepo.
   - `scripts/lib/workflow_helper_loader.sh`
   - `scripts/lib/script_filter_cli_driver.sh` (script filter safety guard)
   - `scripts/lib/workflow_smoke_helpers.sh` (smoke helper scaffolding)
+  - `scripts/lib/workflow_cli_resolver.sh` (`wfcr_resolve_binary` runtime resolution)
 
 ## Template Parameters
 
@@ -38,6 +39,9 @@ Update these fields before packaging a new workflow:
 - Preserve shared-vs-local extraction boundary during customization:
   - keep helper wiring and guard mechanics shared;
   - keep domain/provider semantics local to the workflow script.
+- Keep bundled runtime resolution on shared policy:
+  - source `workflow_cli_resolver.sh`;
+  - resolve package/release/debug binaries through `wfcr_resolve_binary`.
 - Every new workflow README must include a `## Troubleshooting` section that links to `./TROUBLESHOOTING.md`.
 
 ## Troubleshooting
