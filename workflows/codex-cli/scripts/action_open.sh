@@ -98,6 +98,28 @@ resolve_codex_cli_override() {
 }
 
 resolve_codex_cli() {
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local repo_root
+  repo_root="$(cd "$script_dir/../../.." && pwd)"
+
+  local packaged_cli
+  packaged_cli="$script_dir/../bin/codex-cli"
+  local release_cli
+  release_cli="$repo_root/target/release/codex-cli"
+  local debug_cli
+  debug_cli="$repo_root/target/debug/codex-cli"
+
+  if declare -F wfcr_resolve_binary >/dev/null 2>&1; then
+    wfcr_resolve_binary \
+      "CODEX_CLI_BIN" \
+      "$packaged_cli" \
+      "$release_cli" \
+      "$debug_cli" \
+      "codex-cli binary not found (re-import workflow bundle, set CODEX_CLI_BIN, or install ${codex_cli_pinned_crate} ${codex_cli_pinned_version})"
+    return $?
+  fi
+
   local configured_cli=""
   configured_cli="$(resolve_codex_cli_override || true)"
   if [[ -n "$configured_cli" && -x "$configured_cli" ]]; then
@@ -106,11 +128,6 @@ resolve_codex_cli() {
     return 0
   fi
 
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-  local packaged_cli
-  packaged_cli="$script_dir/../bin/codex-cli"
   if [[ -x "$packaged_cli" ]]; then
     clear_quarantine_if_needed "$packaged_cli"
     printf '%s\n' "$packaged_cli"
