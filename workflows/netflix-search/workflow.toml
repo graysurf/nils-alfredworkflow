@@ -1,7 +1,7 @@
 id = "netflix-search"
 name = "Netflix Search"
 bundle_id = "com.graysurf.netflix-search"
-version = "1.1.5"
+version = "1.1.6"
 script_filter = "script_filter.sh"
 action = "action_open.sh"
 rust_binary = "brave-cli"
