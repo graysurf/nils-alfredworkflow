@@ -12,7 +12,7 @@
 sfcd_json_escape() {
   local value="${1-}"
   value="$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')"
-  value="$(printf '%s' "$value" | tr '\n\r' '  ')"
+  value="$(printf '%s' "$value" | tr '\000-\037' ' ')"
   printf '%s' "$value"
 }
 
