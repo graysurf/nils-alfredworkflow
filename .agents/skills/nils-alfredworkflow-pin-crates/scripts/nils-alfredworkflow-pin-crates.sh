@@ -144,14 +144,23 @@ PY
 
 pin_codex_cli() {
   local runtime_file="$repo_root/workflows/codex-cli/scripts/lib/codex_cli_runtime.sh"
+  local canonical_version_file="$repo_root/scripts/lib/codex_cli_version.sh"
   local readme_file="$repo_root/workflows/codex-cli/README.md"
   local plist_file="$repo_root/workflows/codex-cli/src/info.plist.template"
 
   replace_in_file \
+    "$canonical_version_file" \
+    'if \[\[ -z "\$\{CODEX_CLI_VERSION:-\}" \]\]; then\s+CODEX_CLI_VERSION="[^"]+"' \
+    "if [[ -z \"\${CODEX_CLI_VERSION:-}\" ]]; then
+  CODEX_CLI_VERSION=\"${version}\"" \
+    "codex canonical version pin"
+
+  replace_in_file \
     "$runtime_file" \
-    'CODEX_CLI_PINNED_VERSION="[^"]+"' \
-    "CODEX_CLI_PINNED_VERSION=\"${version}\"" \
-    "codex runtime version pin"
+    'if \[\[ -z "\$\{CODEX_CLI_VERSION:-\}" \]\]; then\s+CODEX_CLI_VERSION="[^"]+"' \
+    "if [[ -z \"\${CODEX_CLI_VERSION:-}\" ]]; then
+    CODEX_CLI_VERSION=\"${version}\"" \
+    "codex runtime fallback version pin"
 
   replace_in_file \
     "$readme_file" \
@@ -203,11 +212,15 @@ pin_memo_cli() {
     "nils-memo-cli@${version}" \
     "memo workflow readme pin"
 
-  replace_in_file \
-    "$workflow_guide_file" \
-    'nils-memo-cli@[0-9A-Za-z.+-]+' \
-    "nils-memo-cli@${version}" \
-    "memo workflow guide pin"
+  if [[ -f "$workflow_guide_file" ]]; then
+    replace_in_file \
+      "$workflow_guide_file" \
+      'nils-memo-cli@[0-9A-Za-z.+-]+' \
+      "nils-memo-cli@${version}" \
+      "memo workflow guide pin"
+  else
+    echo "note: optional file missing, skipped memo workflow guide pin: $workflow_guide_file"
+  fi
 
   replace_in_file \
     "$workflow_contract_file" \

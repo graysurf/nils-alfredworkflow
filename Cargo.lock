@@ -254,6 +254,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_complete"
+version = "4.5.66"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c757a3b7e39161a4e56f9365141ada2a6c915a8622c408ab6bb4b5d047371031"
+dependencies = [
+ "clap",
+]
+
+[[package]]
 name = "clap_derive"
 version = "4.5.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -941,14 +950,15 @@ dependencies = [
 
 [[package]]
 name = "nils-memo-cli"
-version = "0.4.0"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebd0503fcfd4597d2dd6f13f67562abd0bc50b528a66ae96ff8f314da298523b"
+checksum = "020058bfaf28ca3e1a90e83a17e40642b9955698ac35e087ef001cac29ef2123"
 dependencies = [
  "anyhow",
  "chrono",
  "chrono-tz",
  "clap",
+ "clap_complete",
  "rusqlite",
  "serde",
  "serde_json",
