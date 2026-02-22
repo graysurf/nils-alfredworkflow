@@ -37,26 +37,7 @@ Recommended variable intent:
 | `Netflix Search error` with `422 ... validate request parameter` | Configured `BRAVE_COUNTRY` is not accepted by Brave API in current context. | Workflow retries once without `BRAVE_COUNTRY` automatically. If still unstable, set `BRAVE_COUNTRY` to empty or `US`, and keep catalog targeting with `NETFLIX_CATALOG_REGION`. |
 | `No results found` | Query is too narrow or filters are restrictive. | Use broader keywords or adjust `NETFLIX_CATALOG_REGION` / `BRAVE_COUNTRY` / `BRAVE_SAFESEARCH`. |
 | Mostly English Netflix titles | Current Netflix site scope maps to global title scope (`site:netflix.com/title`) or search index is English-heavy. | Set `NETFLIX_CATALOG_REGION=TW` (or another mapped country path). You can keep `BRAVE_COUNTRY` for separate Brave locale bias. |
-| `"brave-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `brave-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run quarantine cleanup command below, then retry Alfred query. |
-
-### macOS Gatekeeper fix
-
-```bash
-WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
-  [ -f "$p" ] || continue
-  bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
-  [ "$bid" = "com.graysurf.netflix-search" ] && dirname "$p"
-done | head -n1)"
-
-[ -n "$WORKFLOW_DIR" ] || { echo "netflix-search workflow not found"; exit 1; }
-xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
-echo "ok: removed quarantine from $WORKFLOW_DIR"
-```
-
-Notes:
-
-- `workflows/netflix-search/scripts/script_filter.sh` does best-effort quarantine cleanup on `brave-cli` before execution.
-- On locked-down macOS environments, manual `xattr -dr` may still be required once after install.
+| `"brave-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `brave-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `scripts/workflow-clear-quarantine.sh --id netflix-search`, then retry Alfred query. |
 
 ## Validation
 

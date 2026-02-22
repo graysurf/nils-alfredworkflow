@@ -24,26 +24,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 | `YouTube quota exceeded` | Daily quota exhausted (`quotaExceeded`, `dailyLimitExceeded`). | Wait for quota reset, reduce query frequency, and lower `YOUTUBE_MAX_RESULTS`. |
 | `YouTube API unavailable` | Network issue, DNS/TLS issue, timeout, or upstream `5xx`. | Check local network/DNS, retry later, and verify YouTube API status. |
 | `No videos found` | Query is too narrow or region filter excludes results. | Use broader keywords or clear/change `YOUTUBE_REGION_CODE`. |
-| `"youtube-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `youtube-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run quarantine cleanup command below, then retry Alfred query. |
-
-### macOS Gatekeeper fix
-
-```bash
-WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
-  [ -f "$p" ] || continue
-  bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
-  [ "$bid" = "com.graysurf.youtube-search" ] && dirname "$p"
-done | head -n1)"
-
-[ -n "$WORKFLOW_DIR" ] || { echo "youtube-search workflow not found"; exit 1; }
-xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
-echo "ok: removed quarantine from $WORKFLOW_DIR"
-```
-
-Notes:
-
-- `workflows/youtube-search/scripts/script_filter.sh` now does best-effort quarantine cleanup on `youtube-cli` before execution.
-- On locked-down macOS environments, manual `xattr -dr` may still be required once after install.
+| `"youtube-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `youtube-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `scripts/workflow-clear-quarantine.sh --id youtube-search`, then retry Alfred query. |
 
 ## Validation
 

@@ -24,27 +24,6 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 | `Timezone runtime failure` | `timezone-cli` hit runtime/IO failure (timeout/internal error/panic). | Retry query, inspect stderr from `script_filter.sh`, and verify `timezone-cli` build/runtime integrity. |
 | Empty `tz` query shows unexpected local timezone or `UTC` | Query and `MULTI_TZ_ZONES` are both empty, so fallback chain uses `MULTI_TZ_LOCAL_OVERRIDE` first (default `Europe/London`); terminal fallback is `UTC` when all probes fail. | Set `MULTI_TZ_ZONES` or `MULTI_TZ_LOCAL_OVERRIDE` for deterministic output; otherwise treat `UTC` as expected safe fallback. |
 
-### macOS Gatekeeper fix
-
-```bash
-WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
-  [ -f "$p" ] || continue
-  bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
-  [ "$bid" = "com.graysurf.multi-timezone" ] && dirname "$p"
-done | head -n1)"
-
-[ -n "$WORKFLOW_DIR" ] || { echo "multi-timezone workflow not found"; exit 1; }
-xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
-echo "ok: removed quarantine from $WORKFLOW_DIR"
-```
-
-Notes:
-
-- `workflows/multi-timezone/scripts/script_filter.sh` does best-effort quarantine cleanup on resolved `timezone-cli` path before execution.
-- On macOS, local-timezone detection may call `/usr/sbin/systemsetup -gettimezone`; probe failures are non-fatal and continue through fallback chain.
-- If all local-timezone probes fail, `timezone-cli` intentionally falls back to `UTC` instead of returning a hard error.
-- `workflows/multi-timezone/scripts/action_copy.sh` uses `pbcopy`, so copy action runtime is macOS-only (Linux usage is for CI/test validation).
-
 ## Validation
 
 - Re-run quick operator checks after any runtime/config change.

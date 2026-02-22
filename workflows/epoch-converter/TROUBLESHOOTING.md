@@ -26,27 +26,6 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 | Clipboard rows do not appear on empty query | Clipboard tool unavailable/empty clipboard/unparseable clipboard text. | Confirm clipboard has parseable epoch/datetime content; behavior is best-effort. |
 | Local/UTC rows differ unexpectedly | Timezone expectation mismatch or DST boundary. | Verify local timezone and compare against UTC rows; test with explicit date+time. |
 
-### macOS Gatekeeper fix
-
-If installed release workflow shows `"epoch-cli" Not Opened`, remove quarantine on the installed workflow package:
-
-```bash
-WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
-  [ -f "$p" ] || continue
-  bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
-  [ "$bid" = "com.graysurf.epoch-converter" ] && dirname "$p"
-done | head -n1)"
-
-[ -n "$WORKFLOW_DIR" ] || { echo "epoch-converter workflow not found"; exit 1; }
-xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
-echo "ok: removed quarantine from $WORKFLOW_DIR"
-```
-
-Notes:
-
-- `workflows/epoch-converter/scripts/script_filter.sh` does best-effort quarantine cleanup on `epoch-cli` before execution.
-- On locked-down macOS environments, manual `xattr -dr` may still be required once after install.
-
 ## Validation
 
 - Re-run quick operator checks after any runtime/config change.

@@ -48,5 +48,9 @@ Alfred workflows for macOS users.
 
 - Global standards and shared operator playbooks: [ALFRED_WORKFLOW_DEVELOPMENT.md](ALFRED_WORKFLOW_DEVELOPMENT.md)
 - Workflow-specific runtime failures: `workflows/<workflow-id>/TROUBLESHOOTING.md`
+- macOS Gatekeeper bulk fix (safe to run even if some workflows are not installed):
+  `scripts/workflow-clear-quarantine.sh`
+- macOS Gatekeeper single-workflow fix:
+  `scripts/workflow-clear-quarantine.sh --id <workflow-id>`
 - List all workflow-local troubleshooting docs quickly:
   `rg --files workflows | rg 'TROUBLESHOOTING\.md$'`
