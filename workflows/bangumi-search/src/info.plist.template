@@ -589,7 +589,7 @@
         <key>default</key>
         <string></string>
         <key>placeholder</key>
-        <string>nils-bangumi-cli/1.1.6</string>
+        <string>nils-bangumi-cli/1.1.7</string>
         <key>required</key>
         <false/>
         <key>trim</key>
