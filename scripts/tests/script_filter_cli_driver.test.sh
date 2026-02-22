@@ -224,6 +224,22 @@ test_fallback_error_row_when_mapper_invalid() {
   assert_no_driver_err_files "fallback err-file cleanup"
 }
 
+test_fallback_error_row_normalizes_control_chars() {
+  reset_state
+  TEST_EXEC_MODE="fail"
+  TEST_EXEC_STDERR=$'line\twith\tcontrols'
+  TEST_MAPPER_MODE="malformed"
+
+  run_driver test_exec_callback test_error_mapper "$EMPTY_SENTINEL" "$MALFORMED_SENTINEL"
+
+  assert_contains "$TEST_DRIVER_OUTPUT" '"Workflow runtime error"' "fallback title emitted"
+  assert_contains "$TEST_DRIVER_OUTPUT" 'line with controls' "fallback subtitle normalizes tabs"
+  if [[ "$TEST_DRIVER_OUTPUT" == *$'\t'* ]]; then
+    fail "fallback row should not include literal tab characters"
+  fi
+  assert_no_driver_err_files "control-char fallback err-file cleanup"
+}
+
 test_missing_execute_callback_guard() {
   reset_state
   TEST_MAPPER_MODE="ok"
@@ -242,6 +258,7 @@ main() {
   test_empty_output_guard
   test_malformed_json_guard
   test_fallback_error_row_when_mapper_invalid
+  test_fallback_error_row_normalizes_control_chars
   test_missing_execute_callback_guard
   printf 'ok: script_filter_cli_driver tests passed\n'
 }
