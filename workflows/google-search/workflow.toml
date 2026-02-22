@@ -1,7 +1,7 @@
 id = "google-search"
 name = "Google Search"
 bundle_id = "com.graysurf.google-search"
-version = "1.1.7"
+version = "1.1.8"
 script_filter = "script_filter.sh"
 action = "action_open.sh"
 rust_binary = "brave-cli"
