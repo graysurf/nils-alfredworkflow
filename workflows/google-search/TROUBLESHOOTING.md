@@ -28,7 +28,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 | `Brave API quota exceeded` | Rate limit/quota exhausted (`429`/quota errors). | Wait and retry later, reduce query frequency, and lower `BRAVE_MAX_RESULTS`. |
 | `Brave API unavailable` | Network/DNS/TLS issue, timeout, or upstream `5xx`. | Check local network/DNS, retry later, and verify Brave API status. |
 | `No results found` | Query is too narrow or country/safesearch filters are restrictive. | Use broader keywords or adjust `BRAVE_COUNTRY`/`BRAVE_SAFESEARCH`. |
-| `"brave-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `brave-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `scripts/workflow-clear-quarantine.sh --id google-search`, then retry Alfred query. |
+| `"brave-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `brave-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `./workflow-clear-quarantine-standalone.sh --id google-search` (from release assets), then retry Alfred query. |
 
 ## Validation
 

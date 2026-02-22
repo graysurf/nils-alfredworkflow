@@ -28,7 +28,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 | `Quote refresh unavailable` | ZenQuotes request failed due to network/DNS/TLS/timeout/upstream `5xx`. | Retry later; cached quotes continue to work when local cache exists. |
 | `No quotes cached yet` | New install with empty cache and no successful refresh yet. | Retry after network is available, or run again after refresh interval window. |
 | `No quotes match query` | Query text is too narrow for current local cache. | Clear query or use broader keywords. |
-| `"quote-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `quote-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `scripts/workflow-clear-quarantine.sh --id quote-feed`, then retry Alfred query. |
+| `"quote-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `quote-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `./workflow-clear-quarantine-standalone.sh --id quote-feed` (from release assets), then retry Alfred query. |
 
 ## Validation
 
