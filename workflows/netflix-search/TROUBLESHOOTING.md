@@ -37,7 +37,7 @@ Recommended variable intent:
 | `Netflix Search error` with `422 ... validate request parameter` | Configured `BRAVE_COUNTRY` is not accepted by Brave API in current context. | Workflow retries once without `BRAVE_COUNTRY` automatically. If still unstable, set `BRAVE_COUNTRY` to empty or `US`, and keep catalog targeting with `NETFLIX_CATALOG_REGION`. |
 | `No results found` | Query is too narrow or filters are restrictive. | Use broader keywords or adjust `NETFLIX_CATALOG_REGION` / `BRAVE_COUNTRY` / `BRAVE_SAFESEARCH`. |
 | Mostly English Netflix titles | Current Netflix site scope maps to global title scope (`site:netflix.com/title`) or search index is English-heavy. | Set `NETFLIX_CATALOG_REGION=TW` (or another mapped country path). You can keep `BRAVE_COUNTRY` for separate Brave locale bias. |
-| `"brave-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `brave-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `scripts/workflow-clear-quarantine.sh --id netflix-search`, then retry Alfred query. |
+| `"brave-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `brave-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `./workflow-clear-quarantine-standalone.sh --id netflix-search` (from release assets), then retry Alfred query. |
 
 ## Validation
 

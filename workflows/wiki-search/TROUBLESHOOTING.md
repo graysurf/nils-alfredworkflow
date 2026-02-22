@@ -22,7 +22,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 | `Keep typing (2+ chars)` | Query is shorter than minimum length (`<2`). | Continue typing until at least 2 characters; no API request is sent before that. |
 | `Wikipedia API unavailable` | Network/DNS/TLS issue, timeout, malformed upstream response, or upstream `5xx`. | Check local network/DNS, retry later, and verify Wikipedia status. |
 | `No articles found` | Query is too narrow or selected language has no matching articles. | Use broader keywords or switch `WIKI_LANGUAGE`. |
-| `"wiki-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `wiki-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `scripts/workflow-clear-quarantine.sh --id wiki-search`, then retry Alfred query. |
+| `"wiki-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `wiki-cli` carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `./workflow-clear-quarantine-standalone.sh --id wiki-search` (from release assets), then retry Alfred query. |
 
 ## Validation
 

@@ -24,7 +24,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 | Error: `No such file or directory: /Users/.../Application` | Command path with spaces was unquoted (`$workflow_cli ...`). | Quote executable path (`"$workflow_cli" ...`) and verify JSON output from installed script. |
 | Repo list works, but Enter open fails with `not a directory`. | Action chain passed path with trailing newline to open action. | Ensure `record_usage` emits path without trailing newline; keep strict directory check in open action. |
 | Script Filter failure shows blank UI. | Failure path only writes stderr and returns no Alfred JSON response. | Add fallback error item JSON in `script_filter.sh` so failures still render in Alfred. |
-| `"workflow-cli" Not Opened` / `Apple could not verify ...` | Packaged binary carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `scripts/workflow-clear-quarantine.sh --id open-project` and retry (runtime also does best-effort cleanup). |
+| `"workflow-cli" Not Opened` / `Apple could not verify ...` | Packaged binary carries `com.apple.quarantine`; Gatekeeper blocks execution. | Run `./workflow-clear-quarantine-standalone.sh --id open-project` (from release assets) and retry (runtime also does best-effort cleanup). |
 
 ### Installed-workflow debug commands
 

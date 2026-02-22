@@ -37,6 +37,8 @@ jobs:
           bundle_dir="dist/release-bundles"
           bundle_name="workflows-${GITHUB_REF_NAME}.zip"
           bundle_path="$bundle_dir/$bundle_name"
+          standalone_script="scripts/workflow-clear-quarantine-standalone.sh"
+          standalone_asset="$bundle_dir/workflow-clear-quarantine-standalone.sh"
           mkdir -p "$bundle_dir"
 
           bundle_inputs=()
@@ -63,6 +65,14 @@ jobs:
             sha256sum "$bundle_path" >"$bundle_path.sha256"
           fi
 
+          cp "$standalone_script" "$standalone_asset"
+          chmod +x "$standalone_asset"
+          if command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "$standalone_asset" >"$standalone_asset.sha256"
+          elif command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$standalone_asset" >"$standalone_asset.sha256"
+          fi
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
@@ -73,3 +83,5 @@ jobs:
             dist/**/*.alfredworkflow.sha256
             dist/release-bundles/*.zip
             dist/release-bundles/*.zip.sha256
+            dist/release-bundles/workflow-clear-quarantine-standalone.sh
+            dist/release-bundles/workflow-clear-quarantine-standalone.sh.sha256
