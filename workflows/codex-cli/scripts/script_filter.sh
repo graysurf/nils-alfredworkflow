@@ -14,6 +14,27 @@ codex_cli_pinned_version="${CODEX_CLI_PINNED_VERSION}"
 # shellcheck disable=SC2153
 codex_cli_pinned_crate="${CODEX_CLI_PINNED_CRATE}"
 
+resolve_workflow_cli_resolver_helper() {
+  local candidates=(
+    "$workflow_script_dir/lib/workflow_cli_resolver.sh"
+    "$workflow_script_dir/../../../scripts/lib/workflow_cli_resolver.sh"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+workflow_cli_resolver_helper="$(resolve_workflow_cli_resolver_helper || true)"
+if [[ -n "$workflow_cli_resolver_helper" ]]; then
+  # shellcheck disable=SC1090
+  source "$workflow_cli_resolver_helper"
+fi
+
 resolve_query_policy_helper() {
   local candidates=(
     "$workflow_script_dir/lib/script_filter_query_policy.sh"
@@ -1014,6 +1035,28 @@ end_items() {
 }
 
 resolve_codex_cli_path() {
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local repo_root
+  repo_root="$(cd "$script_dir/../../.." && pwd)"
+
+  local packaged_cli
+  packaged_cli="$script_dir/../bin/codex-cli"
+  local release_cli
+  release_cli="$repo_root/target/release/codex-cli"
+  local debug_cli
+  debug_cli="$repo_root/target/debug/codex-cli"
+
+  if declare -F wfcr_resolve_binary >/dev/null 2>&1; then
+    wfcr_resolve_binary \
+      "CODEX_CLI_BIN" \
+      "$packaged_cli" \
+      "$release_cli" \
+      "$debug_cli" \
+      "codex-cli binary not found (re-import workflow bundle, set CODEX_CLI_BIN, or install ${codex_cli_pinned_crate} ${codex_cli_pinned_version} manually.)"
+    return $?
+  fi
+
   local configured_cli=""
   configured_cli="$(resolve_codex_cli_override || true)"
   if [[ -n "$configured_cli" && -x "$configured_cli" ]]; then
@@ -1021,11 +1064,6 @@ resolve_codex_cli_path() {
     return 0
   fi
 
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-  local packaged_cli
-  packaged_cli="$script_dir/../bin/codex-cli"
   if [[ -x "$packaged_cli" ]]; then
     printf '%s\n' "$packaged_cli"
     return 0
