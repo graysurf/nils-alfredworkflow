@@ -152,6 +152,9 @@
 ### Gatekeeper startup auto-clear policy
 
 - Common helper owner: `scripts/lib/workflow_cli_resolver.sh`.
+- Bundled runtime entrypoints must:
+  - source `workflow_cli_resolver.sh`
+  - resolve package/release/debug candidates via `wfcr_resolve_binary`
 - On macOS, workflow startup should try package-level quarantine cleanup once (per installed
   workflow directory) before resolving runtime binaries:
   - `wfcr_clear_workflow_quarantine_once_if_needed`
@@ -188,6 +191,9 @@ Not required (no bundled runtime binary in `workflow.toml`):
 Quick audit commands:
 
 ```bash
+# Required policy gate (also runs in scripts/workflow-lint.sh and CI).
+bash scripts/workflow-cli-resolver-audit.sh --check
+
 # Workflows that reference helper-based binary resolution.
 rg -n "wfcr_resolve_binary|wfcr_clear_workflow_quarantine_once_if_needed" \
   workflows/*/scripts/*.sh workflows/*/scripts/*/*.sh

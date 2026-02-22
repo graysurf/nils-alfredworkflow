@@ -64,6 +64,13 @@ if ! rg -q "workflow_helper_loader|wfhl_source_helper|sfcd_run_cli_flow" "$targe
   exit 1
 fi
 
+if ! rg -q "workflow_cli_resolver\\.sh" "$target_dir/scripts/script_filter.sh" ||
+  ! rg -q "wfcr_resolve_binary" "$target_dir/scripts/script_filter.sh"; then
+  echo "error: scaffolded script_filter.sh is missing CLI resolver policy markers" >&2
+  rm -rf "$target_dir"
+  exit 1
+fi
+
 if ! rg -q "workflow_helper_loader|wfhl_resolve_helper_path" "$target_dir/scripts/action_open.sh"; then
   echo "error: scaffolded action_open.sh is missing shared-foundation bootstrap markers" >&2
   rm -rf "$target_dir"
