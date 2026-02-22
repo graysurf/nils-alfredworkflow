@@ -1,46 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-resolve_helper() {
-  local helper_name="$1"
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local git_repo_root=""
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+workflow_helper_loader="$script_dir/lib/workflow_helper_loader.sh"
+if [[ ! -f "$workflow_helper_loader" ]]; then
+  workflow_helper_loader="$script_dir/../../../scripts/lib/workflow_helper_loader.sh"
+fi
+if [[ ! -f "$workflow_helper_loader" ]]; then
   git_repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
-
-  local candidates=(
-    "$script_dir/lib/$helper_name"
-    "$script_dir/../../../scripts/lib/$helper_name"
-  )
-  if [[ -n "$git_repo_root" ]]; then
-    candidates+=("$git_repo_root/scripts/lib/$helper_name")
+  if [[ -n "$git_repo_root" && -f "$git_repo_root/scripts/lib/workflow_helper_loader.sh" ]]; then
+    workflow_helper_loader="$git_repo_root/scripts/lib/workflow_helper_loader.sh"
   fi
-  local candidate
-  for candidate in "${candidates[@]}"; do
-    if [[ -f "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
-error_json_helper="$(resolve_helper "script_filter_error_json.sh" || true)"
-if [[ -z "$error_json_helper" ]]; then
-  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate script_filter_error_json.sh runtime helper.","valid":false}]}\n'
+fi
+if [[ ! -f "$workflow_helper_loader" ]]; then
+  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate workflow_helper_loader.sh runtime helper.","valid":false}]}\n'
   exit 0
 fi
 # shellcheck disable=SC1090
-source "$error_json_helper"
+source "$workflow_helper_loader"
 
-cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
-if [[ -z "$cli_resolver_helper" ]]; then
+if ! wfhl_source_helper "$script_dir" "script_filter_error_json.sh"; then
+  wfhl_emit_missing_helper_item_json "script_filter_error_json.sh"
+  exit 0
+fi
+
+if ! wfhl_source_helper "$script_dir" "workflow_cli_resolver.sh"; then
   sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
   exit 0
 fi
-# shellcheck disable=SC1090
-source "$cli_resolver_helper"
 
 normalize_error_message() {
   sfej_normalize_error_message "${1-}"
@@ -130,29 +118,20 @@ youtube_search_fetch_json() {
   return 1
 }
 
-query_policy_helper="$(resolve_helper "script_filter_query_policy.sh" || true)"
-if [[ -z "$query_policy_helper" ]]; then
+if ! wfhl_source_helper "$script_dir" "script_filter_query_policy.sh"; then
   emit_error_item "Workflow helper missing" "Cannot locate script_filter_query_policy.sh runtime helper."
   exit 0
 fi
-# shellcheck disable=SC1090
-source "$query_policy_helper"
 
-async_coalesce_helper="$(resolve_helper "script_filter_async_coalesce.sh" || true)"
-if [[ -z "$async_coalesce_helper" ]]; then
+if ! wfhl_source_helper "$script_dir" "script_filter_async_coalesce.sh"; then
   emit_error_item "Workflow helper missing" "Cannot locate script_filter_async_coalesce.sh runtime helper."
   exit 0
 fi
-# shellcheck disable=SC1090
-source "$async_coalesce_helper"
 
-search_driver_helper="$(resolve_helper "script_filter_search_driver.sh" || true)"
-if [[ -z "$search_driver_helper" ]]; then
+if ! wfhl_source_helper "$script_dir" "script_filter_search_driver.sh"; then
   emit_error_item "Workflow helper missing" "Cannot locate script_filter_search_driver.sh runtime helper."
   exit 0
 fi
-# shellcheck disable=SC1090
-source "$search_driver_helper"
 
 query="$(sfqp_resolve_query_input "${1:-}")"
 trimmed_query="$(sfqp_trim "$query")"

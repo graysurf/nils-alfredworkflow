@@ -11,11 +11,135 @@
     "source": "scripts/lib/script_filter_query_policy.sh",
     "packaged_relative_path": "scripts/lib/script_filter_query_policy.sh"
   },
+  "shared_foundation": {
+    "prohibited_patterns": [
+      "__SHARED_FOUNDATION_PLACEHOLDER__",
+      "TODO(shared-foundation)"
+    ],
+    "profiles": {
+      "helper_loader": {
+        "source": "scripts/lib/workflow_helper_loader.sh",
+        "required_markers": [
+          "workflow_helper_loader.sh",
+          "wfhl_source_helper"
+        ]
+      },
+      "search_driver": {
+        "source": "scripts/lib/script_filter_search_driver.sh",
+        "required_markers": [
+          "script_filter_search_driver.sh",
+          "sfsd_run_search_flow"
+        ]
+      },
+      "cli_driver": {
+        "source": "scripts/lib/script_filter_cli_driver.sh",
+        "required_markers": [
+          "script_filter_cli_driver.sh",
+          "sfcd_run_cli_flow"
+        ]
+      }
+    },
+    "targets": {
+      "google-search": {
+        "script_filter": "workflows/google-search/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "search_driver"
+        ]
+      },
+      "youtube-search": {
+        "script_filter": "workflows/youtube-search/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "search_driver"
+        ]
+      },
+      "netflix-search": {
+        "script_filter": "workflows/netflix-search/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "search_driver"
+        ]
+      },
+      "wiki-search": {
+        "script_filter": "workflows/wiki-search/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "search_driver"
+        ]
+      },
+      "bangumi-search": {
+        "script_filter": "workflows/bangumi-search/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "search_driver"
+        ]
+      },
+      "cambridge-dict": {
+        "script_filter": "workflows/cambridge-dict/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "search_driver"
+        ]
+      },
+      "spotify-search": {
+        "script_filter": "workflows/spotify-search/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "search_driver"
+        ]
+      },
+      "epoch-converter": {
+        "script_filter": "workflows/epoch-converter/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "cli_driver"
+        ]
+      },
+      "multi-timezone": {
+        "script_filter": "workflows/multi-timezone/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "cli_driver"
+        ]
+      },
+      "market-expression": {
+        "script_filter": "workflows/market-expression/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "cli_driver"
+        ]
+      },
+      "quote-feed": {
+        "script_filter": "workflows/quote-feed/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "cli_driver"
+        ]
+      },
+      "imdb-search": {
+        "script_filter": "workflows/imdb-search/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "cli_driver"
+        ]
+      },
+      "bilibili-search": {
+        "script_filter": "workflows/bilibili-search/scripts/script_filter.sh",
+        "requires": [
+          "helper_loader",
+          "search_driver",
+          "cli_driver"
+        ]
+      }
+    }
+  },
   "targets": {
     "google-search": {
       "template": "workflows/google-search/src/info.plist.template",
       "object_uids": [
-        "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"
+        "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10",
+        "C3D0A8F1-3F8A-4DAA-9D5D-2A6C4F52A9E8"
       ]
     },
     "youtube-search": {
@@ -45,7 +169,8 @@
         "B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7",
         "1B2C2CF8-9C9E-4E5E-AE2D-6F911B3A9D63",
         "C4A6E4D4-4C89-4F8E-B6F8-2F1A7A5E6D09",
-        "A9F12D4E-1D99-4D7B-A950-6E84A583A9C2"
+        "A9F12D4E-1D99-4D7B-A950-6E84A583A9C2",
+        "EC219E70-FAD4-4E58-A883-8E02D7E43630"
       ]
     }
   }

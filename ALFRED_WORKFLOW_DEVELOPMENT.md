@@ -137,12 +137,19 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
   - `bash scripts/workflow-sync-script-filter-policy.sh --check --workflows <workflow-id>`
 - Remediation command:
   - `bash scripts/workflow-sync-script-filter-policy.sh --apply --workflows <workflow-id>`
+- Policy check scope:
+  - queue-delay fields for `object_uids`
+  - shared foundation wiring (`workflow_helper_loader`, search/CLI driver markers) for designated workflows
 
 ### Shared Script Filter helper libraries (`scripts/lib`)
 
 - Shared Script Filter runtime helpers are:
   - `scripts/lib/script_filter_query_policy.sh` (`sfqp_*`)
   - `scripts/lib/script_filter_async_coalesce.sh` (`sfac_*`)
+- Shared foundation bootstrap helpers are:
+  - `scripts/lib/workflow_helper_loader.sh` (`wfhl_*`)
+  - `scripts/lib/script_filter_cli_driver.sh` (`sfcd_*`)
+  - `scripts/lib/workflow_smoke_helpers.sh`
 - Shared path resolver helper is:
   - `scripts/lib/workflow_cli_resolver.sh` (`wfcr_*`)
 - Additional workflow runtime helpers may live in `scripts/lib/` (for example resolver/error/driver helpers) when they are runtime mechanics rather than domain behavior.
@@ -165,6 +172,10 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
   - Product/domain semantics (API-specific error mapping, ranking, rendering phrasing, business policy).
   - Workflow-specific UX behavior that intentionally diverges.
 - Prefer thin local adapters over generic mega-helpers: shared helpers should expose deterministic primitives, while each workflow keeps its own domain rules and copy.
+- Canonical shared foundation extraction boundary and migration/rollback constraints:
+  - `docs/specs/workflow-shared-foundations-policy.md`
+- Lint enforcement hook for migrated workflow families:
+  - `bash scripts/workflow-shared-foundation-audit.sh --check`
 
 ### Ordered config list parsing standard
 
@@ -250,12 +261,23 @@ xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
 3. Rebuild and run repository validation gates (`scripts/workflow-lint.sh`, `scripts/workflow-test.sh`, packaging checks).
 4. Republish known-good artifact and notify operators with scope/ETA.
 
+### Shared foundation rollout operations
+
+- Canonical staged rollout guide:
+  - `docs/reports/workflow-shared-foundations-rollout.md`
+- Required rollout checkpoints:
+  - canary workflows pass before promotion.
+  - promotion criteria are recorded before each rollout stage.
+  - stop condition triggers require immediate revert to known-good paths/artifacts.
+
 ## Troubleshooting Documentation Map
 
 ### Global standards
 
 - Cross-workflow runtime and troubleshooting standards are defined in this file:
   - `ALFRED_WORKFLOW_DEVELOPMENT.md`
+- Canonical shared foundation policy:
+  - `docs/specs/workflow-shared-foundations-policy.md`
 
 ### Workflow-local runbooks
 

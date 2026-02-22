@@ -23,6 +23,12 @@ command -v <RUNTIME_BIN> || true
 # Script filter should return Alfred JSON rows
 bash workflows/<WORKFLOW_ID>/scripts/<SCRIPT_FILTER_ENTRY>.sh "<SAMPLE_QUERY>" | jq -e '.items | type == "array"'
 
+# Shared foundation bootstrap markers should be present
+rg -n "workflow_helper_loader|wfhl_source_helper|sfcd_run_cli_flow" \
+  workflows/<WORKFLOW_ID>/scripts/<SCRIPT_FILTER_ENTRY>.sh \
+  workflows/<WORKFLOW_ID>/scripts/<ACTION_ENTRY>.sh
+rg -n "workflow_smoke_helpers" workflows/<WORKFLOW_ID>/tests/smoke.sh
+
 # Confirm manifest defaults
 cat workflows/<WORKFLOW_ID>/workflow.toml
 ```
@@ -44,6 +50,8 @@ Document at least these rows for each new workflow:
 bash workflows/<WORKFLOW_ID>/tests/smoke.sh
 scripts/workflow-test.sh --id <WORKFLOW_ID>
 scripts/workflow-pack.sh --id <WORKFLOW_ID>
+bash scripts/workflow-shared-foundation-audit.sh --check
+bash scripts/workflow-sync-script-filter-policy.sh --check --workflows <WORKFLOW_ID>
 ```
 
 Optional (if workflow has extra acceptance checks):

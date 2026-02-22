@@ -1,47 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-resolve_helper() {
-  local helper_name="$1"
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local git_repo_root=""
-  git_repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../../.." && pwd)"
 
-  local candidates=(
-    "$script_dir/lib/$helper_name"
-    "$script_dir/../../../scripts/lib/$helper_name"
-  )
-  if [[ -n "$git_repo_root" ]]; then
-    candidates+=("$git_repo_root/scripts/lib/$helper_name")
+helper_loader=""
+for candidate in \
+  "$script_dir/lib/workflow_helper_loader.sh" \
+  "$script_dir/../../../scripts/lib/workflow_helper_loader.sh"; do
+  if [[ -f "$candidate" ]]; then
+    helper_loader="$candidate"
+    break
   fi
+done
 
-  local candidate
-  for candidate in "${candidates[@]}"; do
-    if [[ -f "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
+if [[ -z "$helper_loader" ]] && command -v git >/dev/null 2>&1; then
+  git_repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$git_repo_root" && -f "$git_repo_root/scripts/lib/workflow_helper_loader.sh" ]]; then
+    helper_loader="$git_repo_root/scripts/lib/workflow_helper_loader.sh"
+  fi
+fi
 
-  return 1
+if [[ -z "$helper_loader" ]]; then
+  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate workflow_helper_loader.sh runtime helper.","valid":false}]}\n'
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$helper_loader"
+
+load_helper_or_exit() {
+  local helper_name="$1"
+  if ! wfhl_source_helper "$script_dir" "$helper_name" auto; then
+    wfhl_emit_missing_helper_item_json "$helper_name"
+    exit 0
+  fi
 }
 
-error_json_helper="$(resolve_helper "script_filter_error_json.sh" || true)"
-if [[ -z "$error_json_helper" ]]; then
-  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate script_filter_error_json.sh runtime helper.","valid":false}]}\n'
-  exit 0
-fi
-# shellcheck disable=SC1090
-source "$error_json_helper"
-
-cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
-if [[ -z "$cli_resolver_helper" ]]; then
-  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
-  exit 0
-fi
-# shellcheck disable=SC1090
-source "$cli_resolver_helper"
+load_helper_or_exit "script_filter_error_json.sh"
+load_helper_or_exit "workflow_cli_resolver.sh"
+load_helper_or_exit "script_filter_query_policy.sh"
+load_helper_or_exit "script_filter_async_coalesce.sh"
+load_helper_or_exit "script_filter_search_driver.sh"
+load_helper_or_exit "script_filter_cli_driver.sh"
 
 normalize_error_message() {
   sfej_normalize_error_message "${1-}"
@@ -79,80 +79,40 @@ print_error_item() {
 }
 
 resolve_bilibili_cli() {
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-  local packaged_cli
-  packaged_cli="$script_dir/../bin/bilibili-cli"
-
-  local repo_root
-  repo_root="$(cd "$script_dir/../../.." && pwd)"
-
-  local release_cli
-  release_cli="$repo_root/target/release/bilibili-cli"
-
-  local debug_cli
-  debug_cli="$repo_root/target/debug/bilibili-cli"
-
   wfcr_resolve_binary \
     "BILIBILI_CLI_BIN" \
-    "$packaged_cli" \
-    "$release_cli" \
-    "$debug_cli" \
+    "$script_dir/../bin/bilibili-cli" \
+    "$repo_root/target/release/bilibili-cli" \
+    "$repo_root/target/debug/bilibili-cli" \
     "bilibili-cli binary not found (checked package/release/debug paths)"
 }
 
-bilibili_query_fetch_json() {
+bilibili_query_execute() {
   local query="$1"
-  local err_file="${TMPDIR:-/tmp}/bilibili-search-script-filter.err.$$.$RANDOM"
+  local bilibili_cli=""
 
-  local bilibili_cli
-  if ! bilibili_cli="$(resolve_bilibili_cli 2>"$err_file")"; then
-    cat "$err_file" >&2
-    rm -f "$err_file"
+  if ! bilibili_cli="$(resolve_bilibili_cli)"; then
     return 1
   fi
 
-  local json_output
-  if json_output="$("$bilibili_cli" query --input "$query" --mode alfred 2>"$err_file")"; then
-    rm -f "$err_file"
-    if [[ -z "$json_output" ]]; then
-      echo "bilibili-cli returned empty response" >&2
-      return 1
-    fi
-
-    printf '%s\n' "$json_output"
-    return 0
-  fi
-
-  cat "$err_file" >&2
-  rm -f "$err_file"
-  return 1
+  "$bilibili_cli" query --input "$query" --mode alfred
 }
 
-query_policy_helper="$(resolve_helper "script_filter_query_policy.sh" || true)"
-if [[ -z "$query_policy_helper" ]]; then
-  emit_error_item "Workflow helper missing" "Cannot locate script_filter_query_policy.sh runtime helper."
-  exit 0
-fi
-# shellcheck disable=SC1090
-source "$query_policy_helper"
+execute_bilibili_search_flow() {
+  local query="$1"
 
-async_coalesce_helper="$(resolve_helper "script_filter_async_coalesce.sh" || true)"
-if [[ -z "$async_coalesce_helper" ]]; then
-  emit_error_item "Workflow helper missing" "Cannot locate script_filter_async_coalesce.sh runtime helper."
-  exit 0
-fi
-# shellcheck disable=SC1090
-source "$async_coalesce_helper"
-
-search_driver_helper="$(resolve_helper "script_filter_search_driver.sh" || true)"
-if [[ -z "$search_driver_helper" ]]; then
-  emit_error_item "Workflow helper missing" "Cannot locate script_filter_search_driver.sh runtime helper."
-  exit 0
-fi
-# shellcheck disable=SC1090
-source "$search_driver_helper"
+  sfsd_run_search_flow \
+    "$query" \
+    "bilibili-search" \
+    "nils-bilibili-search-workflow" \
+    "BILIBILI_QUERY_CACHE_TTL_SECONDS" \
+    "BILIBILI_QUERY_COALESCE_SETTLE_SECONDS" \
+    "BILIBILI_QUERY_COALESCE_RERUN_SECONDS" \
+    "Searching bilibili suggestions..." \
+    "Waiting for final query before calling bilibili suggest API." \
+    "bilibili_query_execute" \
+    "print_error_item"
+}
 
 query="$(sfqp_resolve_query_input "${1:-}")"
 trimmed_query="$(sfqp_trim "$query")"
@@ -171,16 +131,11 @@ if sfqp_is_short_query "$query" 2; then
   exit 0
 fi
 
-# Shared driver owns cache/coalesce orchestration only.
-# Bilibili-specific backend fetch and error mapping remain local in this script.
-sfsd_run_search_flow \
-  "$query" \
-  "bilibili-search" \
-  "nils-bilibili-search-workflow" \
-  "BILIBILI_QUERY_CACHE_TTL_SECONDS" \
-  "BILIBILI_QUERY_COALESCE_SETTLE_SECONDS" \
-  "BILIBILI_QUERY_COALESCE_RERUN_SECONDS" \
-  "Searching bilibili suggestions..." \
-  "Waiting for final query before calling bilibili suggest API." \
-  "bilibili_query_fetch_json" \
-  "print_error_item"
+# Shared CLI driver owns err-file and JSON guard plumbing for the final response.
+# Shared search driver still owns cache/coalesce orchestration for this workflow.
+sfcd_run_cli_flow \
+  "execute_bilibili_search_flow" \
+  "print_error_item" \
+  "bilibili-cli returned empty response" \
+  "bilibili-cli returned malformed Alfred JSON" \
+  "$query"

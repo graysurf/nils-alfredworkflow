@@ -38,3 +38,34 @@ The shared helper runtime contract is:
 
 - source: `scripts/lib/script_filter_query_policy.sh`
 - package destination: `scripts/lib/script_filter_query_policy.sh`
+
+## Shared Foundation Policy Check
+
+`scripts/workflow-sync-script-filter-policy.sh --check` now validates two layers:
+
+- queue policy parity (`queuedelay*` fields) for `targets.*.object_uids`;
+- shared foundation wiring for `shared_foundation.targets`.
+
+Shared foundation policy checks enforce that designated script filters include:
+
+- helper loader wiring (`workflow_helper_loader.sh` + `wfhl_source_helper`);
+- search-driver wiring (`script_filter_search_driver.sh` + `sfsd_run_search_flow`) for search-family targets;
+- CLI-driver safety wiring (`script_filter_cli_driver.sh` + `sfcd_run_cli_flow`) for non-search and hybrid targets.
+
+The same check also rejects prohibited placeholder markers so incomplete migration scaffolding fails fast in CI/local lint.
+
+## Auto-Syncable Vs Manual Fields
+
+Auto-syncable by `--apply`:
+
+- `queuedelaycustom`
+- `queuedelaymode`
+- `queuedelayimmediatelyinitially`
+
+Manual-by-design (validated by policy check, not auto-rewritten):
+
+- `shared_foundation.targets.*.script_filter`
+- `shared_foundation.targets.*.requires`
+- `shared_foundation.profiles.*.required_markers`
+
+Reason: these fields describe code-level shared foundation boundaries (helper loader + guard contracts) and must be updated together with script changes during migration PRs.

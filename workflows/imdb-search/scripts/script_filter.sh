@@ -1,47 +1,65 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-resolve_helper() {
-  local helper_name="$1"
-  local script_dir
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local git_repo_root=""
-  git_repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-  local candidates=(
-    "$script_dir/lib/$helper_name"
-    "$script_dir/../../../scripts/lib/$helper_name"
-  )
-  if [[ -n "$git_repo_root" ]]; then
-    candidates+=("$git_repo_root/scripts/lib/$helper_name")
+helper_loader=""
+for candidate in \
+  "$script_dir/lib/workflow_helper_loader.sh" \
+  "$script_dir/../../../scripts/lib/workflow_helper_loader.sh"; do
+  if [[ -f "$candidate" ]]; then
+    helper_loader="$candidate"
+    break
   fi
+done
 
-  local candidate
-  for candidate in "${candidates[@]}"; do
-    if [[ -f "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
+if [[ -z "$helper_loader" ]] && command -v git >/dev/null 2>&1; then
+  git_repo_root="$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$git_repo_root" && -f "$git_repo_root/scripts/lib/workflow_helper_loader.sh" ]]; then
+    helper_loader="$git_repo_root/scripts/lib/workflow_helper_loader.sh"
+  fi
+fi
 
-  return 1
+if [[ -z "$helper_loader" ]]; then
+  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate workflow_helper_loader.sh runtime helper.","valid":false}]}\n'
+  exit 0
+fi
+# shellcheck disable=SC1090
+source "$helper_loader"
+
+load_helper_or_exit() {
+  local helper_name="$1"
+  if ! wfhl_source_helper "$script_dir" "$helper_name" auto; then
+    wfhl_emit_missing_helper_item_json "$helper_name"
+    exit 0
+  fi
 }
 
-error_json_helper="$(resolve_helper "script_filter_error_json.sh" || true)"
-if [[ -z "$error_json_helper" ]]; then
-  printf '{"items":[{"title":"Workflow helper missing","subtitle":"Cannot locate script_filter_error_json.sh runtime helper.","valid":false}]}\n'
-  exit 0
-fi
-# shellcheck disable=SC1090
-source "$error_json_helper"
+load_helper_or_exit "script_filter_error_json.sh"
+load_helper_or_exit "script_filter_query_policy.sh"
+load_helper_or_exit "script_filter_cli_driver.sh"
 
-query_policy_helper="$(resolve_helper "script_filter_query_policy.sh" || true)"
-if [[ -z "$query_policy_helper" ]]; then
-  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate script_filter_query_policy.sh runtime helper."
-  exit 0
-fi
-# shellcheck disable=SC1090
-source "$query_policy_helper"
+print_error_item() {
+  local raw_message="${1:-imdb-search failed}"
+  local message
+  message="$(sfej_normalize_error_message "$raw_message")"
+  [[ -n "$message" ]] || message="imdb-search failed"
+
+  local title="IMDb Search error"
+  local subtitle="$message"
+  local lower
+  lower="$(printf '%s' "$message" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ "$lower" == *"curl not found"* ]]; then
+    title="IMDb Search dependency missing"
+    subtitle="curl is required for live suggestions; press Enter to open IMDb search."
+  elif [[ "$lower" == *"python3 not found"* ]]; then
+    title="IMDb Search dependency missing"
+    subtitle="python3 is required for suggestion rendering; press Enter to open IMDb search."
+  fi
+
+  sfej_emit_error_item_json "$title" "$subtitle"
+}
 
 resolve_imdb_section() {
   local value
@@ -131,20 +149,12 @@ fetch_suggestions_json() {
     return 1
   fi
 
-  local encoded prefix url err_file
+  local encoded prefix url
   encoded="$(urlencode_query "$query")"
   prefix="$(resolve_suggest_prefix "$query")"
   url="https://v2.sg.media-imdb.com/suggestion/${prefix}/${encoded}.json"
-  err_file="${TMPDIR:-/tmp}/imdb-search-suggest.err.$$.$RANDOM"
 
-  if curl -fsSL --connect-timeout 4 --max-time 8 "$url" 2>"$err_file"; then
-    rm -f "$err_file"
-    return 0
-  fi
-
-  cat "$err_file" >&2
-  rm -f "$err_file"
-  return 1
+  curl -fsSL --connect-timeout 4 --max-time 8 "$url"
 }
 
 emit_fallback_item() {
@@ -248,6 +258,38 @@ print(json.dumps({"items": items}, ensure_ascii=False))
 PY
 }
 
+execute_imdb_search() {
+  local query="$1"
+  local imdb_section search_url max_results suggest_payload rendered_json
+
+  imdb_section="$(resolve_imdb_section)"
+  search_url="$(build_search_url "$query" "$imdb_section")"
+  max_results="$(resolve_max_results)"
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    emit_fallback_item "$query" "$search_url" "python3 not found; press Enter to open IMDb search."
+    return 0
+  fi
+
+  suggest_payload=""
+  if ! suggest_payload="$(fetch_suggestions_json "$query")"; then
+    emit_fallback_item "$query" "$search_url" "Suggestions unavailable now; press Enter to open IMDb search."
+    return 0
+  fi
+
+  if [[ -z "$suggest_payload" ]]; then
+    emit_fallback_item "$query" "$search_url" "No suggestions returned; press Enter to open IMDb search."
+    return 0
+  fi
+
+  if rendered_json="$(render_suggestion_items "$query" "$search_url" "$max_results" "$suggest_payload" 2>/dev/null)"; then
+    printf '%s\n' "$rendered_json"
+    return 0
+  fi
+
+  emit_fallback_item "$query" "$search_url" "Suggestions parse failed; press Enter to open IMDb search."
+}
+
 query="$(sfqp_resolve_query_input "${1:-}")"
 query="$(sfqp_trim "$query")"
 
@@ -264,36 +306,9 @@ if sfqp_is_short_query "$query" 2; then
   exit 0
 fi
 
-imdb_section="$(resolve_imdb_section)"
-search_url="$(build_search_url "$query" "$imdb_section")"
-max_results="$(resolve_max_results)"
-
-if ! command -v python3 >/dev/null 2>&1; then
-  emit_fallback_item "$query" "$search_url" "python3 not found; press Enter to open IMDb search."
-  exit 0
-fi
-
-suggest_payload=""
-if ! suggest_payload="$(fetch_suggestions_json "$query")"; then
-  emit_fallback_item "$query" "$search_url" "Suggestions unavailable now; press Enter to open IMDb search."
-  exit 0
-fi
-
-if [[ -z "$suggest_payload" ]]; then
-  emit_fallback_item "$query" "$search_url" "No suggestions returned; press Enter to open IMDb search."
-  exit 0
-fi
-
-if rendered_json="$(render_suggestion_items "$query" "$search_url" "$max_results" "$suggest_payload" 2>/dev/null)"; then
-  if command -v jq >/dev/null 2>&1; then
-    if jq -e '.items | type == "array" and length >= 1' >/dev/null <<<"$rendered_json"; then
-      printf '%s\n' "$rendered_json"
-      exit 0
-    fi
-  else
-    printf '%s\n' "$rendered_json"
-    exit 0
-  fi
-fi
-
-emit_fallback_item "$query" "$search_url" "Suggestions parse failed; press Enter to open IMDb search."
+sfcd_run_cli_flow \
+  "execute_imdb_search" \
+  "print_error_item" \
+  "imdb-search returned empty response" \
+  "imdb-search returned malformed Alfred JSON" \
+  "$query"

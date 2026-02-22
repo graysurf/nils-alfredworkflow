@@ -33,6 +33,17 @@ Alfred workflows for macOS users.
 | [Randomer](workflows/randomer/README.md) | `rr`, `rrv`, `random` | Generate random values by format and copy results. | No |
 | [Codex CLI](workflows/codex-cli/README.md) | `cx`, `codex` | Run Codex auth (`login`, `use`, `save`) and diagnostics (`diag rate-limits`) commands from Alfred. | No |
 
+## Shared Foundation Guardrails
+
+- Shared foundation extraction boundary and migration constraints:
+  - `docs/specs/workflow-shared-foundations-policy.md`
+- Default workflow bootstrap pattern uses:
+  - `scripts/lib/workflow_helper_loader.sh`
+  - `scripts/lib/workflow_smoke_helpers.sh`
+- Enforcement hooks:
+  - `bash scripts/workflow-shared-foundation-audit.sh --check`
+  - `bash scripts/workflow-sync-script-filter-policy.sh --check`
+
 ## Troubleshooting
 
 - Global standards and shared operator playbooks: [ALFRED_WORKFLOW_DEVELOPMENT.md](ALFRED_WORKFLOW_DEVELOPMENT.md)

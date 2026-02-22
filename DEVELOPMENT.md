@@ -33,6 +33,8 @@
 - Lint: `cargo clippy --workspace --all-targets -- -D warnings`
 - CLI standards audit: `scripts/cli-standards-audit.sh`
 - Full lint entrypoint (includes `cli-standards-audit`): `scripts/workflow-lint.sh`
+- Shared foundation audit (also included in full lint entrypoint): `bash scripts/workflow-shared-foundation-audit.sh --check`
+- Script Filter policy check (queue + shared foundation wiring): `bash scripts/workflow-sync-script-filter-policy.sh --check`
 
 ### CLI standards audit
 
@@ -58,6 +60,7 @@
 
 - Recommended pre-commit sequence:
   - `scripts/workflow-lint.sh`
+  - `bash scripts/workflow-sync-script-filter-policy.sh --check`
   - `cargo test --workspace`
   - `scripts/workflow-test.sh`
 - For workflow-specific or CLI-specific checks (for example live smoke or probe scripts), run the
