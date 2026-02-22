@@ -14,6 +14,28 @@ codex_cli_pinned_version="${CODEX_CLI_PINNED_VERSION}"
 # shellcheck disable=SC2153
 codex_cli_pinned_crate="${CODEX_CLI_PINNED_CRATE}"
 
+resolve_helper() {
+  local helper_name="$1"
+  local candidate=""
+
+  for candidate in \
+    "$workflow_script_dir/lib/$helper_name" \
+    "$workflow_script_dir/../../../scripts/lib/$helper_name"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+workflow_cli_resolver_helper="$(resolve_helper "workflow_cli_resolver.sh" || true)"
+if [[ -n "$workflow_cli_resolver_helper" ]]; then
+  # shellcheck disable=SC1090
+  source "$workflow_cli_resolver_helper"
+fi
+
 if [[ "$#" -lt 1 || -z "${1:-}" ]]; then
   echo "usage: action_open.sh <action-token>" >&2
   exit 2
@@ -21,6 +43,10 @@ fi
 
 clear_quarantine_if_needed() {
   local cli_path="$1"
+
+  if declare -F wfcr_clear_workflow_quarantine_once_if_needed >/dev/null 2>&1; then
+    wfcr_clear_workflow_quarantine_once_if_needed "$cli_path"
+  fi
 
   if [[ "$(uname -s 2>/dev/null || printf '')" != "Darwin" ]]; then
     return 0

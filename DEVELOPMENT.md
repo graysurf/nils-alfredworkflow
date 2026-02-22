@@ -148,3 +148,54 @@
 - If Gatekeeper blocks execution, start with `ALFRED_WORKFLOW_DEVELOPMENT.md` and then follow the
   matching workflow-local troubleshooting file (`workflows/<workflow-id>/TROUBLESHOOTING.md`) and
   README acceptance steps.
+
+### Gatekeeper startup auto-clear policy
+
+- Common helper owner: `scripts/lib/workflow_cli_resolver.sh`.
+- On macOS, workflow startup should try package-level quarantine cleanup once (per installed
+  workflow directory) before resolving runtime binaries:
+  - `wfcr_clear_workflow_quarantine_once_if_needed`
+  - marker path: `${TMPDIR:-/tmp}/nils-workflow-quarantine-markers/<fingerprint>.marker`
+- Candidate-level cleanup remains enabled for resolved runtime binaries:
+  - `wfcr_clear_quarantine_if_needed`
+- Standalone script remains fallback-only for locked-down environments:
+  - `scripts/workflow-clear-quarantine-standalone.sh`
+
+### Workflow inventory requiring Gatekeeper helper
+
+Required (bundled runtime; must use helper-based startup cleanup):
+- `bangumi-search`
+- `bilibili-search`
+- `cambridge-dict`
+- `codex-cli` (custom resolver in `workflows/codex-cli/scripts/action_open.sh`, explicit helper call)
+- `epoch-converter`
+- `google-search`
+- `market-expression`
+- `memo-add`
+- `multi-timezone`
+- `netflix-search`
+- `open-project`
+- `quote-feed`
+- `randomer`
+- `spotify-search`
+- `weather`
+- `wiki-search`
+- `youtube-search`
+
+Not required (no bundled runtime binary in `workflow.toml`):
+- `imdb-search`
+
+Quick audit commands:
+
+```bash
+# Workflows that reference helper-based binary resolution.
+rg -n "wfcr_resolve_binary|wfcr_clear_workflow_quarantine_once_if_needed" \
+  workflows/*/scripts/*.sh workflows/*/scripts/*/*.sh
+
+# workflow.toml inventory (id + rust_binary)
+for manifest in workflows/*/workflow.toml; do
+  wf="$(basename "$(dirname "$manifest")")"
+  rb="$(awk -F'=' '/^[[:space:]]*rust_binary[[:space:]]*=/{gsub(/^[[:space:]]*"|"[[:space:]]*$/, "", $2); gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2; exit}' "$manifest")"
+  printf '%s\trust_binary=%s\n' "$wf" "${rb:-<none>}"
+done | sort
+```
