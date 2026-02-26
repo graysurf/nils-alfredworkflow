@@ -42,6 +42,7 @@ load_helper_or_exit "script_filter_query_policy.sh"
 load_helper_or_exit "script_filter_async_coalesce.sh"
 load_helper_or_exit "script_filter_search_driver.sh"
 load_helper_or_exit "workflow_cli_resolver.sh"
+load_helper_or_exit "workflow_action_requery.sh"
 
 print_error_item() {
   local raw_message="${1:-steam-cli search failed}"
@@ -92,6 +93,57 @@ resolve_steam_cli() {
     "steam-cli binary not found (checked STEAM_CLI_BIN/package/release/debug paths)"
 }
 
+validate_region_code() {
+  local value="${1:-}"
+  [[ "$value" =~ ^[A-Za-z]{2}$ ]]
+}
+
+steam_override_state_file() {
+  local cache_dir
+  cache_dir="$(wfar_resolve_cache_dir "nils-steam-search-workflow")"
+  wfar_state_file_path "$cache_dir" "steam-region-override.state"
+}
+
+clear_region_override() {
+  rm -f "$(steam_override_state_file)"
+}
+
+read_override_region() {
+  local state_file
+  state_file="$(steam_override_state_file)"
+  [[ -f "$state_file" ]] || return 1
+
+  local raw normalized
+  raw="$(sed -n '1p' "$state_file")"
+  normalized="$(printf '%s' "$raw" | tr -d '[:space:]')"
+
+  if validate_region_code "$normalized"; then
+    printf '%s\n' "$(printf '%s' "$normalized" | tr '[:upper:]' '[:lower:]')"
+    return 0
+  fi
+
+  rm -f "$state_file"
+  return 1
+}
+
+resolve_active_region() {
+  local override_region
+  if override_region="$(read_override_region)"; then
+    printf '%s\n' "$override_region"
+    return 0
+  fi
+
+  local configured
+  configured="$(sfqp_trim "${STEAM_REGION:-}")"
+  if [[ -z "$configured" ]]; then
+    configured="US"
+  fi
+
+  printf '%s\n' "$configured"
+}
+
+STEAM_ACTIVE_REGION=""
+
 steam_search_fetch_json() {
   local query="$1"
   local err_file="${TMPDIR:-/tmp}/steam-search-script-filter.err.$$.$RANDOM"
@@ -109,7 +161,7 @@ steam_search_fetch_json() {
   fi
 
   local json_output
-  if json_output="$("$steam_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
+  if json_output="$(STEAM_REGION="$STEAM_ACTIVE_REGION" "$steam_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
     rm -f "$err_file"
 
     if [[ -z "$json_output" ]]; then
@@ -137,9 +189,13 @@ query="$(sfqp_resolve_query_input "${1:-}")"
 query="$(sfqp_trim "$query")"
 
 if [[ -z "$query" ]]; then
+  clear_region_override
   sfej_emit_error_item_json "Enter a search query" "Type keywords after st to search Steam."
   exit 0
 fi
+
+STEAM_ACTIVE_REGION="$(resolve_active_region)"
+workflow_cache_key="steam-search-$(printf '%s' "$STEAM_ACTIVE_REGION" | tr '[:upper:]' '[:lower:]')"
 
 if sfqp_is_short_query "$query" 2; then
   sfqp_emit_short_query_item_json \
@@ -158,7 +214,7 @@ fi
 # Steam-specific backend fetch and error mapping remain local in this script.
 sfsd_run_search_flow \
   "$query" \
-  "steam-search" \
+  "$workflow_cache_key" \
   "nils-steam-search-workflow" \
   "STEAM_QUERY_CACHE_TTL_SECONDS" \
   "STEAM_QUERY_COALESCE_SETTLE_SECONDS" \
