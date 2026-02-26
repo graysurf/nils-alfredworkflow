@@ -89,7 +89,9 @@ pub fn search_apps(
     let client = reqwest::blocking::Client::new();
 
     match config.search_api {
-        SteamSearchApi::SearchSuggestions => search_apps_with_search_suggestions(&client, config, query),
+        SteamSearchApi::SearchSuggestions => {
+            search_apps_with_search_suggestions(&client, config, query)
+        }
         SteamSearchApi::StoreSearch => search_apps_with_store_search(&client, config, query),
     }
 }
@@ -506,8 +508,8 @@ mod tests {
         let payload_bytes = base64::engine::general_purpose::STANDARD
             .decode(encoded_payload)
             .expect("base64 payload should decode");
-        let payload =
-            SearchSuggestionsRequest::decode(payload_bytes.as_slice()).expect("protobuf should decode");
+        let payload = SearchSuggestionsRequest::decode(payload_bytes.as_slice())
+            .expect("protobuf should decode");
         let context = payload.context.expect("context must exist");
 
         assert!(params.contains(&("origin".to_string(), SEARCH_ORIGIN.to_string())));
@@ -534,8 +536,8 @@ mod tests {
         let payload_bytes = base64::engine::general_purpose::STANDARD
             .decode(encoded_payload)
             .expect("base64 payload should decode");
-        let payload =
-            SearchSuggestionsRequest::decode(payload_bytes.as_slice()).expect("protobuf should decode");
+        let payload = SearchSuggestionsRequest::decode(payload_bytes.as_slice())
+            .expect("protobuf should decode");
         let context = payload.context.expect("context must exist");
 
         assert_eq!(context.language, "");
@@ -664,7 +666,8 @@ mod tests {
     #[test]
     fn steam_store_api_parse_search_response_supports_empty_items() {
         let body = SearchSuggestionsResponse { results: vec![] }.encode_to_vec();
-        let results = parse_search_response(200, body.as_slice()).expect("empty payload should parse");
+        let results =
+            parse_search_response(200, body.as_slice()).expect("empty payload should parse");
 
         assert!(results.is_empty());
     }

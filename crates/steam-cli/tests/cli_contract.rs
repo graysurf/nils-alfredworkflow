@@ -39,11 +39,19 @@ fn cli_contract_invalid_config_returns_user_error() {
 #[test]
 fn cli_contract_api_failure_returns_runtime_error_message() {
     let server = MockServer::spawn(
-        MockResponse::json(503, "Service Unavailable", r#"{"message":"upstream unavailable"}"#),
+        MockResponse::json(
+            503,
+            "Service Unavailable",
+            r#"{"message":"upstream unavailable"}"#,
+        ),
         "/IStoreQueryService/SearchSuggestions/v1",
     );
 
-    let endpoint = format!("{}{}", server.base_url(), "/IStoreQueryService/SearchSuggestions/v1");
+    let endpoint = format!(
+        "{}{}",
+        server.base_url(),
+        "/IStoreQueryService/SearchSuggestions/v1"
+    );
     let output = run_cli(
         &["search", "--query", "dota"],
         &[("STEAM_SEARCH_SUGGESTIONS_ENDPOINT", &endpoint)],
@@ -72,7 +80,11 @@ fn cli_contract_success_returns_alfred_json_items() {
         "/IStoreQueryService/SearchSuggestions/v1",
     );
 
-    let endpoint = format!("{}{}", server.base_url(), "/IStoreQueryService/SearchSuggestions/v1");
+    let endpoint = format!(
+        "{}{}",
+        server.base_url(),
+        "/IStoreQueryService/SearchSuggestions/v1"
+    );
     let output = run_cli(
         &["search", "--query", "counter strike"],
         &[
@@ -125,7 +137,11 @@ fn cli_contract_hides_region_switch_rows_by_default() {
         "/IStoreQueryService/SearchSuggestions/v1",
     );
 
-    let endpoint = format!("{}{}", server.base_url(), "/IStoreQueryService/SearchSuggestions/v1");
+    let endpoint = format!(
+        "{}{}",
+        server.base_url(),
+        "/IStoreQueryService/SearchSuggestions/v1"
+    );
     let output = run_cli(
         &["search", "--query", "counter strike"],
         &[

@@ -199,9 +199,7 @@ pub enum ConfigError {
     InvalidMaxResults(String),
     #[error("invalid STEAM_LANGUAGE: {0} (expected lowercase letters/hyphen, length 2..24)")]
     InvalidLanguage(String),
-    #[error(
-        "invalid STEAM_SEARCH_API: {0} (expected one of: search-suggestions, storesearch)"
-    )]
+    #[error("invalid STEAM_SEARCH_API: {0} (expected one of: search-suggestions, storesearch)")]
     InvalidSearchApi(String),
 }
 
