@@ -249,8 +249,8 @@ docs/tests. **Parallelization**: Task 3.1 first, tasks 3.2 and 3.3 run in parall
 - MaxBatchWidth: 2
 - OverlapHotspots: `workflows/steam-search/scripts/action_open.sh` and policy/docs edits can conflict if region arg
   contract changes late. **Demo/Validation**:
-- Command(s): `cargo run -p xtask -- workflow test --id steam-search`,
-  `cargo run -p xtask -- workflow pack --id steam-search`
+- Command(s): `scripts/workflow-test.sh --id steam-search`,
+  `scripts/workflow-pack.sh --id steam-search`
 - Verify: packaged workflow includes runtime binaries/helpers, passes smoke tests, and opens Steam app URLs from Alfred
   args.
 
@@ -328,9 +328,9 @@ docs/tests. **Parallelization**: Task 3.1 first, tasks 3.2 and 3.3 run in parall
   - Validation report records commands, pass/fail status, and artifact path.
   - Any non-blocking residual risk (for example upstream Steam endpoint volatility) is explicitly captured.
 - **Validation**:
-  - `cargo run -p xtask -- workflow lint --id steam-search`
-  - `cargo run -p xtask -- workflow test --id steam-search`
-  - `cargo run -p xtask -- workflow pack --id steam-search`
+  - `scripts/workflow-lint.sh --id steam-search`
+  - `scripts/workflow-test.sh --id steam-search`
+  - `scripts/workflow-pack.sh --id steam-search`
   - `bash scripts/workflow-shared-foundation-audit.sh --check`
 
 ## Testing Strategy
@@ -341,7 +341,9 @@ docs/tests. **Parallelization**: Task 3.1 first, tasks 3.2 and 3.3 run in parall
   compatibility.
 - Workflow smoke: `workflows/steam-search/tests/smoke.sh` validating script contracts, plist wiring, policy compliance,
   and packaging artifact shape.
-- Repository gates: targeted `xtask workflow lint/test/pack --id steam-search` plus shared-foundation/policy checks.
+- Repository gates: targeted `scripts/workflow-lint.sh --id steam-search`,
+  `scripts/workflow-test.sh --id steam-search`, and `scripts/workflow-pack.sh --id steam-search`,
+  plus shared-foundation/policy checks.
 
 ## Risks & gotchas
 
@@ -359,6 +361,6 @@ docs/tests. **Parallelization**: Task 3.1 first, tasks 3.2 and 3.3 run in parall
 2. Revert policy/audit registrations (`docs/specs/script-filter-input-policy.json`, audit scripts, README catalog
    entries) to the last known-good state.
 3. Restore `wiki-search` action flow to pre-extraction behavior only if shared requery helper rollback is required.
-4. Re-run validation gates: `cargo run -p xtask -- workflow lint --id wiki-search`,
-   `cargo run -p xtask -- workflow test --id wiki-search`, `bash scripts/workflow-shared-foundation-audit.sh --check`.
+4. Re-run validation gates: `scripts/workflow-lint.sh --id wiki-search`,
+   `scripts/workflow-test.sh --id wiki-search`, `bash scripts/workflow-shared-foundation-audit.sh --check`.
 5. Re-package unaffected workflows and publish rollback note with scope and residual risk.

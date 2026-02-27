@@ -76,14 +76,14 @@ Out of scope:
 
 ### Add a new workflow
 
-1. `cargo run -p xtask -- workflow new --id <workflow-id>`
+1. `scripts/workflow-new.sh --id <workflow-id>`
 2. Edit `workflows/<workflow-id>/workflow.toml`.
 3. Update `workflows/<workflow-id>/scripts/*.sh` adapters.
 4. Implement or reuse shared logic in `crates/workflow-common` where applicable.
 5. Validate and package:
-   - `cargo run -p xtask -- workflow lint --id <workflow-id>`
-   - `cargo run -p xtask -- workflow test --id <workflow-id>`
-   - `cargo run -p xtask -- workflow pack --id <workflow-id> --install`
+   - `scripts/workflow-lint.sh --id <workflow-id>`
+   - `scripts/workflow-test.sh --id <workflow-id>`
+   - `scripts/workflow-pack.sh --id <workflow-id> --install`
 
 ### Manifest contract
 

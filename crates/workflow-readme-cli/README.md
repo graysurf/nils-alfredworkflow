@@ -34,6 +34,17 @@ cargo run -p nils-workflow-readme-cli -- convert \
   --output json
 ```
 
+Legacy compatibility flag (equivalent to `--output json`):
+
+```bash
+cargo run -p nils-workflow-readme-cli -- convert \
+  --workflow-root workflows/codex-cli \
+  --readme-source README.md \
+  --stage-dir build/workflows/codex-cli/pkg \
+  --plist build/workflows/codex-cli/pkg/info.plist \
+  --json
+```
+
 Behavior summary:
 
 - Reads full README content.
@@ -51,8 +62,12 @@ Behavior summary:
 
 ## Output Contract
 
-- `stdout`: single-line progress summary (`converted ... bytes, copied ... local image asset(s)`).
-- `stderr`: `error[<code>]: <message>` on failure.
+- Human mode (`--output human`, default):
+  - `stdout`: single-line progress summary (`converted ... bytes, copied ... local image asset(s)`).
+  - `stderr`: `error[<code>]: <message>` on failure.
+- JSON mode (`--output json` or `--json`):
+  - `stdout`: JSON envelope (`schema_version/command/ok`) for both success and failure.
+  - `stderr`: unused for structured command errors.
 - Exit code mapping:
   - `0` success
   - `1` runtime failure
@@ -71,7 +86,7 @@ Behavior summary:
 
 - README/command docs: compliant.
 - Human-readable mode: compliant.
-- JSON service envelope (`schema_version/command/ok`): intentionally not implemented for this utility command.
+- JSON service envelope (`schema_version/command/ok`): compliant.
 
 ## Validation
 

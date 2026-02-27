@@ -25,7 +25,7 @@
 
 - Build workspace: `cargo build`
 - Run shared workflow CLI: `cargo run -p nils-workflow-cli -- --help`
-- List workflows: `cargo run -p xtask -- workflow list`
+- List workflows: `scripts/workflow-pack.sh --list`
 
 ## Formatting and linting
 
