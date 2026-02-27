@@ -100,6 +100,18 @@ fn cli_contract_success_returns_alfred_json_items() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let json: Value = serde_json::from_str(&stdout).expect("stdout should be json");
+    assert!(
+        json.get("schema_version").is_none(),
+        "legacy steam contract does not emit schema_version yet"
+    );
+    assert!(
+        json.get("command").is_none(),
+        "legacy steam contract does not emit command yet"
+    );
+    assert!(
+        json.get("ok").is_none(),
+        "legacy steam contract does not emit ok yet"
+    );
     let items = json
         .get("items")
         .and_then(Value::as_array)
