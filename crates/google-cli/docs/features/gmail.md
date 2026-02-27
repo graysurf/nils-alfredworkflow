@@ -18,7 +18,8 @@
 
 ## Command contract
 
-- Gmail commands reuse the shared wrapper pass-through policy for global `--account`, `--client`, `--json`, `--plain`, `--results-only`, `--select`, and runtime flags.
+- Gmail commands reuse the shared wrapper pass-through policy for global `--account`, `--client`,
+  `--json`, `--plain`, `--results-only`, `--select`, and runtime flags.
 - Output mode expectations:
   - `--json`: wrapper expects upstream Gmail JSON and emits wrapper envelope `v1`.
   - `--plain`: wrapper forwards upstream parseable text output unchanged.

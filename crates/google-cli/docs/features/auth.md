@@ -18,7 +18,9 @@
 
 ## Command contract
 
-- The wrapper forwards global `--account`, `--client`, `--json`, `--plain`, `--results-only`, `--select`, `--dry-run`, `--force`, `--no-input`, `--verbose`, `--color`, and `--enable-commands` flags before `gog auth ...`.
+- The wrapper forwards global `--account`, `--client`, `--json`, `--plain`, `--results-only`,
+  `--select`, `--dry-run`, `--force`, `--no-input`, `--verbose`, `--color`, and
+  `--enable-commands` flags before `gog auth ...`.
 - Auth-specific pass-through flags remain upstream-owned. Representative supported flags include:
   - `auth add --manual --remote --services --readonly --drive-scope`
   - `auth manage --force-consent --services --timeout`
@@ -46,4 +48,5 @@
 
 - Missing `gog`: check `GOOGLE_CLI_GOG_BIN` or confirm `gog` is installed on `PATH`.
 - `NILS_GOOGLE_003`: upstream process launch/execution failed. Re-run the equivalent `gog auth ...` command directly to isolate upstream behavior.
-- `NILS_GOOGLE_004`: upstream returned non-JSON output while the wrapper was in `--json` mode. Retry without `--json` or inspect the raw `gog` invocation first.
+- `NILS_GOOGLE_004`: upstream returned non-JSON output while the wrapper was in `--json` mode.
+  Retry without `--json` or inspect the raw `gog` invocation first.
