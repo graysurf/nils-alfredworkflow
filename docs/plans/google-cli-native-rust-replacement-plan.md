@@ -628,7 +628,13 @@ collecting validation evidence.
   - Specs describe native error/output/runtime behavior and the no-UI auth-management stance.
   - Architecture docs explain the selected native dependency stack and why `gog` is no longer needed.
 - **Validation**:
-  - `rg -n "Rust wrapper over gog|shells out to gog|GOOGLE_CLI_GOG_BIN" README.md docs/ARCHITECTURE.md docs/specs/cli-standards-mapping.md docs/specs/cli-error-code-registry.md crates/google-cli/README.md crates/google-cli/docs/README.md`
+
+  ```bash
+  rg -n "Rust wrapper over gog|shells out to gog|GOOGLE_CLI_GOG_BIN" \
+    README.md docs/ARCHITECTURE.md docs/specs/cli-standards-mapping.md \
+    docs/specs/cli-error-code-registry.md crates/google-cli/README.md \
+    crates/google-cli/docs/README.md
+  ```
 
 ### Task 5.4: Finalize Dependency Audit, Rollback Notes, And Release Readiness
 
@@ -649,7 +655,13 @@ collecting validation evidence.
   - Command inventory and dependency files are consistent with the native implementation.
 - **Validation**:
   - `cargo tree -p google-cli`
-  - `rg -n "rollback|final choice|rejected|native" docs/reports/google-cli-native-crate-survey.md docs/reports/google-cli-native-validation-report.md docs/reports/cli-command-inventory.md`
+
+  ```bash
+  rg -n "rollback|final choice|rejected|native" \
+    docs/reports/google-cli-native-crate-survey.md \
+    docs/reports/google-cli-native-validation-report.md \
+    docs/reports/cli-command-inventory.md
+  ```
 
 ## Testing Strategy
 
