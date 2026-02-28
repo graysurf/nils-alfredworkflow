@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Rust wrapper over gog for auth, Gmail, and Drive commands."
+description = "Native Rust Google CLI for auth, Gmail, and Drive."
 
 [lib]
 name = "google_cli"
@@ -17,6 +17,17 @@ path = "src/main.rs"
 [dependencies]
 clap.workspace = true
 serde_json.workspace = true
+directories = "=6.0.0"
+google-apis-common = "=8.0.0"
+google-drive3 = "=7.0.0+20251218"
+google-gmail1 = "=7.0.0+20251215"
+keyring = "=3.6.2"
+mail-builder = "=0.4.4"
+mime_guess = "=2.0.5"
+open = "=5.3.3"
+reqwest = "=0.12.28"
+yup-oauth2 = "=12.1.2"
 
 [dev-dependencies]
 tempfile.workspace = true
+wiremock = "=0.6.5"

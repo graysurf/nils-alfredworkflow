@@ -1,5 +1,9 @@
+pub mod auth;
+pub mod client;
 pub mod cmd;
+pub mod drive;
 pub mod error;
+pub mod gmail;
 pub mod output;
 pub mod runtime;
 
@@ -16,6 +20,7 @@ pub fn run(cli: Cli) -> Result<RenderedOutput, AppError> {
 }
 
 pub fn run_request(request: &Request) -> Result<RenderedOutput, AppError> {
+    // Sprint 1 note: command routing is still wrapper-backed while native modules are introduced.
     let runtime = Runtime::from_global(&request.global)?;
     let process = runtime.execute(&request.global, &request.invocation)?;
     render_success(
