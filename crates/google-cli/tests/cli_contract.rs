@@ -1,6 +1,7 @@
 mod common;
 
 use serde_json::Value;
+use tempfile::tempdir;
 
 use common::TestHarness;
 
@@ -52,14 +53,15 @@ fn output_mode_conflict_returns_machine_readable_user_error() {
 }
 
 #[test]
-fn missing_gog_returns_runtime_error_envelope() {
+fn native_drive_missing_token_returns_user_error_envelope() {
     let harness = TestHarness::new();
-    let missing = harness.missing_gog_path();
+    let config_dir = tempdir().expect("tempdir");
+    let config_dir_env = config_dir.path().display().to_string();
     let output = harness.run(
         &["--json", "drive", "download", "file-id"],
-        &[("GOOGLE_CLI_GOG_BIN", missing.as_str())],
+        &[("GOOGLE_CLI_CONFIG_DIR", config_dir_env.as_str())],
     );
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
 
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
@@ -71,6 +73,6 @@ fn missing_gog_returns_runtime_error_envelope() {
         json.get("error")
             .and_then(|error| error.get("code"))
             .and_then(Value::as_str),
-        Some("NILS_GOOGLE_002")
+        Some("NILS_GOOGLE_005")
     );
 }
