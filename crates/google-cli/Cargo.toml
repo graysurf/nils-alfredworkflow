@@ -20,8 +20,8 @@ serde.workspace = true
 serde_json.workspace = true
 directories = "=6.0.0"
 google-apis-common = "=8.0.0"
-google-drive3 = "=7.0.0+20251218"
-google-gmail1 = "=7.0.0+20251215"
+google-drive3 = "=7.0.0"
+google-gmail1 = "=7.0.0"
 keyring = "=3.6.2"
 mail-builder = "=0.4.4"
 mime_guess = "=2.0.5"
