@@ -98,10 +98,10 @@ impl AccountMetadata {
         self.aliases
             .retain(|alias, account| !alias.trim().is_empty() && self.accounts.contains(account));
 
-        if let Some(default_account) = &self.default_account {
-            if !self.accounts.contains(default_account) {
-                self.default_account = None;
-            }
+        if let Some(default_account) = &self.default_account
+            && !self.accounts.contains(default_account)
+        {
+            self.default_account = None;
         }
     }
 
@@ -290,9 +290,11 @@ mod tests {
             remote_state_path: temp.path().join("remote-state.v1.json"),
         };
 
-        let mut metadata = AccountMetadata::default();
-        metadata.accounts = vec!["a@example.com".into(), "a@example.com".into()];
-        metadata.default_account = Some("a@example.com".into());
+        let metadata = AccountMetadata {
+            accounts: vec!["a@example.com".into(), "a@example.com".into()],
+            default_account: Some("a@example.com".into()),
+            ..AccountMetadata::default()
+        };
         save_metadata(&paths, &metadata).expect("save metadata");
 
         let loaded = load_metadata(&paths).expect("load metadata");
