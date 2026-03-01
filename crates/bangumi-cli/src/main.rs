@@ -345,7 +345,7 @@ mod tests {
             api_key: None,
             max_results: 10,
             timeout_ms: 8_000,
-            user_agent: "nils-bangumi-cli/1.1 (+https://github.com/graysurf/nils-alfredworkflow)"
+            user_agent: "nils-bangumi-cli/1.1 (+https://github.com/sympoies/nils-alfredworkflow)"
                 .to_string(),
             cache_dir: std::path::PathBuf::from("/tmp/bangumi-cli-cache"),
             image_cache_ttl_seconds: 86_400,

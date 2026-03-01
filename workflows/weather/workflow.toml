@@ -1,6 +1,6 @@
 id = "weather"
 name = "Weather Forecast"
-bundle_id = "com.graysurf.weather"
+bundle_id = "com.sympoies.weather"
 version = "1.1.9"
 script_filter = "script_filter_today.sh"
 action = "action_copy.sh"

@@ -8,7 +8,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
    - `scripts/workflow-pack.sh --id epoch-converter --install`
 2. Confirm migration state from the old workflow:
    - Old bundle id: `snooze92.epoch.converter`
-   - New bundle id: `com.graysurf.epoch-converter`
+   - New bundle id: `com.sympoies.epoch-converter`
    - If both workflows use keyword `ts`, Alfred routing can be unpredictable.
 3. Confirm script-filter contract output is JSON:
    - `bash workflows/epoch-converter/scripts/script_filter.sh "1700000000" | jq -e '.items | type == "array"'`

@@ -13,7 +13,7 @@ pub const PROVIDER_TIMEOUT_SECS: u64 = 3;
 pub const PROVIDER_RETRY_MAX_ATTEMPTS: usize = 2;
 pub const PROVIDER_RETRY_BASE_BACKOFF_MS: u64 = 200;
 pub const MET_NO_USER_AGENT: &str =
-    "nils-alfredworkflow/1.0 (+https://github.com/graysurf/nils-alfredworkflow)";
+    "nils-alfredworkflow/1.0 (+https://github.com/sympoies/nils-alfredworkflow)";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {

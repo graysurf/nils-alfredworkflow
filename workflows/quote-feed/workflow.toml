@@ -1,6 +1,6 @@
 id = "quote-feed"
 name = "Quote Feed"
-bundle_id = "com.graysurf.quote-feed"
+bundle_id = "com.sympoies.quote-feed"
 version = "1.1.9"
 script_filter = "script_filter.sh"
 action = "action_copy.sh"

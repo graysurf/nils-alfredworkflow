@@ -15,7 +15,7 @@ const MAX_TIMEOUT_MS: i64 = 30_000;
 pub const DEFAULT_MAX_RESULTS: u8 = 10;
 pub const DEFAULT_TIMEOUT_MS: u64 = 8_000;
 pub const DEFAULT_USER_AGENT: &str =
-    "nils-bilibili-cli/1.1 (+https://github.com/graysurf/nils-alfredworkflow)";
+    "nils-bilibili-cli/1.1 (+https://github.com/sympoies/nils-alfredworkflow)";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeConfig {

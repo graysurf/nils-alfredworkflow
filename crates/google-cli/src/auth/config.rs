@@ -244,7 +244,7 @@ fn resolve_root_dir() -> PathBuf {
         return PathBuf::from(path);
     }
 
-    if let Some(project_dirs) = ProjectDirs::from("dev", "graysurf", "google-cli") {
+    if let Some(project_dirs) = ProjectDirs::from("dev", "sympoies", "google-cli") {
         return project_dirs.config_dir().to_path_buf();
     }
 

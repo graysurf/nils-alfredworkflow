@@ -59,7 +59,7 @@
     </array>
   </dict>
   <key>createdby</key>
-  <string>graysurf</string>
+  <string>sympoies</string>
   <key>description</key>
   <string>Generate random values by format. Enter copies sample value, Cmd+Enter or rrv can open 10-value list.</string>
   <key>disabled</key>
@@ -290,6 +290,6 @@ Behavior:
   <key>version</key>
   <string>{{version}}</string>
   <key>webaddress</key>
-  <string>https://github.com/graysurf/</string>
+  <string>https://github.com/sympoies/</string>
 </dict>
 </plist>

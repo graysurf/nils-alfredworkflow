@@ -1,6 +1,6 @@
 id = "bangumi-search"
 name = "Bangumi Search"
-bundle_id = "com.graysurf.bangumi-search"
+bundle_id = "com.sympoies.bangumi-search"
 version = "1.1.9"
 script_filter = "script_filter.sh"
 action = "action_open.sh"

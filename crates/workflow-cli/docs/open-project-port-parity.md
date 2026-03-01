@@ -2,7 +2,7 @@
 
 ## Target
 
-- Reference workflow: `/Users/terry/Project/graysurf/alfred-open-project-in-vscode/src/info.plist`
+- Reference workflow: `/Users/terry/Project/sympoies/alfred-open-project-in-vscode/src/info.plist`
 - Port target in this repo:
   - `crates/alfred-core`
   - `crates/workflow-common`

@@ -23,7 +23,7 @@
     </array>
   </dict>
   <key>createdby</key>
-  <string>graysurf</string>
+  <string>sympoies</string>
   <key>description</key>
   <string>Search Steam games and open selected app pages in browser.</string>
   <key>disabled</key>
@@ -258,6 +258,6 @@
   <key>version</key>
   <string>{{version}}</string>
   <key>webaddress</key>
-  <string>https://github.com/graysurf/</string>
+  <string>https://github.com/sympoies/</string>
 </dict>
 </plist>

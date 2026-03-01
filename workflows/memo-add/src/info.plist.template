@@ -101,7 +101,7 @@
     </array>
   </dict>
   <key>createdby</key>
-  <string>graysurf</string>
+  <string>sympoies</string>
   <key>description</key>
   <string>Add memos quickly via nils-memo-cli with optional db init and recent list preview.</string>
   <key>disabled</key>
@@ -693,6 +693,6 @@
   <key>version</key>
   <string>{{version}}</string>
   <key>webaddress</key>
-  <string>https://github.com/graysurf/</string>
+  <string>https://github.com/sympoies/</string>
 </dict>
 </plist>

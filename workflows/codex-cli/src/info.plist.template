@@ -127,7 +127,7 @@
     </array>
   </dict>
   <key>createdby</key>
-  <string>graysurf</string>
+  <string>sympoies</string>
   <key>description</key>
   <string>Command palette for nils-codex-cli auth and diagnostics operations.</string>
   <key>disabled</key>
@@ -769,6 +769,6 @@
   <key>version</key>
   <string>{{version}}</string>
   <key>webaddress</key>
-  <string>https://github.com/graysurf/nils-alfredworkflow</string>
+  <string>https://github.com/sympoies/nils-alfredworkflow</string>
 </dict>
 </plist>

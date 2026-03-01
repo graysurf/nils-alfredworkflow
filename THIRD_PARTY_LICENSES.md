@@ -170,8 +170,8 @@ Generated on 2026-03-01 (UTC).
 | mime | 0.3.17 | MIT OR Apache-2.0 | <https://github.com/hyperium/mime> |
 | mime_guess | 2.0.5 | MIT | <https://github.com/abonander/mime_guess> |
 | mio | 1.1.1 | MIT | <https://github.com/tokio-rs/mio> |
-| nils-common | 0.5.5 | MIT | <https://github.com/graysurf/nils-cli> |
-| nils-memo-cli | 0.5.5 | MIT | <https://github.com/graysurf/nils-cli> |
+| nils-common | 0.5.5 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-memo-cli | 0.5.5 | MIT | <https://github.com/sympoies/nils-cli> |
 | num-conv | 0.2.0 | MIT OR Apache-2.0 | <https://github.com/jhpratt/num-conv> |
 | num-traits | 0.2.19 | MIT OR Apache-2.0 | <https://github.com/rust-num/num-traits> |
 | num_cpus | 1.17.0 | MIT OR Apache-2.0 | <https://github.com/seanmonstar/num_cpus> |
@@ -376,7 +376,7 @@ Generated on 2026-03-01 (UTC).
 
 | Crate | Version | License | Repository | Source |
 | --- | --- | --- | --- | --- |
-| nils-codex-cli | 0.5.5 | MIT | <https://github.com/graysurf/nils-cli> | <https://crates.io/crates/nils-codex-cli/0.5.5> |
+| nils-codex-cli | 0.5.5 | MIT | <https://github.com/sympoies/nils-cli> | <https://crates.io/crates/nils-codex-cli/0.5.5> |
 
 ## Regeneration
 

@@ -6,7 +6,7 @@ Alfred workflows for macOS users.
 
 ## Install
 
-1. Download a `.alfredworkflow` package from the [Releases](https://github.com/graysurf/nils-alfredworkflow/releases) page.
+1. Download a `.alfredworkflow` package from the [Releases](https://github.com/sympoies/nils-alfredworkflow/releases) page.
 2. Double-click the package to import it into Alfred.
 3. For API-based workflows, open Alfred's `Configure Workflow...` and fill in required credentials.
 
@@ -36,7 +36,7 @@ Alfred workflows for macOS users.
 
 ## macOS Gatekeeper standalone script
 
-- Script asset: `workflow-clear-quarantine-standalone.sh` from [Releases](https://github.com/graysurf/nils-alfredworkflow/releases)
+- Script asset: `workflow-clear-quarantine-standalone.sh` from [Releases](https://github.com/sympoies/nils-alfredworkflow/releases)
 - Bulk fix (safe when some workflows are not installed):
   `chmod +x ./workflow-clear-quarantine-standalone.sh && ./workflow-clear-quarantine-standalone.sh --all`
 - Single workflow fix:

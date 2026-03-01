@@ -7,7 +7,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 1. Confirm latest package was installed:
    - `scripts/workflow-pack.sh --id open-project --install`
 2. Confirm you are testing the current installed workflow copy:
-   - Resolve installed path by `bundleid=com.graysurf.open-project`.
+   - Resolve installed path by `bundleid=com.sympoies.open-project`.
 3. Inspect runtime node config in installed `info.plist`:
    - Script nodes should use external script mode (`config.type=8`) with expected `scriptfile`.
 4. Run scripts directly from the installed workflow directory:
@@ -33,7 +33,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
   [ -f "$p" ] || continue
   bid=$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)
-  [ "$bid" = "com.graysurf.open-project" ] && echo "$(dirname "$p")"
+  [ "$bid" = "com.sympoies.open-project" ] && echo "$(dirname "$p")"
 done
 
 # 2) Inspect runtime script node config

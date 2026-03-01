@@ -49,7 +49,7 @@
     </array>
   </dict>
   <key>createdby</key>
-  <string>graysurf</string>
+  <string>sympoies</string>
   <key>description</key>
   <string>Search Google with two-stage suggestions (gg) and direct Brave mode (gb), then open selected links.</string>
   <key>disabled</key>
@@ -334,6 +334,6 @@
   <key>version</key>
   <string>{{version}}</string>
   <key>webaddress</key>
-  <string>https://github.com/graysurf/</string>
+  <string>https://github.com/sympoies/</string>
 </dict>
 </plist>

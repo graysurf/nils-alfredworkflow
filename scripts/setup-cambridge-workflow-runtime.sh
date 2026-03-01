@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-bundle_id="com.graysurf.cambridge-dict"
+bundle_id="com.sympoies.cambridge-dict"
 workflow_dir=""
 check_only=0
 install_browser=1

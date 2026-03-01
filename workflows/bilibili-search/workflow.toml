@@ -1,6 +1,6 @@
 id = "bilibili-search"
 name = "Bilibili Search"
-bundle_id = "com.graysurf.bilibili-search"
+bundle_id = "com.sympoies.bilibili-search"
 version = "1.1.9"
 script_filter = "script_filter.sh"
 action = "action_open.sh"

@@ -84,7 +84,7 @@ mkdir -p workflows/open-project
 cat > workflows/open-project/workflow.toml <<'EOF'
 id = "open-project"
 name = "Open Project"
-bundle_id = "com.graysurf.open-project"
+bundle_id = "com.sympoies.open-project"
 version = "0.1.0"
 script_filter = "script_filter.sh"
 action = "action_open.sh"

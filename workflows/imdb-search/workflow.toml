@@ -1,6 +1,6 @@
 id = "imdb-search"
 name = "IMDb Search"
-bundle_id = "com.graysurf.imdb-search"
+bundle_id = "com.sympoies.imdb-search"
 version = "1.1.9"
 script_filter = "script_filter.sh"
 action = "action_open.sh"

@@ -29,7 +29,7 @@
 ## Runtime Icon Asset Handling
 
 - Source asset (provided):  
-  `/Users/terry/.agents/out/plan-issue-delivery/graysurf__nils-alfredworkflow/issue-67/assets/steam.png`
+  `/Users/terry/.agents/out/plan-issue-delivery/sympoies__nils-alfredworkflow/issue-67/assets/steam.png`
 - Runtime copy for subagent reuse:  
   `out/runtime/steam-search/icon.png`
 - Workflow icon source synchronized from runtime copy:  

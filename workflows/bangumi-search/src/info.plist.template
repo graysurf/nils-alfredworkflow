@@ -101,7 +101,7 @@
     </array>
   </dict>
   <key>createdby</key>
-  <string>graysurf</string>
+  <string>sympoies</string>
   <key>description</key>
   <string>Search Bangumi subjects from Alfred and open selected subject pages in your browser.</string>
   <key>disabled</key>
@@ -694,6 +694,6 @@
   <key>version</key>
   <string>{{version}}</string>
   <key>webaddress</key>
-  <string>https://github.com/graysurf/</string>
+  <string>https://github.com/sympoies/</string>
 </dict>
 </plist>

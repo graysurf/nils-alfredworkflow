@@ -53,7 +53,7 @@ For one-time quarantine cleanup and smoke validation after install:
 WORKFLOW_DIR="$(for p in "$HOME"/Library/Application\ Support/Alfred/Alfred.alfredpreferences/workflows/*/info.plist; do
   [ -f "$p" ] || continue
   bid="$(plutil -extract bundleid raw -o - "$p" 2>/dev/null || true)"
-  [ "$bid" = "com.graysurf.youtube-search" ] && dirname "$p"
+  [ "$bid" = "com.sympoies.youtube-search" ] && dirname "$p"
 done | head -n1)"
 
 [ -n "$WORKFLOW_DIR" ] || { echo "youtube-search workflow not found"; exit 1; }

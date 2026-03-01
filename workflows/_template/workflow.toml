@@ -1,6 +1,6 @@
 id = "__WORKFLOW_ID__"
 name = "__WORKFLOW_NAME__"
-bundle_id = "com.graysurf.__WORKFLOW_ID__"
+bundle_id = "com.sympoies.__WORKFLOW_ID__"
 version = "0.1.0"
 script_filter = "script_filter.sh"
 action = "action_open.sh"

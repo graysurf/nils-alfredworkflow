@@ -21,7 +21,7 @@ pub const DEFAULT_TIMEOUT_MS: u64 = 8_000;
 pub const DEFAULT_IMAGE_CACHE_TTL_SECONDS: u64 = 86_400;
 pub const DEFAULT_IMAGE_CACHE_MAX_MB: u64 = 128;
 pub const DEFAULT_USER_AGENT: &str =
-    "nils-bangumi-cli/1.1 (+https://github.com/graysurf/nils-alfredworkflow)";
+    "nils-bangumi-cli/1.1 (+https://github.com/sympoies/nils-alfredworkflow)";
 
 const MIN_MAX_RESULTS: i32 = 1;
 const MAX_MAX_RESULTS: i32 = 20;

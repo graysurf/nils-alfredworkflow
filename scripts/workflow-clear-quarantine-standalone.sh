@@ -60,58 +60,58 @@ EOF_IDS
 bundle_id_for_workflow_id() {
   case "${1:-}" in
   bangumi-search)
-    printf '%s\n' 'com.graysurf.bangumi-search'
+    printf '%s\n' 'com.sympoies.bangumi-search'
     ;;
   bilibili-search)
-    printf '%s\n' 'com.graysurf.bilibili-search'
+    printf '%s\n' 'com.sympoies.bilibili-search'
     ;;
   cambridge-dict)
-    printf '%s\n' 'com.graysurf.cambridge-dict'
+    printf '%s\n' 'com.sympoies.cambridge-dict'
     ;;
   codex-cli)
-    printf '%s\n' 'com.graysurf.codex-cli'
+    printf '%s\n' 'com.sympoies.codex-cli'
     ;;
   epoch-converter)
-    printf '%s\n' 'com.graysurf.epoch-converter'
+    printf '%s\n' 'com.sympoies.epoch-converter'
     ;;
   google-search)
-    printf '%s\n' 'com.graysurf.google-search'
+    printf '%s\n' 'com.sympoies.google-search'
     ;;
   imdb-search)
-    printf '%s\n' 'com.graysurf.imdb-search'
+    printf '%s\n' 'com.sympoies.imdb-search'
     ;;
   market-expression)
-    printf '%s\n' 'com.graysurf.market-expression'
+    printf '%s\n' 'com.sympoies.market-expression'
     ;;
   memo-add)
-    printf '%s\n' 'com.graysurf.memo-add'
+    printf '%s\n' 'com.sympoies.memo-add'
     ;;
   multi-timezone)
-    printf '%s\n' 'com.graysurf.multi-timezone'
+    printf '%s\n' 'com.sympoies.multi-timezone'
     ;;
   netflix-search)
-    printf '%s\n' 'com.graysurf.netflix-search'
+    printf '%s\n' 'com.sympoies.netflix-search'
     ;;
   open-project)
-    printf '%s\n' 'com.graysurf.open-project'
+    printf '%s\n' 'com.sympoies.open-project'
     ;;
   quote-feed)
-    printf '%s\n' 'com.graysurf.quote-feed'
+    printf '%s\n' 'com.sympoies.quote-feed'
     ;;
   randomer)
-    printf '%s\n' 'com.graysurf.randomer'
+    printf '%s\n' 'com.sympoies.randomer'
     ;;
   spotify-search)
-    printf '%s\n' 'com.graysurf.spotify-search'
+    printf '%s\n' 'com.sympoies.spotify-search'
     ;;
   weather)
-    printf '%s\n' 'com.graysurf.weather'
+    printf '%s\n' 'com.sympoies.weather'
     ;;
   wiki-search)
-    printf '%s\n' 'com.graysurf.wiki-search'
+    printf '%s\n' 'com.sympoies.wiki-search'
     ;;
   youtube-search)
-    printf '%s\n' 'com.graysurf.youtube-search'
+    printf '%s\n' 'com.sympoies.youtube-search'
     ;;
   *)
     return 1
