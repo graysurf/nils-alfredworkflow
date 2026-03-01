@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::Command;
 
 use serde_json::Value;
@@ -11,7 +12,7 @@ fn live_api_key() -> String {
 }
 
 fn run_live(args: &[&str], api_key: &str) -> (i32, Value, String) {
-    let output = Command::new(env!("CARGO_BIN_EXE_bangumi-cli"))
+    let output = Command::new(resolve_cli_path())
         .args(args)
         .env("BANGUMI_API_KEY", api_key)
         .env("BANGUMI_MAX_RESULTS", "3")
@@ -62,4 +63,21 @@ fn live_api_search_command_works_with_explicit_type_and_key() {
             "first item URL should point to Bangumi subject page"
         );
     }
+}
+
+fn resolve_cli_path() -> PathBuf {
+    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_bangumi-cli") {
+        return PathBuf::from(path);
+    }
+
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(debug_dir) = current_exe.parent().and_then(|deps| deps.parent())
+    {
+        let candidate = debug_dir.join(format!("bangumi-cli{}", std::env::consts::EXE_SUFFIX));
+        if candidate.exists() {
+            return candidate;
+        }
+    }
+
+    PathBuf::from(env!("CARGO_BIN_EXE_bangumi-cli"))
 }

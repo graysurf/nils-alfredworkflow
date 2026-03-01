@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::PathBuf;
 use std::process::{Command, Output};
 
 use serde_json::Value;
@@ -14,7 +15,7 @@ const PLIST_TEMPLATE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 "#;
 
 fn run_cli(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_workflow-readme-cli"))
+    Command::new(resolve_cli_path())
         .args(args)
         .output()
         .expect("run workflow-readme-cli")
@@ -143,4 +144,24 @@ fn json_conflict_returns_machine_readable_error() {
             .and_then(Value::as_str),
         Some("user.output_mode_conflict")
     );
+}
+
+fn resolve_cli_path() -> PathBuf {
+    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_workflow-readme-cli") {
+        return PathBuf::from(path);
+    }
+
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(debug_dir) = current_exe.parent().and_then(|deps| deps.parent())
+    {
+        let candidate = debug_dir.join(format!(
+            "workflow-readme-cli{}",
+            std::env::consts::EXE_SUFFIX
+        ));
+        if candidate.exists() {
+            return candidate;
+        }
+    }
+
+    PathBuf::from(env!("CARGO_BIN_EXE_workflow-readme-cli"))
 }
