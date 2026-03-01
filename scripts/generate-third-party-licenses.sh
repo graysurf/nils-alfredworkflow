@@ -253,13 +253,13 @@ Do not edit manually.
 | --- | --- | --- | --- |
 EOF
 
-  printf '| Cargo lockfile | `%s` | `%s` | `%s` |\n' "Cargo.lock" "$cargo_lock_sha" \
+  printf "| Cargo lockfile | \`%s\` | \`%s\` | \`%s\` |\n" "Cargo.lock" "$cargo_lock_sha" \
     "cargo metadata --format-version 1 --locked"
-  printf '| Node lockfile | `%s` | `%s` | `%s` |\n' "package-lock.json" "$package_lock_sha" \
+  printf "| Node lockfile | \`%s\` | \`%s\` | \`%s\` |\n" "package-lock.json" "$package_lock_sha" \
     "jq package-lock extraction"
-  printf '| Runtime crate pin | `%s` | `%s` | `%s` |\n' "scripts/lib/codex_cli_version.sh" "$runtime_pin_script_sha" \
+  printf "| Runtime crate pin | \`%s\` | \`%s\` | \`%s\` |\n" "scripts/lib/codex_cli_version.sh" "$runtime_pin_script_sha" \
     "source for \$CODEX_CLI_CRATE and \$CODEX_CLI_VERSION"
-  printf '| Runtime crate metadata | %s | `%s` | `%s` |\n' "$(md_url_or_dash "$runtime_source_url")" "$runtime_metadata_sha" \
+  printf "| Runtime crate metadata | %s | \`%s\` | \`%s\` |\n" "$(md_url_or_dash "$runtime_source_url")" "$runtime_metadata_sha" \
     "curl crates.io API plus jq normalized fields"
 
   printf '\n## Rust License Summary (%s crates)\n\n' "$rust_count"
