@@ -44,7 +44,18 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
 
 - Command(s):
   - `plan-tooling validate --file docs/plans/release-third-party-licenses-automation-plan.md`
-  - `plan-tooling split-prs --file docs/plans/release-third-party-licenses-automation-plan.md --scope sprint --sprint 1 --strategy auto --default-pr-grouping group --format json`
+  - `plan-tooling split-prs` for Sprint 1:
+
+    ```bash
+    plan-tooling split-prs \
+      --file docs/plans/release-third-party-licenses-automation-plan.md \
+      --scope sprint \
+      --sprint 1 \
+      --strategy auto \
+      --default-pr-grouping group \
+      --format json
+    ```
+
   - `bash scripts/generate-third-party-licenses.sh --write`
   - `bash scripts/generate-third-party-licenses.sh --check`
 - Verify:
@@ -64,7 +75,8 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
 - **Location**:
   - `docs/specs/third-party-license-artifact-contract-v1.md`
   - `THIRD_PARTY_LICENSES.md`
-- **Description**: Define required sections, deterministic ordering keys, runtime crate metadata rules, and exact `--write/--check` semantics for a generated `THIRD_PARTY_LICENSES.md` contract.
+- **Description**: Define required sections, deterministic ordering keys, runtime crate metadata rules,
+  and exact `--write/--check` semantics for a generated `THIRD_PARTY_LICENSES.md` contract.
 - **Dependencies**:
   - none
 - **Complexity**: 3
@@ -74,7 +86,12 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
   - Contract specifies failure behavior for missing inputs and crates.io lookup failures.
 - **Validation**:
   - `test -f docs/specs/third-party-license-artifact-contract-v1.md`
-  - `rg -n 'THIRD_PARTY_LICENSES\.md|deterministic|--write|--check|crates\.io|runtime crate' docs/specs/third-party-license-artifact-contract-v1.md`
+  - Search contract terms:
+
+    ```bash
+    rg -n 'THIRD_PARTY_LICENSES\.md|deterministic|--write|--check|crates\.io|runtime crate' \
+      docs/specs/third-party-license-artifact-contract-v1.md
+    ```
 
 ### Task 1.2: Implement generator entrypoint for Rust, Node, and runtime crate metadata
 
@@ -82,7 +99,8 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
   - `scripts/generate-third-party-licenses.sh`
   - `THIRD_PARTY_LICENSES.md`
   - `scripts/lib/codex_cli_version.sh`
-- **Description**: Implement a single entrypoint that renders `THIRD_PARTY_LICENSES.md` from locked metadata sources and runtime crate lookup, with stable sorting and deterministic formatting.
+- **Description**: Implement a single entrypoint that renders `THIRD_PARTY_LICENSES.md` from locked metadata
+  sources and runtime crate lookup, with stable sorting and deterministic formatting.
 - **Dependencies**:
   - Task 1.1
 - **Complexity**: 5
@@ -93,7 +111,16 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
 - **Validation**:
   - `bash scripts/generate-third-party-licenses.sh --write`
   - `bash scripts/generate-third-party-licenses.sh --check`
-  - `tmp_file="$(mktemp)" && bash scripts/generate-third-party-licenses.sh --write && cp THIRD_PARTY_LICENSES.md "$tmp_file" && bash scripts/generate-third-party-licenses.sh --write && cmp -s THIRD_PARTY_LICENSES.md "$tmp_file" && rm -f "$tmp_file"`
+  - Re-run determinism check:
+
+    ```bash
+    tmp_file="$(mktemp)"
+    bash scripts/generate-third-party-licenses.sh --write
+    cp THIRD_PARTY_LICENSES.md "$tmp_file"
+    bash scripts/generate-third-party-licenses.sh --write
+    cmp -s THIRD_PARTY_LICENSES.md "$tmp_file"
+    rm -f "$tmp_file"
+    ```
 
 ### Task 1.3: Normalize nondeterministic fields and provenance rendering
 
@@ -101,7 +128,8 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
   - `scripts/generate-third-party-licenses.sh`
   - `THIRD_PARTY_LICENSES.md`
   - `docs/specs/third-party-license-artifact-contract-v1.md`
-- **Description**: Remove or replace time-variant output fields (for example generated-at date) with deterministic provenance fields (for example lockfile hash/input fingerprint) and codify expected formatting.
+- **Description**: Remove or replace time-variant output fields (for example generated-at date) with
+  deterministic provenance fields (for example lockfile hash/input fingerprint) and codify expected formatting.
 - **Dependencies**:
   - Task 1.2
 - **Complexity**: 4
@@ -134,11 +162,24 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
 
 ## Sprint 2: CI Gate, Lint Integration, and Troubleshooting Routing
 
-**Goal**: Enforce license artifact freshness in local and CI checks, and provide fast failure routing in troubleshooting docs. **Demo/Validation**:
+**Goal**: Enforce license artifact freshness in local and CI checks, and provide fast failure routing in
+troubleshooting docs.
+**Demo/Validation**:
 
 - Command(s):
   - `bash scripts/ci/third-party-licenses-audit.sh --strict`
-  - `plan-tooling split-prs --file docs/plans/release-third-party-licenses-automation-plan.md --scope sprint --sprint 2 --strategy auto --default-pr-grouping group --format json`
+  - `plan-tooling split-prs` for Sprint 2:
+
+    ```bash
+    plan-tooling split-prs \
+      --file docs/plans/release-third-party-licenses-automation-plan.md \
+      --scope sprint \
+      --sprint 2 \
+      --strategy auto \
+      --default-pr-grouping group \
+      --format json
+    ```
+
   - `scripts/workflow-lint.sh`
   - `rg -n 'third-party-licenses-audit\.sh' .github/workflows/ci.yml scripts/workflow-lint.sh`
 - Verify:
@@ -151,14 +192,16 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
   - `TotalComplexity`: 14
   - `CriticalPathComplexity`: 12
   - `MaxBatchWidth`: 2
-  - `OverlapHotspots`: `scripts/ci/third-party-licenses-audit.sh`; `scripts/workflow-lint.sh`; `.github/workflows/ci.yml`; `TROUBLESHOOTING.md`
+  - `OverlapHotspots`: `scripts/ci/third-party-licenses-audit.sh`; `scripts/workflow-lint.sh`;
+    `.github/workflows/ci.yml`; `TROUBLESHOOTING.md`
 
 ### Task 2.1: Implement strict CI third-party license audit script
 
 - **Location**:
   - `scripts/ci/third-party-licenses-audit.sh`
   - `scripts/generate-third-party-licenses.sh`
-- **Description**: Add PASS/WARN/FAIL-style audit behavior (aligned with `nils-cli` CI patterns) that checks required files and runs generator `--check` with strict/non-strict modes.
+- **Description**: Add PASS/WARN/FAIL-style audit behavior (aligned with `nils-cli` CI patterns) that checks
+  required files and runs generator `--check` with strict/non-strict modes.
 - **Dependencies**:
   - Task 1.3
   - Task 1.4
@@ -194,7 +237,8 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
 - **Location**:
   - `TROUBLESHOOTING.md`
   - `docs/RELEASE.md`
-- **Description**: Add a dedicated troubleshooting route with commands for generator drift, crates.io lookup failures, and CI/release gate failures.
+- **Description**: Add a dedicated troubleshooting route with commands for generator drift, crates.io lookup
+  failures, and CI/release gate failures.
 - **Dependencies**:
   - Task 2.1
 - **Complexity**: 2
@@ -209,7 +253,8 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
 - **Location**:
   - `tests/third-party-licenses/audit.test.sh`
   - `scripts/ci/third-party-licenses-audit.sh`
-- **Description**: Add regression tests that assert strict/non-strict exit codes and expected diagnostic prefixes for clean, missing, and drift states.
+- **Description**: Add regression tests that assert strict/non-strict exit codes and expected diagnostic
+  prefixes for clean, missing, and drift states.
 - **Dependencies**:
   - Task 2.2
   - Task 2.3
@@ -223,7 +268,9 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
 
 ## Sprint 3: Release Packaging and License Artifact Compliance Gate
 
-**Goal**: Ensure release assets always carry current third-party license documentation and fail before publish when contract breaks. **Demo/Validation**:
+**Goal**: Ensure release assets always carry current third-party license documentation and fail before publish
+when contract breaks.
+**Demo/Validation**:
 
 - Command(s):
   - `bash scripts/generate-third-party-licenses.sh --check`
@@ -257,14 +304,30 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
   - Generation occurs before any bundle zip or release upload step.
 - **Validation**:
   - `rg -n 'generate-third-party-licenses\.sh --write|generate-third-party-licenses\.sh --check' .github/workflows/release.yml`
-  - `write_line=\"$(rg -n 'generate-third-party-licenses\\.sh --write' .github/workflows/release.yml | head -n1 | cut -d: -f1)\" && bundle_line=\"$(rg -n 'Build bundled release archive' .github/workflows/release.yml | head -n1 | cut -d: -f1)\" && upload_line=\"$(rg -n 'Upload release assets' .github/workflows/release.yml | head -n1 | cut -d: -f1)\" && test -n \"$write_line\" && test -n \"$bundle_line\" && test -n \"$upload_line\" && test \"$write_line\" -lt \"$bundle_line\" && test \"$bundle_line\" -lt \"$upload_line\"`
+  - Validate release step order:
+
+    ```bash
+    write_line="$(rg -n 'generate-third-party-licenses\.sh --write' \
+      .github/workflows/release.yml | head -n1 | cut -d: -f1)"
+    bundle_line="$(rg -n 'Build bundled release archive' \
+      .github/workflows/release.yml | head -n1 | cut -d: -f1)"
+    upload_line="$(rg -n 'Upload release assets' \
+      .github/workflows/release.yml | head -n1 | cut -d: -f1)"
+
+    test -n "$write_line"
+    test -n "$bundle_line"
+    test -n "$upload_line"
+    test "$write_line" -lt "$bundle_line"
+    test "$bundle_line" -lt "$upload_line"
+    ```
 
 ### Task 3.2: Include license artifact in release assets and checksums
 
 - **Location**:
   - `.github/workflows/release.yml`
   - `docs/RELEASE.md`
-- **Description**: Update release packaging and upload contract so `THIRD_PARTY_LICENSES.md` (and checksum file when configured) is published with release assets.
+- **Description**: Update release packaging and upload contract so `THIRD_PARTY_LICENSES.md` (and checksum file
+  when configured) is published with release assets.
 - **Dependencies**:
   - Task 3.1
 - **Complexity**: 3
@@ -279,7 +342,8 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
 - **Location**:
   - `scripts/ci/release-bundle-third-party-audit.sh`
   - `.github/workflows/release.yml`
-- **Description**: Add a pre-upload audit script that validates release output contains required license artifact files and fails closed when missing.
+- **Description**: Add a pre-upload audit script that validates release output contains required license artifact
+  files and fails closed when missing.
 - **Dependencies**:
   - Task 3.2
 - **Complexity**: 4
@@ -298,7 +362,8 @@ workflow runtime behavior stays unchanged outside license/compliance artifacts a
   - `tests/third-party-licenses/release-bundle.test.sh`
   - `TROUBLESHOOTING.md`
   - `docs/RELEASE.md`
-- **Description**: Add release-fixture regression test plus final documentation wiring so operators can diagnose and recover from release license gate failures quickly.
+- **Description**: Add release-fixture regression test plus final documentation wiring so operators can diagnose
+  and recover from release license gate failures quickly.
 - **Dependencies**:
   - Task 3.3
 - **Complexity**: 3
