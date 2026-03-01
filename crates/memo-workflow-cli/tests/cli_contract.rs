@@ -1,10 +1,11 @@
+use std::path::PathBuf;
 use std::process::Command;
 
 use serde_json::Value;
 use tempfile::tempdir;
 
 fn bin() -> String {
-    env!("CARGO_BIN_EXE_memo-workflow-cli").to_string()
+    resolve_cli_path().display().to_string()
 }
 
 fn item_route_id(item_id: &str) -> String {
@@ -951,4 +952,22 @@ fn update_delete_invalid_item_id_returns_usage_error() {
         .output()
         .expect("delete should run");
     assert_eq!(delete.status.code(), Some(2));
+}
+
+fn resolve_cli_path() -> PathBuf {
+    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_memo-workflow-cli") {
+        return PathBuf::from(path);
+    }
+
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(debug_dir) = current_exe.parent().and_then(|deps| deps.parent())
+    {
+        let candidate =
+            debug_dir.join(format!("memo-workflow-cli{}", std::env::consts::EXE_SUFFIX));
+        if candidate.exists() {
+            return candidate;
+        }
+    }
+
+    PathBuf::from(env!("CARGO_BIN_EXE_memo-workflow-cli"))
 }

@@ -1,11 +1,12 @@
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::{Command, Output};
 
 use serde_json::Value;
 use tempfile::tempdir;
 
 fn run(config_dir: &Path, args: &[&str], envs: &[(&str, &str)]) -> Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_google-cli"));
+    let mut command = Command::new(resolve_cli_path());
     command.args(args);
     command.env("GOOGLE_CLI_CONFIG_DIR", config_dir);
     command.env("GOOGLE_CLI_KEYRING_MODE", "file");
@@ -129,4 +130,21 @@ fn manual_add_persists_token_metadata_and_status() {
 
     assert!(temp.path().join("accounts.v1.json").exists());
     assert!(temp.path().join("tokens.v1.json").exists());
+}
+
+fn resolve_cli_path() -> PathBuf {
+    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_google-cli") {
+        return PathBuf::from(path);
+    }
+
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(debug_dir) = current_exe.parent().and_then(|deps| deps.parent())
+    {
+        let candidate = debug_dir.join(format!("google-cli{}", std::env::consts::EXE_SUFFIX));
+        if candidate.exists() {
+            return candidate;
+        }
+    }
+
+    PathBuf::from(env!("CARGO_BIN_EXE_google-cli"))
 }

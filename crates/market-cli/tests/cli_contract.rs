@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::{Command, Output};
 
 use chrono::{TimeZone, Utc};
@@ -7,7 +8,7 @@ use market_cli::model::{
 use serde_json::Value;
 
 fn run_cli(args: &[&str], envs: &[(&str, &str)]) -> Output {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_market-cli"));
+    let mut cmd = Command::new(resolve_cli_path());
     cmd.args(args);
     for (key, value) in envs {
         cmd.env(key, value);
@@ -149,4 +150,21 @@ fn service_json_error_envelope_redacts_secret_like_input() {
             .and_then(Value::as_str)
             .is_some()
     );
+}
+
+fn resolve_cli_path() -> PathBuf {
+    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_market-cli") {
+        return PathBuf::from(path);
+    }
+
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(debug_dir) = current_exe.parent().and_then(|deps| deps.parent())
+    {
+        let candidate = debug_dir.join(format!("market-cli{}", std::env::consts::EXE_SUFFIX));
+        if candidate.exists() {
+            return candidate;
+        }
+    }
+
+    PathBuf::from(env!("CARGO_BIN_EXE_market-cli"))
 }

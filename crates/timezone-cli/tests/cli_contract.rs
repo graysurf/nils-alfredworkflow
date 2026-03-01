@@ -1,9 +1,10 @@
+use std::path::PathBuf;
 use std::process::{Command, Output};
 
 use serde_json::Value;
 
 fn run_cli(args: &[&str], envs: &[(&str, &str)]) -> Output {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_timezone-cli"));
+    let mut cmd = Command::new(resolve_cli_path());
     cmd.args(args);
     for (key, value) in envs {
         cmd.env(key, value);
@@ -78,4 +79,21 @@ fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(!stdout.contains(secret));
     assert!(!stderr.contains(secret));
+}
+
+fn resolve_cli_path() -> PathBuf {
+    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_timezone-cli") {
+        return PathBuf::from(path);
+    }
+
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(debug_dir) = current_exe.parent().and_then(|deps| deps.parent())
+    {
+        let candidate = debug_dir.join(format!("timezone-cli{}", std::env::consts::EXE_SUFFIX));
+        if candidate.exists() {
+            return candidate;
+        }
+    }
+
+    PathBuf::from(env!("CARGO_BIN_EXE_timezone-cli"))
 }
