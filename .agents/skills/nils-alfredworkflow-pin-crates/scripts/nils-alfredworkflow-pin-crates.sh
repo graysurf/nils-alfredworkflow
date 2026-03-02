@@ -17,6 +17,7 @@ push_remote="origin"
 push_remote_explicit=0
 commit_status="not-requested"
 push_status="not-requested"
+version_check_status="not-run"
 
 declare -a selected_targets=()
 declare -a changed_files=()
@@ -38,6 +39,7 @@ Options:
   --auto-commit           Stage touched files and create a semantic commit after pinning
   --auto-push             Push current branch after auto-commit (implies --auto-commit)
   --push-remote <name>    Remote to use with --auto-push (default: origin)
+  (always validates selected crate versions on crates.io before file edits)
   --list-targets          Print supported targets and aliases
   -h, --help              Show this help
 USAGE
@@ -262,6 +264,63 @@ resolve_targets() {
   [[ "${#selected_targets[@]}" -gt 0 ]] || usage_error "no valid targets resolved"
 }
 
+check_crate_version_exists() {
+  local crate="$1"
+  local status=0
+  python3 - "$crate" "$version" <<'PY' || status="$?"
+import json
+import sys
+import urllib.error
+import urllib.request
+
+crate, version = sys.argv[1], sys.argv[2]
+url = f"https://crates.io/api/v1/crates/{crate}/{version}"
+request = urllib.request.Request(
+    url,
+    headers={"User-Agent": "nils-alfredworkflow-pin-crates/1.0"},
+)
+try:
+    with urllib.request.urlopen(request, timeout=20) as response:
+        if response.status != 200:
+            sys.exit(4)
+        data = json.load(response)
+except urllib.error.HTTPError as exc:
+    if exc.code == 404:
+        sys.exit(3)
+    sys.exit(4)
+except Exception:
+    sys.exit(4)
+
+remote_version = (data.get("version") or {}).get("num")
+if remote_version != version:
+    sys.exit(5)
+PY
+  if [[ "$status" -eq 0 ]]; then
+    echo "verified: crates.io has ${crate}@${version}"
+    return 0
+  fi
+
+  case "$status" in
+    3) die "crate version not found on crates.io: ${crate}@${version}" ;;
+    4) die "failed to query crates.io for ${crate}@${version}" ;;
+    5) die "crates.io version mismatch for ${crate}@${version}" ;;
+    *) die "version verification failed for ${crate}@${version}" ;;
+  esac
+}
+
+verify_target_versions_available() {
+  declare -A dedup=()
+  local target crate
+  for target in "${selected_targets[@]}"; do
+    crate="$(target_crate "$target")" || die "failed to resolve crate for target: $target"
+    if [[ -z "${dedup[$crate]:-}" ]]; then
+      dedup["$crate"]=1
+      check_crate_version_exists "$crate"
+    fi
+  done
+  version_check_status="verified"
+}
+
 run_lock_sync() {
   local crate
   [[ "$update_lock" -eq 1 ]] || return 0
@@ -360,6 +419,7 @@ print_summary() {
   echo "  version: ${version}"
   echo "  dry_run: ${dry_run}"
   echo "  update_lock: ${update_lock}"
+  echo "  version_check: ${version_check_status}"
   echo "  auto_commit: ${auto_commit}"
   echo "  auto_push: ${auto_push}"
   if [[ "$auto_push" -eq 1 ]]; then
@@ -453,6 +513,7 @@ fi
 
 git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "repo root is not a git work tree: $repo_root"
 resolve_targets
+verify_target_versions_available
 
 for target in "${selected_targets[@]}"; do
   case "$target" in

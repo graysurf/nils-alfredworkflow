@@ -875,13 +875,15 @@ printf '{"email":"alpha-fallback@example.com","token":"a"}\n' >"$auth_file_only_
 printf '{"email":"beta-fallback@example.com","token":"b"}\n' >"$auth_file_only_secret_dir/beta.json"
 auth_file_only_path="$tmp_dir/auth.json"
 printf '{"email":"alpha-fallback@example.com","token":"live-rotated"}\n' >"$auth_file_only_path"
-auth_use_auth_file_only_json="$({ CODEX_SECRET_DIR="$auth_file_only_secret_dir" CODEX_AUTH_FILE="$auth_file_only_path" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter.sh" "auth use"; })"
+auth_file_only_cache_dir="$tmp_dir/cache-auth-file-only"
+auth_use_auth_file_only_json="$({ ALFRED_WORKFLOW_CACHE="$auth_file_only_cache_dir" CODEX_SECRET_DIR="$auth_file_only_secret_dir" CODEX_AUTH_FILE="$auth_file_only_path" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter.sh" "auth use"; })"
 assert_jq_json "$auth_use_auth_file_only_json" '.items[0].title == "Current: auth.json"' "auth use should keep auth.json when auth current does not report matched_secret"
 
 auth_only_home="$tmp_dir/home-auth-only"
 mkdir -p "$auth_only_home/.config/codex-kit"
 printf '{"email":"auth-only@example.com","token":"x"}\n' >"$auth_only_home/.config/codex-kit/auth.json"
-auth_use_without_secret_dir_json="$({ HOME="$auth_only_home" CODEX_SECRET_DIR="$tmp_dir/missing-secrets" CODEX_AUTH_FILE="$auth_only_home/.config/codex-kit/auth.json" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
+auth_only_cache_dir="$tmp_dir/cache-auth-only-no-secret-dir"
+auth_use_without_secret_dir_json="$({ HOME="$auth_only_home" ALFRED_WORKFLOW_CACHE="$auth_only_cache_dir" CODEX_SECRET_DIR="$tmp_dir/missing-secrets" CODEX_AUTH_FILE="$auth_only_home/.config/codex-kit/auth.json" CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-current-auth-file-only" "$workflow_dir/scripts/script_filter_auth_use.sh" ""; })"
 assert_jq_json "$auth_use_without_secret_dir_json" '.items[0].title == "Current: auth.json"' "cxau should show auth.json current row when no saved secrets directory"
 assert_jq_json "$auth_use_without_secret_dir_json" '.items[0].subtitle | contains("auth-only@example.com")' "cxau auth.json row should include auth email"
 

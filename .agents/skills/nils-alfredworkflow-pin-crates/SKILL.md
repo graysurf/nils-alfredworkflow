@@ -12,6 +12,7 @@ Prereqs:
 - Run inside this repository work tree.
 - `bash`, `git`, `perl`, and `python3` available on `PATH`.
 - Managed target files must exist in the project layout.
+- Network access to `crates.io` API for preflight version verification.
 - `semantic-commit` required when `--auto-commit` or `--auto-push` is enabled.
 
 Inputs:
@@ -44,6 +45,7 @@ Outputs:
 - Prints deterministic change summary:
   - selected targets
   - resolved published crate names
+  - crates.io version verification status
   - touched files
   - lockfile update status
   - auto-commit and auto-push status
@@ -63,6 +65,8 @@ Failure modes:
 - Invalid semver-like version format.
 - Required file missing.
 - Pattern replacement expected by mapping not found.
+- Published crate version not found on `crates.io`.
+- `crates.io` lookup failed before pinning.
 - `cargo update` failed when `--update-lock` is enabled.
 - `semantic-commit` missing when `--auto-commit`/`--auto-push` is enabled.
 - Staged index not empty when `--auto-commit` is enabled.
@@ -76,9 +80,10 @@ Failure modes:
 
 1. Resolve repo root and parse flags.
 2. Resolve user-provided target aliases to managed targets.
-3. Apply file updates for each target:
+3. Verify selected published crate versions exist on `crates.io`.
+4. Apply file updates for each target:
    - `codex-cli`: runtime script and docs pin strings.
    - `memo-cli`: cargo dependency and docs pin strings.
-4. Optionally run lock sync (`--update-lock`) for cargo targets.
-5. Optionally run semantic auto-commit and auto-push.
-6. Print summary with touched files and crates.
+5. Optionally run lock sync (`--update-lock`) for cargo targets.
+6. Optionally run semantic auto-commit and auto-push.
+7. Print summary with touched files and crates.

@@ -26,19 +26,24 @@ echo "$targets_out" | rg -n "nils-codex-cli" >/dev/null
 echo "$targets_out" | rg -n "^memo-cli$" >/dev/null
 echo "$targets_out" | rg -n "nils-memo-cli" >/dev/null
 
-"${entrypoint}" --version 0.3.7 --dry-run >/dev/null
-"${entrypoint}" --version 0.3.7 --targets nils-codex-cli,nils-memo-cli --dry-run >/dev/null
-"${entrypoint}" --version 0.3.7 --dry-run --auto-commit >/dev/null
-"${entrypoint}" --version 0.3.7 --dry-run --auto-push >/dev/null
-"${entrypoint}" --version 0.3.7 --dry-run --auto-push --push-remote origin >/dev/null
+"${entrypoint}" --version 0.6.2 --dry-run >/dev/null
+"${entrypoint}" --version 0.6.2 --targets nils-codex-cli,nils-memo-cli --dry-run >/dev/null
+"${entrypoint}" --version 0.6.2 --dry-run --auto-commit >/dev/null
+"${entrypoint}" --version 0.6.2 --dry-run --auto-push >/dev/null
+"${entrypoint}" --version 0.6.2 --dry-run --auto-push --push-remote origin >/dev/null
 
-if "${entrypoint}" --version 0.3.7 --targets unknown-target --dry-run >/dev/null 2>&1; then
+if "${entrypoint}" --version 0.6.2 --targets unknown-target --dry-run >/dev/null 2>&1; then
   echo "error: unknown target must fail" >&2
   exit 1
 fi
 
-if "${entrypoint}" --version 0.3.7 --dry-run --push-remote origin >/dev/null 2>&1; then
+if "${entrypoint}" --version 0.6.2 --dry-run --push-remote origin >/dev/null 2>&1; then
   echo "error: --push-remote without --auto-push must fail" >&2
+  exit 1
+fi
+
+if "${entrypoint}" --version 0.0.0-doesnotexist.pincrates --targets memo-cli --dry-run >/dev/null 2>&1; then
+  echo "error: unavailable crates.io version must fail before updates" >&2
   exit 1
 fi
 
