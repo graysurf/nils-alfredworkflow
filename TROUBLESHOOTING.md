@@ -10,24 +10,25 @@ Use this file as a quick routing index. Operational standards remain in
 - `scripts/workflow-test.sh`
 - `scripts/workflow-pack.sh --all`
 
-## Third-party license route
+## Third-party artifacts route
 
-Use this route for `THIRD_PARTY_LICENSES.md` drift, runtime crates.io metadata lookup failures, or CI/release license
+Use this route for `THIRD_PARTY_LICENSES.md` / `THIRD_PARTY_NOTICES.md` drift, runtime crates.io metadata lookup
+failures, or CI/release third-party artifact
 gate failures.
 
-1. Regenerate and verify the artifact:
-   - `bash scripts/generate-third-party-licenses.sh --write`
-   - `bash scripts/generate-third-party-licenses.sh --check`
+1. Regenerate and verify artifacts:
+   - `bash scripts/generate-third-party-artifacts.sh --write`
+   - `bash scripts/generate-third-party-artifacts.sh --check`
 2. If generator output includes `failed to fetch runtime crate metadata from crates.io`:
    - Verify network access and retry:
-     - `bash scripts/generate-third-party-licenses.sh --write`
+     - `bash scripts/generate-third-party-artifacts.sh --write`
    - Confirm runtime crate pin source:
      - `sed -n '1,120p' scripts/lib/codex_cli_version.sh`
 3. Re-run CI/release gate checks locally:
-   - `bash scripts/ci/third-party-licenses-audit.sh --strict`
+   - `bash scripts/ci/third-party-artifacts-audit.sh --strict`
    - `bash scripts/ci/release-bundle-third-party-audit.sh --tag <tag> --dist-dir dist/release-bundles`
 4. If failures persist, follow release-specific guidance:
-   - `docs/RELEASE.md` (`Third-party license gate remediation`)
+   - `docs/RELEASE.md` (`Third-party artifacts gate remediation`)
 
 ## Workflow-local runbooks
 

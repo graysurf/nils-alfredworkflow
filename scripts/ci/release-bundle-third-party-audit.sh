@@ -12,6 +12,10 @@ usage() {
 Usage:
   scripts/ci/release-bundle-third-party-audit.sh --tag <release-tag> --dist-dir <release-bundle-dir>
 
+Checks that the release bundle includes and matches repository third-party artifacts:
+  - THIRD_PARTY_LICENSES.md (+ sha256)
+  - THIRD_PARTY_NOTICES.md (+ sha256)
+
 Options:
   --tag       Release tag used to compute expected bundle file names (example: v1.2.3).
   --dist-dir  Release bundle directory containing built assets (example: dist/release-bundles).
@@ -98,6 +102,8 @@ standalone_script="$dist_dir/workflow-clear-quarantine-standalone.sh"
 standalone_sha="$standalone_script.sha256"
 license_file="$dist_dir/THIRD_PARTY_LICENSES.md"
 license_sha="$license_file.sha256"
+notices_file="$dist_dir/THIRD_PARTY_NOTICES.md"
+notices_sha="$notices_file.sha256"
 
 require_file "$bundle_zip" "workflow release bundle archive"
 require_file "$bundle_sha" "workflow release bundle checksum"
@@ -105,12 +111,22 @@ require_file "$standalone_script" "standalone quarantine helper"
 require_file "$standalone_sha" "standalone quarantine helper checksum"
 require_file "$license_file" "third-party license artifact"
 require_file "$license_sha" "third-party license artifact checksum"
+require_file "$notices_file" "third-party notices artifact"
+require_file "$notices_sha" "third-party notices artifact checksum"
 
 if [[ -f "$repo_root/THIRD_PARTY_LICENSES.md" && -f "$license_file" ]]; then
   if cmp -s "$repo_root/THIRD_PARTY_LICENSES.md" "$license_file"; then
     audit_pass "release license artifact matches repository THIRD_PARTY_LICENSES.md"
   else
     audit_fail "release license artifact does not match repository THIRD_PARTY_LICENSES.md"
+  fi
+fi
+
+if [[ -f "$repo_root/THIRD_PARTY_NOTICES.md" && -f "$notices_file" ]]; then
+  if cmp -s "$repo_root/THIRD_PARTY_NOTICES.md" "$notices_file"; then
+    audit_pass "release notices artifact matches repository THIRD_PARTY_NOTICES.md"
+  else
+    audit_fail "release notices artifact does not match repository THIRD_PARTY_NOTICES.md"
   fi
 fi
 

@@ -23,14 +23,14 @@ This document lists required local tools for development, linting, testing, and 
   compatibility)
 - Optional live scraper runtime: Playwright Chromium browser (`npx playwright install chromium`)
 
-## Third-party license generator prerequisites
+## Third-party artifacts generator prerequisites
 
-- Regenerate the artifact:
-  - `bash scripts/generate-third-party-licenses.sh --write`
+- Regenerate artifacts:
+  - `bash scripts/generate-third-party-artifacts.sh --write`
 - Verify artifact freshness:
-  - `bash scripts/generate-third-party-licenses.sh --check`
+  - `bash scripts/generate-third-party-artifacts.sh --check`
 - Run regression tests:
-  - `bash tests/third-party-licenses/generator.test.sh`
+  - `bash tests/third-party-artifacts/generator.test.sh`
 - Generator/runtime prerequisites:
   - `cargo`, `jq`, and `curl`
   - one SHA-256 provider (`shasum`, `sha256sum`, or `openssl`)

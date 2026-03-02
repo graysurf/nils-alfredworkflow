@@ -5,13 +5,19 @@
 This contract defines the deterministic generation requirements for
 `THIRD_PARTY_LICENSES.md`.
 
+Canonical multi-artifact contract is now
+`docs/specs/third-party-artifacts-contract-v1.md`. This file is kept as a
+license-focused compatibility reference.
+
 ## Generator Entrypoint
 
-- Write mode: `bash scripts/generate-third-party-licenses.sh --write`
-- Check mode: `bash scripts/generate-third-party-licenses.sh --check`
+- Write mode: `bash scripts/generate-third-party-artifacts.sh --write`
+- Check mode: `bash scripts/generate-third-party-artifacts.sh --check`
 
-The generator is the only supported way to refresh `THIRD_PARTY_LICENSES.md`.
-Manual edits are out of contract.
+Compatibility alias:
+
+- `bash scripts/generate-third-party-licenses.sh --write`
+- `bash scripts/generate-third-party-licenses.sh --check`
 
 ## Mandatory Section Order
 

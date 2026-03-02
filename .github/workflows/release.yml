@@ -27,11 +27,11 @@ jobs:
           source scripts/lib/codex_cli_version.sh
           cargo install "${CODEX_CLI_CRATE}" --version "${CODEX_CLI_VERSION}" --locked
 
-      - name: Regenerate third-party licenses artifact
-        run: bash scripts/generate-third-party-licenses.sh --write
+      - name: Regenerate third-party artifacts
+        run: bash scripts/generate-third-party-artifacts.sh --write
 
-      - name: Verify third-party licenses artifact
-        run: bash scripts/generate-third-party-licenses.sh --check
+      - name: Verify third-party artifacts
+        run: bash scripts/generate-third-party-artifacts.sh --check
 
       - name: Package all workflows
         run: scripts/workflow-pack.sh --all
@@ -47,6 +47,8 @@ jobs:
           standalone_asset="$bundle_dir/workflow-clear-quarantine-standalone.sh"
           license_source="THIRD_PARTY_LICENSES.md"
           license_asset="$bundle_dir/THIRD_PARTY_LICENSES.md"
+          notices_source="THIRD_PARTY_NOTICES.md"
+          notices_asset="$bundle_dir/THIRD_PARTY_NOTICES.md"
           mkdir -p "$bundle_dir"
 
           bundle_inputs=()
@@ -93,6 +95,18 @@ jobs:
             sha256sum "$license_asset" >"$license_asset.sha256"
           fi
 
+          if [[ ! -f "$notices_source" ]]; then
+            echo "error: missing required notices artifact at repository root: $notices_source"
+            exit 1
+          fi
+
+          cp "$notices_source" "$notices_asset"
+          if command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "$notices_asset" >"$notices_asset.sha256"
+          elif command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$notices_asset" >"$notices_asset.sha256"
+          fi
+
       - name: Audit release bundle third-party artifacts
         run: |
           bash scripts/ci/release-bundle-third-party-audit.sh \
@@ -113,3 +127,5 @@ jobs:
             dist/release-bundles/workflow-clear-quarantine-standalone.sh.sha256
             dist/release-bundles/THIRD_PARTY_LICENSES.md
             dist/release-bundles/THIRD_PARTY_LICENSES.md.sha256
+            dist/release-bundles/THIRD_PARTY_NOTICES.md
+            dist/release-bundles/THIRD_PARTY_NOTICES.md.sha256

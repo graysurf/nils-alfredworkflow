@@ -70,23 +70,23 @@
 
 - Recommended pre-commit sequence:
   - `scripts/workflow-lint.sh`
-  - `bash scripts/ci/third-party-licenses-audit.sh --strict`
+  - `bash scripts/ci/third-party-artifacts-audit.sh --strict`
   - `bash scripts/workflow-sync-script-filter-policy.sh --check`
   - `cargo test --workspace`
   - `scripts/workflow-test.sh`
 - For workflow-specific or CLI-specific checks (for example live smoke or probe scripts), run the validation steps
   documented in the corresponding `workflows/<workflow-id>/README.md`.
 
-### Third-party license generator workflow
+### Third-party artifacts generator workflow
 
 - One-command regeneration:
-  - `bash scripts/generate-third-party-licenses.sh --write`
-- Freshness check (fails when `THIRD_PARTY_LICENSES.md` drifts from source metadata):
-  - `bash scripts/generate-third-party-licenses.sh --check`
+  - `bash scripts/generate-third-party-artifacts.sh --write`
+- Freshness check (fails when either artifact drifts from source metadata):
+  - `bash scripts/generate-third-party-artifacts.sh --check`
 - Regression tests for generator behavior:
-  - `bash tests/third-party-licenses/generator.test.sh`
+  - `bash tests/third-party-artifacts/generator.test.sh`
 - Expected failure modes:
-  - `--check` exits non-zero with `FAIL [check] THIRD_PARTY_LICENSES.md is stale` and a remediation command.
+  - `--check` exits non-zero with `FAIL [check] ... is stale` and a remediation command.
   - Missing required input files (for example `Cargo.lock`, `package-lock.json`, or
     `scripts/lib/codex_cli_version.sh`) exit non-zero with `required input missing: <path>`.
 
