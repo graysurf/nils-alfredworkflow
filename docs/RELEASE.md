@@ -24,3 +24,18 @@ Artifacts are written to `dist/<workflow-id>/<version>/`.
 ## CI release
 
 Tag push (`v*`) triggers `.github/workflows/release.yml` and uploads built `.alfredworkflow` artifacts and checksums.
+
+## Third-party license gate remediation
+
+If release-time checks fail on `THIRD_PARTY_LICENSES.md` freshness or license audit gate commands, run:
+
+1. Regenerate and verify:
+   - `bash scripts/generate-third-party-licenses.sh --write`
+   - `bash scripts/generate-third-party-licenses.sh --check`
+2. Re-run strict audit gate:
+   - `bash scripts/ci/third-party-licenses-audit.sh --strict`
+3. Retry release flow after the checks pass.
+
+For detailed troubleshooting (including crates.io lookup failures), use:
+
+- `TROUBLESHOOTING.md` -> `Third-party license route`
