@@ -11,6 +11,12 @@ use_all=0
 dry_run=0
 update_lock=0
 list_targets=0
+auto_commit=0
+auto_push=0
+push_remote="origin"
+push_remote_explicit=0
+commit_status="not-requested"
+push_status="not-requested"
 
 declare -a selected_targets=()
 declare -a changed_files=()
@@ -19,7 +25,7 @@ declare -a lock_crates=()
 usage() {
   cat <<'USAGE'
 Usage:
-  <ENTRYPOINT> --version <x.y.z> [--targets <target[,target...]>|--all] [--dry-run] [--update-lock]
+  <ENTRYPOINT> --version <x.y.z> [--targets <target[,target...]>|--all] [--dry-run] [--update-lock] [--auto-commit] [--auto-push] [--push-remote <remote>]
   <ENTRYPOINT> --list-targets
   <ENTRYPOINT> --help
 
@@ -29,6 +35,9 @@ Options:
   --all                   Pin all managed targets (default if --targets omitted)
   --dry-run               Print planned changes without writing files
   --update-lock           Run cargo update --precise for cargo-managed targets
+  --auto-commit           Stage touched files and create a semantic commit after pinning
+  --auto-push             Push current branch after auto-commit (implies --auto-commit)
+  --push-remote <name>    Remote to use with --auto-push (default: origin)
   --list-targets          Print supported targets and aliases
   -h, --help              Show this help
 USAGE
@@ -272,12 +281,92 @@ run_lock_sync() {
   done
 }
 
+build_commit_message() {
+  printf 'chore(workflows): pin managed crates to %s\n' "$version"
+}
+
+run_auto_commit_and_push() {
+  local current_branch commit_message before_head after_head
+  [[ "$auto_commit" -eq 1 ]] || return 0
+
+  if [[ "${#changed_files[@]}" -eq 0 ]]; then
+    echo "note: no touched files were recorded; skipped auto-commit"
+    commit_status="skipped-no-files"
+    if [[ "$auto_push" -eq 1 ]]; then
+      echo "note: skipped auto-push because no commit was created"
+      push_status="skipped-no-commit"
+    fi
+    return 0
+  fi
+
+  if [[ "$dry_run" -eq 1 ]]; then
+    echo "dry-run: would stage touched files for auto-commit"
+    echo "dry-run: would run semantic-commit commit with message: $(build_commit_message)"
+    commit_status="dry-run"
+    if [[ "$auto_push" -eq 1 ]]; then
+      current_branch="$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)"
+      [[ "$current_branch" != "HEAD" ]] || die "auto-push requires a branch checkout (detached HEAD is not supported)"
+      echo "dry-run: would run git push ${push_remote} HEAD:${current_branch}"
+      push_status="dry-run"
+    fi
+    return 0
+  fi
+
+  command -v semantic-commit >/dev/null 2>&1 || die "semantic-commit is required when --auto-commit is enabled"
+
+  if ! git -C "$repo_root" diff --cached --quiet --ignore-submodules --; then
+    die "auto-commit requires an empty staged index before running"
+  fi
+
+  if git -C "$repo_root" diff --quiet --ignore-submodules -- "${changed_files[@]}"; then
+    echo "note: selected targets are already pinned to ${version}; skipped auto-commit"
+    commit_status="skipped-no-diff"
+    if [[ "$auto_push" -eq 1 ]]; then
+      echo "note: skipped auto-push because no commit was created"
+      push_status="skipped-no-commit"
+    fi
+    return 0
+  fi
+
+  git -C "$repo_root" add -- "${changed_files[@]}"
+  if git -C "$repo_root" diff --cached --quiet --ignore-submodules --; then
+    echo "note: no staged delta after pin updates; skipped auto-commit"
+    commit_status="skipped-no-diff"
+    if [[ "$auto_push" -eq 1 ]]; then
+      echo "note: skipped auto-push because no commit was created"
+      push_status="skipped-no-commit"
+    fi
+    return 0
+  fi
+
+  before_head="$(git -C "$repo_root" rev-parse --verify HEAD)"
+  commit_message="$(build_commit_message)"
+  printf '%s\n' "$commit_message" | semantic-commit commit
+  after_head="$(git -C "$repo_root" rev-parse --verify HEAD)"
+  [[ "$after_head" != "$before_head" ]] || die "auto-commit requested but no commit was created"
+  commit_status="created:${after_head:0:7}"
+
+  if [[ "$auto_push" -eq 1 ]]; then
+    current_branch="$(git -C "$repo_root" rev-parse --abbrev-ref HEAD)"
+    [[ "$current_branch" != "HEAD" ]] || die "auto-push requires a branch checkout (detached HEAD is not supported)"
+    git -C "$repo_root" push "$push_remote" "HEAD:${current_branch}"
+    push_status="pushed:${push_remote}/${current_branch}"
+  fi
+}
+
 print_summary() {
   local target
   echo "summary:"
   echo "  version: ${version}"
   echo "  dry_run: ${dry_run}"
   echo "  update_lock: ${update_lock}"
+  echo "  auto_commit: ${auto_commit}"
+  echo "  auto_push: ${auto_push}"
+  if [[ "$auto_push" -eq 1 ]]; then
+    echo "  push_remote: ${push_remote}"
+  fi
+  echo "  commit_status: ${commit_status}"
+  echo "  push_status: ${push_status}"
   echo "  targets:"
   for target in "${selected_targets[@]}"; do
     echo "    - ${target} (crate: $(target_crate "$target"))"
@@ -312,6 +401,20 @@ while [[ $# -gt 0 ]]; do
       update_lock=1
       shift
       ;;
+    --auto-commit)
+      auto_commit=1
+      shift
+      ;;
+    --auto-push)
+      auto_push=1
+      shift
+      ;;
+    --push-remote)
+      [[ $# -ge 2 ]] || usage_error "--push-remote requires a value"
+      push_remote="$2"
+      push_remote_explicit=1
+      shift 2
+      ;;
     --list-targets)
       list_targets=1
       shift
@@ -341,6 +444,12 @@ fi
 if [[ "$use_all" -eq 1 && -n "$targets_raw" ]]; then
   usage_error "--all and --targets cannot be used together"
 fi
+if [[ "$auto_push" -eq 1 ]]; then
+  auto_commit=1
+fi
+if [[ "$push_remote_explicit" -eq 1 && "$auto_push" -ne 1 ]]; then
+  usage_error "--push-remote requires --auto-push"
+fi
 
 git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "repo root is not a git work tree: $repo_root"
 resolve_targets
@@ -354,4 +463,5 @@ for target in "${selected_targets[@]}"; do
 done
 
 run_lock_sync
+run_auto_commit_and_push
 print_summary

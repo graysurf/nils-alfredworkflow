@@ -12,6 +12,7 @@ Prereqs:
 - Run inside this repository work tree.
 - `bash`, `git`, `perl`, and `python3` available on `PATH`.
 - Managed target files must exist in the project layout.
+- `semantic-commit` required when `--auto-commit` or `--auto-push` is enabled.
 
 Inputs:
 
@@ -22,6 +23,9 @@ Inputs:
   - `--all` (pin all managed targets; default when `--targets` omitted)
   - `--dry-run` (validate and print planned updates without writing files)
   - `--update-lock` (run `cargo update -p <crate> --precise <version>` for cargo targets)
+  - `--auto-commit` (stage touched files and create a semantic commit)
+  - `--auto-push` (push current branch after auto-commit; implies `--auto-commit`)
+  - `--push-remote <remote>` (remote name for auto-push; default `origin`)
   - `--list-targets`
 
 Managed targets:
@@ -42,7 +46,9 @@ Outputs:
   - resolved published crate names
   - touched files
   - lockfile update status
+  - auto-commit and auto-push status
 - On non-dry-run mode, writes version pins to mapped files.
+- When auto flags are enabled, creates semantic commit and optionally pushes branch.
 
 Exit codes:
 
@@ -58,6 +64,9 @@ Failure modes:
 - Required file missing.
 - Pattern replacement expected by mapping not found.
 - `cargo update` failed when `--update-lock` is enabled.
+- `semantic-commit` missing when `--auto-commit`/`--auto-push` is enabled.
+- Staged index not empty when `--auto-commit` is enabled.
+- `git push` failed when `--auto-push` is enabled.
 
 ## Scripts (only entrypoints)
 
@@ -71,4 +80,5 @@ Failure modes:
    - `codex-cli`: runtime script and docs pin strings.
    - `memo-cli`: cargo dependency and docs pin strings.
 4. Optionally run lock sync (`--update-lock`) for cargo targets.
-5. Print summary with touched files and crates.
+5. Optionally run semantic auto-commit and auto-push.
+6. Print summary with touched files and crates.
