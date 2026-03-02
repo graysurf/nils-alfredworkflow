@@ -10,6 +10,24 @@ Use this file as a quick routing index. Operational standards remain in
 - `scripts/workflow-test.sh`
 - `scripts/workflow-pack.sh --all`
 
+## Third-party license route
+
+Use this route for `THIRD_PARTY_LICENSES.md` drift, runtime crates.io metadata lookup failures, or CI/release license
+gate failures.
+
+1. Regenerate and verify the artifact:
+   - `bash scripts/generate-third-party-licenses.sh --write`
+   - `bash scripts/generate-third-party-licenses.sh --check`
+2. If generator output includes `failed to fetch runtime crate metadata from crates.io`:
+   - Verify network access and retry:
+     - `bash scripts/generate-third-party-licenses.sh --write`
+   - Confirm runtime crate pin source:
+     - `sed -n '1,120p' scripts/lib/codex_cli_version.sh`
+3. Re-run CI/release gate checks locally:
+   - `bash scripts/ci/third-party-licenses-audit.sh --strict`
+4. If failures persist, follow release-specific guidance:
+   - `docs/RELEASE.md` (`Third-party license gate remediation`)
+
 ## Workflow-local runbooks
 
 - `workflows/bilibili-search/TROUBLESHOOTING.md`
