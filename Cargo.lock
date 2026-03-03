@@ -1268,6 +1268,7 @@ version = "1.2.1"
 dependencies = [
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "reqwest",
  "serde",
  "serde_json",
@@ -1281,6 +1282,7 @@ version = "1.2.1"
 dependencies = [
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "reqwest",
  "serde",
  "serde_json",
@@ -1293,6 +1295,7 @@ version = "1.2.1"
 dependencies = [
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "reqwest",
  "serde",
  "serde_json",
@@ -1305,6 +1308,7 @@ version = "1.2.1"
 dependencies = [
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "serde",
  "serde_json",
  "tempfile",
@@ -1329,6 +1333,7 @@ dependencies = [
  "chrono",
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "serde_json",
  "thiserror",
 ]
@@ -1362,6 +1367,7 @@ dependencies = [
  "chrono",
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "reqwest",
  "rust_decimal",
  "serde",
@@ -1406,6 +1412,7 @@ version = "1.2.1"
 dependencies = [
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "reqwest",
  "serde",
  "serde_json",
@@ -1419,6 +1426,7 @@ version = "1.2.1"
 dependencies = [
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "rand 0.10.0",
  "serde_json",
  "uuid",
@@ -1430,6 +1438,7 @@ version = "1.2.1"
 dependencies = [
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "reqwest",
  "serde",
  "serde_json",
@@ -1472,6 +1481,7 @@ version = "1.2.1"
 dependencies = [
  "chrono",
  "clap",
+ "nils-workflow-common",
  "reqwest",
  "serde",
  "serde_json",
@@ -1518,6 +1528,8 @@ name = "nils-workflow-readme-cli"
 version = "1.2.1"
 dependencies = [
  "clap",
+ "nils-workflow-common",
+ "serde",
  "serde_json",
  "tempfile",
 ]
@@ -1528,6 +1540,7 @@ version = "1.2.1"
 dependencies = [
  "clap",
  "nils-alfred-core",
+ "nils-workflow-common",
  "reqwest",
  "serde",
  "serde_json",

@@ -64,6 +64,18 @@ pub fn select_output_mode(
     }
 }
 
+pub fn build_feedback_result_envelope(
+    command: &str,
+    payload: &alfred_core::Feedback,
+) -> Result<String, String> {
+    let payload_json = payload.to_json().map_err(|error| error.to_string())?;
+    Ok(build_success_envelope(
+        command,
+        EnvelopePayloadKind::Result,
+        &payload_json,
+    ))
+}
+
 pub fn build_success_envelope(
     command: &str,
     payload_kind: EnvelopePayloadKind,
@@ -113,6 +125,15 @@ pub fn build_error_details_json(kind: &str, exit_code: i32) -> String {
         escape_json_string(kind),
         exit_code
     )
+}
+
+pub fn build_alfred_error_feedback(code: &str, message: &str) -> String {
+    let safe_message = redact_sensitive(message);
+    alfred_core::Feedback::single_error(code, safe_message)
+        .to_json()
+        .unwrap_or_else(|_| {
+            "{\"items\":[{\"title\":\"Error\",\"subtitle\":\"failed to serialize error output\",\"valid\":false}]}".to_string()
+        })
 }
 
 pub fn redact_sensitive(input: &str) -> String {
@@ -285,6 +306,23 @@ mod tests {
         assert!(failure.contains("\"code\":\"runtime.provider_failed\""));
         assert!(failure.contains("\"details\":{\"kind\":\"runtime\",\"exit_code\":1}"));
         assert!(failure.contains("token=[REDACTED]"));
+    }
+
+    #[test]
+    fn feedback_envelope_builder_wraps_feedback_payload() {
+        let feedback = alfred_core::Feedback::new(vec![alfred_core::Item::new("Alpha")]);
+        let envelope =
+            build_feedback_result_envelope("workflow.script-filter", &feedback).expect("envelope");
+        assert!(envelope.contains("\"ok\":true"));
+        assert!(envelope.contains("\"result\":{\"items\":[{\"title\":\"Alpha\""));
+    }
+
+    #[test]
+    fn alfred_error_feedback_builder_redacts_sensitive_message() {
+        let payload = build_alfred_error_feedback("runtime.failed", "token=abc123");
+        assert!(payload.contains("Error [runtime.failed]"));
+        assert!(payload.contains("token=[REDACTED]"));
+        assert!(!payload.contains("abc123"));
     }
 
     #[test]
