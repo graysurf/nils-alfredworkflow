@@ -12,6 +12,11 @@ Shared open-project domain and output-contract utilities reused by workflow crat
 - Output contract: `OutputMode`, `select_output_mode`, envelope builders, and `redact_sensitive`.
 - Usage log: `record_usage` and `parse_usage_timestamp`.
 
+## Contract References
+
+- Shared runtime contract: [`docs/specs/cli-shared-runtime-contract.md`](../../docs/specs/cli-shared-runtime-contract.md)
+- Legacy removal matrix: [`docs/reports/crate-legacy-removal-matrix.md`](../../docs/reports/crate-legacy-removal-matrix.md)
+
 ## Documentation
 
 - `docs/README.md`
