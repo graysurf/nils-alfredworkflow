@@ -22,29 +22,11 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Install codex-cli for packaging
-        run: |
-          source scripts/lib/codex_cli_version.sh
-          cargo install "${CODEX_CLI_CRATE}" --version "${CODEX_CLI_VERSION}" --locked
+      - name: Bootstrap release runtime
+        run: bash scripts/ci/ci-bootstrap.sh --context release --install-codex-cli
 
-      - name: Regenerate third-party artifacts
-        run: bash scripts/generate-third-party-artifacts.sh --write
-
-      - name: Verify third-party artifacts
-        run: bash scripts/generate-third-party-artifacts.sh --check
-
-      - name: Package all workflows
-        run: scripts/workflow-pack.sh --all
-
-      - name: Build bundled release archive
-        run: |
-          bash scripts/ci/build-release-bundle.sh --tag "${GITHUB_REF_NAME}"
-
-      - name: Audit release bundle third-party artifacts
-        run: |
-          bash scripts/ci/release-bundle-third-party-audit.sh \
-            --tag "${GITHUB_REF_NAME}" \
-            --dist-dir dist/release-bundles
+      - name: Run release package gates
+        run: bash scripts/ci/ci-run-gates.sh release-package --tag "${GITHUB_REF_NAME}"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
