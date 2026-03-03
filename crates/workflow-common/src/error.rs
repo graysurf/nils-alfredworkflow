@@ -2,6 +2,28 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CliErrorKind {
+    User,
+    Runtime,
+}
+
+impl CliErrorKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Runtime => "runtime",
+        }
+    }
+
+    pub const fn exit_code(self) -> i32 {
+        match self {
+            Self::User => 2,
+            Self::Runtime => 1,
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum WorkflowError {
     #[error("path does not exist: {0}")]

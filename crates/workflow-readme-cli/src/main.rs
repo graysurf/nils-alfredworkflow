@@ -1,7 +1,11 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use serde_json::json;
+use serde::Serialize;
+use workflow_common::{
+    EnvelopePayloadKind, OutputMode, build_error_details_json, build_error_envelope,
+    build_success_envelope, redact_sensitive, select_output_mode,
+};
 use workflow_readme_cli::{AppError, ConvertRequest, convert};
 
 #[derive(Debug, Parser)]
@@ -49,7 +53,16 @@ enum OutputModeArg {
     Json,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl From<OutputModeArg> for OutputMode {
+    fn from(value: OutputModeArg) -> Self {
+        match value {
+            OutputModeArg::Human => OutputMode::Human,
+            OutputModeArg::Json => OutputMode::Json,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct ConvertSummary {
     converted_readme_length: usize,
     copied_assets: Vec<String>,
@@ -57,7 +70,6 @@ struct ConvertSummary {
 }
 
 const COMMAND_CONVERT: &str = "workflow-readme.convert";
-const SCHEMA_VERSION_V1: &str = "v1";
 const ERROR_CODE_USER_OUTPUT_MODE_CONFLICT: &str = "user.output_mode_conflict";
 
 impl Cli {
@@ -67,34 +79,13 @@ impl Cli {
         }
     }
 
-    fn output_mode_hint(&self) -> OutputModeArg {
+    fn output_mode_hint(&self) -> OutputMode {
         match &self.command {
             Commands::Convert { output, json, .. } => {
                 if *json || output == &Some(OutputModeArg::Json) {
-                    OutputModeArg::Json
+                    OutputMode::Json
                 } else {
-                    OutputModeArg::Human
-                }
-            }
-        }
-    }
-
-    fn output_mode(&self) -> Result<OutputModeArg, AppError> {
-        match &self.command {
-            Commands::Convert { output, json, .. } => {
-                if *json && output == &Some(OutputModeArg::Human) {
-                    return Err(AppError::user(
-                        ERROR_CODE_USER_OUTPUT_MODE_CONFLICT,
-                        "conflicting output modes: --json cannot be combined with --output human",
-                    ));
-                }
-
-                if *json {
-                    Ok(OutputModeArg::Json)
-                } else if let Some(mode) = output {
-                    Ok(*mode)
-                } else {
-                    Ok(OutputModeArg::Human)
+                    OutputMode::Human
                 }
             }
         }
@@ -105,7 +96,15 @@ fn main() {
     let cli = Cli::parse();
     let command = cli.command_name();
     let output_mode_hint = cli.output_mode_hint();
-    let output_mode = match cli.output_mode() {
+    let output_mode = match &cli.command {
+        Commands::Convert { output, json, .. } => select_output_mode(
+            output.as_ref().copied().map(Into::into),
+            *json,
+            OutputMode::Human,
+        )
+        .map_err(|error| AppError::user(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string())),
+    };
+    let output_mode = match output_mode {
         Ok(mode) => mode,
         Err(error) => {
             emit_error(command, output_mode_hint, &error);
@@ -153,9 +152,9 @@ fn run(cli: Cli) -> Result<ConvertSummary, AppError> {
     }
 }
 
-fn emit_success(command: &str, output_mode: OutputModeArg, summary: &ConvertSummary) {
+fn emit_success(command: &str, output_mode: OutputMode, summary: &ConvertSummary) {
     match output_mode {
-        OutputModeArg::Human => {
+        OutputMode::Human => {
             if summary.dry_run {
                 println!(
                     "dry-run: converted {} bytes, detected {} local image asset(s)",
@@ -170,49 +169,34 @@ fn emit_success(command: &str, output_mode: OutputModeArg, summary: &ConvertSumm
                 );
             }
         }
-        OutputModeArg::Json => {
-            let envelope = json!({
-                "schema_version": SCHEMA_VERSION_V1,
-                "command": command,
-                "ok": true,
-                "result": {
-                    "converted_readme_length": summary.converted_readme_length,
-                    "copied_assets": summary.copied_assets,
-                    "dry_run": summary.dry_run,
-                }
-            });
+        OutputMode::Json => {
+            let result = serde_json::to_string(summary).expect("serialize conversion summary");
             println!(
                 "{}",
-                serde_json::to_string(&envelope).expect("serialize success envelope")
+                build_success_envelope(command, EnvelopePayloadKind::Result, &result)
             );
         }
+        OutputMode::AlfredJson => unreachable!("workflow-readme does not expose alfred-json mode"),
     }
 }
 
-fn emit_error(command: &str, output_mode: OutputModeArg, error: &AppError) {
+fn emit_error(command: &str, output_mode: OutputMode, error: &AppError) {
     match output_mode {
-        OutputModeArg::Json => {
-            let envelope = json!({
-                "schema_version": SCHEMA_VERSION_V1,
-                "command": command,
-                "ok": false,
-                "error": {
-                    "code": error.code(),
-                    "message": error.message(),
-                    "details": {
-                        "kind": error_kind_label(error),
-                        "exit_code": error.exit_code(),
-                    }
-                }
-            });
+        OutputMode::Json => {
+            let details = build_error_details_json(error_kind_label(error), error.exit_code());
             println!(
                 "{}",
-                serde_json::to_string(&envelope).expect("serialize error envelope")
+                build_error_envelope(command, error.code(), error.message(), Some(&details))
             );
         }
-        OutputModeArg::Human => {
-            eprintln!("error[{}]: {}", error.code(), error.message());
+        OutputMode::Human => {
+            eprintln!(
+                "error[{}]: {}",
+                error.code(),
+                redact_sensitive(error.message())
+            );
         }
+        OutputMode::AlfredJson => unreachable!("workflow-readme does not expose alfred-json mode"),
     }
 }
 

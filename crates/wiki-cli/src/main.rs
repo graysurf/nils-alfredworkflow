@@ -1,12 +1,12 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use serde::Serialize;
-use serde_json::Value;
 
 use wiki_cli::{
     config::{ConfigError, RuntimeConfig},
     feedback,
     wiki_api::{self, WikiApiError, WikiSearchResult},
 };
+
+use workflow_common::{EnvelopePayloadKind, build_error_envelope, build_success_envelope};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "Wiki workflow CLI")]
@@ -162,22 +162,6 @@ where
     }
 }
 
-#[derive(Debug, Serialize)]
-struct ServiceErrorEnvelope {
-    code: &'static str,
-    message: String,
-    details: Option<Value>,
-}
-
-#[derive(Debug, Serialize)]
-struct ServiceEnvelope {
-    schema_version: &'static str,
-    command: &'static str,
-    ok: bool,
-    result: Option<Value>,
-    error: Option<ServiceErrorEnvelope>,
-}
-
 fn render_feedback(
     mode: OutputMode,
     command: &'static str,
@@ -186,51 +170,22 @@ fn render_feedback(
     match mode {
         OutputMode::Alfred => payload
             .to_json()
-            .map_err(|err| AppError::runtime(format!("failed to serialize feedback: {err}"))),
+            .map_err(|error| AppError::runtime(format!("failed to serialize feedback: {error}"))),
         OutputMode::ServiceJson => {
-            let result = serde_json::to_value(payload)
-                .map_err(|err| AppError::runtime(format!("failed to serialize feedback: {err}")))?;
-            serde_json::to_string(&ServiceEnvelope {
-                schema_version: "v1",
+            let payload_json = payload.to_json().map_err(|error| {
+                AppError::runtime(format!("failed to serialize feedback: {error}"))
+            })?;
+            Ok(build_success_envelope(
                 command,
-                ok: true,
-                result: Some(result),
-                error: None,
-            })
-            .map_err(|err| {
-                AppError::runtime(format!("failed to serialize service envelope: {err}"))
-            })
+                EnvelopePayloadKind::Result,
+                &payload_json,
+            ))
         }
     }
 }
 
 fn serialize_service_error(command: &'static str, error: &AppError) -> String {
-    let envelope = ServiceEnvelope {
-        schema_version: "v1",
-        command,
-        ok: false,
-        result: None,
-        error: Some(ServiceErrorEnvelope {
-            code: error.code(),
-            message: error.message.clone(),
-            details: None,
-        }),
-    };
-
-    serde_json::to_string(&envelope).unwrap_or_else(|serialize_error| {
-        serde_json::json!({
-            "schema_version": "v1",
-            "command": command,
-            "ok": false,
-            "result": Value::Null,
-            "error": {
-                "code": "internal.serialize",
-                "message": format!("failed to serialize service error envelope: {serialize_error}"),
-                "details": Value::Null,
-            }
-        })
-        .to_string()
-    })
+    build_error_envelope(command, error.code(), &error.message, None)
 }
 
 #[cfg(test)]
@@ -464,7 +419,7 @@ mod tests {
         );
         assert_eq!(json.get("command").and_then(Value::as_str), Some("search"));
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
-        assert!(json.get("result").is_some());
+        assert!(json.get("result").is_none());
         assert_eq!(
             json.get("error")
                 .and_then(|error| error.get("code"))
@@ -474,7 +429,7 @@ mod tests {
         assert!(
             json.get("error")
                 .and_then(|error| error.get("details"))
-                .is_some()
+                .is_none()
         );
     }
 }

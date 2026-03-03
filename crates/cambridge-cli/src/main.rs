@@ -1,6 +1,4 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use serde::Serialize;
-use serde_json::Value;
 
 use cambridge_cli::{
     config::{ConfigError, RuntimeConfig},
@@ -8,6 +6,8 @@ use cambridge_cli::{
     scraper_bridge::{self, BridgeError, ScraperResponse, ScraperStage},
     token::{self, QueryToken},
 };
+
+use workflow_common::{EnvelopePayloadKind, build_error_envelope, build_success_envelope};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "Cambridge dictionary workflow CLI")]
@@ -188,22 +188,6 @@ where
     }
 }
 
-#[derive(Debug, Serialize)]
-struct ServiceErrorEnvelope {
-    code: &'static str,
-    message: String,
-    details: Option<Value>,
-}
-
-#[derive(Debug, Serialize)]
-struct ServiceEnvelope {
-    schema_version: &'static str,
-    command: &'static str,
-    ok: bool,
-    result: Option<Value>,
-    error: Option<ServiceErrorEnvelope>,
-}
-
 fn render_feedback(
     mode: OutputMode,
     command: &'static str,
@@ -214,51 +198,20 @@ fn render_feedback(
             .to_json()
             .map_err(|error| AppError::runtime(format!("failed to serialize feedback: {error}"))),
         OutputMode::ServiceJson => {
-            let result = serde_json::to_value(payload).map_err(|error| {
+            let payload_json = payload.to_json().map_err(|error| {
                 AppError::runtime(format!("failed to serialize feedback: {error}"))
             })?;
-
-            serde_json::to_string(&ServiceEnvelope {
-                schema_version: "v1",
+            Ok(build_success_envelope(
                 command,
-                ok: true,
-                result: Some(result),
-                error: None,
-            })
-            .map_err(|error| {
-                AppError::runtime(format!("failed to serialize service envelope: {error}"))
-            })
+                EnvelopePayloadKind::Result,
+                &payload_json,
+            ))
         }
     }
 }
 
 fn serialize_service_error(command: &'static str, error: &AppError) -> String {
-    let envelope = ServiceEnvelope {
-        schema_version: "v1",
-        command,
-        ok: false,
-        result: None,
-        error: Some(ServiceErrorEnvelope {
-            code: error.code(),
-            message: error.message.clone(),
-            details: None,
-        }),
-    };
-
-    serde_json::to_string(&envelope).unwrap_or_else(|serialize_error| {
-        serde_json::json!({
-            "schema_version": "v1",
-            "command": command,
-            "ok": false,
-            "result": Value::Null,
-            "error": {
-                "code": "internal.serialize",
-                "message": format!("failed to serialize service error envelope: {serialize_error}"),
-                "details": Value::Null,
-            }
-        })
-        .to_string()
-    })
+    build_error_envelope(command, error.code(), &error.message, None)
 }
 
 #[cfg(test)]
@@ -541,7 +494,7 @@ mod tests {
         );
         assert_eq!(json.get("command").and_then(Value::as_str), Some("query"));
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
-        assert!(json.get("result").is_some());
+        assert!(json.get("result").is_none());
         assert_eq!(
             json.get("error")
                 .and_then(|error| error.get("code"))
@@ -552,7 +505,7 @@ mod tests {
             json.get("error")
                 .and_then(|error| error.get("details"))
                 .map(|_| true),
-            Some(true)
+            None
         );
     }
 
