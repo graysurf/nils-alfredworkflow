@@ -822,6 +822,45 @@ handle_drive_open_search() {
   return 0
 }
 
+handle_gmail_open_home() {
+  local url="https://mail.google.com/mail/u/0/#inbox"
+  open_url_best_effort "$url" || true
+  notify "Opened Gmail inbox"
+  return 0
+}
+
+handle_gmail_open_search() {
+  local search_query="$1"
+  search_query="$(trim "$search_query")"
+  if [[ -z "$search_query" ]]; then
+    fail_with_notify "gmail search query is empty" 2
+    return
+  fi
+
+  local encoded_query
+  encoded_query="$(url_encode "$search_query")"
+  local url="https://mail.google.com/mail/u/0/#search/${encoded_query}"
+  open_url_best_effort "$url" || true
+  notify "Opened Gmail search: ${search_query}"
+  return 0
+}
+
+handle_gmail_open_message() {
+  local message_id="$1"
+  message_id="$(trim "$message_id")"
+  if [[ -z "$message_id" ]]; then
+    fail_with_notify "gmail message id is empty" 2
+    return
+  fi
+
+  local encoded_id
+  encoded_id="$(url_encode "$message_id")"
+  local url="https://mail.google.com/mail/u/0/#all/${encoded_id}"
+  open_url_best_effort "$url" || true
+  notify "Opened Gmail message: ${message_id}"
+  return 0
+}
+
 require_google_cli() {
   local resolved=""
   if ! resolved="$(resolve_google_cli)"; then
@@ -901,6 +940,17 @@ drive-open-home)
 drive-open-search::*)
   search_query="${action_token#drive-open-search::}"
   handle_drive_open_search "$search_query"
+  ;;
+gmail-open-home)
+  handle_gmail_open_home
+  ;;
+gmail-open-search::*)
+  search_query="${action_token#gmail-open-search::}"
+  handle_gmail_open_search "$search_query"
+  ;;
+gmail-open-message::*)
+  message_id="${action_token#gmail-open-message::}"
+  handle_gmail_open_message "$message_id"
   ;;
 *)
   die_with_notify "unknown action token: $action_token" 2

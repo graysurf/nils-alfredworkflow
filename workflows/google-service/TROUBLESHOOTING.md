@@ -12,6 +12,7 @@ ls -l \
   workflows/google-service/scripts/script_filter_empty.sh \
   workflows/google-service/scripts/script_filter.sh \
   workflows/google-service/scripts/script_filter_drive.sh \
+  workflows/google-service/scripts/script_filter_mail.sh \
   workflows/google-service/scripts/action_open.sh
 
 # google-cli / jq availability
@@ -22,6 +23,7 @@ command -v jq || true
 bash workflows/google-service/scripts/script_filter_empty.sh "" | jq -e '.items | type == "array"'
 bash workflows/google-service/scripts/script_filter.sh "" | jq -e '.items | type == "array"'
 bash workflows/google-service/scripts/script_filter_drive.sh "search keyboard" | jq -e '.items | type == "array"'
+bash workflows/google-service/scripts/script_filter_mail.sh "unread" | jq -e '.items | type == "array"'
 
 # Workflow-local active account file (when workflow has been used)
 ls -l "${ALFRED_WORKFLOW_DATA:-}"/active-account.v1.json 2>/dev/null || true
@@ -43,6 +45,10 @@ ls -l "${ALFRED_WORKFLOW_DATA:-}"/active-account.v1.json 2>/dev/null || true
 | Remove cancelled silently | Confirmation dialog dismissed | Re-run remove and confirm, or use `remove --yes <email>`. |
 | `gsd search` has rows but download fails | Download destination unavailable or file permission denied | Ensure `~/Downloads` is writable and has enough disk space, or set `GOOGLE_DRIVE_DOWNLOAD_DIR` to a writable path. |
 | `gsd` open actions do nothing | Browser opener not available in runtime (`open`/`xdg-open`) | Ensure macOS `open` (default) or Linux `xdg-open` is available, then retry. |
+| `gsm unread/latest/search` returns nothing unexpectedly | Query is too restrictive or account context differs from expected inbox | Start with `gsm latest`, then narrow query terms (or switch account via `gsa switch <email>`). |
+| `gsm search/latest` row count is not as expected | Max setting is too low/high or invalid | Set `GOOGLE_MAIL_SEARCH_MAX` / `GOOGLE_MAIL_LATEST_MAX` in workflow config (`1..500`). Invalid values fall back to default `25`. |
+| `gsm` rows show but Enter does not open Gmail page | Browser opener not available in runtime (`open`/`xdg-open`) | Ensure macOS `open` (default) or Linux `xdg-open` is available, then retry. |
+| `gs` 沒有顯示 all-account unread summary | Toggle 預設關閉 | 在 workflow config 設 `GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD=1` 後重開 Alfred 查詢。 |
 
 ## Validation commands
 

@@ -23,6 +23,7 @@ for required in \
   scripts/script_filter_empty.sh \
   scripts/script_filter.sh \
   scripts/script_filter_drive.sh \
+  scripts/script_filter_mail.sh \
   scripts/action_open.sh \
   tests/smoke.sh; do
   assert_file "$workflow_dir/$required"
@@ -32,6 +33,7 @@ for executable in \
   scripts/script_filter_empty.sh \
   scripts/script_filter.sh \
   scripts/script_filter_drive.sh \
+  scripts/script_filter_mail.sh \
   scripts/action_open.sh \
   tests/smoke.sh; do
   assert_exec "$workflow_dir/$executable"
@@ -60,21 +62,37 @@ for env_key in \
   fi
 done
 
+if ! rg -n '^GOOGLE_MAIL_SEARCH_MAX[[:space:]]*=[[:space:]]*"25"' "$manifest" >/dev/null; then
+  fail "GOOGLE_MAIL_SEARCH_MAX default must be 25"
+fi
+
+if ! rg -n '^GOOGLE_MAIL_LATEST_MAX[[:space:]]*=[[:space:]]*"25"' "$manifest" >/dev/null; then
+  fail "GOOGLE_MAIL_LATEST_MAX default must be 25"
+fi
+
+if ! rg -n '^GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD[[:space:]]*=[[:space:]]*"0"' "$manifest" >/dev/null; then
+  fail "GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD default must be 0"
+fi
+
 if ! rg -n '^GOOGLE_AUTH_REMOVE_CONFIRM[[:space:]]*=[[:space:]]*"1"' "$manifest" >/dev/null; then
   fail "GOOGLE_AUTH_REMOVE_CONFIRM default must be 1"
 fi
 
 plist_json="$(plist_to_json "$workflow_dir/src/info.plist.template")"
-assert_jq_json "$plist_json" '.objects | type == "array" and length == 4' "plist should contain three script filters and one action"
-assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 3' "script filter count mismatch"
+assert_jq_json "$plist_json" '.objects | type == "array" and length == 5' "plist should contain four script filters and one action"
+assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 4' "script filter count mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gs" and .config.scriptfile == "./scripts/script_filter_empty.sh")] | length == 1' "gs keyword binding mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gsa" and .config.scriptfile == "./scripts/script_filter.sh")] | length == 1' "gsa keyword binding mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gsd" and .config.scriptfile == "./scripts/script_filter_drive.sh")] | length == 1' "gsd keyword binding mismatch"
+assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gsm" and .config.scriptfile == "./scripts/script_filter_mail.sh")] | length == 1' "gsm keyword binding mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.queuedelaycustom == 1] | all' "queue delay custom must be 1"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.queuedelayimmediatelyinitially == false] | all' "queue immediate initial must be false"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.alfredfiltersresults == false] | all' "alfredfiltersresults must be false"
 assert_jq_json "$plist_json" '.objects[] | select(.type == "alfred.workflow.action.script") | .config.scriptfile == "./scripts/action_open.sh"' "action script path mismatch"
 assert_jq_json "$plist_json" '[.userconfigurationconfig[] | select(.variable == "GOOGLE_DRIVE_DOWNLOAD_DIR")] | length == 1' "GOOGLE_DRIVE_DOWNLOAD_DIR user config entry missing"
+assert_jq_json "$plist_json" '[.userconfigurationconfig[] | select(.variable == "GOOGLE_MAIL_SEARCH_MAX")] | length == 1' "GOOGLE_MAIL_SEARCH_MAX user config entry missing"
+assert_jq_json "$plist_json" '[.userconfigurationconfig[] | select(.variable == "GOOGLE_MAIL_LATEST_MAX")] | length == 1' "GOOGLE_MAIL_LATEST_MAX user config entry missing"
+assert_jq_json "$plist_json" '[.userconfigurationconfig[] | select(.variable == "GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD")] | length == 1' "GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD user config entry missing"
 
 smoke_tmp="$(mktemp -d)"
 cleanup() {
@@ -162,6 +180,11 @@ log "$*"
 drive_fixture_json='[
   {"id":"file-1","name":"Keyboard_Configuration","mime_type":"application/vnd.google-apps.document","size_bytes":2097152,"parents":["folder-1"]},
   {"id":"file-2","name":"keyboard-notes.txt","mime_type":"text/plain","size_bytes":2048,"parents":["folder-1"]}
+]'
+gmail_fixture_json='[
+  {"id":"msg-1","thread_id":"thread-1","snippet":"Keyboard shortcut guide for team","label_ids":["INBOX","UNREAD"],"headers":{"From":"Team <team@example.com>","Subject":"Keyboard shortcuts","Date":"Tue, 03 Mar 2026 08:00:00 +0800"}},
+  {"id":"msg-2","thread_id":"thread-2","snippet":"Weekly summary for project status","label_ids":["INBOX"],"headers":{"From":"Manager <manager@example.com>","Subject":"Weekly summary","Date":"Mon, 02 Mar 2026 10:30:00 +0800"}},
+  {"id":"msg-3","thread_id":"thread-3","snippet":"Keyboard firmware release notes","label_ids":["INBOX","UNREAD"],"headers":{"From":"Ops <ops@example.com>","Subject":"Firmware keyboard release","Date":"Sun, 01 Mar 2026 21:15:00 +0800"}}
 ]'
 
 case "${1:-}" in
@@ -268,6 +291,99 @@ auth)
     ;;
   *)
     emit_error "google.auth" "unsupported auth command: ${2:-}"
+    exit 2
+    ;;
+  esac
+  ;;
+gmail)
+  case "${2:-}" in
+  search)
+    max="25"
+    query=""
+
+    shift 2
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+      --max)
+        max="${2:-25}"
+        shift
+        ;;
+      --page)
+        shift
+        ;;
+      --query)
+        query="${2:-}"
+        shift
+        ;;
+      --format)
+        shift
+        ;;
+      --headers)
+        shift
+        ;;
+      *)
+        if [[ -z "$query" ]]; then
+          query="$1"
+        else
+          query="$query $1"
+        fi
+        ;;
+      esac
+      shift
+    done
+
+    if ! [[ "$max" =~ ^[0-9]+$ ]]; then
+      max="25"
+    fi
+
+    query_lower="$(printf '%s' "$query" | tr '[:upper:]' '[:lower:]')"
+    require_unread=0
+    require_inbox=0
+    if [[ "$query_lower" == *"is:unread"* ]]; then
+      require_unread=1
+    fi
+    if [[ "$query_lower" == *"in:inbox"* ]]; then
+      require_inbox=1
+    fi
+    text_query="${query_lower//is:unread/ }"
+    text_query="${text_query//in:inbox/ }"
+    text_query="$(printf '%s' "$text_query" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')"
+
+    filtered="$(jq -c \
+      --arg q "$text_query" \
+      --argjson require_unread "$require_unread" \
+      --argjson require_inbox "$require_inbox" '
+      [ .[] | select(
+        (($require_unread == 0) or ((.label_ids // []) | index("UNREAD") != null)) and
+        (($require_inbox == 0) or ((.label_ids // []) | index("INBOX") != null)) and
+        (($q == "") or (((.snippet + " " + (.headers.Subject // "") + " " + (.headers.From // "") + " " + .id) | ascii_downcase) | contains($q)))
+      ) ]
+    ' <<<"$gmail_fixture_json")"
+
+    # Simulate latest ordering by Date descending in fixture sequence.
+    limited="$(jq -c --argjson max "$max" '.[0:$max]' <<<"$filtered")"
+    count="$(jq 'length' <<<"$limited")"
+
+    if [[ -n "$selected_account" ]]; then
+      account_for_result="$selected_account"
+      account_source="explicit"
+    else
+      account_for_result="$(jq -r '.default_account // empty' <<<"$(read_state)")"
+      account_source="default"
+    fi
+
+    result_json="$(jq -cn \
+      --arg account "$account_for_result" \
+      --arg account_source "$account_source" \
+      --arg query "$query" \
+      --argjson max "$max" \
+      --argjson count "$count" \
+      --argjson messages "$limited" \
+      '{account:$account,account_source:$account_source,query:$query,format:"metadata",max:$max,page_token:null,count:$count,messages:$messages}')"
+    emit_ok "google.gmail.search" "$result_json"
+    ;;
+  *)
+    emit_error "google.gmail" "unsupported gmail command: ${2:-}"
     exit 2
     ;;
   esac
@@ -438,6 +554,7 @@ chmod +x "$smoke_tmp/bin/google-cli"
 script_filter_empty="$workflow_dir/scripts/script_filter_empty.sh"
 script_filter="$workflow_dir/scripts/script_filter.sh"
 script_filter_drive="$workflow_dir/scripts/script_filter_drive.sh"
+script_filter_mail="$workflow_dir/scripts/script_filter_mail.sh"
 action_open="$workflow_dir/scripts/action_open.sh"
 
 mkdir -p "$smoke_tmp/home/Downloads"
@@ -460,6 +577,12 @@ root_json="$(run_with_env bash "$script_filter_empty" "")"
 assert_jq_json "$root_json" '.items | length == 1' "gs root query should emit one account status row"
 assert_jq_json "$root_json" '.items[0].title == "Current account: a@example.com"' "gs should show default account when active account is not set"
 
+root_with_unread_json="$(env "${base_env[@]}" GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD=1 bash "$script_filter_empty" "")"
+assert_jq_json "$root_with_unread_json" '.items | length == 2' "gs root query should emit unread summary row when toggle enabled"
+assert_jq_json "$root_with_unread_json" '.items[1].title == "Unread mail (all accounts): 4"' "gs unread summary total mismatch"
+assert_jq_json "$root_with_unread_json" '.items[1].subtitle | test("a@example.com:2")' "gs unread summary should include account a count"
+assert_jq_json "$root_with_unread_json" '.items[1].subtitle | test("b@example.com:2")' "gs unread summary should include account b count"
+
 auth_root_json="$(run_with_env bash "$script_filter" "")"
 assert_jq_json "$auth_root_json" '.items | length >= 5' "gsa root query should emit command and account rows"
 assert_jq_json "$auth_root_json" '.items[0].title == "Google Service Auth Login" and .items[0].arg == "prompt::login"' "gsa command row login mismatch"
@@ -481,6 +604,39 @@ assert_jq_json "$drive_search_json" '.items[0].subtitle | test("2.00 MB")' "driv
 assert_jq_json "$drive_search_json" '.items[1].subtitle | test("2.00 KB")' "drive subtitle should format KB size"
 assert_jq_json "$drive_search_json" '.items[0].variables.GOOGLE_DRIVE_SEARCH_RESULT_COUNT == "2"' "workflow variable should include drive result.count"
 assert_jq_json "$drive_search_json" '.items[0].variables.GOOGLE_DRIVE_FILE_ID == "file-1"' "workflow variable should include file id"
+
+mail_help_json="$(run_with_env bash "$script_filter_mail" "")"
+assert_jq_json "$mail_help_json" '.items | length >= 4' "gsm help query should emit inbox and usage rows"
+assert_jq_json "$mail_help_json" '[.items[] | select(.arg == "gmail-open-home")] | length == 1' "gsm inbox open item missing"
+assert_jq_json "$mail_help_json" '[.items[] | select(.title == "Unread Mail List (2)")] | length == 1' "gsm unread title should include unread count"
+assert_jq_json "$mail_help_json" '[.items[] | select(.autocomplete == "unread ")] | length == 1' "gsm unread hint item missing"
+assert_jq_json "$mail_help_json" '[.items[] | select(.autocomplete == "unread ")][0].variables.GOOGLE_MAIL_UNREAD_COUNT == "2"' "gsm unread hint should expose unread count variable"
+assert_jq_json "$mail_help_json" '[.items[] | select(.autocomplete == "unread ")][0].variables.GOOGLE_MAIL_QUERY_MODE == "unread"' "gsm unread hint should expose query mode variable"
+assert_jq_json "$mail_help_json" '[.items[] | select(.autocomplete == "latest ")] | length == 1' "gsm latest hint item missing"
+assert_jq_json "$mail_help_json" '[.items[] | select(.autocomplete == "search ")] | length == 1' "gsm search hint item missing"
+
+mail_unread_json="$(run_with_env bash "$script_filter_mail" "unread")"
+assert_jq_json "$mail_unread_json" '.items | length == 2' "gsm unread should emit unread rows from fixture"
+assert_jq_json "$mail_unread_json" '.items[0].arg == "gmail-open-message::msg-1"' "gsm unread first action token mismatch"
+assert_jq_json "$mail_unread_json" '.items[0].mods.cmd.arg == "gmail-open-search::in:inbox is:unread"' "gsm unread cmd modifier should open gmail web search"
+assert_jq_json "$mail_unread_json" '.items[0].variables.GOOGLE_MAIL_SEARCH_RESULT_COUNT == "2"' "gsm unread should set result.count variable"
+assert_jq_json "$mail_unread_json" '.items[0].variables.GOOGLE_MAIL_MESSAGE_ID == "msg-1"' "gsm unread should set message id variable"
+assert_jq_json "$mail_unread_json" '.items[0].variables.GOOGLE_MAIL_MESSAGE_THREAD_ID == "thread-1"' "gsm unread should set thread id variable"
+assert_jq_json "$mail_unread_json" '.items[0].variables.GOOGLE_MAIL_QUERY_MODE == "unread"' "gsm unread should set query mode variable"
+
+mail_latest_json="$(run_with_env bash "$script_filter_mail" "latest")"
+assert_jq_json "$mail_latest_json" '.items | length == 3' "gsm latest should emit latest inbox rows from fixture"
+assert_jq_json "$mail_latest_json" '.items[0].subtitle | test("mode=latest")' "gsm latest subtitle should include mode marker"
+
+mail_search_json="$(run_with_env bash "$script_filter_mail" "search keyboard")"
+assert_jq_json "$mail_search_json" '.items | length == 2' "gsm search should emit keyboard rows"
+assert_jq_json "$mail_search_json" '.items[0].title | test("keyboard"; "i")' "gsm search should include keyboard subject"
+
+mail_search_limited_json="$(env "${base_env[@]}" GOOGLE_MAIL_SEARCH_MAX=1 bash "$script_filter_mail" "search keyboard")"
+assert_jq_json "$mail_search_limited_json" '.items | length == 1' "gsm search should respect GOOGLE_MAIL_SEARCH_MAX"
+
+mail_latest_limited_json="$(env "${base_env[@]}" GOOGLE_MAIL_LATEST_MAX=2 bash "$script_filter_mail" "latest")"
+assert_jq_json "$mail_latest_limited_json" '.items | length == 2' "gsm latest should respect GOOGLE_MAIL_LATEST_MAX"
 
 login_step1_json="$(run_with_env bash "$script_filter" "login c@example.com")"
 assert_jq_json "$login_step1_json" '[.items[] | select(.arg == "login::remote::step1::c@example.com")] | length == 1' "login step1 token mismatch"
@@ -528,6 +684,9 @@ assert_file "$smoke_tmp/home/Downloads/Keyboard_Configuration.docx"
 
 run_with_env bash "$action_open" "drive-open-home" >/dev/null
 run_with_env bash "$action_open" "drive-open-search::keyboard" >/dev/null
+run_with_env bash "$action_open" "gmail-open-home" >/dev/null
+run_with_env bash "$action_open" "gmail-open-search::keyboard" >/dev/null
+run_with_env bash "$action_open" "gmail-open-message::msg-1" >/dev/null
 
 if ! rg -n "auth add c@example.com --remote --step 1" "$stub_log" >/dev/null; then
   fail "stub log missing remote step1 invocation"
@@ -543,6 +702,15 @@ if ! rg -n "drive get file-1" "$stub_log" >/dev/null; then
 fi
 if ! rg -n "drive download file-1 --format docx --out .*Downloads/Keyboard_Configuration.docx" "$stub_log" >/dev/null; then
   fail "stub log missing drive download invocation"
+fi
+if ! rg -n "gmail search --max 25 --format metadata --headers Subject,From,Date --query in:inbox is:unread" "$stub_log" >/dev/null; then
+  fail "stub log missing gmail unread search invocation"
+fi
+if ! rg -n "gmail search --max 25 --format metadata --headers Subject,From,Date --query in:inbox" "$stub_log" >/dev/null; then
+  fail "stub log missing gmail latest search invocation"
+fi
+if ! rg -n "gmail search --max 25 --format metadata --headers Subject,From,Date --query keyboard" "$stub_log" >/dev/null; then
+  fail "stub log missing gmail keyword search invocation"
 fi
 
 echo "ok: google-service workflow smoke test"
