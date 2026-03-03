@@ -15,6 +15,8 @@ GOOGLE_CLI_CONFIG_DIR = ""
 # Optional keyring mode override for google-cli token backend.
 # Allowed: keyring, file, fail, keyring-strict
 GOOGLE_CLI_KEYRING_MODE = ""
+# Optional download destination directory for gsd drive download action.
+GOOGLE_DRIVE_DOWNLOAD_DIR = ""
 # Require remove confirmation dialog when available (1=true, 0=false).
 GOOGLE_AUTH_REMOVE_CONFIRM = "1"
 

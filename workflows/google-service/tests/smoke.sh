@@ -22,6 +22,7 @@ for required in \
   src/assets/icon.png \
   scripts/script_filter_empty.sh \
   scripts/script_filter.sh \
+  scripts/script_filter_drive.sh \
   scripts/action_open.sh \
   tests/smoke.sh; do
   assert_file "$workflow_dir/$required"
@@ -30,6 +31,7 @@ done
 for executable in \
   scripts/script_filter_empty.sh \
   scripts/script_filter.sh \
+  scripts/script_filter_drive.sh \
   scripts/action_open.sh \
   tests/smoke.sh; do
   assert_exec "$workflow_dir/$executable"
@@ -51,7 +53,8 @@ fi
 for env_key in \
   GOOGLE_CLI_BIN \
   GOOGLE_CLI_CONFIG_DIR \
-  GOOGLE_CLI_KEYRING_MODE; do
+  GOOGLE_CLI_KEYRING_MODE \
+  GOOGLE_DRIVE_DOWNLOAD_DIR; do
   if ! rg -n "^${env_key}[[:space:]]*=[[:space:]]*\"\"" "$manifest" >/dev/null; then
     fail "${env_key} default must be empty"
   fi
@@ -62,14 +65,16 @@ if ! rg -n '^GOOGLE_AUTH_REMOVE_CONFIRM[[:space:]]*=[[:space:]]*"1"' "$manifest"
 fi
 
 plist_json="$(plist_to_json "$workflow_dir/src/info.plist.template")"
-assert_jq_json "$plist_json" '.objects | type == "array" and length == 3' "plist should contain two script filters and one action"
-assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 2' "script filter count mismatch"
+assert_jq_json "$plist_json" '.objects | type == "array" and length == 4' "plist should contain three script filters and one action"
+assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 3' "script filter count mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gs" and .config.scriptfile == "./scripts/script_filter_empty.sh")] | length == 1' "gs keyword binding mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gsa" and .config.scriptfile == "./scripts/script_filter.sh")] | length == 1' "gsa keyword binding mismatch"
+assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gsd" and .config.scriptfile == "./scripts/script_filter_drive.sh")] | length == 1' "gsd keyword binding mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.queuedelaycustom == 1] | all' "queue delay custom must be 1"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.queuedelayimmediatelyinitially == false] | all' "queue immediate initial must be false"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter") | .config.alfredfiltersresults == false] | all' "alfredfiltersresults must be false"
 assert_jq_json "$plist_json" '.objects[] | select(.type == "alfred.workflow.action.script") | .config.scriptfile == "./scripts/action_open.sh"' "action script path mismatch"
+assert_jq_json "$plist_json" '[.userconfigurationconfig[] | select(.variable == "GOOGLE_DRIVE_DOWNLOAD_DIR")] | length == 1' "GOOGLE_DRIVE_DOWNLOAD_DIR user config entry missing"
 
 smoke_tmp="$(mktemp -d)"
 cleanup() {
@@ -141,7 +146,23 @@ if [[ "${1:-}" == "--json" ]]; then
   shift
 fi
 
+selected_account=""
+while [[ "${1:-}" == "-a" || "${1:-}" == "--account" ]]; do
+  shift
+  selected_account="${1:-}"
+  [[ -n "$selected_account" ]] || {
+    emit_error "google.unknown" "missing value for --account"
+    exit 2
+  }
+  shift
+done
+
 log "$*"
+
+drive_fixture_json='[
+  {"id":"file-1","name":"Keyboard_Configuration","mime_type":"application/vnd.google-apps.document","size_bytes":2097152,"parents":["folder-1"]},
+  {"id":"file-2","name":"keyboard-notes.txt","mime_type":"text/plain","size_bytes":2048,"parents":["folder-1"]}
+]'
 
 case "${1:-}" in
 auth)
@@ -251,6 +272,161 @@ auth)
     ;;
   esac
   ;;
+drive)
+  case "${2:-}" in
+  search)
+    max="25"
+    query=""
+
+    shift 2
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+      --max)
+        max="${2:-25}"
+        shift
+        ;;
+      --page)
+        shift
+        ;;
+      --query)
+        query="${2:-}"
+        shift
+        ;;
+      --raw-query)
+        ;;
+      *)
+        if [[ -z "$query" ]]; then
+          query="$1"
+        else
+          query="$query $1"
+        fi
+        ;;
+      esac
+      shift
+    done
+
+    if ! [[ "$max" =~ ^[0-9]+$ ]]; then
+      max="25"
+    fi
+
+    query_lower="$(printf '%s' "$query" | tr '[:upper:]' '[:lower:]')"
+    filtered="$(jq -c --arg q "$query_lower" '
+      [ .[] | select(
+        ($q == "") or
+        (((.name + " " + .mime_type + " " + .id) | ascii_downcase) | contains($q))
+      ) ]
+    ' <<<"$drive_fixture_json")"
+    limited="$(jq -c --argjson max "$max" '.[0:$max]' <<<"$filtered")"
+    count="$(jq 'length' <<<"$limited")"
+
+    if [[ -n "$selected_account" ]]; then
+      account_for_result="$selected_account"
+      account_source="explicit"
+    else
+      account_for_result="$(jq -r '.default_account // empty' <<<"$(read_state)")"
+      account_source="default"
+    fi
+
+    result_json="$(jq -cn \
+      --arg account "$account_for_result" \
+      --arg account_source "$account_source" \
+      --arg query "$query" \
+      --argjson max "$max" \
+      --argjson count "$count" \
+      --argjson files "$limited" \
+      '{account:$account,account_source:$account_source,query:$query,raw_query:false,max:$max,page_token:null,count:$count,files:$files}')"
+    emit_ok "google.drive.search" "$result_json"
+    ;;
+  get)
+    file_id="${3:-}"
+    [[ -n "$file_id" ]] || {
+      emit_error "google.drive.get" "missing file id"
+      exit 2
+    }
+
+    file_json="$(jq -c --arg id "$file_id" '[.[] | select(.id == $id)][0] // empty' <<<"$drive_fixture_json")"
+    if [[ -z "$file_json" ]]; then
+      emit_error "google.drive.get" "file not found"
+      exit 2
+    fi
+
+    if [[ -n "$selected_account" ]]; then
+      account_for_result="$selected_account"
+      account_source="explicit"
+    else
+      account_for_result="$(jq -r '.default_account // empty' <<<"$(read_state)")"
+      account_source="default"
+    fi
+
+    result_json="$(jq -cn \
+      --arg account "$account_for_result" \
+      --arg account_source "$account_source" \
+      --argjson file "$file_json" \
+      '{account:$account,account_source:$account_source,file:$file}')"
+    emit_ok "google.drive.get" "$result_json"
+    ;;
+  download)
+    file_id="${3:-}"
+    [[ -n "$file_id" ]] || {
+      emit_error "google.drive.download" "missing file id"
+      exit 2
+    }
+
+    out_path=""
+    shift 3
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+      --out)
+        out_path="${2:-}"
+        shift
+        ;;
+      --overwrite)
+        ;;
+      *)
+        ;;
+      esac
+      shift
+    done
+
+    file_json="$(jq -c --arg id "$file_id" '[.[] | select(.id == $id)][0] // empty' <<<"$drive_fixture_json")"
+    if [[ -z "$file_json" ]]; then
+      emit_error "google.drive.download" "file not found"
+      exit 2
+    fi
+
+    file_name="$(jq -r '.name // empty' <<<"$file_json")"
+    mime_type="$(jq -r '.mime_type // "application/octet-stream"' <<<"$file_json")"
+    [[ -n "$file_name" ]] || file_name="$file_id"
+    [[ -n "$out_path" ]] || out_path="$file_name"
+    mkdir -p "$(dirname "$out_path")"
+    printf 'download-%s\n' "$file_id" >"$out_path"
+    bytes_written="$(wc -c <"$out_path" | tr -d '[:space:]')"
+
+    if [[ -n "$selected_account" ]]; then
+      account_for_result="$selected_account"
+      account_source="explicit"
+    else
+      account_for_result="$(jq -r '.default_account // empty' <<<"$(read_state)")"
+      account_source="default"
+    fi
+
+    result_json="$(jq -cn \
+      --arg account "$account_for_result" \
+      --arg account_source "$account_source" \
+      --arg file_id "$file_id" \
+      --arg file_name "$file_name" \
+      --arg mime_type "$mime_type" \
+      --arg path "$out_path" \
+      --argjson bytes_written "${bytes_written:-0}" \
+      '{account:$account,account_source:$account_source,file_id:$file_id,file_name:$file_name,mime_type:$mime_type,source:"download",format:null,bytes_written:$bytes_written,path:$path}')"
+    emit_ok "google.drive.download" "$result_json"
+    ;;
+  *)
+    emit_error "google.drive" "unsupported drive command: ${2:-}"
+    exit 2
+    ;;
+  esac
+  ;;
 *)
   emit_error "google.unknown" "unsupported command"
   exit 2
@@ -261,7 +437,10 @@ chmod +x "$smoke_tmp/bin/google-cli"
 
 script_filter_empty="$workflow_dir/scripts/script_filter_empty.sh"
 script_filter="$workflow_dir/scripts/script_filter.sh"
+script_filter_drive="$workflow_dir/scripts/script_filter_drive.sh"
 action_open="$workflow_dir/scripts/action_open.sh"
+
+mkdir -p "$smoke_tmp/home/Downloads"
 
 base_env=(
   "GOOGLE_CLI_BIN=$smoke_tmp/bin/google-cli"
@@ -270,6 +449,7 @@ base_env=(
   "GOOGLE_CLI_CONFIG_DIR=$smoke_tmp/config"
   "ALFRED_WORKFLOW_DATA=$smoke_tmp/data"
   "GOOGLE_AUTH_REMOVE_CONFIRM=0"
+  "HOME=$smoke_tmp/home"
 )
 
 run_with_env() {
@@ -287,6 +467,20 @@ assert_jq_json "$auth_root_json" '.items[1].title == "Google Service Auth Switch
 assert_jq_json "$auth_root_json" '.items[2].title == "Google Service Auth Remove" and .items[2].arg == "prompt::remove"' "gsa command row remove mismatch"
 assert_jq_json "$auth_root_json" '[.items[] | select(.arg == "switch::a@example.com")] | length == 1' "switch row for default account missing"
 assert_jq_json "$auth_root_json" '[.items[] | select((.title // "") | test("google-cli ready"; "i"))] | length == 0' "gsa should not contain runtime row"
+
+drive_help_json="$(run_with_env bash "$script_filter_drive" "")"
+assert_jq_json "$drive_help_json" '.items | length >= 2' "gsd help query should emit home and usage rows"
+assert_jq_json "$drive_help_json" '[.items[] | select(.arg == "drive-open-home")] | length == 1' "gsd home item missing"
+assert_jq_json "$drive_help_json" '[.items[] | select(.autocomplete == "search ")] | length == 1' "gsd search hint item missing"
+
+drive_search_json="$(run_with_env bash "$script_filter_drive" "search keyboard")"
+assert_jq_json "$drive_search_json" '.items | length == 2' "gsd search should emit two rows from fixture"
+assert_jq_json "$drive_search_json" '.items[0].arg == "drive-download::file-1::2"' "drive download token should include result.count"
+assert_jq_json "$drive_search_json" '.items[0].mods.cmd.arg == "drive-open-search::keyboard"' "cmd modifier should open drive web search"
+assert_jq_json "$drive_search_json" '.items[0].subtitle | test("2.00 MB")' "drive subtitle should format MB size"
+assert_jq_json "$drive_search_json" '.items[1].subtitle | test("2.00 KB")' "drive subtitle should format KB size"
+assert_jq_json "$drive_search_json" '.items[0].variables.GOOGLE_DRIVE_SEARCH_RESULT_COUNT == "2"' "workflow variable should include drive result.count"
+assert_jq_json "$drive_search_json" '.items[0].variables.GOOGLE_DRIVE_FILE_ID == "file-1"' "workflow variable should include file id"
 
 login_step1_json="$(run_with_env bash "$script_filter" "login c@example.com")"
 assert_jq_json "$login_step1_json" '[.items[] | select(.arg == "login::remote::step1::c@example.com")] | length == 1' "login step1 token mismatch"
@@ -328,6 +522,13 @@ remove_output="$(run_with_env bash "$action_open" "remove::c@example.com::1")"
 assert_jq_json "$remove_output" '.ok == true and .result.account == "c@example.com"' "remove output mismatch"
 assert_jq_file "$active_file" '.active_account == "a@example.com"' "remove should rebalance active account"
 
+drive_download_output="$(run_with_env bash "$action_open" "drive-download::file-1::2")"
+assert_jq_json "$drive_download_output" '.ok == true and .command == "google.drive.download"' "drive download output mismatch"
+assert_file "$smoke_tmp/home/Downloads/Keyboard_Configuration.docx"
+
+run_with_env bash "$action_open" "drive-open-home" >/dev/null
+run_with_env bash "$action_open" "drive-open-search::keyboard" >/dev/null
+
 if ! rg -n "auth add c@example.com --remote --step 1" "$stub_log" >/dev/null; then
   fail "stub log missing remote step1 invocation"
 fi
@@ -336,6 +537,12 @@ if ! rg -n "auth add c@example.com --remote --step 2 --state state-c@example.com
 fi
 if ! rg -n "auth remove c@example.com" "$stub_log" >/dev/null; then
   fail "stub log missing remove invocation"
+fi
+if ! rg -n "drive get file-1" "$stub_log" >/dev/null; then
+  fail "stub log missing drive get invocation"
+fi
+if ! rg -n "drive download file-1 --format docx --out .*Downloads/Keyboard_Configuration.docx" "$stub_log" >/dev/null; then
+  fail "stub log missing drive download invocation"
 fi
 
 echo "ok: google-service workflow smoke test"

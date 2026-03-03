@@ -1,20 +1,17 @@
 # Google Service - Alfred Workflow
 
-Manage Google auth accounts from Alfred using `google-cli` native auth commands.
+Manage Google auth accounts and Drive search/download from Alfred using `google-cli` native commands.
 
-## Scope (Phase 1)
+## Scope
 
 Implemented now:
 
 - `login` (remote step 1/2 and manual mode)
 - `switch` (workflow-local active account)
 - `remove` (with optional confirmation)
-
-Intentionally not in this phase:
-
-- `save`
-- alias management rows (`auth alias ...`)
-- Gmail/Drive business commands (currently only root navigation)
+- `drive search` (keyword: `gsd`, Enter=download, Cmd+Enter=open Drive web search)
+- `open Drive home` from `gsd`
+- Docs Editors files are auto-exported on download (`document -> docx`, `spreadsheet -> xlsx`, `presentation -> pptx`).
 
 ## Keywords
 
@@ -22,6 +19,7 @@ Intentionally not in this phase:
 | --- | --- |
 | `gs` | Show one status row: current account (active account first, otherwise native default account). |
 | `gsa` | Auth command menu with login/switch/remove rows, then account rows. |
+| `gsd` | Drive home row + Drive search rows (Enter download, Cmd+Enter open Drive web search). |
 
 ## Query examples
 
@@ -36,10 +34,13 @@ Intentionally not in this phase:
 | `gsa switch you@example.com` | Set workflow active account to selected account. |
 | `gsa remove you@example.com` | Remove account (confirmation by default). |
 | `gsa remove --yes you@example.com` | Remove account without workflow confirmation dialog. |
+| `gsd` | Show `Open Google Drive Home` and search usage row. |
+| `gsd open` | Open Google Drive home page in browser. |
+| `gsd search keyboard` | Run `google-cli drive search keyboard`; Enter downloads selected file; Cmd+Enter opens Drive web search page. |
 
 ## Notifications
 
-- Success notifications are shown for `login`, `switch`, and `remove`.
+- Success notifications are shown for `login`, `switch`, `remove`, and Drive download.
 - Failure notifications are also shown (for example invalid token/state, missing account, or CLI/auth errors).
 
 ## Active account model
@@ -74,6 +75,7 @@ cargo build -p nils-google-cli
 | `GOOGLE_CLI_BIN` | No | empty | Optional absolute path override for `google-cli`. |
 | `GOOGLE_CLI_CONFIG_DIR` | No | empty | Optional auth config root override. If empty and `~/.config/google/credentials` exists, workflow auto-uses that path. |
 | `GOOGLE_CLI_KEYRING_MODE` | No | empty | Optional token backend mode (`keyring`, `file`, `fail`, `keyring-strict`). |
+| `GOOGLE_DRIVE_DOWNLOAD_DIR` | No | `~/Downloads` | Optional download destination override for `gsd` download action. |
 | `GOOGLE_AUTH_REMOVE_CONFIRM` | No | `1` | Require confirmation dialog before remove when possible. |
 
 ## Validation
