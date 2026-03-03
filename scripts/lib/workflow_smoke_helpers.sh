@@ -111,8 +111,7 @@ workflow_smoke_auto_shellcheck() {
 
   local caller_script="${BASH_SOURCE[1]:-}"
   case "$caller_script" in
-  */workflows/*/tests/smoke.sh)
-    ;;
+  */workflows/*/tests/smoke.sh) ;;
   *)
     return 0
     ;;
