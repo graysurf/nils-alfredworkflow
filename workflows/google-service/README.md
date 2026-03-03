@@ -1,6 +1,10 @@
 # Google Service - Alfred Workflow
 
-Manage Google auth accounts and Drive search/download from Alfred using `google-cli` native commands.
+Manage Google auth accounts, Drive search/download, and Gmail search/list from Alfred using `google-cli` native commands.
+
+## Screenshot
+
+![Google Service workflow screenshot](./screenshot.png)
 
 ## Scope
 
@@ -9,23 +13,26 @@ Implemented now:
 - `login` (remote step 1/2 and manual mode)
 - `switch` (workflow-local active account)
 - `remove` (with optional confirmation)
+- `gs` optional all-accounts unread summary row (workflow toggle)
 - `drive search` (keyword: `gsd`, Enter=download, Cmd+Enter=open Drive web search)
 - `open Drive home` from `gsd`
+- `gmail unread/latest/search` (keyword: `gsm`, Enter=open message, Cmd+Enter=open Gmail web search)
 - Docs Editors files are auto-exported on download (`document -> docx`, `spreadsheet -> xlsx`, `presentation -> pptx`).
 
 ## Keywords
 
 | Keyword | Behavior |
 | --- | --- |
-| `gs` | Show one status row: current account (active account first, otherwise native default account). |
+| `gs` | Show current account row (active account first, otherwise native default account). Optional all-accounts unread summary row is shown when `GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD=1`. |
 | `gsa` | Auth command menu with login/switch/remove rows, then account rows. |
 | `gsd` | Drive home row + Drive search rows (Enter download, Cmd+Enter open Drive web search). |
+| `gsm` | Gmail inbox home row + unread/latest/search rows (Enter open message, Cmd+Enter open Gmail web search). |
 
 ## Query examples
 
 | Query | Result |
 | --- | --- |
-| `gs` | Show current account row. |
+| `gs` | Show current account row. If `GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD=1`, also show all-accounts unread summary row. |
 | `gsa` | Show command rows (`Google Service Auth Login/Switch/Remove`) and account rows. |
 | `gsa login you@example.com` | Run remote login step 1 (`auth add --remote --step 1`). |
 | `gsa login <callback-url>` | Finish remote login step 2 (account auto-resolved from saved state). |
@@ -37,10 +44,14 @@ Implemented now:
 | `gsd` | Show `Open Google Drive Home` and search usage row. |
 | `gsd open` | Open Google Drive home page in browser. |
 | `gsd search keyboard` | Run `google-cli drive search keyboard`; Enter downloads selected file; Cmd+Enter opens Drive web search page. |
+| `gsm` | Show `Open Gmail Inbox` and unread/latest/search usage rows. |
+| `gsm unread` | Run `google-cli gmail search --query "in:inbox is:unread"` and list unread inbox messages. |
+| `gsm latest` | Run `google-cli gmail search --query "in:inbox"` and list latest inbox messages. |
+| `gsm search keyboard` | Run `google-cli gmail search --query "keyboard"` and list matches. |
 
 ## Notifications
 
-- Success notifications are shown for `login`, `switch`, `remove`, and Drive download.
+- Success notifications are shown for `login`, `switch`, `remove`, Drive download, and Gmail open actions.
 - Failure notifications are also shown (for example invalid token/state, missing account, or CLI/auth errors).
 
 ## Active account model
@@ -76,6 +87,9 @@ cargo build -p nils-google-cli
 | `GOOGLE_CLI_CONFIG_DIR` | No | empty | Optional auth config root override. If empty and `~/.config/google/credentials` exists, workflow auto-uses that path. |
 | `GOOGLE_CLI_KEYRING_MODE` | No | empty | Optional token backend mode (`keyring`, `file`, `fail`, `keyring-strict`). |
 | `GOOGLE_DRIVE_DOWNLOAD_DIR` | No | `~/Downloads` | Optional download destination override for `gsd` download action. |
+| `GOOGLE_MAIL_SEARCH_MAX` | No | `25` | Max rows for `gsm search` results (range `1..500`). |
+| `GOOGLE_MAIL_LATEST_MAX` | No | `25` | Max rows for `gsm latest` and `gsm unread` results (range `1..500`). |
+| `GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD` | No | `0` | Show one extra unread summary row in `gs` root (`0=off`, `1=on`). |
 | `GOOGLE_AUTH_REMOVE_CONFIRM` | No | `1` | Require confirmation dialog before remove when possible. |
 
 ## Validation

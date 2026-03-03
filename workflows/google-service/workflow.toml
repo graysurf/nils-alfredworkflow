@@ -17,6 +17,12 @@ GOOGLE_CLI_CONFIG_DIR = ""
 GOOGLE_CLI_KEYRING_MODE = ""
 # Optional download destination directory for gsd drive download action.
 GOOGLE_DRIVE_DOWNLOAD_DIR = ""
+# Max rows for `gsm search` results (1..500).
+GOOGLE_MAIL_SEARCH_MAX = "25"
+# Max rows for `gsm latest` and `gsm unread` results (1..500).
+GOOGLE_MAIL_LATEST_MAX = "25"
+# Show all-account unread summary row in `gs` root (1=true, 0=false).
+GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD = "0"
 # Require remove confirmation dialog when available (1=true, 0=false).
 GOOGLE_AUTH_REMOVE_CONFIRM = "1"
 
