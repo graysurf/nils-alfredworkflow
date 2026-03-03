@@ -36,6 +36,11 @@ Configured via `workflow-common` runtime config:
 - Human-readable mode: compliant (`script-filter --output human` plus plain text for non-script-filter commands).
 - JSON service envelope (`schema_version/command/ok`): compliant for `script-filter` in JSON output mode.
 
+## Contract References
+
+- Shared runtime contract: [`docs/specs/cli-shared-runtime-contract.md`](../../docs/specs/cli-shared-runtime-contract.md)
+- Legacy removal matrix: [`docs/reports/crate-legacy-removal-matrix.md`](../../docs/reports/crate-legacy-removal-matrix.md)
+
 ## Documentation
 
 - [`docs/README.md`](docs/README.md)

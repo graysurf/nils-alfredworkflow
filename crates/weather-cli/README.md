@@ -43,6 +43,11 @@ CLI backend for one-day and seven-day weather forecast retrieval.
 - Human-readable default + explicit JSON mode: compliant.
 - JSON service envelope (`schema_version/command/ok`): not yet migrated.
 
+## Contract References
+
+- Shared runtime contract: [`docs/specs/cli-shared-runtime-contract.md`](../../docs/specs/cli-shared-runtime-contract.md)
+- Legacy removal matrix: [`docs/reports/crate-legacy-removal-matrix.md`](../../docs/reports/crate-legacy-removal-matrix.md)
+
 ## Documentation
 
 - [`docs/README.md`](docs/README.md)
