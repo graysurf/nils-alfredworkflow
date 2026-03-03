@@ -30,8 +30,7 @@ source "$helper_loader"
 
 load_helper_or_exit() {
   local helper_name="$1"
-  if ! wfhl_source_helper "$script_dir" "$helper_name" auto; then
-    wfhl_emit_missing_helper_item_json "$helper_name"
+  if ! wfhl_source_required_helper "$script_dir" "$helper_name" auto "json"; then
     exit 0
   fi
 }

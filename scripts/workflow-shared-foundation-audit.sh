@@ -44,6 +44,7 @@ if [[ "$mode" != "check" ]]; then
 fi
 
 require_bin rg
+require_bin python3
 
 declare -ar migrated_action_wrappers=(
   "workflows/bangumi-search/scripts/action_open.sh"
@@ -92,7 +93,6 @@ declare -ar migrated_additional_foundation_files=(
   "workflows/codex-cli/scripts/action_open.sh"
   "workflows/codex-cli/scripts/script_filter.sh"
   "workflows/codex-cli/scripts/script_filter_auth_current.sh"
-  "workflows/google-search/scripts/script_filter_direct.sh"
   "workflows/memo-add/scripts/action_run.sh"
   "workflows/memo-add/scripts/script_filter_copy.sh"
   "workflows/memo-add/scripts/script_filter_delete.sh"
@@ -103,6 +103,16 @@ declare -ar migrated_additional_foundation_files=(
   "workflows/open-project/scripts/action_open_github.sh"
   "workflows/open-project/scripts/action_record_usage.sh"
   "workflows/weather/scripts/script_filter_common.sh"
+  "workflows/weather/scripts/script_filter_today.sh"
+)
+
+declare -ar deleted_orphan_scripts=(
+  "workflows/google-search/scripts/script_filter_direct.sh"
+  "workflows/codex-cli/scripts/prepare_package.sh"
+)
+
+declare -ar orphan_script_exemptions=(
+  "workflows/weather/scripts/generate_weather_icons.sh"
 )
 
 declare -a migrated_files=(
@@ -192,6 +202,93 @@ run_check_non_search_driver_usage() {
   fi
 }
 
+run_check_deleted_orphan_absence() {
+  local rel_path=""
+  local abs_path=""
+  local initial_failures="$failures"
+
+  for rel_path in "${deleted_orphan_scripts[@]}"; do
+    abs_path="$repo_root/$rel_path"
+    if [[ -e "$abs_path" ]]; then
+      fail_file "$rel_path" "deleted orphan script was reintroduced; keep it deleted"
+    fi
+  done
+
+  if [[ "$failures" -eq "$initial_failures" ]]; then
+    pass_check "deleted orphan scripts remain absent"
+  fi
+}
+
+run_check_no_orphan_workflow_scripts() {
+  local initial_failures="$failures"
+  local orphan_output=""
+  local rel_path=""
+
+  orphan_output="$(
+    python3 - "$repo_root" "${orphan_script_exemptions[@]}" <<'PY'
+import pathlib
+import re
+import sys
+
+repo_root = pathlib.Path(sys.argv[1]).resolve()
+exempt = {value.strip() for value in sys.argv[2:] if value.strip()}
+orphan_paths = []
+
+for workflow_dir in sorted((repo_root / "workflows").iterdir()):
+    if not workflow_dir.is_dir():
+        continue
+
+    scripts_dir = workflow_dir / "scripts"
+    if not scripts_dir.is_dir():
+        continue
+
+    referenced = set()
+
+    workflow_toml = workflow_dir / "workflow.toml"
+    if workflow_toml.exists():
+        for raw_line in workflow_toml.read_text(encoding="utf-8").splitlines():
+            match = re.match(r'\s*(script_filter|action)\s*=\s*"([^"]+)"\s*$', raw_line)
+            if match:
+                referenced.add(match.group(2))
+
+    src_dir = workflow_dir / "src"
+    if src_dir.is_dir():
+        for plist_template in src_dir.glob("*.plist.template"):
+            text = plist_template.read_text(encoding="utf-8", errors="ignore")
+            for match in re.finditer(r"\./scripts/([^<\"'\s]+\.sh)", text):
+                referenced.add(match.group(1))
+
+    for script_file in scripts_dir.glob("*.sh"):
+        text = script_file.read_text(encoding="utf-8", errors="ignore")
+        for match in re.finditer(r"scripts/([A-Za-z0-9_.-]+\.sh)", text):
+            referenced.add(match.group(1))
+        for match in re.finditer(r"/([A-Za-z0-9_.-]+\.sh)(?:[\"'\s]|$)", text):
+            referenced.add(match.group(1))
+
+    for script_file in sorted(scripts_dir.glob("*.sh")):
+        rel_path = script_file.relative_to(repo_root).as_posix()
+        if rel_path in exempt:
+            continue
+        if script_file.name not in referenced:
+            orphan_paths.append(rel_path)
+
+for rel_path in orphan_paths:
+    print(rel_path)
+PY
+  )"
+
+  if [[ -n "$orphan_output" ]]; then
+    while IFS= read -r rel_path; do
+      [[ -n "$rel_path" ]] || continue
+      fail_file "$rel_path" "orphan workflow script detected; add a manifest/plist/script entrypoint reference or remove the file"
+    done <<<"$orphan_output"
+  fi
+
+  if [[ "$failures" -eq "$initial_failures" ]]; then
+    pass_check "no orphan workflow scripts detected"
+  fi
+}
+
 run_check_prohibited_placeholders() {
   local rel_path=""
   local abs_path=""
@@ -238,6 +335,8 @@ echo
 run_check_resolve_helper_regression
 run_check_shared_loader_wiring
 run_check_non_search_driver_usage
+run_check_deleted_orphan_absence
+run_check_no_orphan_workflow_scripts
 run_check_prohibited_placeholders
 
 echo

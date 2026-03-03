@@ -3,6 +3,38 @@
 # This helper centralizes cache/coalesce/pending flow only.
 # Each workflow keeps backend fetch details and error mapping locally.
 
+sfsd_emit_fallback_error_row_json() {
+  local raw_message="${1-script-filter search failed}"
+  local message="$raw_message"
+  message="${message//\\/\\\\}"
+  message="${message//\"/\\\"}"
+  message="${message//$'\n'/ }"
+  message="${message//$'\r'/ }"
+  printf '{"items":[{"title":"Workflow runtime error","subtitle":"%s","valid":false}]}\n' "$message"
+}
+
+sfsd_emit_error() {
+  local error_fn="${1-}"
+  local raw_message="${2-script-filter search failed}"
+
+  if [[ -n "$error_fn" ]] && declare -F "$error_fn" >/dev/null 2>&1; then
+    "$error_fn" "$raw_message"
+    return 0
+  fi
+
+  sfsd_emit_fallback_error_row_json "$raw_message"
+}
+
+sfsd_make_temp_err_file() {
+  local prefix="${1:-script-filter-search-driver.err}"
+  if command -v mktemp >/dev/null 2>&1; then
+    mktemp "${TMPDIR:-/tmp}/${prefix}.XXXXXX"
+    return 0
+  fi
+
+  printf '%s/%s.%s.%s\n' "${TMPDIR:-/tmp}" "$prefix" "$$" "$RANDOM"
+}
+
 sfsd_fetch_and_emit() {
   local query="$1"
   local cache_ttl_seconds="$2"
@@ -10,7 +42,14 @@ sfsd_fetch_and_emit() {
   local error_fn="$4"
 
   local json_output err_msg
-  local err_file="${TMPDIR:-/tmp}/script-filter-search-driver.err.$$.$RANDOM"
+  local err_file=""
+
+  if [[ -z "$fetch_fn" ]] || ! declare -F "$fetch_fn" >/dev/null 2>&1; then
+    sfsd_emit_error "$error_fn" "script-filter fetch callback is not defined"
+    return 0
+  fi
+
+  err_file="$(sfsd_make_temp_err_file "script-filter-search-driver.err")"
   if json_output="$("$fetch_fn" "$query" 2>"$err_file")"; then
     if [[ "$cache_ttl_seconds" -gt 0 ]]; then
       sfac_store_cache_result "$query" "ok" "$json_output" || true
@@ -25,7 +64,7 @@ sfsd_fetch_and_emit() {
   if [[ "$cache_ttl_seconds" -gt 0 ]]; then
     sfac_store_cache_result "$query" "err" "$err_msg" || true
   fi
-  "$error_fn" "$err_msg"
+  sfsd_emit_error "$error_fn" "$err_msg"
 }
 
 sfsd_run_search_flow() {
@@ -53,7 +92,7 @@ sfsd_run_search_flow() {
     if [[ "$SFAC_CACHE_STATUS" == "ok" ]]; then
       printf '%s\n' "$SFAC_CACHE_PAYLOAD"
     else
-      "$error_fn" "$SFAC_CACHE_PAYLOAD"
+      sfsd_emit_error "$error_fn" "$SFAC_CACHE_PAYLOAD"
     fi
     return 0
   fi

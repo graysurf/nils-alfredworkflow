@@ -23,18 +23,15 @@ fi
 # shellcheck disable=SC1090
 source "$helper_loader"
 
-if ! wfhl_source_helper "$script_dir" "script_filter_error_json.sh" off; then
-  wfhl_emit_missing_helper_item_json "script_filter_error_json.sh"
+if ! wfhl_source_required_helper "$script_dir" "script_filter_error_json.sh" off "json"; then
   exit 0
 fi
 
-if ! wfhl_source_helper "$script_dir" "workflow_cli_resolver.sh" off; then
-  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
+if ! wfhl_source_required_helper "$script_dir" "workflow_cli_resolver.sh" off "json"; then
   exit 0
 fi
 
-if ! wfhl_source_helper "$script_dir" "script_filter_cli_driver.sh" off; then
-  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate script_filter_cli_driver.sh runtime helper."
+if ! wfhl_source_required_helper "$script_dir" "script_filter_cli_driver.sh" off "json"; then
   exit 0
 fi
 
