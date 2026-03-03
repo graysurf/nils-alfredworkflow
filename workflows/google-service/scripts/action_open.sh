@@ -218,6 +218,115 @@ clear_active_account() {
   rm -f "$active_file"
 }
 
+resolve_drive_download_dir() {
+  local configured="${GOOGLE_DRIVE_DOWNLOAD_DIR:-}"
+  configured="$(trim "$configured")"
+  configured="$(expand_home_path "$configured")"
+  if [[ -n "$configured" ]]; then
+    printf '%s\n' "$configured"
+    return 0
+  fi
+
+  if [[ -n "${HOME:-}" ]]; then
+    printf '%s/Downloads\n' "${HOME%/}"
+    return 0
+  fi
+
+  printf '%s/downloads\n' "$(resolve_workflow_data_dir)"
+}
+
+sanitize_download_file_name() {
+  local name="${1-}"
+  local fallback="${2-}"
+
+  name="${name//\//_}"
+  name="${name//\\/}"
+  name="${name//$'\n'/ }"
+  name="${name//$'\r'/ }"
+  name="$(trim "$name")"
+
+  if [[ -z "$name" ]]; then
+    printf '%s\n' "$fallback"
+    return 0
+  fi
+
+  printf '%s\n' "$name"
+}
+
+resolve_unique_download_path() {
+  local dir="$1"
+  local file_name="$2"
+
+  local candidate="$dir/$file_name"
+  if [[ ! -e "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  local stem="$file_name"
+  local ext=""
+  if [[ "$file_name" == *.* && "$file_name" != .* ]]; then
+    stem="${file_name%.*}"
+    ext=".${file_name##*.}"
+  fi
+
+  local index=1
+  while true; do
+    candidate="$dir/${stem} (${index})${ext}"
+    if [[ ! -e "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    index=$((index + 1))
+  done
+}
+
+is_google_apps_mime() {
+  local mime_type="${1-}"
+  [[ "$mime_type" == application/vnd.google-apps.* ]]
+}
+
+resolve_drive_export_format() {
+  local mime_type="${1-}"
+  case "$mime_type" in
+  application/vnd.google-apps.document)
+    printf 'docx\n'
+    ;;
+  application/vnd.google-apps.spreadsheet)
+    printf 'xlsx\n'
+    ;;
+  application/vnd.google-apps.presentation)
+    printf 'pptx\n'
+    ;;
+  application/vnd.google-apps.folder | application/vnd.google-apps.shortcut)
+    printf '\n'
+    ;;
+  application/vnd.google-apps.*)
+    printf 'pdf\n'
+    ;;
+  *)
+    printf '\n'
+    ;;
+  esac
+}
+
+append_export_extension_if_needed() {
+  local file_name="${1-}"
+  local export_format="${2-}"
+
+  if [[ -z "$export_format" ]]; then
+    printf '%s\n' "$file_name"
+    return 0
+  fi
+
+  if [[ "$file_name" == *.* ]]; then
+    printf '%s\n' "$file_name"
+    return 0
+  fi
+
+  printf '%s.%s\n' "$file_name" "$export_format"
+}
+
 read_active_account() {
   local active_file
   active_file="$(resolve_active_account_file)"
@@ -319,6 +428,31 @@ url_decode() {
   fi
 
   printf '%s\n' "$encoded"
+}
+
+url_encode() {
+  local raw="${1-}"
+  if [[ -z "$raw" ]]; then
+    printf '\n'
+    return 0
+  fi
+
+  if command -v jq >/dev/null 2>&1; then
+    jq -rn --arg value "$raw" '$value | @uri'
+    return 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$raw" <<'PY'
+import sys
+import urllib.parse
+
+print(urllib.parse.quote(sys.argv[1], safe=""))
+PY
+    return 0
+  fi
+
+  printf '%s\n' "${raw// /%20}"
 }
 
 run_google_json_capture() {
@@ -589,6 +723,105 @@ handle_remove() {
   return 0
 }
 
+handle_drive_download() {
+  local google_cli="$1"
+  local file_id="$2"
+  local search_count="${3-}"
+
+  if [[ -z "$file_id" ]]; then
+    fail_with_notify "invalid drive download action token" 2
+    return
+  fi
+
+  local file_name="$file_id"
+  local mime_type=""
+  local metadata_output metadata_rc
+  run_google_json_capture metadata_output metadata_rc "$google_cli" drive get "$file_id"
+  if [[ "$metadata_rc" -eq 0 ]] && command -v jq >/dev/null 2>&1; then
+    if printf '%s\n' "$metadata_output" | jq -e '.ok == true and (.result.file | type == "object")' >/dev/null 2>&1; then
+      local extracted_name
+      extracted_name="$(printf '%s\n' "$metadata_output" | jq -r '.result.file.name // empty' 2>/dev/null || true)"
+      if [[ -n "$extracted_name" ]]; then
+        file_name="$extracted_name"
+      fi
+      mime_type="$(printf '%s\n' "$metadata_output" | jq -r '.result.file.mime_type // empty' 2>/dev/null || true)"
+    fi
+  fi
+
+  if [[ "$mime_type" == "application/vnd.google-apps.folder" || "$mime_type" == "application/vnd.google-apps.shortcut" ]]; then
+    fail_with_notify "drive download ${file_id}: folders/shortcuts cannot be downloaded" 65
+    return
+  fi
+
+  local export_format=""
+  if is_google_apps_mime "$mime_type"; then
+    export_format="$(resolve_drive_export_format "$mime_type")"
+    if [[ -z "$export_format" ]]; then
+      fail_with_notify "drive download ${file_id}: unsupported Google Docs export type (${mime_type})" 65
+      return
+    fi
+  fi
+
+  local download_dir
+  download_dir="$(resolve_drive_download_dir)"
+  if ! mkdir -p "$download_dir"; then
+    fail_with_notify "failed to create download directory: ${download_dir}" 1
+    return
+  fi
+
+  local safe_name
+  safe_name="$(sanitize_download_file_name "$file_name" "$file_id")"
+  safe_name="$(append_export_extension_if_needed "$safe_name" "$export_format")"
+  local output_path
+  output_path="$(resolve_unique_download_path "$download_dir" "$safe_name")"
+
+  local -a command_args=(drive download "$file_id")
+  if [[ -n "$export_format" ]]; then
+    command_args+=(--format "$export_format")
+  fi
+  command_args+=(--out "$output_path")
+
+  local output rc
+  run_google_json_capture output rc "$google_cli" "${command_args[@]}"
+  if [[ "$rc" -ne 0 ]]; then
+    local message
+    message="$(extract_error_message "$output")"
+    fail_with_notify "drive download ${file_id}: ${message}" "$rc"
+    return
+  fi
+
+  local count_suffix=""
+  if [[ -n "$search_count" ]]; then
+    count_suffix=" · result.count=${search_count}"
+  fi
+  notify "Downloaded: ${safe_name}${count_suffix}"
+  printf '%s\n' "$output"
+  return 0
+}
+
+handle_drive_open_home() {
+  local url="https://drive.google.com/drive/home"
+  open_url_best_effort "$url" || true
+  notify "Opened Google Drive home"
+  return 0
+}
+
+handle_drive_open_search() {
+  local search_query="$1"
+  search_query="$(trim "$search_query")"
+  if [[ -z "$search_query" ]]; then
+    fail_with_notify "drive search query is empty" 2
+    return
+  fi
+
+  local encoded_query
+  encoded_query="$(url_encode "$search_query")"
+  local url="https://drive.google.com/drive/search?q=${encoded_query}"
+  open_url_best_effort "$url" || true
+  notify "Opened Drive search: ${search_query}"
+  return 0
+}
+
 require_google_cli() {
   local resolved=""
   if ! resolved="$(resolve_google_cli)"; then
@@ -648,6 +881,26 @@ remove::*)
     die_with_notify "invalid remove token" 2
   fi
   handle_remove "$google_cli" "$account" "$yes_flag"
+  ;;
+drive-download::*)
+  google_cli="$(require_google_cli)"
+  payload="${action_token#drive-download::}"
+  file_id="${payload%%::*}"
+  search_count=""
+  if [[ "$payload" == *"::"* ]]; then
+    search_count="${payload#*::}"
+  fi
+  if [[ -z "$file_id" ]]; then
+    die_with_notify "invalid drive download token" 2
+  fi
+  handle_drive_download "$google_cli" "$file_id" "$search_count"
+  ;;
+drive-open-home)
+  handle_drive_open_home
+  ;;
+drive-open-search::*)
+  search_query="${action_token#drive-open-search::}"
+  handle_drive_open_search "$search_query"
   ;;
 *)
   die_with_notify "unknown action token: $action_token" 2

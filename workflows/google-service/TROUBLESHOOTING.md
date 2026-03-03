@@ -11,6 +11,7 @@ Run from repository root.
 ls -l \
   workflows/google-service/scripts/script_filter_empty.sh \
   workflows/google-service/scripts/script_filter.sh \
+  workflows/google-service/scripts/script_filter_drive.sh \
   workflows/google-service/scripts/action_open.sh
 
 # google-cli / jq availability
@@ -20,6 +21,7 @@ command -v jq || true
 # Script filter JSON output
 bash workflows/google-service/scripts/script_filter_empty.sh "" | jq -e '.items | type == "array"'
 bash workflows/google-service/scripts/script_filter.sh "" | jq -e '.items | type == "array"'
+bash workflows/google-service/scripts/script_filter_drive.sh "search keyboard" | jq -e '.items | type == "array"'
 
 # Workflow-local active account file (when workflow has been used)
 ls -l "${ALFRED_WORKFLOW_DATA:-}"/active-account.v1.json 2>/dev/null || true
@@ -39,6 +41,8 @@ ls -l "${ALFRED_WORKFLOW_DATA:-}"/active-account.v1.json 2>/dev/null || true
 | `NILS_GOOGLE_006` | Ambiguous account selection in native auth | Remove ambiguity by setting native default account or reducing account set. |
 | `NILS_GOOGLE_008` | Remote step 2 state mismatch | Restart from `login <email>` (remote step 1) and use the newly generated state/code pair. |
 | Remove cancelled silently | Confirmation dialog dismissed | Re-run remove and confirm, or use `remove --yes <email>`. |
+| `gsd search` has rows but download fails | Download destination unavailable or file permission denied | Ensure `~/Downloads` is writable and has enough disk space, or set `GOOGLE_DRIVE_DOWNLOAD_DIR` to a writable path. |
+| `gsd` open actions do nothing | Browser opener not available in runtime (`open`/`xdg-open`) | Ensure macOS `open` (default) or Linux `xdg-open` is available, then retry. |
 
 ## Validation commands
 
