@@ -11,6 +11,7 @@ Prereqs:
 
 - Run inside this repository git work tree.
 - `git` available on `PATH`.
+- `gh` available on `PATH` and authenticated (`gh auth status`) for GitHub remotes.
 - `semantic-commit` available on `PATH` (used for automated version-bump commit when needed).
 - If tracked `package*.json` files are present: `node` available on `PATH` (used for JSON version sync).
 - Remote `origin` configured and reachable.
@@ -25,6 +26,9 @@ Inputs:
 - Optional:
   - `--remote <name>` (default `origin`)
   - `--dry-run` (validate and print planned actions only)
+  - `--force-tag` (overwrite existing local/remote tag with same version)
+  - `--poll-seconds <n>` (default `15`)
+  - `--max-wait-seconds <n>` (default `1800`)
 
 Outputs:
 
@@ -39,7 +43,9 @@ Outputs:
 - Pushes the version-bump commit to the current upstream branch.
 - Creates an annotated git tag (`Release <version>`).
 - Pushes tag to remote (`git push <remote> refs/tags/<version>`).
-- Prints release URL when remote is GitHub-compatible.
+- Waits until the release workflow run for the pushed tag is `success`.
+- Waits until release page exists for the pushed tag (GitHub remotes).
+- Success is reported only after both checks above pass.
 
 Exit codes:
 
@@ -47,6 +53,7 @@ Exit codes:
 - `1`: operational failure (`git`/remote/tag push error)
 - `2`: usage error
 - `3`: precondition failure (not git repo, dirty tree, missing remote, duplicate tag)
+- `124`: timeout while waiting for release workflow/release page
 
 Failure modes:
 
@@ -54,8 +61,11 @@ Failure modes:
 - Working tree not clean.
 - Current branch has no upstream or is behind upstream.
 - Tag already exists locally or on remote.
+  - Use `--force-tag` when re-tagging an existing release version is intentional.
 - `origin` (or provided remote) not configured.
 - Push failed due to auth/permissions/network.
+- Release workflow run failed for the pushed tag.
+- Release page did not appear before timeout.
 
 ## Scripts (only entrypoints)
 
@@ -69,4 +79,6 @@ Failure modes:
    `Cargo.lock` and tracked `THIRD_PARTY_LICENSES.md` as needed, then commit/push when changes exist.
 4. Create annotated tag `Release <version>`.
 5. Push tag to remote.
-6. Print success summary and release URL.
+6. Wait release workflow for the tag to complete with `success`.
+7. Wait release page to appear for the tag.
+8. If release CI fails, fix root cause on branch, update/push fix commit, then recreate/re-push tag and repeat until green.
