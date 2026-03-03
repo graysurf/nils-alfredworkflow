@@ -12,6 +12,14 @@ impl Feedback {
         Self { items }
     }
 
+    pub fn single_error(code: &str, message: impl Into<String>) -> Self {
+        Self::new(vec![
+            Item::new(format!("Error [{code}]"))
+                .with_subtitle(message)
+                .with_valid(false),
+        ])
+    }
+
     pub fn to_json(&self) -> serde_json::Result<String> {
         serde_json::to_string(self)
     }
@@ -175,6 +183,15 @@ mod tests {
         let payload = Feedback::new(vec![Item::new("hello").with_subtitle("world")]);
         let json = payload.to_json().expect("serialize feedback");
         assert!(json.contains("items"), "json should contain items field");
+    }
+
+    #[test]
+    fn feedback_single_error_creates_non_valid_item() {
+        let payload = Feedback::single_error("demo.code", "boom");
+        let json = payload.to_json().expect("serialize error feedback");
+        assert!(json.contains("Error [demo.code]"));
+        assert!(json.contains("\"valid\":false"));
+        assert!(json.contains("\"subtitle\":\"boom\""));
     }
 
     #[test]

@@ -45,7 +45,7 @@ fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
     );
     assert_eq!(json.get("command").and_then(Value::as_str), Some("query"));
     assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
-    assert!(json.get("result").is_some());
+    assert!(json.get("result").is_none());
     assert!(
         json.get("error")
             .and_then(|error| error.get("code"))
@@ -55,7 +55,7 @@ fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
     assert!(
         json.get("error")
             .and_then(|error| error.get("details"))
-            .is_some()
+            .is_none()
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);

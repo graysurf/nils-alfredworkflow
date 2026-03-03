@@ -1,6 +1,10 @@
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::json;
+use workflow_common::{
+    EnvelopePayloadKind, OutputMode, build_alfred_error_feedback, build_error_details_json,
+    build_error_envelope, build_success_envelope, redact_sensitive, select_output_mode,
+};
 
 use weather_cli::{
     config::RuntimeConfig,
@@ -81,7 +85,6 @@ enum Commands {
     },
 }
 
-const ENVELOPE_SCHEMA_VERSION: &str = "v1";
 const ERROR_CODE_USER_INVALID_INPUT: &str = "user.invalid_input";
 const ERROR_CODE_USER_OUTPUT_MODE_CONFLICT: &str = "user.output_mode_conflict";
 const ERROR_CODE_RUNTIME_PROVIDER_INIT: &str = "runtime.provider_init_failed";
@@ -89,13 +92,6 @@ const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputModeArg {
-    Human,
-    Json,
-    AlfredJson,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CliOutputMode {
     Human,
     Json,
     AlfredJson,
@@ -145,12 +141,12 @@ impl CliError {
     }
 }
 
-impl From<OutputModeArg> for CliOutputMode {
+impl From<OutputModeArg> for OutputMode {
     fn from(value: OutputModeArg) -> Self {
         match value {
-            OutputModeArg::Human => CliOutputMode::Human,
-            OutputModeArg::Json => CliOutputMode::Json,
-            OutputModeArg::AlfredJson => CliOutputMode::AlfredJson,
+            OutputModeArg::Human => OutputMode::Human,
+            OutputModeArg::Json => OutputMode::Json,
+            OutputModeArg::AlfredJson => OutputMode::AlfredJson,
         }
     }
 }
@@ -173,17 +169,17 @@ impl Cli {
         }
     }
 
-    fn output_mode_hint(&self) -> CliOutputMode {
+    fn output_mode_hint(&self) -> OutputMode {
         match &self.command {
             Commands::Today { output, json, .. }
             | Commands::Week { output, json, .. }
             | Commands::Hourly { output, json, .. } => {
                 if *json {
-                    CliOutputMode::Json
+                    OutputMode::Json
                 } else if let Some(explicit) = output {
                     (*explicit).into()
                 } else {
-                    CliOutputMode::Human
+                    OutputMode::Human
                 }
             }
         }
@@ -325,11 +321,12 @@ where
     P: ProviderApi,
     N: Fn() -> DateTime<Utc>,
 {
-    let output_mode = resolve_output_mode(args.output, args.json, CliOutputMode::Human)?;
+    let output_mode = select_output_mode(args.output.map(Into::into), args.json, OutputMode::Human)
+        .map_err(|error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()))?;
     let output_language = args.lang.map(Into::into).unwrap_or(OutputLanguage::En);
     let request_mode = match output_mode {
-        CliOutputMode::Json => RequestOutputMode::Json,
-        CliOutputMode::Human | CliOutputMode::AlfredJson => RequestOutputMode::Text,
+        OutputMode::Json => RequestOutputMode::Json,
+        OutputMode::Human | OutputMode::AlfredJson => RequestOutputMode::Text,
     };
     let request = ForecastRequest::new(args.period, args.city, args.lat, args.lon, request_mode)
         .map_err(user_invalid_input)?;
@@ -337,9 +334,9 @@ where
         service::resolve_forecast(config, providers, now_fn, &request).map_err(map_app_error)?;
 
     match output_mode {
-        CliOutputMode::Json => render_service_json_envelope(args.command, &output),
-        CliOutputMode::Human => Ok(format_text_output(&output, output_language)),
-        CliOutputMode::AlfredJson => render_alfred_json(&output, output_language),
+        OutputMode::Json => render_service_json_envelope(args.command, &output),
+        OutputMode::Human => Ok(format_text_output(&output, output_language)),
+        OutputMode::AlfredJson => render_alfred_json(&output, output_language),
     }
 }
 
@@ -353,7 +350,8 @@ where
     P: ProviderApi,
     N: Fn() -> DateTime<Utc>,
 {
-    let output_mode = resolve_output_mode(args.output, args.json, CliOutputMode::Human)?;
+    let output_mode = select_output_mode(args.output.map(Into::into), args.json, OutputMode::Human)
+        .map_err(|error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()))?;
     let output_language = args.lang.map(Into::into).unwrap_or(OutputLanguage::En);
     let location = resolve_location_query(args.city, args.lat, args.lon)?;
     let output =
@@ -361,9 +359,9 @@ where
             .map_err(map_app_error)?;
 
     match output_mode {
-        CliOutputMode::Json => render_hourly_json_envelope(args.command, &output),
-        CliOutputMode::Human => Ok(format_hourly_text_output(&output, output_language)),
-        CliOutputMode::AlfredJson => render_hourly_alfred_json(&output, output_language),
+        OutputMode::Json => render_hourly_json_envelope(args.command, &output),
+        OutputMode::Human => Ok(format_hourly_text_output(&output, output_language)),
+        OutputMode::AlfredJson => render_hourly_alfred_json(&output, output_language),
     }
 }
 
@@ -383,71 +381,38 @@ fn resolve_location_query(
     Ok(request.location)
 }
 
-fn resolve_output_mode(
-    output: Option<OutputModeArg>,
-    json_flag: bool,
-    default_mode: CliOutputMode,
-) -> Result<CliOutputMode, CliError> {
-    match (output.map(Into::into), json_flag) {
-        (Some(mode), true) if mode != CliOutputMode::Json => Err(user_error(
-            ERROR_CODE_USER_OUTPUT_MODE_CONFLICT,
-            format!(
-                "conflicting output flags: --json requires --output json (got {})",
-                output_mode_label(mode)
-            ),
-        )),
-        (Some(mode), _) => Ok(mode),
-        (None, true) => Ok(CliOutputMode::Json),
-        (None, false) => Ok(default_mode),
-    }
-}
-
 fn render_service_json_envelope(
     command: &str,
     output: &weather_cli::model::ForecastOutput,
 ) -> Result<String, CliError> {
-    let result = serde_json::to_value(output).map_err(|error| {
+    let result = serde_json::to_string(output).map_err(|error| {
         runtime_error(
             ERROR_CODE_RUNTIME_SERIALIZE,
             format!("failed to serialize output: {error}"),
         )
     })?;
-    serde_json::to_string(&json!({
-        "schema_version": ENVELOPE_SCHEMA_VERSION,
-        "command": command,
-        "ok": true,
-        "result": result,
-    }))
-    .map_err(|error| {
-        runtime_error(
-            ERROR_CODE_RUNTIME_SERIALIZE,
-            format!("failed to serialize output envelope: {error}"),
-        )
-    })
+    Ok(build_success_envelope(
+        command,
+        EnvelopePayloadKind::Result,
+        &result,
+    ))
 }
 
 fn render_hourly_json_envelope(
     command: &str,
     output: &HourlyForecastOutput,
 ) -> Result<String, CliError> {
-    let result = serde_json::to_value(output).map_err(|error| {
+    let result = serde_json::to_string(output).map_err(|error| {
         runtime_error(
             ERROR_CODE_RUNTIME_SERIALIZE,
             format!("failed to serialize output: {error}"),
         )
     })?;
-    serde_json::to_string(&json!({
-        "schema_version": ENVELOPE_SCHEMA_VERSION,
-        "command": command,
-        "ok": true,
-        "result": result,
-    }))
-    .map_err(|error| {
-        runtime_error(
-            ERROR_CODE_RUNTIME_SERIALIZE,
-            format!("failed to serialize output envelope: {error}"),
-        )
-    })
+    Ok(build_success_envelope(
+        command,
+        EnvelopePayloadKind::Result,
+        &result,
+    ))
 }
 
 fn render_alfred_json(
@@ -530,49 +495,22 @@ fn render_hourly_alfred_json(
     })
 }
 
-fn emit_error(command: &str, output_mode: CliOutputMode, error: &CliError) {
+fn emit_error(command: &str, output_mode: OutputMode, error: &CliError) {
     match output_mode {
-        CliOutputMode::Json => {
-            let payload = json!({
-                "schema_version": ENVELOPE_SCHEMA_VERSION,
-                "command": command,
-                "ok": false,
-                "error": {
-                    "code": error.code,
-                    "message": redact_sensitive(&error.message),
-                    "details": {
-                        "kind": error_kind_label(error.kind),
-                        "exit_code": error.exit_code(),
-                    }
-                }
-            });
-            let rendered = serde_json::to_string(&payload).unwrap_or_else(|serialize_error| {
-                format!(
-                    "{{\"schema_version\":\"{}\",\"command\":\"{}\",\"ok\":false,\"error\":{{\"code\":\"{}\",\"message\":\"{}\"}}}}",
-                    ENVELOPE_SCHEMA_VERSION,
-                    command,
-                    ERROR_CODE_RUNTIME_SERIALIZE,
-                    escape_json_string(&format!(
-                        "failed to serialize error envelope: {serialize_error}"
-                    )),
-                )
-            });
-            println!("{rendered}");
+        OutputMode::Json => {
+            let details = build_error_details_json(error_kind_label(error.kind), error.exit_code());
+            println!(
+                "{}",
+                build_error_envelope(command, error.code, &error.message, Some(&details))
+            );
         }
-        CliOutputMode::AlfredJson => {
-            let payload = json!({
-                "items": [{
-                    "title": format!("Error [{}]", error.code),
-                    "subtitle": redact_sensitive(&error.message),
-                    "valid": false
-                }]
-            });
-            let rendered = serde_json::to_string(&payload).unwrap_or_else(|_| {
-                "{\"items\":[{\"title\":\"Error\",\"subtitle\":\"failed to serialize error output\",\"valid\":false}]}".to_string()
-            });
-            println!("{rendered}");
+        OutputMode::AlfredJson => {
+            println!(
+                "{}",
+                build_alfred_error_feedback(error.code, &error.message)
+            );
         }
-        CliOutputMode::Human => {
+        OutputMode::Human => {
             eprintln!(
                 "error[{}]: {}",
                 error.code,
@@ -610,121 +548,6 @@ fn error_kind_label(kind: weather_cli::error::ErrorKind) -> &'static str {
         weather_cli::error::ErrorKind::User => "user",
         weather_cli::error::ErrorKind::Runtime => "runtime",
     }
-}
-
-fn output_mode_label(mode: CliOutputMode) -> &'static str {
-    match mode {
-        CliOutputMode::Human => "human",
-        CliOutputMode::Json => "json",
-        CliOutputMode::AlfredJson => "alfred-json",
-    }
-}
-
-fn redact_sensitive(input: &str) -> String {
-    let mut output = input.to_string();
-    for pattern in [
-        "token=",
-        "token:",
-        "secret=",
-        "secret:",
-        "client_secret=",
-        "client_secret:",
-        "authorization=",
-        "authorization:",
-    ] {
-        output = redact_after_pattern(&output, pattern);
-    }
-    redact_bearer_token(&output)
-}
-
-fn redact_after_pattern(input: &str, pattern: &str) -> String {
-    let lower = input.to_ascii_lowercase();
-    let pattern_lower = pattern.to_ascii_lowercase();
-    let is_authorization_pattern = pattern_lower.starts_with("authorization");
-    let mut output = String::with_capacity(input.len());
-    let mut cursor = 0;
-
-    while let Some(found) = lower[cursor..].find(&pattern_lower) {
-        let start = cursor + found;
-        let value_start = skip_whitespace(input, start + pattern.len());
-        let (redaction_start, value_end) = if is_authorization_pattern
-            && input[value_start..]
-                .to_ascii_lowercase()
-                .starts_with("bearer ")
-        {
-            let bearer_start = value_start + "bearer ".len();
-            (bearer_start, find_value_end(input, bearer_start))
-        } else {
-            (value_start, find_value_end(input, value_start))
-        };
-
-        output.push_str(&input[cursor..redaction_start]);
-        if redaction_start < value_end {
-            output.push_str("[REDACTED]");
-        }
-        cursor = value_end;
-    }
-
-    output.push_str(&input[cursor..]);
-    output
-}
-
-fn redact_bearer_token(input: &str) -> String {
-    let lower = input.to_ascii_lowercase();
-    let pattern = "bearer ";
-    let mut output = String::with_capacity(input.len());
-    let mut cursor = 0;
-
-    while let Some(found) = lower[cursor..].find(pattern) {
-        let start = cursor + found;
-        let value_start = start + pattern.len();
-        let value_end = find_value_end(input, value_start);
-
-        output.push_str(&input[cursor..value_start]);
-        if value_start < value_end {
-            output.push_str("[REDACTED]");
-        }
-        cursor = value_end;
-    }
-
-    output.push_str(&input[cursor..]);
-    output
-}
-
-fn skip_whitespace(input: &str, mut index: usize) -> usize {
-    let bytes = input.as_bytes();
-    while index < bytes.len() && bytes[index].is_ascii_whitespace() {
-        index += 1;
-    }
-    index
-}
-
-fn find_value_end(input: &str, mut index: usize) -> usize {
-    let bytes = input.as_bytes();
-    while index < bytes.len() {
-        let byte = bytes[index];
-        if byte.is_ascii_whitespace() || matches!(byte, b'&' | b',' | b';' | b')' | b']' | b'}') {
-            break;
-        }
-        index += 1;
-    }
-    index
-}
-
-fn escape_json_string(raw: &str) -> String {
-    let mut escaped = String::with_capacity(raw.len());
-    for ch in raw.chars() {
-        match ch {
-            '"' => escaped.push_str("\\\""),
-            '\\' => escaped.push_str("\\\\"),
-            '\n' => escaped.push_str("\\n"),
-            '\r' => escaped.push_str("\\r"),
-            '\t' => escaped.push_str("\\t"),
-            c if c < '\u{20}' => escaped.push_str(&format!("\\u{:04x}", c as u32)),
-            c => escaped.push(c),
-        }
-    }
-    escaped
 }
 
 fn format_text_output(

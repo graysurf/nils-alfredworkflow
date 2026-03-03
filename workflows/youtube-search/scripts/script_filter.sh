@@ -20,15 +20,16 @@ fi
 # shellcheck disable=SC1090
 source "$workflow_helper_loader"
 
-if ! wfhl_source_helper "$script_dir" "script_filter_error_json.sh"; then
-  wfhl_emit_missing_helper_item_json "script_filter_error_json.sh"
-  exit 0
-fi
+load_helper_or_exit() {
+  local helper_name="$1"
+  local fallback="${2:-auto}"
+  if ! wfhl_source_required_helper "$script_dir" "$helper_name" "$fallback" "json"; then
+    exit 0
+  fi
+}
 
-if ! wfhl_source_helper "$script_dir" "workflow_cli_resolver.sh"; then
-  sfej_emit_error_item_json "Workflow helper missing" "Cannot locate workflow_cli_resolver.sh runtime helper."
-  exit 0
-fi
+load_helper_or_exit "script_filter_error_json.sh"
+load_helper_or_exit "workflow_cli_resolver.sh"
 
 normalize_error_message() {
   sfej_normalize_error_message "${1-}"
@@ -118,20 +119,9 @@ youtube_search_fetch_json() {
   return 1
 }
 
-if ! wfhl_source_helper "$script_dir" "script_filter_query_policy.sh"; then
-  emit_error_item "Workflow helper missing" "Cannot locate script_filter_query_policy.sh runtime helper."
-  exit 0
-fi
-
-if ! wfhl_source_helper "$script_dir" "script_filter_async_coalesce.sh"; then
-  emit_error_item "Workflow helper missing" "Cannot locate script_filter_async_coalesce.sh runtime helper."
-  exit 0
-fi
-
-if ! wfhl_source_helper "$script_dir" "script_filter_search_driver.sh"; then
-  emit_error_item "Workflow helper missing" "Cannot locate script_filter_search_driver.sh runtime helper."
-  exit 0
-fi
+load_helper_or_exit "script_filter_query_policy.sh"
+load_helper_or_exit "script_filter_async_coalesce.sh"
+load_helper_or_exit "script_filter_search_driver.sh"
 
 query="$(sfqp_resolve_query_input "${1:-}")"
 trimmed_query="$(sfqp_trim "$query")"

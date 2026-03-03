@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
 use workflow_common::{
     EnvelopePayloadKind, OutputMode, RuntimeConfig, ScriptFilterMode, WorkflowError,
-    build_error_details_json, build_error_envelope, build_script_filter_feedback_with_mode,
-    build_success_envelope, github_url_for_project, record_usage, select_output_mode,
+    build_alfred_error_feedback, build_error_details_json, build_error_envelope,
+    build_script_filter_feedback_with_mode, build_success_envelope, github_url_for_project,
+    record_usage, select_output_mode,
 };
 
 #[derive(Debug, Parser)]
@@ -235,11 +236,9 @@ fn emit_error(command: &str, output_mode: OutputMode, error: &AppError) {
             );
         }
         OutputMode::AlfredJson => {
-            let safe_message = workflow_common::redact_sensitive(&error.message);
             println!(
-                "{{\"items\":[{{\"title\":\"Error [{}]\",\"subtitle\":\"{}\",\"valid\":false}}]}}",
-                error.code,
-                escape_for_alfred_json(&safe_message),
+                "{}",
+                build_alfred_error_feedback(error.code, &error.message)
             );
         }
         OutputMode::Human => {
@@ -257,22 +256,6 @@ fn error_kind_label(kind: ErrorKind) -> &'static str {
         ErrorKind::User => "user",
         ErrorKind::Runtime => "runtime",
     }
-}
-
-fn escape_for_alfred_json(raw: &str) -> String {
-    let mut escaped = String::with_capacity(raw.len());
-    for ch in raw.chars() {
-        match ch {
-            '"' => escaped.push_str("\\\""),
-            '\\' => escaped.push_str("\\\\"),
-            '\n' => escaped.push_str("\\n"),
-            '\r' => escaped.push_str("\\r"),
-            '\t' => escaped.push_str("\\t"),
-            c if c < '\u{20}' => escaped.push_str(&format!("\\u{:04x}", c as u32)),
-            c => escaped.push(c),
-        }
-    }
-    escaped
 }
 
 fn validate_project_path(path: &Path) -> Result<(), AppError> {

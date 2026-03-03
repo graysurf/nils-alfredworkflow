@@ -117,3 +117,35 @@ wfhl_source_helper() {
   # shellcheck disable=SC1090
   source "$helper_path"
 }
+
+wfhl_source_required_helper() {
+  if [[ $# -lt 2 ]]; then
+    echo "wfhl_source_required_helper requires: script-dir helper-name [git-root|auto|off] [json|stderr|none]" >&2
+    return 2
+  fi
+
+  local script_dir="$1"
+  local helper_name="$2"
+  local git_fallback="${3:-auto}"
+  local on_missing="${4:-json}"
+
+  if wfhl_source_helper "$script_dir" "$helper_name" "$git_fallback"; then
+    return 0
+  fi
+
+  case "$on_missing" in
+  "" | json)
+    wfhl_emit_missing_helper_item_json "$helper_name"
+    ;;
+  stderr)
+    wfhl_print_missing_helper_stderr "$helper_name"
+    ;;
+  none | off | silent) ;;
+  *)
+    echo "wfhl_source_required_helper: unknown on-missing mode: $on_missing" >&2
+    return 2
+    ;;
+  esac
+
+  return 1
+}

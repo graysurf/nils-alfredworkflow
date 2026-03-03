@@ -22,7 +22,7 @@ pub use config::{
     DEFAULT_OPEN_PROJECT_MAX_RESULTS, DEFAULT_PROJECT_DIRS, DEFAULT_USAGE_FILE,
     DEFAULT_VSCODE_PATH, RuntimeConfig, expand_home_tokens, parse_project_dirs,
 };
-pub use error::WorkflowError;
+pub use error::{CliErrorKind, WorkflowError};
 pub use feedback::{
     ScriptFilterMode, build_script_filter_feedback, build_script_filter_feedback_with_mode,
     no_projects_feedback, subtitle_format,
@@ -31,8 +31,8 @@ pub use git::{github_url_for_project, normalize_github_remote};
 pub use list_parser::{parse_ordered_list_with, split_ordered_list};
 pub use output_contract::{
     ENVELOPE_SCHEMA_VERSION, EnvelopePayloadKind, OutputMode, OutputModeSelectionError,
-    build_error_details_json, build_error_envelope, build_success_envelope, redact_sensitive,
-    select_output_mode,
+    build_alfred_error_feedback, build_error_details_json, build_error_envelope,
+    build_feedback_result_envelope, build_success_envelope, redact_sensitive, select_output_mode,
 };
 pub use usage_log::{parse_usage_timestamp, record_usage};
 

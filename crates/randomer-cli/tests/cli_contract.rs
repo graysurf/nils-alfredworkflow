@@ -30,7 +30,7 @@ fn service_json_success_envelope_has_required_keys() {
         Some("list-formats")
     );
     assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
-    assert!(json.get("error").is_some());
+    assert!(json.get("error").is_none());
     assert!(
         json.get("result")
             .and_then(|result| result.get("items"))
@@ -65,7 +65,7 @@ fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
     assert!(
         json.get("error")
             .and_then(|error| error.get("details"))
-            .is_some()
+            .is_none()
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);

@@ -61,6 +61,16 @@ sfcd_emit_mapped_error_json() {
   sfcd_emit_fallback_error_row_json "$raw_message"
 }
 
+sfcd_make_temp_err_file() {
+  local prefix="${1:-script-filter-cli-driver.err}"
+  if command -v mktemp >/dev/null 2>&1; then
+    mktemp "${TMPDIR:-/tmp}/${prefix}.XXXXXX"
+    return 0
+  fi
+
+  printf '%s/%s.%s.%s\n' "${TMPDIR:-/tmp}" "$prefix" "$$" "$RANDOM"
+}
+
 sfcd_run_cli_flow() {
   local execute_fn="${1-}"
   local map_error_fn="${2-}"
@@ -80,7 +90,7 @@ sfcd_run_cli_flow() {
     return 0
   fi
 
-  err_file="${TMPDIR:-/tmp}/script-filter-cli-driver.err.$$.$RANDOM"
+  err_file="$(sfcd_make_temp_err_file "script-filter-cli-driver.err")"
 
   if json_output="$("$execute_fn" "${execute_args[@]}" 2>"$err_file")"; then
     if [[ -z "$json_output" ]]; then

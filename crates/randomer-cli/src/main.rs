@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use randomer_cli::{RandomerError, generate_feedback, list_formats_feedback, list_types_feedback};
+use workflow_common::{EnvelopePayloadKind, build_error_envelope, build_success_envelope};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "Randomer workflow CLI")]
@@ -175,40 +176,17 @@ fn render_feedback(
             let result = payload.to_json().map_err(|error| {
                 AppError::runtime(format!("failed to serialize Alfred feedback: {error}"))
             })?;
-            Ok(format!(
-                r#"{{"schema_version":"v1","command":"{command}","ok":true,"result":{result},"error":null}}"#
+            Ok(build_success_envelope(
+                command,
+                EnvelopePayloadKind::Result,
+                &result,
             ))
         }
     }
 }
 
 fn serialize_service_error(command: &'static str, error: &AppError) -> String {
-    format!(
-        r#"{{"schema_version":"v1","command":"{command}","ok":false,"result":null,"error":{{"code":"{}","message":"{}","details":null}}}}"#,
-        error.code(),
-        escape_json(&error.message)
-    )
-}
-
-fn escape_json(value: &str) -> String {
-    let mut escaped = String::with_capacity(value.len());
-    for ch in value.chars() {
-        match ch {
-            '\\' => escaped.push_str("\\\\"),
-            '"' => escaped.push_str("\\\""),
-            '\n' => escaped.push_str("\\n"),
-            '\r' => escaped.push_str("\\r"),
-            '\t' => escaped.push_str("\\t"),
-            control if control.is_control() => {
-                let _ = std::fmt::Write::write_fmt(
-                    &mut escaped,
-                    format_args!("\\u{:04x}", control as u32),
-                );
-            }
-            _ => escaped.push(ch),
-        }
-    }
-    escaped
+    build_error_envelope(command, error.code(), &error.message, None)
 }
 
 #[cfg(test)]
@@ -363,7 +341,7 @@ mod tests {
             Some("generate")
         );
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
-        assert!(json.get("result").is_some());
+        assert!(json.get("result").is_none());
         assert_eq!(
             json.get("error")
                 .and_then(|error| error.get("code"))
@@ -373,7 +351,7 @@ mod tests {
         assert!(
             json.get("error")
                 .and_then(|error| error.get("details"))
-                .is_some()
+                .is_none()
         );
     }
 }
