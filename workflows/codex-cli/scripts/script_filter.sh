@@ -913,45 +913,6 @@ emit_diag_result_items() {
   fi
 }
 
-is_truthy() {
-  local value
-  value="$(to_lower "${1:-}")"
-  case "$value" in
-  1 | true | yes | on)
-    return 0
-    ;;
-  *)
-    return 1
-    ;;
-  esac
-}
-
-query_has_assessment_flag() {
-  local lower_query="${1:-}"
-  [[ "$lower_query" == *"--assessment"* || "$lower_query" == *"--show-assessment"* ]]
-}
-
-strip_assessment_flags() {
-  local raw_query="${1:-}"
-  local token
-  local output=()
-
-  # shellcheck disable=SC2206
-  local parts=($raw_query)
-  for token in "${parts[@]}"; do
-    case "$(to_lower "$token")" in
-    --assessment | --show-assessment)
-      continue
-      ;;
-    *)
-      output+=("$token")
-      ;;
-    esac
-  done
-
-  printf '%s\n' "$(trim "${output[*]:-}")"
-}
-
 begin_items() {
   ITEM_COUNT=0
   printf '{"items":['
@@ -1042,39 +1003,6 @@ emit_runtime_status() {
   emit_item \
     "codex-cli runtime missing" \
     "Re-import workflow, set CODEX_CLI_BIN, or install ${codex_cli_pinned_crate} ${codex_cli_pinned_version} manually." \
-    "" \
-    false \
-    ""
-}
-
-emit_assessment_items() {
-  emit_item \
-    "Implemented now: auth login" \
-    "Supports browser (default), --api-key, and --device-code from Alfred." \
-    "" \
-    false \
-    ""
-  emit_item \
-    "Implemented now: auth save/use/remove" \
-    "Use save/remove [--yes] <secret.json> and use <secret> (or cxau) from Alfred." \
-    "" \
-    false \
-    ""
-  emit_item \
-    "Implemented now: diag rate-limits" \
-    "Quick presets included: default, --cached, --one-line, --all, --all --async." \
-    "" \
-    false \
-    ""
-  emit_item \
-    "Can be added next: auth refresh/current/sync" \
-    "${codex_cli_pinned_version} supports these auth helpers; straightforward to map next." \
-    "" \
-    false \
-    ""
-  emit_item \
-    "Can be added next: config / starship / agent" \
-    "config show/set, starship render, and agent wrappers are available in the crate." \
     "" \
     false \
     ""
@@ -2381,18 +2309,6 @@ handle_diag_query() {
 
 query="$(sfqp_resolve_query_input "${1:-}")"
 trimmed_query="$(trim "$query")"
-lower_query_raw="$(to_lower "$trimmed_query")"
-
-show_assessment=0
-if is_truthy "${CODEX_SHOW_ASSESSMENT:-0}"; then
-  show_assessment=1
-fi
-
-if query_has_assessment_flag "$lower_query_raw"; then
-  show_assessment=1
-  trimmed_query="$(strip_assessment_flags "$trimmed_query")"
-fi
-
 lower_query="$(to_lower "$trimmed_query")"
 
 begin_items
@@ -2401,18 +2317,12 @@ ensure_codex_secret_dir_env >/dev/null 2>&1 || true
 emit_runtime_status
 
 if [[ -z "$trimmed_query" ]]; then
-  if [[ "$show_assessment" -eq 1 ]]; then
-    emit_assessment_items
-  fi
   emit_default_action_items
   end_items
   exit 0
 fi
 
-if [[ "$lower_query" == "help" || "$lower_query" == "?" || "$lower_query" == "eval" || "$lower_query" == "assessment" || "$lower_query" == "features" ]]; then
-  if [[ "$show_assessment" -eq 1 || "$lower_query" == "eval" || "$lower_query" == "assessment" || "$lower_query" == "features" ]]; then
-    emit_assessment_items
-  fi
+if [[ "$lower_query" == "help" || "$lower_query" == "?" ]]; then
   emit_default_action_items
   end_items
   exit 0
@@ -2462,7 +2372,7 @@ fi
 
 emit_item \
   "Unknown command: ${trimmed_query}" \
-  "Try: login, use <secret>, save/remove <secret.json>, diag, or help (--assessment optional)." \
+  "Try: login, use <secret>, save/remove <secret.json>, diag, or help." \
   "" \
   false \
   "help"

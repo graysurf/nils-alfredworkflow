@@ -154,9 +154,6 @@ fi
 if ! rg -n '^CODEX_SECRET_DIR[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
   fail "CODEX_SECRET_DIR default must be empty"
 fi
-if ! rg -n '^CODEX_SHOW_ASSESSMENT[[:space:]]*=[[:space:]]*"0"' "$manifest" >/dev/null; then
-  fail "CODEX_SHOW_ASSESSMENT default must be 0"
-fi
 if ! rg -n '^CODEX_DIAG_CACHE_TTL_SECONDS[[:space:]]*=[[:space:]]*"300"' "$manifest" >/dev/null; then
   fail "CODEX_DIAG_CACHE_TTL_SECONDS default must be 300"
 fi
@@ -797,18 +794,11 @@ chmod +x "$tmp_dir/stubs/cargo"
 
 empty_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" ""; })"
 assert_jq_json "$empty_json" '.items | type == "array" and length >= 8' "empty query must return action items"
-assert_jq_json "$empty_json" '.items | any(.title == "Implemented now: auth login") | not' "assessment items must be hidden by default"
 assert_jq_json "$empty_json" '.items | any(.arg == "diag::default" and .valid == true)' "diag action item missing"
 assert_jq_json "$empty_json" '.items | any(.title == "codex-cli detected" or (.subtitle | startswith("Runtime ready:"))) | not' "runtime ready row must be hidden when binary exists"
 
 missing_runtime_json="$({ PATH="/usr/bin:/bin" CODEX_CLI_BIN="$tmp_dir/stubs/does-not-exist" "$workflow_dir/scripts/script_filter.sh" ""; })"
 assert_jq_json "$missing_runtime_json" '.items[0].title == "codex-cli runtime missing"' "missing binary should show runtime missing item"
-
-help_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "help"; })"
-assert_jq_json "$help_json" '.items | any(.title == "Can be added next: auth use/refresh/current/sync") | not' "help should hide extension assessment by default"
-
-help_assessment_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "help --assessment"; })"
-assert_jq_json "$help_assessment_json" '.items | any(.title == "Implemented now: auth login")' "help --assessment should include assessment items"
 
 auth_root_json="$({ CODEX_CLI_BIN="$tmp_dir/stubs/codex-cli-ok" "$workflow_dir/scripts/script_filter.sh" "auth"; })"
 assert_jq_json "$auth_root_json" '.items | any(.arg == "login::browser")' "auth root should include login actions"
@@ -1400,11 +1390,10 @@ assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workfl
 assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.queuedelayimmediatelyinitially] | all(. == false)' "all codex script filters must disable immediate initial run"
 assert_jq_file "$packaged_json_file" '.connections | length == 9' "plist must include eight scriptfilter-to-action connections and one hotkey route"
 assert_jq_file "$packaged_json_file" '.connections["771DC53D-E670-447A-9983-1E513A55CA1E"][0].destinationuid == "B7D3A21F-6B44-4CF9-9CC3-3CE9D9F4E9D7"' "cxau hotkey must target cxau script filter"
-assert_jq_file "$packaged_json_file" '.userconfigurationconfig | length >= 5' "plist must expose codex workflow config variables"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig | length >= 4' "plist must expose codex workflow config variables"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_CLI_BIN") | .config.default == ""' "CODEX_CLI_BIN config row missing"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_AUTH_FILE") | .config.default == ""' "CODEX_AUTH_FILE config row missing"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_SECRET_DIR") | .config.default == ""' "CODEX_SECRET_DIR config row missing"
-assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_SHOW_ASSESSMENT") | .config.default == "0"' "CODEX_SHOW_ASSESSMENT config row missing"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CODEX_DIAG_CACHE_TTL_SECONDS") | .config.default == "300"' "CODEX_DIAG_CACHE_TTL_SECONDS config row missing"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "cx||codex"' "keyword trigger must be cx"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script filter wiring mismatch"

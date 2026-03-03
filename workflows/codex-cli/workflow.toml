@@ -17,9 +17,6 @@ CODEX_AUTH_FILE = ""
 # Optional secret directory override for auth save/use/diag operations.
 # Leave empty to auto-fallback to $XDG_CONFIG_HOME/codex_secrets or ~/.config/codex_secrets.
 CODEX_SECRET_DIR = ""
-# Optional UI switch for showing assessment rows in script filter.
-# Default off to keep actionable items easy to select.
-CODEX_SHOW_ASSESSMENT = "0"
 # Diag cache TTL (seconds) for cxau/cxd/cxda auto refresh.
 # Default 300 seconds (5 minutes). Set 0 to always refresh before render.
 CODEX_DIAG_CACHE_TTL_SECONDS = "300"

@@ -671,7 +671,7 @@
         <true/>
       </dict>
       <key>description</key>
-      <string>Optional absolute path override for codex-cli. Leave empty to use PATH (cargo install nils-codex-cli --version 0.6.2).</string>
+      <string>Optional absolute path override for codex-cli. Leave empty to use PATH (cargo install nils-codex-cli --version 0.6.3).</string>
       <key>label</key>
       <string>CODEX_CLI_BIN</string>
       <key>type</key>
@@ -720,27 +720,6 @@
       <string>textfield</string>
       <key>variable</key>
       <string>CODEX_SECRET_DIR</string>
-    </dict>
-    <dict>
-      <key>config</key>
-      <dict>
-        <key>default</key>
-        <string>0</string>
-        <key>placeholder</key>
-        <string>0 or 1</string>
-        <key>required</key>
-        <false/>
-        <key>trim</key>
-        <true/>
-      </dict>
-      <key>description</key>
-      <string>Show assessment rows in Alfred list. Default is 0 (hidden). Set 1/true/yes/on to enable.</string>
-      <key>label</key>
-      <string>CODEX_SHOW_ASSESSMENT</string>
-      <key>type</key>
-      <string>textfield</string>
-      <key>variable</key>
-      <string>CODEX_SHOW_ASSESSMENT</string>
     </dict>
     <dict>
       <key>config</key>

@@ -1,6 +1,6 @@
 # Codex CLI - Alfred Workflow
 
-Run core `nils-codex-cli@0.6.2` operations from Alfred.
+Run core `nils-codex-cli@0.6.3` operations from Alfred.
 
 ## Screenshot
 
@@ -56,7 +56,7 @@ No `CODEX_SECRET_DIR` saved secrets behavior:
 ## Runtime Requirements
 
 - End users: no extra install when using release artifact.
-- `.alfredworkflow` bundles `codex-cli@0.6.2` (release-coupled runtime version).
+- `.alfredworkflow` bundles `codex-cli@0.6.3` (release-coupled runtime version).
 - Pinned runtime metadata is centralized in `scripts/lib/codex_cli_runtime.sh`.
 - Bundled target: macOS `arm64`.
 
@@ -68,7 +68,7 @@ Fallback runtime sources (when bundled binary is unavailable):
 Manual fallback install:
 
 ```bash
-cargo install nils-codex-cli --version 0.6.2
+cargo install nils-codex-cli --version 0.6.3
 ```
 
 ## Configuration
@@ -78,7 +78,6 @@ cargo install nils-codex-cli --version 0.6.2
 | `CODEX_CLI_BIN`                       | No       | empty   | Optional absolute path override for `codex-cli`.                                                                                                                              |
 | `CODEX_AUTH_FILE`                     | No       | empty   | Auth file path used by `codex-cli` auth/diag commands. Resolution order: configured value -> inherited env `CODEX_AUTH_FILE` -> `~/.codex/auth.json`. Supports `~` expansion. |
 | `CODEX_SECRET_DIR`                    | No       | empty   | Optional secret directory override. If empty, runtime fallback is `$XDG_CONFIG_HOME/codex_secrets` or `~/.config/codex_secrets`.                                              |
-| `CODEX_SHOW_ASSESSMENT`               | No       | `0`     | Show assessment rows in Alfred list (`1/true/yes/on` to enable).                                                                                                              |
 | `CODEX_DIAG_CACHE_TTL_SECONDS`        | No       | `300`   | Diag cache TTL for `cxau`/`cxd`/`cxda` (`0` means always refresh before render).                                                                                              |
 | `CODEX_DIAG_CACHE_BLOCK_WAIT_SECONDS` | No       | `15`    | Max wait seconds while another process is refreshing the same diag cache mode.                                                                                                |
 | `CODEX_LOGIN_TIMEOUT_SECONDS`         | No       | `60`    | Login timeout in seconds (`1..3600`).                                                                                                                                         |
@@ -127,16 +126,15 @@ cargo install nils-codex-cli --version 0.6.2
 | `cxd result`                      | Show latest cached default JSON-parsed result rows                               |
 | `cxda result`                     | Show latest cached all-json parsed rows                                          |
 | `cxda result raw`                 | Same as above with higher row limit                                              |
-| `cx help --assessment`            | Show assessment rows + executable actions                                        |
 
 ## Maintainer Packaging Notes
 
-- Official package should bundle exactly `codex-cli@0.6.2`.
+- Official package should bundle exactly `codex-cli@0.6.3`.
 - `scripts/workflow-pack.sh --id codex-cli` runs `workflows/codex-cli/scripts/prepare_package.sh`.
 - Packaging binary resolution order:
   1. `CODEX_CLI_PACK_BIN` (if set)
   2. local `PATH` `codex-cli`
-  3. auto-install pinned `nils-codex-cli@0.6.2` from crates.io via `cargo install --locked --root <cache-root>`
+  3. auto-install pinned `nils-codex-cli@0.6.3` from crates.io via `cargo install --locked --root <cache-root>`
 - Useful overrides:
   - `CODEX_CLI_PACK_BIN=/absolute/path/to/codex-cli`
   - `CODEX_CLI_PACK_INSTALL_ROOT=/absolute/path/to/install-root` (default is cache under `$XDG_CACHE_HOME` or
