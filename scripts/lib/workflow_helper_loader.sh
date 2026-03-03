@@ -140,8 +140,7 @@ wfhl_source_required_helper() {
   stderr)
     wfhl_print_missing_helper_stderr "$helper_name"
     ;;
-  none | off | silent)
-    ;;
+  none | off | silent) ;;
   *)
     echo "wfhl_source_required_helper: unknown on-missing mode: $on_missing" >&2
     return 2
