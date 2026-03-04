@@ -1,6 +1,6 @@
 # Market Expression - Alfred Workflow
 
-Evaluate market expressions and copy the formatted result.
+Evaluate market expressions and show favorite market symbols when the query is empty.
 
 ## Screenshot
 
@@ -8,8 +8,10 @@ Evaluate market expressions and copy the formatted result.
 
 ## Features
 
-- Trigger with `mx <expression>`.
+- Trigger with `mx` for a prompt row plus favorite quotes on empty query, or `mx <expression>` for evaluation.
+- Empty query shows a prompt row first, then favorite symbols converted into the configured default fiat as non-selectable rows.
 - Calls `market-cli expr --query <query> --default-fiat <MARKET_DEFAULT_FIAT>`.
+- Calls `market-cli favorites --list <MARKET_FAVORITE_LIST> --default-fiat <MARKET_DEFAULT_FIAT>` for empty query.
 - Supports `+ - * /` for numeric-only expressions and `+ -` for asset expressions, with target fiat syntax `to <FIAT>`
   (default `USD`).
 - Accepts compact asset terms like `1btc` and `3eth` (auto-normalized).
@@ -21,17 +23,32 @@ Evaluate market expressions and copy the formatted result.
 
 Set these via Alfred's "Configure Workflow..." UI:
 
-| Variable              | Required | Default | Description                                                                           |
-| --------------------- | -------- | ------- | ------------------------------------------------------------------------------------- |
-| `MARKET_CLI_BIN`      | No       | (empty) | Optional absolute path override for `market-cli`.                                     |
-| `MARKET_DEFAULT_FIAT` | No       | `USD`   | Default fiat passed to `market-cli expr --default-fiat` when query omits fiat target. |
+| Variable               | Required | Default           | Description                                                                            |
+| ---------------------- | -------- | ----------------- | -------------------------------------------------------------------------------------- |
+| `MARKET_CLI_BIN`       | No       | (empty)           | Optional absolute path override for `market-cli`.                                      |
+| `MARKET_DEFAULT_FIAT`  | No       | `USD`             | Default fiat passed to `market-cli expr --default-fiat` when query omits fiat target.  |
+| `MARKET_FAVORITE_LIST` | No       | `BTC,ETH,USD,JPY` | Ordered comma/newline favorites list used for empty query.                             |
+
+Empty or delimiter-only `MARKET_FAVORITE_LIST` input falls back to
+`BTC,ETH,<MARKET_DEFAULT_FIAT>,JPY`.
+
+## Query Behavior
+
+| Query | Behavior |
+| ----- | -------- |
+| `mx` | Show a non-selectable prompt row plus favorite quote rows from `MARKET_FAVORITE_LIST`. Duplicates are removed after first occurrence; empty or delimiter-only config falls back to `BTC,ETH,<MARKET_DEFAULT_FIAT>,JPY`. |
+| `mx <expression>` | Evaluate the expression through `market-cli expr` and return actionable result rows. |
+
+Favorite quote rows render `1 <SYMBOL> = <PRICE> <MARKET_DEFAULT_FIAT>` when pricing
+succeeds. If a symbol cannot be priced, that row falls back to a non-selectable
+symbol hint so the empty-query page still renders.
 
 ## Keyword
 
-| Keyword           | Behavior                                                         |
-| ----------------- | ---------------------------------------------------------------- |
-| `mx <expression>` | Evaluate expression and show Alfred rows from `market-cli expr`. |
-| `mx`              | Shows usage guidance for expression syntax.                      |
+| Keyword           | Behavior                                                              |
+| ----------------- | --------------------------------------------------------------------- |
+| `mx <expression>` | Evaluate expression and show Alfred rows from `market-cli expr`.      |
+| `mx`              | Show a prompt row plus non-selectable favorite quote rows.            |
 
 ## Validation
 

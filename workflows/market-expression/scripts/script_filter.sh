@@ -98,13 +98,30 @@ execute_market_expression() {
   "$market_cli" expr --query "$query" --default-fiat "$default_fiat"
 }
 
+execute_market_favorites() {
+  local favorite_list="$1"
+  local default_fiat="$2"
+  local market_cli=""
+
+  if ! market_cli="$(resolve_market_cli)"; then
+    return 1
+  fi
+
+  "$market_cli" favorites --list "$favorite_list" --default-fiat "$default_fiat"
+}
+
 query="${1:-}"
 default_fiat="${MARKET_DEFAULT_FIAT:-USD}"
+favorite_list="${MARKET_FAVORITE_LIST:-}"
 
 if [[ -z "$(printf '%s' "$query" | sed 's/[[:space:]]//g')" ]]; then
-  sfej_emit_error_item_json \
-    "Enter a market expression" \
-    "Example: 1 BTC + 3 ETH to JPY (default fiat: ${default_fiat})"
+  sfcd_run_cli_flow \
+    "execute_market_favorites" \
+    "print_error_item" \
+    "market-cli favorites returned empty response" \
+    "market-cli favorites returned malformed Alfred JSON" \
+    "$favorite_list" \
+    "$default_fiat"
   exit 0
 fi
 

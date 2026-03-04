@@ -12,6 +12,8 @@ assets = ["src/assets/icon.png"]
 MARKET_CLI_BIN = ""
 # Default fiat used by market-cli expr when target fiat is omitted in query.
 MARKET_DEFAULT_FIAT = "USD"
+# Ordered favorites list shown when query is empty. Supports comma/newline separated symbols.
+MARKET_FAVORITE_LIST = "BTC,ETH,USD,JPY"
 
 [alfred]
 min_alfred = "5"

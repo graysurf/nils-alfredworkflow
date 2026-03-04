@@ -314,29 +314,8 @@ where
     P: ProviderApi,
     N: Fn() -> DateTime<Utc> + Copy,
 {
-    let mut trace = Vec::<String>::new();
-
-    if looks_like_fiat_symbol(symbol) {
-        let fx_request =
-            MarketRequest::new(MarketKind::Fx, symbol, target_fiat, "1").map_err(AppError::from)?;
-        match service::resolve_market(config, providers, now_fn, &fx_request) {
-            Ok(output) => return convert_output(symbol, output),
-            Err(error) => trace.push(format!("fx: {}", error.message)),
-        }
-    }
-
-    let crypto_request =
-        MarketRequest::new(MarketKind::Crypto, symbol, target_fiat, "1").map_err(AppError::from)?;
-    match service::resolve_market(config, providers, now_fn, &crypto_request) {
-        Ok(output) => convert_output(symbol, output),
-        Err(error) => {
-            trace.push(format!("crypto: {}", error.message));
-            Err(AppError::runtime_with_trace(
-                &format!("failed to resolve quote for {symbol}/{target_fiat}"),
-                &trace,
-            ))
-        }
-    }
+    let output = resolve_symbol_output(config, providers, now_fn, symbol, target_fiat)?;
+    convert_output(symbol, output)
 }
 
 fn convert_output(symbol: &str, output: MarketOutput) -> Result<ResolvedAssetQuote, AppError> {
@@ -352,6 +331,42 @@ fn convert_output(symbol: &str, output: MarketOutput) -> Result<ResolvedAssetQuo
         provider: output.provider,
         cache_status: output.cache.status,
     })
+}
+
+pub fn resolve_symbol_output<P, N>(
+    config: &RuntimeConfig,
+    providers: &P,
+    now_fn: N,
+    symbol: &str,
+    target_fiat: &str,
+) -> Result<MarketOutput, AppError>
+where
+    P: ProviderApi,
+    N: Fn() -> DateTime<Utc> + Copy,
+{
+    let mut trace = Vec::<String>::new();
+
+    if looks_like_fiat_symbol(symbol) {
+        let fx_request =
+            MarketRequest::new(MarketKind::Fx, symbol, target_fiat, "1").map_err(AppError::from)?;
+        match service::resolve_market(config, providers, now_fn, &fx_request) {
+            Ok(output) => return Ok(output),
+            Err(error) => trace.push(format!("fx: {}", error.message)),
+        }
+    }
+
+    let crypto_request =
+        MarketRequest::new(MarketKind::Crypto, symbol, target_fiat, "1").map_err(AppError::from)?;
+    match service::resolve_market(config, providers, now_fn, &crypto_request) {
+        Ok(output) => Ok(output),
+        Err(error) => {
+            trace.push(format!("crypto: {}", error.message));
+            Err(AppError::runtime_with_trace(
+                &format!("failed to resolve quote for {symbol}/{target_fiat}"),
+                &trace,
+            ))
+        }
+    }
 }
 
 fn looks_like_fiat_symbol(symbol: &str) -> bool {
@@ -374,7 +389,7 @@ fn format_plain_decimal(value: Decimal) -> String {
     decimal_to_string(&value)
 }
 
-fn format_market_decimal(value: Decimal) -> String {
+pub fn format_market_decimal(value: Decimal) -> String {
     let abs = value.abs();
     let precision = if abs < Decimal::from(100) {
         2

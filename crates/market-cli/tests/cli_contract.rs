@@ -1,7 +1,9 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use chrono::{TimeZone, Utc};
+use market_cli::cache::{CacheRecord, cache_path, write_cache};
+use market_cli::config::{MARKET_CACHE_DIR_ENV, RuntimeConfig};
 use market_cli::model::{
     CacheMetadata, CacheStatus, MarketKind, MarketQuote, MarketRequest, build_output,
 };
@@ -150,6 +152,406 @@ fn service_json_error_envelope_redacts_secret_like_input() {
             .and_then(Value::as_str)
             .is_some()
     );
+}
+
+#[test]
+fn cli_contract_favorites_human_output_preserves_mixed_separator_order() {
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "btc\neth,usd,jpy",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "human",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        favorites_human_output(&output),
+        "favorites: BTC, ETH, USD, JPY"
+    );
+}
+
+#[test]
+fn cli_contract_favorites_alfred_rows_include_prompt_and_quotes() {
+    let cache_dir = tempfile::tempdir().expect("tempdir");
+    seed_cache_record(
+        cache_dir.path(),
+        MarketKind::Fx,
+        "JPY",
+        "USD",
+        "frankfurter",
+        "0.0067",
+    );
+    let cache_dir_value = cache_dir.path().display().to_string();
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "usd,jpy",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "alfred-json",
+        ],
+        &[(MARKET_CACHE_DIR_ENV, cache_dir_value.as_str())],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        favorite_item_titles(&output),
+        vec![
+            "Enter a market expression",
+            "1 USD = 1 USD",
+            "1 JPY = 0.01 USD",
+        ]
+    );
+    for item in favorite_items(&output) {
+        assert_eq!(item.get("valid").and_then(Value::as_bool), Some(false));
+    }
+}
+
+#[test]
+fn cli_contract_favorites_dedup_preserves_first_occurrence_in_human_mode() {
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "btc,eth,btc,usd",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "human",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(favorites_human_output(&output), "favorites: BTC, ETH, USD");
+}
+
+#[test]
+fn cli_contract_favorites_empty_list_falls_back_to_default_set_in_human_mode() {
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "",
+            "--default-fiat",
+            "TWD",
+            "--output",
+            "human",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        favorites_human_output(&output),
+        "favorites: BTC, ETH, TWD, JPY"
+    );
+}
+
+#[test]
+fn cli_contract_favorites_delimiter_only_list_falls_back_to_default_set_in_human_mode() {
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            ", ,\n,,",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "human",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        favorites_human_output(&output),
+        "favorites: BTC, ETH, USD, JPY"
+    );
+}
+
+#[test]
+fn cli_contract_favorites_backslash_n_delimiter_only_list_falls_back_to_default_set_in_human_mode()
+{
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            ", ,\\n,,",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "human",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        favorites_human_output(&output),
+        "favorites: BTC, ETH, USD, JPY"
+    );
+}
+
+#[test]
+fn cli_contract_favorites_backslash_n_and_duplicates_preserve_first_occurrence_in_human_mode() {
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "btc\\neth,BTC,usd,eth,jpy",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "human",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(
+        favorites_human_output(&output),
+        "favorites: BTC, ETH, USD, JPY"
+    );
+}
+
+#[test]
+fn cli_contract_favorites_duplicate_default_fiat_keeps_stable_fallback_order_in_human_mode() {
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            ", ,\\n,,",
+            "--default-fiat",
+            "JPY",
+            "--output",
+            "human",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(favorites_human_output(&output), "favorites: BTC, ETH, JPY");
+}
+
+#[test]
+fn service_json_error_envelope_for_invalid_favorites_token_has_required_keys() {
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "btc,eth!",
+            "--default-fiat",
+            "USD",
+            "--json",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(2));
+
+    let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
+    assert_eq!(
+        json.get("schema_version").and_then(Value::as_str),
+        Some("v1")
+    );
+    assert_eq!(
+        json.get("command").and_then(Value::as_str),
+        Some("market.favorites")
+    );
+    assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
+    assert_eq!(
+        json.get("error")
+            .and_then(|error| error.get("code"))
+            .and_then(Value::as_str),
+        Some("user.invalid_input")
+    );
+    assert_eq!(
+        json.get("error")
+            .and_then(|error| error.get("details"))
+            .and_then(|details| details.get("kind"))
+            .and_then(Value::as_str),
+        Some("user")
+    );
+    assert_eq!(
+        json.get("error")
+            .and_then(|error| error.get("details"))
+            .and_then(|details| details.get("exit_code"))
+            .and_then(Value::as_i64),
+        Some(2)
+    );
+    assert!(
+        json.get("error")
+            .and_then(|error| error.get("message"))
+            .and_then(Value::as_str)
+            .is_some_and(|message| message.contains("invalid favorite symbol"))
+    );
+}
+
+#[test]
+fn service_json_error_envelope_for_invalid_favorites_default_fiat_has_required_keys() {
+    let output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "",
+            "--default-fiat",
+            "USDT",
+            "--json",
+        ],
+        &[],
+    );
+
+    assert_eq!(output.status.code(), Some(2));
+
+    let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
+    assert_eq!(
+        json.get("schema_version").and_then(Value::as_str),
+        Some("v1")
+    );
+    assert_eq!(
+        json.get("command").and_then(Value::as_str),
+        Some("market.favorites")
+    );
+    assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
+    assert_eq!(
+        json.get("error")
+            .and_then(|error| error.get("code"))
+            .and_then(Value::as_str),
+        Some("user.invalid_input")
+    );
+    assert_eq!(
+        json.get("error")
+            .and_then(|error| error.get("details"))
+            .and_then(|details| details.get("kind"))
+            .and_then(Value::as_str),
+        Some("user")
+    );
+    assert_eq!(
+        json.get("error")
+            .and_then(|error| error.get("details"))
+            .and_then(|details| details.get("exit_code"))
+            .and_then(Value::as_i64),
+        Some(2)
+    );
+    assert!(
+        json.get("error")
+            .and_then(|error| error.get("message"))
+            .and_then(Value::as_str)
+            .is_some_and(|message| message.contains("invalid default_fiat symbol"))
+    );
+}
+
+#[test]
+fn cli_contract_favorites_json_envelope_matches_alfred_output() {
+    let cache_dir = tempfile::tempdir().expect("tempdir");
+    seed_cache_record(
+        cache_dir.path(),
+        MarketKind::Fx,
+        "JPY",
+        "USD",
+        "frankfurter",
+        "0.0067",
+    );
+    let cache_dir_value = cache_dir.path().display().to_string();
+    let alfred_output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "usd,jpy",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "alfred-json",
+        ],
+        &[(MARKET_CACHE_DIR_ENV, cache_dir_value.as_str())],
+    );
+    let json_output = run_cli(
+        &[
+            "favorites",
+            "--list",
+            "usd,jpy",
+            "--default-fiat",
+            "USD",
+            "--json",
+        ],
+        &[(MARKET_CACHE_DIR_ENV, cache_dir_value.as_str())],
+    );
+
+    assert_eq!(alfred_output.status.code(), Some(0));
+    assert_eq!(json_output.status.code(), Some(0));
+
+    let direct: Value =
+        serde_json::from_slice(&alfred_output.stdout).expect("alfred stdout should be json");
+    let envelope: Value =
+        serde_json::from_slice(&json_output.stdout).expect("json stdout should be json");
+
+    assert_eq!(
+        envelope.get("schema_version").and_then(Value::as_str),
+        Some("v1")
+    );
+    assert_eq!(
+        envelope.get("command").and_then(Value::as_str),
+        Some("market.favorites")
+    );
+    assert_eq!(envelope.get("ok").and_then(Value::as_bool), Some(true));
+    assert_eq!(envelope.get("result"), Some(&direct));
+}
+
+fn favorites_human_output(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stdout).trim().to_string()
+}
+
+fn favorite_item_titles(output: &Output) -> Vec<String> {
+    favorite_items(output)
+        .iter()
+        .map(|item| {
+            item.get("title")
+                .and_then(Value::as_str)
+                .expect("title should exist")
+                .to_string()
+        })
+        .collect()
+}
+
+fn favorite_items(output: &Output) -> Vec<Value> {
+    let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
+
+    json.get("items")
+        .and_then(Value::as_array)
+        .expect("items should be array")
+        .to_vec()
+}
+
+fn seed_cache_record(
+    cache_dir: &Path,
+    kind: MarketKind,
+    base: &str,
+    quote: &str,
+    provider: &str,
+    unit_price: &str,
+) {
+    let config = RuntimeConfig {
+        cache_dir: cache_dir.to_path_buf(),
+    };
+    let path = cache_path(&config, kind, base, quote);
+    let record = CacheRecord {
+        base: base.to_string(),
+        quote: quote.to_string(),
+        provider: provider.to_string(),
+        unit_price: unit_price.to_string(),
+        fetched_at: Utc::now().to_rfc3339(),
+    };
+
+    write_cache(&path, &record).expect("write cache");
 }
 
 fn resolve_cli_path() -> PathBuf {

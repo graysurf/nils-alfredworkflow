@@ -19,24 +19,40 @@ command -v market-cli || true
 # Baseline expression should return Alfred JSON rows
 bash workflows/market-expression/scripts/script_filter.sh "1 BTC + 2 ETH to USD" | jq -e '.items | type == "array"'
 
+# Empty query should return one prompt row plus non-selectable favorites rows
+MARKET_CLI_BIN="$(pwd)/target/debug/market-cli" \
+MARKET_FAVORITE_LIST="BTC,ETH,USD,JPY" \
+  bash workflows/market-expression/scripts/script_filter.sh "" \
+  | jq -e '.items | length == 5 and .[0].title == "Enter a market expression" and all(.[]; .valid == false)'
+
 # Confirm defaults in workflow manifest
-rg -n "MARKET_CLI_BIN|MARKET_DEFAULT_FIAT" workflows/market-expression/workflow.toml
+rg -n "MARKET_CLI_BIN|MARKET_DEFAULT_FIAT|MARKET_FAVORITE_LIST" workflows/market-expression/workflow.toml
 ```
 
 ## Common failures and actions
 
-| Symptom                                        | Likely cause                                         | Action                                                                      |
-| ---------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
-| `market-cli binary not found` row              | Binary is absent in all lookup paths                 | Package workflow again or set `MARKET_CLI_BIN` to executable absolute path. |
-| `Unsupported operator` row                     | Asset expression used `*` or `/`                     | Use `+`/`-` for asset terms. Keep `*`/`/` for numeric-only expressions.     |
-| `Invalid expression terms` row                 | Mixed raw numeric and asset terms in same expression | Use a single expression type per side (all numeric or all asset terms).     |
-| `Invalid to-clause` row                        | Missing/incomplete `to <FIAT>` target                | Use complete target clause, e.g. `1 BTC + 2 ETH to USD`.                    |
-| `provider failure` or transient runtime errors | Upstream provider/API issue                          | Retry after a short delay; do not assume local script defect first.         |
+| Symptom | Likely cause | Action |
+| ---------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `market-cli binary not found` row | Binary is absent in all lookup paths | Package workflow again or set `MARKET_CLI_BIN` to executable absolute path. |
+| Empty query shows unexpected order or missing favorites | `MARKET_FAVORITE_LIST` contains duplicates, different order, or custom separators | `MARKET_FAVORITE_LIST` preserves first-occurrence order after trimming comma/newline tokens. Re-check the configured list exactly as entered. |
+| Empty query falls back to `BTC,ETH,<MARKET_DEFAULT_FIAT>,JPY` | `MARKET_FAVORITE_LIST` is empty or delimiter-only | This is expected fallback behavior. Set a non-empty comma/newline list to override it. |
+| Empty query shows a generic `Market Expression error` row | `MARKET_FAVORITE_LIST` contains an invalid symbol token or `MARKET_DEFAULT_FIAT` is invalid | Use uppercase symbol tokens. Empty or delimiter-only input falls back automatically; malformed non-empty tokens do not. |
+| Empty query shows a raw symbol instead of `1 SYMBOL = ...` | Quote lookup for that favorite failed and the row degraded to hint mode | Retry after provider recovery, or inspect cache/provider connectivity if it persists for the same symbol. |
+| `Unsupported operator` row | Asset expression used `*` or `/` | Use `+`/`-` for asset terms. Keep `*`/`/` for numeric-only expressions. |
+| `Invalid expression terms` row | Mixed raw numeric and asset terms in same expression | Use a single expression type per side (all numeric or all asset terms). |
+| `Invalid to-clause` row | Missing/incomplete `to <FIAT>` target | Use complete target clause, e.g. `1 BTC + 2 ETH to USD`. |
+| `provider failure` or transient runtime errors | Upstream provider/API issue | Retry after a short delay; do not assume local script defect first. |
 
 Syntax probe example (safe, no clipboard action):
 
 ```bash
 bash workflows/market-expression/scripts/script_filter.sh "1 BTC * 2 ETH" | jq -r '.items[0].title, .items[0].subtitle'
+
+# Empty query probe (prompt row + favorites rows should stay non-selectable)
+MARKET_CLI_BIN="$(pwd)/target/debug/market-cli" \
+MARKET_FAVORITE_LIST=$'ETH\nBTC,USD,JPY' \
+  bash workflows/market-expression/scripts/script_filter.sh "" \
+  | jq -r '.items[] | [.title, .subtitle, (.valid|tostring)] | @tsv'
 ```
 
 ## Validation
@@ -50,6 +66,6 @@ scripts/workflow-pack.sh --id market-expression
 ## Rollback guidance
 
 1. Re-install the previous known-good package from `dist/market-expression/<version>/`.
-2. Restore workflow variables to defaults (`MARKET_CLI_BIN=""`, `MARKET_DEFAULT_FIAT="USD"`) and retest.
+2. Restore workflow variables to defaults (`MARKET_CLI_BIN=""`, `MARKET_DEFAULT_FIAT="USD"`, `MARKET_FAVORITE_LIST="BTC,ETH,USD,JPY"`) and retest.
 3. If issue persists, roll back only `workflows/market-expression/` on a branch, then run all Validation commands before
    release.
