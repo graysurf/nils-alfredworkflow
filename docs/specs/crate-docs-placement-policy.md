@@ -12,7 +12,6 @@
 - `docs/ARCHITECTURE.md`, `ALFRED_WORKFLOW_DEVELOPMENT.md`, and similar repository-wide architecture or workflow guides.
 - `docs/specs/*.md` for shared standards that are not owned by a single crate.
 - `docs/plans/*.md` for implementation planning.
-- `docs/reports/*.md` for audit/inventory/report outputs.
 - `docs/RELEASE.md` and other repository-wide release/operations documents.
 
 ### Disallowed root docs patterns (crate-specific)

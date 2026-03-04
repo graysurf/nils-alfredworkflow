@@ -52,8 +52,7 @@ repo_fail() {
 echo "== CLI standards audit =="
 
 required_docs=(
-  "docs/specs/cli-standards-mapping.md"
-  "docs/reports/cli-command-inventory.md"
+  "docs/specs/cli-shared-runtime-contract.md"
   "docs/specs/cli-json-envelope-v1.md"
   "docs/specs/cli-error-code-registry.md"
 )

@@ -47,9 +47,8 @@ Alfred workflows for macOS users.
 
 ## Canonical documentation map
 
-- Docs ownership and retention decisions: [docs/reports/docs-ownership-matrix.md](docs/reports/docs-ownership-matrix.md)
 - Architecture/runtime boundaries: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- CLI runtime/output contract mapping: [docs/specs/cli-standards-mapping.md](docs/specs/cli-standards-mapping.md)
+- CLI shared runtime/output contract: [docs/specs/cli-shared-runtime-contract.md](docs/specs/cli-shared-runtime-contract.md)
 - Release/tagging flow and gates: [docs/RELEASE.md](docs/RELEASE.md)
 - Workflow-specific runtime/query/validation details: `workflows/<workflow-id>/README.md`
 

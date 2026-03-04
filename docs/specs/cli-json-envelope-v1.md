@@ -75,7 +75,7 @@ Every JSON response must include:
 - New service clients must consume envelope v1 immediately.
 - Deprecation timeline:
   - Default JSON-first behavior is removed per crate after workflow compatibility flags are shipped.
-  - Legacy shape sunset target is 2026-09-30 (see `docs/specs/cli-standards-mapping.md`).
+  - Legacy shape sunset target is 2026-09-30 (see `docs/specs/cli-shared-runtime-contract.md`).
 
 ## Validation Requirements
 

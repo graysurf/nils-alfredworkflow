@@ -6,8 +6,8 @@
   `crates/workflow-common`.
 - The contract freezes canonical output mode behavior, service JSON envelope shape, and error/exit semantics used by
   Sprint 2 crate refactors.
-- Legacy compatibility cleanup is tracked in the legacy removal matrix:
-  `docs/reports/crate-legacy-removal-matrix.md`.
+- Legacy compatibility cleanup is tracked in crate `README.md` standards sections and enforced by
+  `scripts/cli-standards-audit.sh`.
 
 ## Canonical Output Mode Contract
 
@@ -34,7 +34,7 @@ present:
 - Legacy mode flag forms: `--mode service-json`, `--mode alfred`
 - Implicit JSON-first default behavior for script-filter command paths
 
-All remaining occurrences must be tracked in `docs/reports/crate-legacy-removal-matrix.md`.
+All remaining occurrences must be tracked in crate `README.md` standards sections until removed.
 
 ## JSON Envelope And Error Contract
 
@@ -66,7 +66,6 @@ All remaining occurrences must be tracked in `docs/reports/crate-legacy-removal-
 
 ## Linked Standards
 
-- `docs/specs/cli-standards-mapping.md`
 - `docs/specs/cli-json-envelope-v1.md`
 - `docs/specs/cli-error-code-registry.md`
-- `docs/reports/crate-legacy-removal-matrix.md`
+- `scripts/cli-standards-audit.sh`

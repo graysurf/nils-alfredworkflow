@@ -56,7 +56,8 @@ Out of scope:
 - Do not mirror workflow-specific details into this global file when the workflow-local docs already own them.
 - If content is stale, duplicated, or conflicts with workflow-local docs, remove it instead of copying it forward.
 - Reintroducing a central workflow-details encyclopedia is disallowed.
-- Keep file-level owner/retention decisions synchronized in `docs/reports/docs-ownership-matrix.md`.
+- Keep file-level owner/retention decisions in the owning canonical docs (`README.md`, `DEVELOPMENT.md`, and
+  `docs/ARCHITECTURE.md`).
 
 ## Troubleshooting Routing Policy
 
@@ -311,7 +312,7 @@ xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
 ### Shared foundation rollout operations
 
 - Canonical staged rollout guide:
-  - `docs/reports/workflow-shared-foundations-rollout.md`
+  - `docs/specs/workflow-shared-foundations-policy.md`
 - Required rollout checkpoints:
   - canary workflows pass before promotion.
   - promotion criteria are recorded before each rollout stage.

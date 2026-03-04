@@ -54,6 +54,7 @@ fi
 
 md_files=()
 while IFS= read -r -d '' path; do
+  [[ -f "$path" ]] || continue
   md_files+=("$path")
 done < <(git -C "$repo_root" ls-files -z '*.md')
 
@@ -125,7 +126,11 @@ def main() -> None:
         ["git", "-C", str(repo_root), "ls-files", "*.md"],
         text=True,
     )
-    all_md_files = sorted(path.strip() for path in output.splitlines() if path.strip())
+    all_md_files = sorted(
+        path.strip()
+        for path in output.splitlines()
+        if path.strip() and (repo_root / path.strip()).is_file()
+    )
 
     audited_root_docs = {
         "ALFRED_WORKFLOW_DEVELOPMENT.md",

@@ -39,7 +39,7 @@ Configured via `workflow-common` runtime config:
 ## Contract References
 
 - Shared runtime contract: [`docs/specs/cli-shared-runtime-contract.md`](../../docs/specs/cli-shared-runtime-contract.md)
-- Compatibility debt matrix: [`docs/reports/crate-legacy-removal-matrix.md`](../../docs/reports/crate-legacy-removal-matrix.md)
+- Compliance gate: `scripts/cli-standards-audit.sh`
 
 ## Documentation
 

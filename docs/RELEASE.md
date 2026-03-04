@@ -23,10 +23,12 @@ Artifacts are written to `dist/<workflow-id>/<version>/`.
 
 ## Documentation freshness checks (before tag)
 
-1. Confirm documentation ownership/retention decisions are current:
-   - `docs/reports/docs-ownership-matrix.md`
-2. For native Google CLI scope changes, rerun and refresh:
-   - `docs/reports/google-cli-native-validation-report.md`
+1. For CLI contract changes, refresh canonical specs:
+   - `docs/specs/cli-shared-runtime-contract.md`
+   - `docs/specs/cli-json-envelope-v1.md`
+   - `docs/specs/cli-error-code-registry.md`
+2. For native Google CLI scope changes, rerun validation commands documented in:
+   - `crates/google-cli/README.md`
 3. For workflow behavior changes, rerun validation commands documented in:
    - `workflows/<workflow-id>/README.md`
 

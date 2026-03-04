@@ -88,7 +88,15 @@ def list_markdown_files() -> list[str]:
         ["git", "-C", str(repo_root), "ls-files", "*.md"],
         text=True,
     )
-    return sorted(path.strip() for path in output.splitlines() if path.strip())
+    files: list[str] = []
+    for path in output.splitlines():
+        rel = path.strip()
+        if not rel:
+            continue
+        # Skip files removed from the working tree but not yet staged.
+        if (repo_root / rel).is_file():
+            files.append(rel)
+    return sorted(files)
 
 
 def parse_target(raw_target: str) -> str:
@@ -164,7 +172,7 @@ def main() -> None:
     findings: list[tuple[str, str, str]] = []
 
     allowed_root_docs = {"ARCHITECTURE.md", "RELEASE.md"}
-    allowed_docs_categories = {"plans", "reports", "specs"}
+    allowed_docs_categories = {"plans", "specs"}
     for rel_path in (path for path in md_files if path.startswith("docs/")):
         parts = rel_path.split("/")
         if len(parts) == 2 and parts[1] in allowed_root_docs:

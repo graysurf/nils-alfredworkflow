@@ -22,10 +22,10 @@ Documentation ownership boundaries:
 
 - Repository/global navigation: `README.md`
 - Architecture/runtime baseline: `docs/ARCHITECTURE.md`
-- CLI contract policy mapping: `docs/specs/cli-standards-mapping.md`
-- Native Google command contract + validation evidence:
+- CLI shared runtime/output contract: `docs/specs/cli-shared-runtime-contract.md`
+- Native Google command contract + validation entrypoints:
   - `docs/specs/google-cli-native-contract.md`
-  - `docs/reports/google-cli-native-validation-report.md`
+  - `crates/google-cli/README.md`
 - Workflow runtime/operator behavior: `workflows/<workflow-id>/README.md`
 
 For operator standards and command gates, see:
