@@ -27,7 +27,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | ---------------------- | -------- | ----------------- | -------------------------------------------------------------------------------------- |
 | `MARKET_CLI_BIN`       | No       | (empty)           | Optional absolute path override for `market-cli`.                                      |
 | `MARKET_DEFAULT_FIAT`  | No       | `USD`             | Default fiat passed to `market-cli expr --default-fiat` when query omits fiat target.  |
-| `MARKET_FAVORITE_LIST` | No       | `BTC,ETH,USD,JPY` | Ordered comma/newline favorites list used for empty query.                             |
+| `MARKET_FAVORITE_LIST` | No       | `BTC,ETH,EUR,JPY` | Ordered comma/newline favorites list used for empty query.                             |
 
 Empty or delimiter-only `MARKET_FAVORITE_LIST` input falls back to
 `BTC,ETH,<MARKET_DEFAULT_FIAT>,JPY`.

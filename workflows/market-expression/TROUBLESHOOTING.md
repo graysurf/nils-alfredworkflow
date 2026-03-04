@@ -21,7 +21,7 @@ bash workflows/market-expression/scripts/script_filter.sh "1 BTC + 2 ETH to USD"
 
 # Empty query should return one prompt row plus non-selectable favorites rows
 MARKET_CLI_BIN="$(pwd)/target/debug/market-cli" \
-MARKET_FAVORITE_LIST="BTC,ETH,USD,JPY" \
+MARKET_FAVORITE_LIST="BTC,ETH,EUR,JPY" \
   bash workflows/market-expression/scripts/script_filter.sh "" \
   | jq -e '.items | length == 5 and .[0].title == "Enter a market expression" and all(.[]; .valid == false)'
 
@@ -50,7 +50,7 @@ bash workflows/market-expression/scripts/script_filter.sh "1 BTC * 2 ETH" | jq -
 
 # Empty query probe (prompt row + favorites rows should stay non-selectable)
 MARKET_CLI_BIN="$(pwd)/target/debug/market-cli" \
-MARKET_FAVORITE_LIST=$'ETH\nBTC,USD,JPY' \
+MARKET_FAVORITE_LIST=$'ETH\nBTC,EUR,JPY' \
   bash workflows/market-expression/scripts/script_filter.sh "" \
   | jq -r '.items[] | [.title, .subtitle, (.valid|tostring)] | @tsv'
 ```
@@ -66,6 +66,6 @@ scripts/workflow-pack.sh --id market-expression
 ## Rollback guidance
 
 1. Re-install the previous known-good package from `dist/market-expression/<version>/`.
-2. Restore workflow variables to defaults (`MARKET_CLI_BIN=""`, `MARKET_DEFAULT_FIAT="USD"`, `MARKET_FAVORITE_LIST="BTC,ETH,USD,JPY"`) and retest.
+2. Restore workflow variables to defaults (`MARKET_CLI_BIN=""`, `MARKET_DEFAULT_FIAT="USD"`, `MARKET_FAVORITE_LIST="BTC,ETH,EUR,JPY"`) and retest.
 3. If issue persists, roll back only `workflows/market-expression/` on a branch, then run all Validation commands before
    release.

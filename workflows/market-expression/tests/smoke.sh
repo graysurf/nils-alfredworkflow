@@ -48,8 +48,8 @@ fi
 if ! rg -n '^MARKET_DEFAULT_FIAT[[:space:]]*=[[:space:]]*"USD"' "$manifest" >/dev/null; then
   fail "MARKET_DEFAULT_FIAT default must be USD"
 fi
-if ! rg -n '^MARKET_FAVORITE_LIST[[:space:]]*=[[:space:]]*"BTC,ETH,USD,JPY"' "$manifest" >/dev/null; then
-  fail "MARKET_FAVORITE_LIST default must be BTC,ETH,USD,JPY"
+if ! rg -n '^MARKET_FAVORITE_LIST[[:space:]]*=[[:space:]]*"BTC,ETH,EUR,JPY"' "$manifest" >/dev/null; then
+  fail "MARKET_FAVORITE_LIST default must be BTC,ETH,EUR,JPY"
 fi
 
 tmp_dir="$(mktemp -d)"
@@ -459,6 +459,6 @@ assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D
 assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["MARKET_CLI_BIN","MARKET_DEFAULT_FIAT","MARKET_FAVORITE_LIST"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="MARKET_CLI_BIN") | .config.default == ""' "MARKET_CLI_BIN default must be empty string"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="MARKET_DEFAULT_FIAT") | .config.default == "USD"' "MARKET_DEFAULT_FIAT default must be USD"
-assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="MARKET_FAVORITE_LIST") | .config.default == "BTC,ETH,USD,JPY"' "MARKET_FAVORITE_LIST default must be BTC,ETH,USD,JPY"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="MARKET_FAVORITE_LIST") | .config.default == "BTC,ETH,EUR,JPY"' "MARKET_FAVORITE_LIST default must be BTC,ETH,EUR,JPY"
 
 echo "ok: market-expression smoke test"
