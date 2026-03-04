@@ -49,5 +49,3 @@ Alfred workflows for macOS users.
 
 - Global standards and shared operator playbooks: [ALFRED_WORKFLOW_DEVELOPMENT.md](ALFRED_WORKFLOW_DEVELOPMENT.md)
 - Workflow-specific runtime failures: `workflows/<workflow-id>/TROUBLESHOOTING.md`
-- List all workflow-local troubleshooting docs quickly:
-  `rg --files workflows | rg 'TROUBLESHOOTING\.md$'`
