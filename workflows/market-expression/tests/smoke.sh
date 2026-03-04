@@ -48,6 +48,9 @@ fi
 if ! rg -n '^MARKET_DEFAULT_FIAT[[:space:]]*=[[:space:]]*"USD"' "$manifest" >/dev/null; then
   fail "MARKET_DEFAULT_FIAT default must be USD"
 fi
+if ! rg -n '^MARKET_FAVORITE_LIST[[:space:]]*=[[:space:]]*"BTC,ETH,EUR,JPY"' "$manifest" >/dev/null; then
+  fail "MARKET_FAVORITE_LIST default must be BTC,ETH,EUR,JPY"
+fi
 
 tmp_dir="$(mktemp -d)"
 artifact_id="$(toml_string "$manifest" id)"
@@ -81,12 +84,14 @@ PBCOPY_STUB_OUT="$tmp_dir/pbcopy-out.txt" PATH="$tmp_dir/bin:$PATH" \
 cat >"$tmp_dir/stubs/market-cli-ok" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
-[[ "${1:-}" == "expr" ]] || exit 9
-[[ "${2:-}" == "--query" ]] || exit 9
-query="${3:-}"
-[[ "${4:-}" == "--default-fiat" ]] || exit 9
-default_fiat="${5:-}"
-python3 - "$query" "$default_fiat" <<'PY'
+command_name="${1:-}"
+case "$command_name" in
+expr)
+  [[ "${2:-}" == "--query" ]] || exit 9
+  query="${3:-}"
+  [[ "${4:-}" == "--default-fiat" ]] || exit 9
+  default_fiat="${5:-}"
+  python3 - "$query" "$default_fiat" <<'PY'
 import json
 import sys
 
@@ -107,6 +112,86 @@ payload = {
 }
 print(json.dumps(payload))
 PY
+  ;;
+favorites)
+  [[ "${2:-}" == "--list" ]] || exit 9
+  favorite_list="${3:-}"
+  [[ "${4:-}" == "--default-fiat" ]] || exit 9
+  default_fiat="${5:-}"
+  python3 - "$favorite_list" "$default_fiat" <<'PY'
+import json
+import re
+import sys
+
+raw_list = sys.argv[1].replace("\\n", "\n")
+default_fiat = (sys.argv[2].strip().upper() or "USD")
+default_symbols = ["BTC", "ETH", default_fiat, "JPY"]
+
+symbols = []
+seen = set()
+for token in re.split(r"[\n,]", raw_list):
+    normalized = token.strip().upper()
+    if not normalized or normalized in seen:
+        continue
+    seen.add(normalized)
+    symbols.append(normalized)
+
+if not symbols:
+    symbols = []
+    seen = set()
+    for symbol in default_symbols:
+        if symbol in seen:
+            continue
+        seen.add(symbol)
+        symbols.append(symbol)
+
+quote_values = {
+    "BTC": "68194",
+    "ETH": "1980",
+    "JPY": "0.01",
+}
+
+items = [
+    {
+        "uid": "market-favorites-prompt",
+        "title": "Enter a market expression",
+        "subtitle": f"Example: 1 BTC + 3 ETH to JPY (default fiat: {default_fiat})",
+        "valid": False,
+    }
+]
+
+for symbol in symbols:
+    if symbol == default_fiat:
+        items.append(
+            {
+                "uid": f"market-favorite-{symbol.lower()}-{default_fiat.lower()}",
+                "title": f"1 {symbol} = 1 {default_fiat}",
+                "subtitle": "provider: identity · freshness: fixed",
+                "valid": False,
+            }
+        )
+        continue
+
+    rendered = quote_values.get(symbol, "1")
+    items.append(
+        {
+            "uid": f"market-favorite-{symbol.lower()}-{default_fiat.lower()}",
+            "title": f"1 {symbol} = {rendered} {default_fiat}",
+            "subtitle": "provider: stub-provider · freshness: cache_fresh",
+            "valid": False,
+        }
+    )
+
+payload = {
+    "items": items
+}
+print(json.dumps(payload))
+PY
+  ;;
+*)
+  exit 9
+  ;;
+esac
 EOS
 chmod +x "$tmp_dir/stubs/market-cli-ok"
 
@@ -172,6 +257,19 @@ assert_jq_json "$success_json" '.items[0].subtitle == "default fiat=TWD"' "scrip
 
 success_default_json="$({ MARKET_CLI_BIN="$tmp_dir/stubs/market-cli-ok" MARKET_DEFAULT_FIAT="" "$workflow_dir/scripts/script_filter.sh" "BTC to"; })"
 assert_jq_json "$success_default_json" '.items[0].subtitle == "default fiat=USD"' "empty MARKET_DEFAULT_FIAT should fallback to USD"
+
+favorites_json="$({ MARKET_CLI_BIN="$tmp_dir/stubs/market-cli-ok" MARKET_DEFAULT_FIAT="USD" MARKET_FAVORITE_LIST=$'ETH\nBTC,USD,JPY' "$workflow_dir/scripts/script_filter.sh" ""; })"
+assert_jq_json "$favorites_json" '.items | type == "array" and length == 5' "favorites query should output prompt plus four configured rows"
+assert_jq_json "$favorites_json" '.items[0].title == "Enter a market expression"' "favorites query must include prompt row first"
+assert_jq_json "$favorites_json" '(.items[1:] | map(.title)) == ["1 ETH = 1980 USD","1 BTC = 68194 USD","1 USD = 1 USD","1 JPY = 0.01 USD"]' "favorites query must preserve configured order with quote rows"
+assert_jq_json "$favorites_json" '[.items[].valid] | all(. == false)' "favorites rows must be non-actionable"
+
+favorites_default_json="$({ MARKET_CLI_BIN="$tmp_dir/stubs/market-cli-ok" MARKET_DEFAULT_FIAT="TWD" MARKET_FAVORITE_LIST="" "$workflow_dir/scripts/script_filter.sh" ""; })"
+assert_jq_json "$favorites_default_json" '(.items[1:] | map(.title)) == ["1 BTC = 68194 TWD","1 ETH = 1980 TWD","1 TWD = 1 TWD","1 JPY = 0.01 TWD"]' "empty favorites list must fall back to default favorites set with quote rows"
+assert_jq_json "$favorites_default_json" '[.items[].valid] | all(. == false)' "fallback favorites rows must be non-actionable"
+
+favorites_delimiter_only_json="$({ MARKET_CLI_BIN="$tmp_dir/stubs/market-cli-ok" MARKET_DEFAULT_FIAT="USD" MARKET_FAVORITE_LIST=", ,\n,," "$workflow_dir/scripts/script_filter.sh" ""; })"
+assert_jq_json "$favorites_delimiter_only_json" '(.items[1:] | map(.title)) == ["1 BTC = 68194 USD","1 ETH = 1980 USD","1 USD = 1 USD","1 JPY = 0.01 USD"]' "delimiter-only favorites list must fall back to default favorites set"
 
 unsupported_json="$({ MARKET_CLI_BIN="$tmp_dir/stubs/market-cli-unsupported-op" "$workflow_dir/scripts/script_filter.sh" "1 BTC * 2"; })"
 assert_jq_json "$unsupported_json" '.items[0].title == "Unsupported operator"' "unsupported operator title mapping mismatch"
@@ -358,8 +456,9 @@ assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.type == 8' "action node must be external script type=8"
 assert_jq_file "$packaged_json_file" '.connections["96AC3342-84A9-449E-B0AB-114E2068FC34"] | any(.destinationuid == "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10" and .modifiers == 0)' "missing hotkey to script-filter connection"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"
-assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["MARKET_CLI_BIN","MARKET_DEFAULT_FIAT"]' "user configuration variables mismatch"
+assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["MARKET_CLI_BIN","MARKET_DEFAULT_FIAT","MARKET_FAVORITE_LIST"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="MARKET_CLI_BIN") | .config.default == ""' "MARKET_CLI_BIN default must be empty string"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="MARKET_DEFAULT_FIAT") | .config.default == "USD"' "MARKET_DEFAULT_FIAT default must be USD"
+assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="MARKET_FAVORITE_LIST") | .config.default == "BTC,ETH,EUR,JPY"' "MARKET_FAVORITE_LIST default must be BTC,ETH,EUR,JPY"
 
 echo "ok: market-expression smoke test"

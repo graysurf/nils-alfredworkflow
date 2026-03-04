@@ -9,16 +9,25 @@ CLI backend for market data (`fx`, `crypto`) and market-expression workflow supp
 | `market-cli fx` | `--base <BASE> --quote <QUOTE> --amount <AMOUNT>` | Query fiat exchange rate (Frankfurter). |
 | `market-cli crypto` | `--base <BASE> --quote <QUOTE> --amount <AMOUNT>` | Query crypto spot price (Coinbase primary, Kraken fallback). |
 | `market-cli expr` | `--query <QUERY> [--default-fiat <DEFAULT_FIAT>]` | Evaluate market expressions and return Alfred Script Filter JSON. |
+| `market-cli favorites` | `[--list <LIST>] [--default-fiat <DEFAULT_FIAT>] [--output <MODE> \| --json]` | Render the empty-query market prompt row plus non-actionable favorite quote rows for the `market-expression` workflow. |
 
 ## Environment Variables
 
 - Optional cache override: `MARKET_CACHE_DIR`
 - Alfred fallback cache paths: `ALFRED_WORKFLOW_CACHE`, `ALFRED_WORKFLOW_DATA`
+- Workflow favorites source: `MARKET_FAVORITE_LIST` (typically passed to `market-cli favorites --list`)
+- Favorites list semantics: comma/newline ordered input, trim per token, preserve first occurrence.
+  Empty or delimiter-only input falls back to `BTC,ETH,<MARKET_DEFAULT_FIAT>,JPY`
 
 ## Output Contract
 
 - `fx` / `crypto`: deterministic JSON object on `stdout`.
-- `expr`: Alfred Script Filter JSON on `stdout`.
+- `expr` / `favorites`: Alfred Script Filter JSON on `stdout` by default.
+- `favorites` output starts with a non-actionable prompt row, then one non-actionable quote row per favorite symbol.
+- Favorite quote rows render `1 <SYMBOL> = <PRICE> <DEFAULT_FIAT>` when pricing succeeds.
+- If a favorite quote cannot be resolved, that row degrades to a symbol hint instead of failing the whole empty-query payload.
+- `favorites` is the empty-query companion to `expr`: workflow `mx` calls `favorites`, while `mx <expression>` still calls `expr`.
+- `favorites --json` returns the service envelope with the Alfred payload nested under `result`.
 - `stderr`: user/runtime error text.
 - Exit codes: `0` success, `1` runtime/provider error, `2` user/input error.
 
@@ -46,4 +55,5 @@ CLI backend for market data (`fx`, `crypto`) and market-expression workflow supp
 - `cargo run -p nils-market-cli -- fx --help`
 - `cargo run -p nils-market-cli -- crypto --help`
 - `cargo run -p nils-market-cli -- expr --help`
+- `cargo run -p nils-market-cli -- favorites --help`
 - `cargo test -p nils-market-cli`

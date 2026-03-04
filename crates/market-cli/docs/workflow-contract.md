@@ -4,6 +4,7 @@
 
 This document defines the command and JSON output contract for the `market-cli` capability.
 Scope includes market data retrieval (`fx`, `crypto`) and Alfred-facing expression output (`expr`).
+It also includes favorites-list output for the `market-expression` workflow empty-query state (`favorites`).
 
 ## Command Contract
 
@@ -39,11 +40,32 @@ Scope includes market data retrieval (`fx`, `crypto`) and Alfred-facing expressi
   - Mixed asset and numeric terms -> user error
   - Asset expressions with unsupported operators (`*`, `/`) -> user error
 
+### Favorites
+
+- Command:
+  - `market-cli favorites [--list "<comma/newline symbols>"] [--default-fiat <ISO4217>] [--output <human|json|alfred-json> | --json]`
+- Optional flags:
+  - `--list`: ordered favorites list, typically sourced from Alfred workflow variable `MARKET_FAVORITE_LIST`
+  - `--default-fiat`: fallback fiat symbol used when the list is missing or empty (default `USD`)
+  - `--output`: explicit output mode override (`human`, `json`, `alfred-json`)
+  - `--json`: shorthand for service-envelope JSON output
+- Favorites behavior:
+  - Empty-query workflow state should call `market-cli favorites`; non-empty query should continue calling `market-cli expr`
+  - Successful output is Alfred Script Filter JSON by default
+  - Favorites output always starts with a non-actionable prompt row, followed by one non-actionable row per favorite symbol
+  - Quote rows render `1 <SYMBOL> = <PRICE> <DEFAULT_FIAT>` when pricing succeeds
+  - If one favorite quote cannot be resolved, that row falls back to a symbol hint instead of failing the whole payload
+  - Every favorites row remains non-actionable / non-selectable (`valid: false`)
+  - Ordered parsing preserves source order, trims surrounding whitespace, accepts comma/newline separators, and de-duplicates by first occurrence
+  - Empty or delimiter-only list input falls back to `BTC,ETH,<DEFAULT_FIAT>,JPY`
+  - Invalid non-empty tokens surface a user error rather than being silently skipped
+
 ### Exit Behavior
 
 - Exit code `0`: success (stdout prints exactly one JSON object)
 - Exit code `2`: user/input error (invalid symbol format, invalid expression, non-positive amount, missing required flags)
 - Exit code `1`: runtime/provider/cache error without usable fallback
+- `favorites` follows the same exit contract and prints exactly one JSON object on success
 
 ## Provider and Cache Policy
 
@@ -109,6 +131,33 @@ For `expr`, successful output is Alfred Script Filter JSON:
 }
 ```
 
+For `favorites`, successful output is Alfred Script Filter JSON with a prompt row plus non-actionable favorite quote rows:
+
+```json
+{
+  "items": [
+    {
+      "uid": "market-favorites-prompt",
+      "title": "Enter a market expression",
+      "subtitle": "Example: 1 BTC + 3 ETH to JPY (default fiat: USD)",
+      "valid": false
+    },
+    {
+      "uid": "market-favorite-btc-usd",
+      "title": "1 BTC = 68194 USD",
+      "subtitle": "provider: coinbase · freshness: live",
+      "valid": false
+    },
+    {
+      "uid": "market-favorite-usd-usd",
+      "title": "1 USD = 1 USD",
+      "subtitle": "provider: identity · freshness: fixed",
+      "valid": false
+    }
+  ]
+}
+```
+
 Field requirements:
 
 | Field | Type | Notes |
@@ -127,9 +176,20 @@ Field requirements:
 | `cache.ttl_secs` | number | Fixed per market kind (`86400` or `300`) |
 | `cache.age_secs` | number | Cache age in seconds at response time |
 
+Favorites row requirements:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `items[].uid` | string | Stable Alfred row identity for prompt and favorite quote rows |
+| `items[].title` | string | Prompt title or favorite quote title (`1 BTC = ... USD`) |
+| `items[].subtitle` | string | Prompt guidance, quote metadata, or symbol-hint fallback when quote lookup fails |
+| `items[].valid` | boolean | Must be `false` for every favorites item (non-actionable / non-selectable policy) |
+
 ## `script_filter.sh` Integration Notes
 
-- `market-expression` workflow calls `market-cli expr` directly and passes through Alfred JSON.
+- `market-expression` workflow calls `market-cli favorites` for `mx` empty query and passes through Alfred JSON.
+- `market-expression` workflow calls `market-cli expr` for `mx <expression>` and passes through Alfred JSON.
+- Workflow variable `MARKET_FAVORITE_LIST` should be passed to `--list`; empty or delimiter-only config falls back to `BTC,ETH,<MARKET_DEFAULT_FIAT>,JPY`.
 - For non-zero exits, script filter should render one fallback item with `valid: false`.
 
 Minimal shell examples:
@@ -153,4 +213,7 @@ PY
 
 # Expr (Alfred JSON passthrough)
 market-cli expr --query "1 btc + 3 eth to jpy" --default-fiat USD
+
+# Favorites (Alfred JSON passthrough)
+market-cli favorites --list "btc,eth,usd,jpy" --default-fiat USD
 ```

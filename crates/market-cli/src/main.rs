@@ -1,5 +1,7 @@
+use alfred_core::{Feedback, Item};
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand, ValueEnum};
+use rust_decimal::Decimal;
 use serde_json::json;
 use workflow_common::{
     EnvelopePayloadKind, OutputMode, build_alfred_error_feedback, build_error_details_json,
@@ -10,7 +12,8 @@ use market_cli::{
     config::RuntimeConfig,
     error::AppError,
     expression,
-    model::{MarketKind, MarketRequest},
+    model::{MarketKind, MarketRequest, normalize_fx_symbol},
+    parse_favorites_list,
     providers::{HttpProviders, ProviderApi},
     service,
 };
@@ -61,6 +64,17 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Render configured market favorites as non-actionable Alfred rows.
+    Favorites {
+        #[arg(long)]
+        list: Option<String>,
+        #[arg(long, default_value = "USD")]
+        default_fiat: String,
+        #[arg(long, value_enum)]
+        output: Option<OutputModeArg>,
+        #[arg(long)]
+        json: bool,
+    },
 }
 
 const ERROR_CODE_USER_INVALID_INPUT: &str = "user.invalid_input";
@@ -68,6 +82,10 @@ const ERROR_CODE_USER_OUTPUT_MODE_CONFLICT: &str = "user.output_mode_conflict";
 const ERROR_CODE_RUNTIME_PROVIDER_INIT: &str = "runtime.provider_init_failed";
 const ERROR_CODE_RUNTIME_PROVIDER_FAILED: &str = "runtime.provider_failed";
 const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
+const FAVORITES_PROMPT_TITLE: &str = "Enter a market expression";
+const FAVORITES_PROMPT_EXAMPLE: &str = "Example: 1 BTC + 3 ETH to JPY";
+const FAVORITES_QUOTE_UNAVAILABLE_SUBTITLE: &str =
+    "Favorite symbol. Type an expression to convert. Quote unavailable.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputModeArg {
@@ -124,6 +142,7 @@ impl Cli {
             Commands::Fx { .. } => "market.fx",
             Commands::Crypto { .. } => "market.crypto",
             Commands::Expr { .. } => "market.expr",
+            Commands::Favorites { .. } => "market.favorites",
         }
     }
 
@@ -139,6 +158,15 @@ impl Cli {
                 }
             }
             Commands::Expr { output, json, .. } => {
+                if *json {
+                    OutputMode::Json
+                } else if let Some(explicit) = output {
+                    (*explicit).into()
+                } else {
+                    OutputMode::AlfredJson
+                }
+            }
+            Commands::Favorites { output, json, .. } => {
                 if *json {
                     OutputMode::Json
                 } else if let Some(explicit) = output {
@@ -256,6 +284,44 @@ where
                 OutputMode::Human => format_expr_human_output(&alfred_json),
             }
         }
+        Commands::Favorites {
+            list,
+            default_fiat,
+            output,
+            json,
+        } => {
+            let symbols = parse_favorites_list(list.as_deref(), &default_fiat)
+                .map_err(|error| user_error(ERROR_CODE_USER_INVALID_INPUT, error.to_string()))?;
+            let default_fiat = normalize_fx_symbol(&default_fiat, "default_fiat")
+                .map_err(|error| user_error(ERROR_CODE_USER_INVALID_INPUT, error.to_string()))?;
+            let output_mode =
+                select_output_mode(output.map(Into::into), json, OutputMode::AlfredJson).map_err(
+                    |error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()),
+                )?;
+
+            match output_mode {
+                OutputMode::Human => Ok(format_favorites_human_output(&symbols)),
+                OutputMode::AlfredJson | OutputMode::Json => {
+                    let alfred_json = render_favorites_alfred_output(
+                        config,
+                        providers,
+                        now_fn,
+                        &symbols,
+                        &default_fiat,
+                    )?;
+
+                    match output_mode {
+                        OutputMode::AlfredJson => Ok(alfred_json),
+                        OutputMode::Json => Ok(build_success_envelope(
+                            "market.favorites",
+                            EnvelopePayloadKind::Result,
+                            &alfred_json,
+                        )),
+                        OutputMode::Human => unreachable!("handled above"),
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -348,6 +414,105 @@ fn render_market_alfred_output(
             format!("failed to serialize Alfred output: {error}"),
         )
     })
+}
+
+fn format_favorites_human_output(symbols: &[String]) -> String {
+    format!("favorites: {}", symbols.join(", "))
+}
+
+fn render_favorites_alfred_output<P, N>(
+    config: &RuntimeConfig,
+    providers: &P,
+    now_fn: N,
+    symbols: &[String],
+    default_fiat: &str,
+) -> Result<String, CliError>
+where
+    P: ProviderApi,
+    N: Fn() -> DateTime<Utc> + Copy,
+{
+    let mut items = Vec::with_capacity(symbols.len() + 1);
+    items.push(
+        Item::new(FAVORITES_PROMPT_TITLE)
+            .with_uid("market-favorites-prompt")
+            .with_subtitle(format!(
+                "{FAVORITES_PROMPT_EXAMPLE} (default fiat: {default_fiat})"
+            ))
+            .with_valid(false),
+    );
+
+    for symbol in symbols {
+        items.push(build_favorite_quote_item(
+            config,
+            providers,
+            now_fn,
+            symbol,
+            default_fiat,
+        ));
+    }
+
+    Feedback::new(items).to_json().map_err(|error| {
+        runtime_error(
+            ERROR_CODE_RUNTIME_SERIALIZE,
+            format!("failed to serialize favorites Alfred output: {error}"),
+        )
+    })
+}
+
+fn build_favorite_quote_item<P, N>(
+    config: &RuntimeConfig,
+    providers: &P,
+    now_fn: N,
+    symbol: &str,
+    default_fiat: &str,
+) -> Item
+where
+    P: ProviderApi,
+    N: Fn() -> DateTime<Utc> + Copy,
+{
+    if symbol == default_fiat {
+        return Item::new(format!("1 {symbol} = 1 {default_fiat}"))
+            .with_uid(favorite_item_uid(symbol, default_fiat))
+            .with_subtitle("provider: identity · freshness: fixed")
+            .with_valid(false);
+    }
+
+    match expression::resolve_symbol_output(config, providers, now_fn, symbol, default_fiat) {
+        Ok(output) => favorite_quote_success_item(symbol, default_fiat, &output),
+        Err(_) => Item::new(symbol)
+            .with_uid(favorite_item_uid(symbol, default_fiat))
+            .with_subtitle(FAVORITES_QUOTE_UNAVAILABLE_SUBTITLE)
+            .with_valid(false),
+    }
+}
+
+fn favorite_quote_success_item(
+    symbol: &str,
+    default_fiat: &str,
+    output: &market_cli::model::MarketOutput,
+) -> Item {
+    let rendered_price = output
+        .unit_price
+        .parse::<Decimal>()
+        .map(expression::format_market_decimal)
+        .unwrap_or_else(|_| output.unit_price.clone());
+
+    Item::new(format!("1 {symbol} = {rendered_price} {default_fiat}"))
+        .with_uid(favorite_item_uid(symbol, default_fiat))
+        .with_subtitle(format!(
+            "provider: {} · freshness: {}",
+            output.provider,
+            cache_status_label(output.cache.status)
+        ))
+        .with_valid(false)
+}
+
+fn favorite_item_uid(symbol: &str, default_fiat: &str) -> String {
+    format!(
+        "market-favorite-{}-{}",
+        symbol.to_ascii_lowercase(),
+        default_fiat.to_ascii_lowercase()
+    )
 }
 
 fn format_expr_human_output(alfred_json: &str) -> Result<String, CliError> {
@@ -498,6 +663,61 @@ mod tests {
             _quote: &str,
         ) -> Result<MarketQuote, ProviderError> {
             self.crypto_kraken_result.clone()
+        }
+    }
+
+    struct FavoritesProviders;
+
+    impl ProviderApi for FavoritesProviders {
+        fn fetch_fx_rate(&self, base: &str, quote: &str) -> Result<MarketQuote, ProviderError> {
+            let now = Utc
+                .with_ymd_and_hms(2026, 2, 10, 12, 0, 0)
+                .single()
+                .expect("time");
+
+            match (base, quote) {
+                ("JPY", "USD") => Ok(MarketQuote::new(
+                    "frankfurter",
+                    rust_decimal::Decimal::new(67, 4),
+                    now,
+                )),
+                _ => Err(ProviderError::UnsupportedPair(format!("{base}/{quote}"))),
+            }
+        }
+
+        fn fetch_crypto_coinbase(
+            &self,
+            base: &str,
+            quote: &str,
+        ) -> Result<MarketQuote, ProviderError> {
+            let now = Utc
+                .with_ymd_and_hms(2026, 2, 10, 12, 0, 0)
+                .single()
+                .expect("time");
+
+            match (base, quote) {
+                ("BTC", "USD") => Ok(MarketQuote::new(
+                    "coinbase",
+                    rust_decimal::Decimal::new(68194, 0),
+                    now,
+                )),
+                ("ETH", "USD") => Ok(MarketQuote::new(
+                    "coinbase",
+                    rust_decimal::Decimal::new(1980, 0),
+                    now,
+                )),
+                _ => Err(ProviderError::UnsupportedPair(format!("{base}/{quote}"))),
+            }
+        }
+
+        fn fetch_crypto_kraken(
+            &self,
+            _base: &str,
+            _quote: &str,
+        ) -> Result<MarketQuote, ProviderError> {
+            Err(ProviderError::Transport(
+                "kraken disabled in tests".to_string(),
+            ))
         }
     }
 
@@ -733,6 +953,166 @@ mod tests {
         );
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
         assert!(json.get("result").is_some());
+    }
+
+    #[test]
+    fn main_outputs_favorites_human_mode_without_quote_resolution() {
+        let cli = Cli::parse_from([
+            "market-cli",
+            "favorites",
+            "--list",
+            "btc,eth,usd,jpy",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "human",
+        ]);
+        let failing_providers = FakeProviders {
+            fx_result: Err(ProviderError::Transport("offline".to_string())),
+            crypto_coinbase_result: Err(ProviderError::Transport("offline".to_string())),
+            crypto_kraken_result: Err(ProviderError::Transport("offline".to_string())),
+        };
+
+        let output = run_with(cli, &config_in_tempdir(), &failing_providers, fixed_now)
+            .expect("favorites human output should not resolve quotes");
+
+        assert_eq!(output, "favorites: BTC, ETH, USD, JPY");
+    }
+
+    #[test]
+    fn main_outputs_favorites_alfred_json_with_prompt_and_quote_rows() {
+        let cli = Cli::parse_from([
+            "market-cli",
+            "favorites",
+            "--list",
+            "btc,eth,usd,jpy",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "alfred-json",
+        ]);
+
+        let output = run_with(cli, &config_in_tempdir(), &FavoritesProviders, fixed_now)
+            .expect("favorites Alfred output should pass");
+        let json: Value = serde_json::from_str(&output).expect("json");
+        let items = json
+            .get("items")
+            .and_then(Value::as_array)
+            .expect("items should be array");
+
+        assert_eq!(items.len(), 5);
+        assert_eq!(
+            items[0].get("title").and_then(Value::as_str),
+            Some(FAVORITES_PROMPT_TITLE)
+        );
+        assert_eq!(
+            items[0].get("subtitle").and_then(Value::as_str),
+            Some("Example: 1 BTC + 3 ETH to JPY (default fiat: USD)")
+        );
+        assert_eq!(
+            items[1].get("title").and_then(Value::as_str),
+            Some("1 BTC = 68194 USD")
+        );
+        assert_eq!(
+            items[2].get("title").and_then(Value::as_str),
+            Some("1 ETH = 1980 USD")
+        );
+        assert_eq!(
+            items[3].get("title").and_then(Value::as_str),
+            Some("1 USD = 1 USD")
+        );
+        assert_eq!(
+            items[4].get("title").and_then(Value::as_str),
+            Some("1 JPY = 0.01 USD")
+        );
+        assert!(items.iter().all(|item| item.get("uid").is_some()));
+        assert!(
+            items
+                .iter()
+                .all(|item| { item.get("valid").and_then(Value::as_bool) == Some(false) })
+        );
+    }
+
+    #[test]
+    fn main_favorites_quote_failures_fall_back_to_symbol_hint_rows() {
+        let cli = Cli::parse_from([
+            "market-cli",
+            "favorites",
+            "--list",
+            "btc",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "alfred-json",
+        ]);
+        let failing_providers = FakeProviders {
+            fx_result: Err(ProviderError::Transport("offline".to_string())),
+            crypto_coinbase_result: Err(ProviderError::Transport("offline".to_string())),
+            crypto_kraken_result: Err(ProviderError::Transport("offline".to_string())),
+        };
+
+        let output = run_with(cli, &config_in_tempdir(), &failing_providers, fixed_now)
+            .expect("favorites output should degrade gracefully");
+        let json: Value = serde_json::from_str(&output).expect("json");
+        let items = json
+            .get("items")
+            .and_then(Value::as_array)
+            .expect("items should be array");
+
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[1].get("title").and_then(Value::as_str), Some("BTC"));
+        assert_eq!(
+            items[1].get("subtitle").and_then(Value::as_str),
+            Some(FAVORITES_QUOTE_UNAVAILABLE_SUBTITLE)
+        );
+        assert_eq!(items[1].get("valid").and_then(Value::as_bool), Some(false));
+    }
+
+    #[test]
+    fn main_outputs_favorites_json_envelope_when_requested() {
+        let alfred_cli = Cli::parse_from([
+            "market-cli",
+            "favorites",
+            "--list",
+            "btc,eth,usd,jpy",
+            "--default-fiat",
+            "USD",
+            "--output",
+            "alfred-json",
+        ]);
+        let json_cli = Cli::parse_from([
+            "market-cli",
+            "favorites",
+            "--list",
+            "btc,eth,usd,jpy",
+            "--default-fiat",
+            "USD",
+            "--json",
+        ]);
+
+        let direct = run_with(
+            alfred_cli,
+            &config_in_tempdir(),
+            &FavoritesProviders,
+            fixed_now,
+        )
+        .expect("favorites Alfred output should pass");
+        let envelope = run_with(
+            json_cli,
+            &config_in_tempdir(),
+            &FavoritesProviders,
+            fixed_now,
+        )
+        .expect("favorites JSON output should pass");
+        let envelope_json: Value = serde_json::from_str(&envelope).expect("json");
+        let direct_json: Value = serde_json::from_str(&direct).expect("json");
+
+        assert_eq!(
+            envelope_json.get("command").and_then(Value::as_str),
+            Some("market.favorites")
+        );
+        assert_eq!(envelope_json.get("ok").and_then(Value::as_bool), Some(true));
+        assert_eq!(envelope_json.get("result"), Some(&direct_json));
     }
 
     #[test]
