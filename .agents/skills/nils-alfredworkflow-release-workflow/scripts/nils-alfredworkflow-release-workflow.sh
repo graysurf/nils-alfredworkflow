@@ -520,25 +520,35 @@ refresh_cargo_lock_if_present() {
   fi
 }
 
-refresh_third_party_licenses_if_present() {
+refresh_third_party_artifacts_if_present() {
   local generator_script="scripts/generate-third-party-artifacts.sh"
-  local artifact_file="THIRD_PARTY_LICENSES.md"
+  local tracked_artifacts=()
+  local artifact_file
 
-  if ! git ls-files --error-unmatch "$artifact_file" >/dev/null 2>&1; then
+  while IFS= read -r artifact_file; do
+    [[ -n "$artifact_file" ]] || continue
+    tracked_artifacts+=("$artifact_file")
+  done < <(
+    git ls-files --error-unmatch THIRD_PARTY_LICENSES.md THIRD_PARTY_NOTICES.md 2>/dev/null || true
+  )
+
+  if [[ "${#tracked_artifacts[@]}" -eq 0 ]]; then
     return 0
   fi
 
   [[ -f "$generator_script" ]] \
-    || fail 3 "tracked $artifact_file requires generator script: $generator_script"
+    || fail 3 "tracked third-party artifacts require generator script: $generator_script"
 
   bash "$generator_script" --write >/dev/null
 
-  if ! git diff --quiet -- "$artifact_file"; then
-    add_version_target \
-      "$artifact_file" \
-      "third-party-licenses" \
-      "$artifact_file: refresh generated artifact for release inputs"
-  fi
+  for artifact_file in "${tracked_artifacts[@]}"; do
+    if ! git diff --quiet -- "$artifact_file"; then
+      add_version_target \
+        "$artifact_file" \
+        "third-party-artifact" \
+        "$artifact_file: refresh generated artifact for release inputs"
+    fi
+  done
 }
 
 ensure_upstream_ready() {
@@ -696,7 +706,7 @@ if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
       bangumi-user-agent)
         set_bangumi_user_agent_placeholder_version "$target_file" "$semver"
         ;;
-      cargo-lock|third-party-licenses)
+      cargo-lock|third-party-artifact)
         ;;
       *)
         fail 1 "unsupported version target kind '$target_kind' for $target_file"
@@ -706,7 +716,7 @@ if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
 fi
 
 refresh_cargo_lock_if_present "$semver"
-refresh_third_party_licenses_if_present
+refresh_third_party_artifacts_if_present
 
 if [[ "${#VERSION_TARGET_FILES[@]}" -gt 0 ]]; then
   if ! command -v semantic-commit >/dev/null 2>&1; then
@@ -719,7 +729,7 @@ chore(release): bump version to ${semver}
 
 - Sync Cargo, workflow, package, and Bangumi UA placeholder versions to ${semver}.
 - Refresh Cargo.lock workspace package versions when present.
-- Regenerate THIRD_PARTY_LICENSES.md when tracked.
+- Regenerate third-party artifacts when tracked.
 EOF
 
   git push "$remote" "HEAD:${RELEASE_UPSTREAM_BRANCH}"
