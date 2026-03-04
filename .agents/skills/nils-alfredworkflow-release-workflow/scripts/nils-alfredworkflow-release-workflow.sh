@@ -521,7 +521,7 @@ refresh_cargo_lock_if_present() {
 }
 
 refresh_third_party_licenses_if_present() {
-  local generator_script="scripts/generate-third-party-licenses.sh"
+  local generator_script="scripts/generate-third-party-artifacts.sh"
   local artifact_file="THIRD_PARTY_LICENSES.md"
 
   if ! git ls-files --error-unmatch "$artifact_file" >/dev/null 2>&1; then

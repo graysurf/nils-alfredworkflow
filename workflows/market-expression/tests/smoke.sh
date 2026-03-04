@@ -286,6 +286,7 @@ PATH="$tmp_dir/bin:$PATH" "$repo_root/scripts/workflow-pack.sh" --id market-expr
 
 workflow_test_root="$tmp_dir/workflow-test-entry"
 workflow_test_script="$workflow_test_root/scripts/workflow-test.sh"
+workflow_test_script_tests="$workflow_test_root/scripts/script-tests.sh"
 workflow_test_smoke="$workflow_test_root/workflows/market-expression/tests/smoke.sh"
 workflow_test_third_party_audit="$workflow_test_root/scripts/ci/third-party-artifacts-audit.sh"
 workflow_test_marker="$tmp_dir/workflow-test-smoke.marker"
@@ -297,6 +298,13 @@ mkdir -p \
   "$(dirname "$workflow_test_third_party_audit")"
 cp "$repo_root/scripts/workflow-test.sh" "$workflow_test_script"
 chmod +x "$workflow_test_script"
+
+cat >"$workflow_test_script_tests" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "ok: script tests stub"
+EOS
+chmod +x "$workflow_test_script_tests"
 
 cat >"$workflow_test_smoke" <<'EOS'
 #!/usr/bin/env bash

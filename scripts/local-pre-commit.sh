@@ -17,7 +17,7 @@ Modes:
   default  Local baseline without duplicated third-party audit.
            Runs: workflow-lint -> script-filter-policy-check -> node-scraper-tests -> workflow-test --skip-third-party-audit
   ci       Exact CI gate order.
-           Runs: ci-run-gates lint -> third-party-artifacts-audit -> node-scraper-tests -> test
+           Runs: ci-run-gates lint -> third-party-artifacts-audit -> node-scraper-tests -> script-tests -> test
 
 Options:
   --with-package-smoke     Append package smoke gate after selected mode flow.
@@ -59,6 +59,7 @@ run_ci_mode() {
     echo "skip: node scraper tests disabled (--skip-node-scraper-tests)"
   fi
 
+  run bash scripts/ci/ci-run-gates.sh script-tests
   run bash scripts/ci/ci-run-gates.sh test
 }
 

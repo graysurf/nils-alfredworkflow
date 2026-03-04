@@ -10,6 +10,7 @@ Usage:
   scripts/ci/ci-run-gates.sh lint
   scripts/ci/ci-run-gates.sh third-party-artifacts-audit
   scripts/ci/ci-run-gates.sh node-scraper-tests
+  scripts/ci/ci-run-gates.sh script-tests
   scripts/ci/ci-run-gates.sh test
   scripts/ci/ci-run-gates.sh package-smoke [--skip-arch-check]
   scripts/ci/ci-run-gates.sh release-package --tag <tag>
@@ -34,8 +35,12 @@ run_node_scraper_tests() {
   npm run test:cambridge-scraper
 }
 
+run_script_tests() {
+  bash "$repo_root/scripts/script-tests.sh"
+}
+
 run_tests() {
-  "$repo_root/scripts/workflow-test.sh"
+  "$repo_root/scripts/workflow-test.sh" --skip-script-tests
 }
 
 run_package_smoke() {
@@ -99,6 +104,10 @@ third-party-artifacts-audit)
 node-scraper-tests)
   [[ $# -eq 0 ]] || die "node-scraper-tests does not accept extra arguments"
   run_node_scraper_tests
+  ;;
+script-tests)
+  [[ $# -eq 0 ]] || die "script-tests does not accept extra arguments"
+  run_script_tests
   ;;
 test)
   [[ $# -eq 0 ]] || die "test does not accept extra arguments"

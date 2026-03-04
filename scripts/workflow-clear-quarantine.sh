@@ -3,11 +3,19 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
+workflow_catalog_lib="$repo_root/scripts/lib/workflow_catalog.sh"
 
 prefs_root_default="$HOME/Library/Application Support/Alfred/Alfred.alfredpreferences/workflows"
 prefs_root="${ALFRED_PREFS_ROOT:-$prefs_root_default}"
 
 declare -a requested_ids=()
+
+[[ -f "$workflow_catalog_lib" ]] || {
+  echo "error: missing helper library: $workflow_catalog_lib" >&2
+  exit 1
+}
+# shellcheck disable=SC1090
+source "$workflow_catalog_lib"
 
 usage() {
   cat <<USAGE
@@ -28,26 +36,6 @@ Options:
 Environment:
   ALFRED_PREFS_ROOT     Override Alfred workflows directory.
 USAGE
-}
-
-toml_string() {
-  local file="$1"
-  local key="$2"
-  awk -F'=' -v key="$key" '
-    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
-      value=$2
-      sub(/^[[:space:]]*/, "", value)
-      sub(/[[:space:]]*$/, "", value)
-      gsub(/^\"|\"$/, "", value)
-      print value
-      exit
-    }
-  ' "$file"
-}
-
-list_workflow_ids() {
-  find "$repo_root/workflows" -mindepth 1 -maxdepth 1 -type d \
-    ! -name '_template' -exec basename {} \; | sort
 }
 
 has_workflow_manifest() {
@@ -131,7 +119,7 @@ if [[ "${#requested_ids[@]}" -eq 0 ]]; then
   while IFS= read -r id; do
     [[ -n "$id" ]] || continue
     requested_ids+=("$id")
-  done < <(list_workflow_ids)
+  done < <(wfc_list_workflow_ids "$repo_root")
 fi
 
 cleared_count=0
@@ -146,7 +134,7 @@ for id in "${requested_ids[@]}"; do
   fi
 
   manifest="$repo_root/workflows/$id/workflow.toml"
-  bundle_id="$(toml_string "$manifest" bundle_id)"
+  bundle_id="$(wfc_toml_string "$manifest" bundle_id)"
   if [[ -z "$bundle_id" ]]; then
     echo "warn: missing bundle_id in $manifest"
     fail_count=$((fail_count + 1))

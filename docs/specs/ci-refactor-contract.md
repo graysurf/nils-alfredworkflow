@@ -22,7 +22,6 @@ All bootstrap and gate routing in those workflows must use the shared scripts in
 | Workflow step | Route type | canonical entrypoint | Decision |
 | --- | --- | --- | --- |
 | Checkout | GitHub Action | `actions/checkout@v6` | Keep |
-| Install system binaries | Inline shell | `sudo apt-get ...` | Keep for now (Ubuntu-only runner prep; not a CI gate) |
 | Set up Node.js | GitHub Action | `actions/setup-node@v6` | Keep |
 | Install Node dependencies | Inline shell | `npm ci` | Keep |
 | Set up Rust | GitHub Action | `dtolnay/rust-toolchain@stable` | Keep |
@@ -32,6 +31,7 @@ All bootstrap and gate routing in those workflows must use the shared scripts in
 | Lint | Script | `bash scripts/ci/ci-run-gates.sh lint` | Canonical |
 | Third-party artifacts audit (strict) | Script | `bash scripts/ci/ci-run-gates.sh third-party-artifacts-audit` | Canonical |
 | Node scraper tests | Script | `bash scripts/ci/ci-run-gates.sh node-scraper-tests` | Canonical |
+| Shell script tests | Script | `bash scripts/ci/ci-run-gates.sh script-tests` | Canonical |
 | Test | Script | `bash scripts/ci/ci-run-gates.sh test` | Canonical |
 | Package smoke | Script | `bash scripts/ci/ci-run-gates.sh package-smoke --skip-arch-check` | Canonical |
 

@@ -269,18 +269,15 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
 
 ### Workflow package/install command standard (macOS)
 
-- Use `scripts/workflow-pack-install.sh --id <workflow-id>` as the canonical operator command when you need to rebuild
-  and install the latest artifact.
-- For repeated local debug loops, set `WORKFLOW_PACK_ID=<workflow-id>` (for example in `.env`) and run
-  `scripts/workflow-pack-install.sh`.
-- Use `scripts/workflow-install.sh <workflow-id>` only when re-installing an already-built artifact from `dist/` without
-  rebuilding.
-- `scripts/workflow-pack.sh --id <workflow-id> --install` remains the low-level primitive; troubleshooting docs should
-  prefer the wrapper above for consistency.
+- Rebuild and install latest artifact:
+  `scripts/workflow-pack.sh --id <workflow-id> --install`.
+- Install latest already-built artifact from `dist/` without rebuilding:
+  `scripts/workflow-pack.sh --id <workflow-id> --install-only`.
+- Keep troubleshooting docs aligned to `scripts/workflow-pack.sh` options; removed wrappers must not be reintroduced.
 
 ### Installed-workflow debug checklist
 
-1. Confirm the latest package was installed (`scripts/workflow-pack-install.sh --id <workflow-id>`).
+1. Confirm the latest package was installed (`scripts/workflow-pack.sh --id <workflow-id> --install`).
 2. Locate installed workflow directory by bundle id in Alfred preferences.
 3. Inspect installed `info.plist` node runtime wiring (`type`, `scriptfile`, `connections`).
 4. Execute installed scripts directly from workflow directory to isolate Alfred UI factors.

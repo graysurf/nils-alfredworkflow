@@ -3,10 +3,19 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
+workflow_catalog_lib="$repo_root/scripts/lib/workflow_catalog.sh"
+
+[[ -f "$workflow_catalog_lib" ]] || {
+  echo "error: missing helper library: $workflow_catalog_lib" >&2
+  exit 1
+}
+# shellcheck disable=SC1090
+source "$workflow_catalog_lib"
 
 list_only=0
 pack_all=0
 install_after=0
+install_only=0
 workflow_id=""
 
 usage() {
@@ -14,23 +23,9 @@ usage() {
 Usage:
   scripts/workflow-pack.sh --list
   scripts/workflow-pack.sh --id <workflow-id> [--install]
+  scripts/workflow-pack.sh --id <workflow-id> --install-only
   scripts/workflow-pack.sh --all [--install]
 USAGE
-}
-
-toml_string() {
-  local file="$1"
-  local key="$2"
-  awk -F'=' -v key="$key" '
-    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
-      value=$2
-      sub(/^[[:space:]]*/, "", value)
-      sub(/[[:space:]]*$/, "", value)
-      gsub(/^"|"$/, "", value)
-      print value
-      exit
-    }
-  ' "$file"
 }
 
 sha256_write() {
@@ -42,11 +37,6 @@ sha256_write() {
   else
     echo "warn: sha256sum/shasum not found; skip checksum" >&2
   fi
-}
-
-list_workflows() {
-  find "$repo_root/workflows" -mindepth 1 -maxdepth 1 -type d \
-    ! -name '_template' -exec basename {} \; | sort
 }
 
 render_plist() {
@@ -63,6 +53,51 @@ render_plist() {
     "$template" >"$output"
 }
 
+install_workflow_artifact() {
+  local id="$1"
+  local artifact="$2"
+
+  if ! command -v open >/dev/null 2>&1; then
+    echo "error: install requires macOS 'open' command" >&2
+    return 1
+  fi
+
+  open "$artifact"
+  echo "ok: installed $artifact"
+
+  if [[ "$id" == "cambridge-dict" ]]; then
+    # Alfred import can replace the workflow directory shortly after `open`.
+    # Delay and retry runtime setup so node_modules is not immediately wiped.
+    local runtime_ready=0
+    for _ in $(seq 1 3); do
+      sleep 2
+      if "$repo_root/scripts/setup-cambridge-workflow-runtime.sh" \
+        --wait-for-install \
+        --skip-browser \
+        --quiet; then
+        runtime_ready=1
+        break
+      fi
+    done
+    if [[ "$runtime_ready" -ne 1 ]]; then
+      echo "warn: cambridge runtime setup failed; run scripts/setup-cambridge-workflow-runtime.sh manually" >&2
+    fi
+  fi
+}
+
+install_only_one() {
+  local id="$1"
+  local artifact=""
+
+  artifact="$(wfc_dist_latest_artifact "$repo_root" "$id" || true)"
+  [[ -n "$artifact" ]] || {
+    echo "error: no .alfredworkflow artifact found under dist/$id (run scripts/workflow-pack.sh --id $id first)" >&2
+    return 1
+  }
+
+  install_workflow_artifact "$id" "$artifact"
+}
+
 package_one() {
   local id="$1"
   local manifest="$repo_root/workflows/$id/workflow.toml"
@@ -74,11 +109,11 @@ package_one() {
   }
 
   local name bundle_id version rust_binary rust_package readme_source effective_readme_source
-  name="$(toml_string "$manifest" name)"
-  bundle_id="$(toml_string "$manifest" bundle_id)"
-  version="$(toml_string "$manifest" version)"
-  rust_binary="$(toml_string "$manifest" rust_binary)"
-  readme_source="$(toml_string "$manifest" readme_source)"
+  name="$(wfc_toml_string "$manifest" name)"
+  bundle_id="$(wfc_toml_string "$manifest" bundle_id)"
+  version="$(wfc_toml_string "$manifest" version)"
+  rust_binary="$(wfc_toml_string "$manifest" rust_binary)"
+  readme_source="$(wfc_toml_string "$manifest" readme_source)"
 
   [[ -n "$name" ]] || {
     echo "error: missing name in $manifest" >&2
@@ -181,26 +216,7 @@ package_one() {
   echo "ok: packaged $artifact"
 
   if [[ "$install_after" -eq 1 ]]; then
-    open "$artifact"
-
-    if [[ "$id" == "cambridge-dict" ]]; then
-      # Alfred import can replace the workflow directory shortly after `open`.
-      # Delay and retry runtime setup so node_modules is not immediately wiped.
-      local runtime_ready=0
-      for _ in $(seq 1 3); do
-        sleep 2
-        if "$repo_root/scripts/setup-cambridge-workflow-runtime.sh" \
-          --wait-for-install \
-          --skip-browser \
-          --quiet; then
-          runtime_ready=1
-          break
-        fi
-      done
-      if [[ "$runtime_ready" -ne 1 ]]; then
-        echo "warn: cambridge runtime setup failed; run scripts/setup-cambridge-workflow-runtime.sh manually" >&2
-      fi
-    fi
+    install_workflow_artifact "$id" "$artifact"
   fi
 }
 
@@ -226,6 +242,10 @@ while [[ $# -gt 0 ]]; do
     install_after=1
     shift
     ;;
+  --install-only)
+    install_only=1
+    shift
+    ;;
   -h | --help)
     usage
     exit 0
@@ -239,7 +259,29 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$list_only" -eq 1 ]]; then
-  list_workflows
+  wfc_list_workflow_ids "$repo_root"
+  exit 0
+fi
+
+if [[ "$install_only" -eq 1 && "$install_after" -eq 1 ]]; then
+  echo "error: --install and --install-only cannot be used together" >&2
+  usage >&2
+  exit 2
+fi
+
+if [[ "$install_only" -eq 1 && "$pack_all" -eq 1 ]]; then
+  echo "error: --install-only cannot be used with --all" >&2
+  usage >&2
+  exit 2
+fi
+
+if [[ "$install_only" -eq 1 ]]; then
+  [[ -n "$workflow_id" ]] || {
+    echo "error: --install-only requires --id <workflow-id>" >&2
+    usage >&2
+    exit 2
+  }
+  install_only_one "$workflow_id"
   exit 0
 fi
 
@@ -247,7 +289,7 @@ if [[ "$pack_all" -eq 1 ]]; then
   while IFS= read -r id; do
     [[ -n "$id" ]] || continue
     package_one "$id"
-  done < <(list_workflows)
+  done < <(wfc_list_workflow_ids "$repo_root")
   exit 0
 fi
 

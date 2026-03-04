@@ -77,8 +77,11 @@
 - Add package smoke gate when you want release-style package validation locally:
   - `scripts/local-pre-commit.sh --with-package-smoke`
 - Why this replaces the old manual sequence:
-  - `scripts/workflow-test.sh` already runs strict `third-party-artifacts-audit` and `cargo test --workspace` by
-    default, so manually prepending both commands caused redundant runs.
+  - `scripts/workflow-test.sh` already runs strict `third-party-artifacts-audit`, `cargo test --workspace`, and
+    script-level shell tests (`scripts/script-tests.sh`) by default, so manually prepending those checks caused
+    redundant runs.
+- Run script-level shell tests directly (without full workflow-test flow):
+  - `bash scripts/script-tests.sh`
 - For workflow-specific or CLI-specific checks (for example live smoke or probe scripts), run the validation steps
   documented in the corresponding `workflows/<workflow-id>/README.md`.
 
@@ -86,6 +89,9 @@
 
 - Smoke only for one workflow:
   - `scripts/workflow-test.sh --id <workflow-id> --skip-third-party-audit --skip-workspace-tests`
+- Skip script-level shell tests temporarily during focused Rust/workflow iteration:
+  - `scripts/workflow-test.sh --skip-script-tests`
+  - Do not use this mode as a final pre-commit check.
 - Skip Node scraper tests temporarily during non-scraper iteration:
   - `scripts/local-pre-commit.sh --skip-node-scraper-tests`
   - Do not use this mode as a final pre-commit check.
@@ -149,6 +155,8 @@
   - `scripts/workflow-pack.sh --id <workflow-id>`
 - Pack and install:
   - `scripts/workflow-pack.sh --id <workflow-id> --install`
+- Install latest already-built artifact only (skip rebuild):
+  - `scripts/workflow-pack.sh --id <workflow-id> --install-only`
 - Pack all workflows:
   - `scripts/workflow-pack.sh --all`
 

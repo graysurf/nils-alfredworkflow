@@ -49,6 +49,9 @@ jobs:
       - name: Node scraper tests
         run: bash scripts/ci/ci-run-gates.sh node-scraper-tests
 
+      - name: Shell script tests
+        run: bash scripts/ci/ci-run-gates.sh script-tests
+
       - name: Test
         run: bash scripts/ci/ci-run-gates.sh test
 

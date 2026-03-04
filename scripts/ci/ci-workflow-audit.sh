@@ -127,6 +127,11 @@ require_fixed \
   "Route node scraper tests through ci-run-gates."
 require_fixed \
   "$ci_workflow" \
+  "run: bash scripts/ci/ci-run-gates.sh script-tests" \
+  "ci shell script test gate entrypoint" \
+  "Route shell script tests through ci-run-gates script-tests."
+require_fixed \
+  "$ci_workflow" \
   "run: bash scripts/ci/ci-run-gates.sh test" \
   "ci test gate entrypoint" \
   "Route test checks through scripts/ci/ci-run-gates.sh test."

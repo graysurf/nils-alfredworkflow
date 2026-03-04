@@ -7,15 +7,17 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 workflow_id=""
 skip_third_party_audit=0
 skip_workspace_tests=0
+skip_script_tests=0
 
 usage() {
   cat <<USAGE
 Usage:
-  scripts/workflow-test.sh [--id <workflow-id>] [--skip-third-party-audit] [--skip-workspace-tests]
+  scripts/workflow-test.sh [--id <workflow-id>] [--skip-third-party-audit] [--skip-workspace-tests] [--skip-script-tests]
 
 Notes:
   - By default runs strict third-party artifacts freshness audit before tests.
   - By default runs cargo workspace tests before workflow smoke tests.
+  - By default runs shell script unit/integration tests via scripts/script-tests.sh.
   - Runs shellcheck for workflow-local shell scripts before smoke.
 USAGE
 }
@@ -67,6 +69,10 @@ while [[ $# -gt 0 ]]; do
     skip_workspace_tests=1
     shift
     ;;
+  --skip-script-tests)
+    skip_script_tests=1
+    shift
+    ;;
   -h | --help)
     usage
     exit 0
@@ -92,6 +98,14 @@ if [[ "$skip_workspace_tests" -eq 0 ]]; then
 else
   echo "== Cargo workspace tests =="
   echo "skip: --skip-workspace-tests enabled"
+fi
+
+if [[ "$skip_script_tests" -eq 0 ]]; then
+  echo "== Script tests =="
+  bash "$repo_root/scripts/script-tests.sh"
+else
+  echo "== Script tests =="
+  echo "skip: --skip-script-tests enabled"
 fi
 
 if [[ -n "$workflow_id" ]]; then

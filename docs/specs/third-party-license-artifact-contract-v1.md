@@ -14,11 +14,6 @@ license-focused compatibility reference.
 - Write mode: `bash scripts/generate-third-party-artifacts.sh --write`
 - Check mode: `bash scripts/generate-third-party-artifacts.sh --check`
 
-Compatibility alias:
-
-- `bash scripts/generate-third-party-licenses.sh --write`
-- `bash scripts/generate-third-party-licenses.sh --check`
-
 ## Mandatory Section Order
 
 `THIRD_PARTY_LICENSES.md` MUST render sections in this exact order:
