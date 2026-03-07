@@ -182,9 +182,9 @@ def main() -> None:
         "TROUBLESHOOTING.md",
     }
     root_doc_required_link_sources = {
-        "ALFRED_WORKFLOW_DEVELOPMENT.md": {"README.md"},
-        "BINARY_DEPENDENCIES.md": {"README.md"},
-        "DEVELOPMENT.md": {"README.md"},
+        "ALFRED_WORKFLOW_DEVELOPMENT.md": {"TROUBLESHOOTING.md", "docs/ARCHITECTURE.md"},
+        "BINARY_DEPENDENCIES.md": {"DEVELOPMENT.md"},
+        "DEVELOPMENT.md": {"docs/ARCHITECTURE.md", "docs/PACKAGING.md"},
         "TROUBLESHOOTING.md": {"README.md"},
         "THIRD_PARTY_LICENSES.md": {"docs/RELEASE.md"},
         "THIRD_PARTY_NOTICES.md": {"docs/RELEASE.md"},

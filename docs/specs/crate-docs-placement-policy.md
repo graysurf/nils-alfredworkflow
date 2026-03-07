@@ -33,7 +33,9 @@
 
 ### Repository root navigation and ownership
 
-- Maintainer/operator guides in repository root must be linked from `README.md`.
+- `README.md` is user-facing by default and should link only to user/operator entry docs such as `TROUBLESHOOTING.md`.
+- Maintainer/operator guides in repository root must be linked from canonical maintainer entry docs such as
+  `docs/ARCHITECTURE.md`, `DEVELOPMENT.md`, or `docs/PACKAGING.md`, not directly from `README.md`.
 - Generated/compliance root artifacts must be linked from a canonical release/compliance entrypoint such as
   `docs/RELEASE.md`.
 - Root files that are entrypoints themselves (`README.md`, `AGENTS.md`) do not require inbound links.
@@ -84,7 +86,7 @@
 1. Classify the document before adding it: workspace-level or crate-specific.
 2. If crate-specific, place it in `crates/<crate-name>/docs/`.
 3. If workspace-level and stored in repository root, use only an allowed root markdown filename/category and link it
-   from the canonical entry doc.
+   from the canonical entry doc (`README.md` for user-facing docs; maintainer docs for maintainer-only guides).
 4. If workspace-level and stored under `docs/`, place it only in an allowed `docs/` category.
 5. For cross-crate topics, choose canonical owner or declare workspace-level scope with rationale.
 6. Do not keep root compatibility stubs; remove legacy root files after migrating references.

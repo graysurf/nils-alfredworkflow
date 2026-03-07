@@ -50,5 +50,4 @@ Alfred workflows for macOS users.
 ## Troubleshooting
 
 - Quick routing index: [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-- Global standards and shared operator playbooks: [ALFRED_WORKFLOW_DEVELOPMENT.md](ALFRED_WORKFLOW_DEVELOPMENT.md)
 - Workflow-specific runtime failures: `workflows/<workflow-id>/TROUBLESHOOTING.md`

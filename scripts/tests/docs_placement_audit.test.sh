@@ -58,15 +58,13 @@ EOF
   cat >"$fixture_repo/README.md" <<'EOF'
 # Fixture Repo
 
-- [Development](DEVELOPMENT.md)
-- [Alfred Workflow Development](ALFRED_WORKFLOW_DEVELOPMENT.md)
-- [Binary Dependencies](BINARY_DEPENDENCIES.md)
-- [Packaging](docs/PACKAGING.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
 EOF
 
   cat >"$fixture_repo/DEVELOPMENT.md" <<'EOF'
 # Development
+
+- [Binary Dependencies](BINARY_DEPENDENCIES.md)
 EOF
 
   cat >"$fixture_repo/ALFRED_WORKFLOW_DEVELOPMENT.md" <<'EOF'
@@ -79,10 +77,14 @@ EOF
 
   cat >"$fixture_repo/docs/PACKAGING.md" <<'EOF'
 # Packaging
+
+- [Development](../DEVELOPMENT.md)
 EOF
 
   cat >"$fixture_repo/TROUBLESHOOTING.md" <<'EOF'
 # Troubleshooting
+
+- [Global standards](ALFRED_WORKFLOW_DEVELOPMENT.md)
 EOF
 
   cat >"$fixture_repo/THIRD_PARTY_LICENSES.md" <<'EOF'
@@ -102,6 +104,9 @@ EOF
 
   cat >"$fixture_repo/docs/ARCHITECTURE.md" <<'EOF'
 # Architecture
+
+- [Development](../DEVELOPMENT.md)
+- [Global standards](../ALFRED_WORKFLOW_DEVELOPMENT.md)
 EOF
 
   (
@@ -161,10 +166,6 @@ test_missing_root_doc_entry_link_fails() {
   cat >"$fixture_repo/README.md" <<'EOF'
 # Fixture Repo
 
-- [Development](DEVELOPMENT.md)
-- [Alfred Workflow Development](ALFRED_WORKFLOW_DEVELOPMENT.md)
-- [Binary Dependencies](BINARY_DEPENDENCIES.md)
-- [Packaging](docs/PACKAGING.md)
 EOF
 
   (
@@ -182,10 +183,34 @@ EOF
   assert_contains "$output" "repository-root markdown file is not linked from its canonical entry doc(s): TROUBLESHOOTING.md" "missing root link failure message"
 }
 
+test_missing_maintainer_entry_link_fails() {
+  local fixture_repo="$test_root/missing-maintainer-link-fixture"
+  create_fixture_repo "$fixture_repo"
+
+  cat >"$fixture_repo/DEVELOPMENT.md" <<'EOF'
+# Development
+EOF
+
+  (
+    cd "$fixture_repo"
+    git add DEVELOPMENT.md
+  )
+
+  local output=""
+  set +e
+  output="$(run_audit "$fixture_repo" 2>&1)"
+  local rc=$?
+  set -e
+
+  [[ "$rc" -ne 0 ]] || fail "missing maintainer entry link for BINARY_DEPENDENCIES.md should fail audit"
+  assert_contains "$output" "repository-root markdown file is not linked from its canonical entry doc(s): BINARY_DEPENDENCIES.md" "missing maintainer link failure message"
+}
+
 main() {
   test_repo_root_allowlist_accepts_governed_docs
   test_unexpected_repo_root_markdown_fails
   test_missing_root_doc_entry_link_fails
+  test_missing_maintainer_entry_link_fails
   printf 'ok: docs placement audit tests passed\n'
 }
 

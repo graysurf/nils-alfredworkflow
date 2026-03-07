@@ -2,10 +2,11 @@
 
 Use this file for maintainer-side packaging, install, and macOS acceptance flows.
 
-- Development/build/lint/test gates: `../DEVELOPMENT.md`
-- Local tool and runtime prerequisites: `../BINARY_DEPENDENCIES.md`
-- Release/tag/publish flow: `docs/RELEASE.md`
-- Cross-workflow runtime and troubleshooting standards: `../ALFRED_WORKFLOW_DEVELOPMENT.md`
+- Development/build/lint/test gates: [../DEVELOPMENT.md](../DEVELOPMENT.md)
+- Local tool and runtime prerequisites: [../BINARY_DEPENDENCIES.md](../BINARY_DEPENDENCIES.md)
+- Release/tag/publish flow: [RELEASE.md](RELEASE.md)
+- Cross-workflow runtime and troubleshooting standards:
+  [../ALFRED_WORKFLOW_DEVELOPMENT.md](../ALFRED_WORKFLOW_DEVELOPMENT.md)
 
 ## Packaging commands
 

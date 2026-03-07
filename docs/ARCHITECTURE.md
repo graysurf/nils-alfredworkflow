@@ -20,16 +20,17 @@ Shared foundation extraction boundary:
 
 Documentation ownership boundaries:
 
-- Repository/global navigation: `README.md`
-- Architecture/runtime baseline: `docs/ARCHITECTURE.md`
-- CLI shared runtime/output contract: `docs/specs/cli-shared-runtime-contract.md`
+- Repository/global navigation: [README.md](../README.md)
+- Architecture/runtime baseline: [docs/ARCHITECTURE.md](ARCHITECTURE.md)
+- CLI shared runtime/output contract:
+  [docs/specs/cli-shared-runtime-contract.md](specs/cli-shared-runtime-contract.md)
 - Native Google command contract + validation entrypoints:
-  - `docs/specs/google-cli-native-contract.md`
-  - `crates/google-cli/README.md`
+  - [docs/specs/google-cli-native-contract.md](specs/google-cli-native-contract.md)
+  - [crates/google-cli/README.md](../crates/google-cli/README.md)
 - Workflow runtime/operator behavior: `workflows/<workflow-id>/README.md`
 
 For operator standards and command gates, see:
 
-- `ALFRED_WORKFLOW_DEVELOPMENT.md`
-- `DEVELOPMENT.md`
-- `docs/PACKAGING.md`
+- [ALFRED_WORKFLOW_DEVELOPMENT.md](../ALFRED_WORKFLOW_DEVELOPMENT.md)
+- [DEVELOPMENT.md](../DEVELOPMENT.md)
+- [docs/PACKAGING.md](PACKAGING.md)

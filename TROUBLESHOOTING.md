@@ -1,7 +1,8 @@
 # Troubleshooting Index
 
 Use this file as a quick routing index. Operational standards remain in
-`ALFRED_WORKFLOW_DEVELOPMENT.md`; workflow-specific runbooks live under
+[ALFRED_WORKFLOW_DEVELOPMENT.md](ALFRED_WORKFLOW_DEVELOPMENT.md);
+workflow-specific runbooks live under
 `workflows/<workflow-id>/TROUBLESHOOTING.md`.
 
 ## Global checks

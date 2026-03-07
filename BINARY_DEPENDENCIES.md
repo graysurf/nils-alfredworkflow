@@ -38,9 +38,10 @@ This document lists required local tools for development, linting, testing, and 
 
 ## Related maintainer docs
 
-- Packaging/install/macOS acceptance: `docs/PACKAGING.md`
-- Release/tag/publish flow: `docs/RELEASE.md`
-- Cross-workflow runtime and troubleshooting standards: `ALFRED_WORKFLOW_DEVELOPMENT.md`
+- Packaging/install/macOS acceptance: [docs/PACKAGING.md](docs/PACKAGING.md)
+- Release/tag/publish flow: [docs/RELEASE.md](docs/RELEASE.md)
+- Cross-workflow runtime and troubleshooting standards:
+  [ALFRED_WORKFLOW_DEVELOPMENT.md](ALFRED_WORKFLOW_DEVELOPMENT.md)
 
 ## Install (macOS)
 

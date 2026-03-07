@@ -2,10 +2,11 @@
 
 Use this file for day-to-day development, quality gates, and local validation flow.
 
-- Toolchain/bootstrap prerequisites: `BINARY_DEPENDENCIES.md`
-- Packaging/install/macOS acceptance: `docs/PACKAGING.md`
-- Release and publish flow: `docs/RELEASE.md`
-- Workflow runtime and troubleshooting standards: `ALFRED_WORKFLOW_DEVELOPMENT.md`
+- Toolchain/bootstrap prerequisites: [BINARY_DEPENDENCIES.md](BINARY_DEPENDENCIES.md)
+- Packaging/install/macOS acceptance: [docs/PACKAGING.md](docs/PACKAGING.md)
+- Release and publish flow: [docs/RELEASE.md](docs/RELEASE.md)
+- Workflow runtime and troubleshooting standards:
+  [ALFRED_WORKFLOW_DEVELOPMENT.md](ALFRED_WORKFLOW_DEVELOPMENT.md)
 
 ## Platform scope
 
