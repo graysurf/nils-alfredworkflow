@@ -1,6 +1,6 @@
 # Weather Forecast - Alfred Workflow
 
-Show weather forecasts from `weather-cli` with separate keywords for today and week views.
+Show no-token weather forecasts from `weather-cli`, with `wt` for today/hourly flow and `ww` for city-pick/week flow.
 
 ## Screenshot
 
@@ -19,8 +19,8 @@ Show weather forecasts from `weather-cli` with separate keywords for today and w
 - Multi-city by comma: `wt Tokyo,Osaka,Taipei`
 - Coordinates: `wt 25.03,121.56`
 - Today view is two-stage:
-  1. `wt <query>` shows today forecast rows (same display format as before).
-  2. Select a today row to show hourly forecast rows for that city.
+  1. `wt <query>` shows current-day daily rows.
+  2. Select a daily row to show hourly rows for that city.
 - Week view is two-stage:
   1. `ww <query>` to pick a city.
   2. Select a city row to show fixed 7-day forecast rows.
@@ -39,8 +39,9 @@ Set these via Alfred's `Configure Workflow...` UI:
 
 ## Notes
 
-- `wt` row format: `City HH:MM Temp°C Summary x%` (single-line title).
-- `ww` row format: `City min~max°C Summary x%` (single-line title).
+- `wt` stage-one row format: `City min~max°C Summary x%`.
+- `wt` stage-two row format: `City HH:MM Temp°C Summary x%`.
+- `ww` stage-one rows are city-picker items; `ww` stage-two rows use `City min~max°C Summary x%`.
 - Subtitle shows `Date Timezone Latitude,Longitude`.
 - Result rows consume `weather-cli` icon metadata and render PNG assets under `assets/icons/weather/*.png`.
 - Editable SVG source lives under `assets-src/icons/weather/*.svg`;
@@ -52,14 +53,19 @@ Set these via Alfred's `Configure Workflow...` UI:
 - `wt` stage-one autocomplete now uses `city::<location>` instead of embedding coordinates in
   the visible query; when a cached geocoding result exists, the script reuses cached
   coordinates before fetching hourly rows.
-- `wt` multi-city stage-one no longer loops over `weather-cli` once per city in shell; it now
-  forwards repeated `--city` flags to `weather-cli`, which resolves uncached geocoding misses in
-  parallel and batches the Open-Meteo daily forecast call in Rust.
+- `wt` multi-city stage-one no longer loops over `weather-cli` once per city in shell; it forwards
+  repeated `--city` flags to `weather-cli`, which resolves uncached geocoding misses in parallel
+  and batches the Open-Meteo daily forecast call in Rust.
 - `wt` keeps original today-row display as stage one, then opens hourly rows as stage two.
 - `ww` uses city-picker stage first, then returns fixed 7-day rows for the selected city.
+- `weather-cli --output alfred-json` is the runtime contract used by the workflow. Single-city
+  outputs are normalized in shell; batch daily outputs are already flattened by Rust.
+- `jq` is still recommended for local validation and shell-side normalization/token rewriting, but
+  Rust now owns multi-city daily batching and icon selection.
 - Cache TTL is configurable via `WEATHER_CACHE_TTL_SECS` (`900` by default in workflow).
 - Enter on result rows copies the selected row argument.
-- The workflow calls `weather-cli` with `--output alfred-json --lang <locale>` (`hourly` for `wt`, `week` for `ww`).
+- The workflow calls `weather-cli` with `--output alfred-json --lang <locale>`:
+  `today` for `wt` stage one, `hourly` for `wt` stage two, and `week` for `ww` stage two.
 
 ## Local Validation
 
