@@ -44,12 +44,12 @@ Set these via Alfred's "Configure Workflow..." UI:
 
 ## Advanced Runtime Parameters
 
-| Parameter                               | Description                                                                                      |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `SPOTIFY_CLI_BIN`                       | Optional override path for `spotify-cli` (useful for local debugging).                           |
-| `SPOTIFY_QUERY_CACHE_TTL_SECONDS`       | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits). |
-| `SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `1`.                                          |
-| `SPOTIFY_QUERY_COALESCE_RERUN_SECONDS`  | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`.                |
+| Parameter                               | Description                                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `SPOTIFY_CLI_BIN`                       | Optional override path for `spotify-cli` (useful for local debugging).                            |
+| `SPOTIFY_QUERY_CACHE_TTL_SECONDS`       | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits).   |
+| `SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `1`.                                           |
+| `SPOTIFY_QUERY_COALESCE_RERUN_SECONDS`  | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`.                 |
 
 ## Troubleshooting
 
