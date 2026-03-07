@@ -126,7 +126,7 @@ install_only_one_ui() {
 resolve_effective_install_mode() {
   local mode="$install_mode"
 
-  if [[ "$pack_all" -eq 1 && ( "$install_after" -eq 1 || "$install_only" -eq 1 ) ]]; then
+  if [[ "$pack_all" -eq 1 && ("$install_after" -eq 1 || "$install_only" -eq 1) ]]; then
     if [[ "$install_mode_explicit" -eq 1 && "$install_mode" != "background" ]]; then
       echo "error: --all install only supports --mode background" >&2
       return 1
