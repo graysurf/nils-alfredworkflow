@@ -3,6 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 out_dir="$(cd "$script_dir/../src/assets" && pwd)/icons/weather"
+svg_dir="$script_dir/icon_svg"
 mkdir -p "$out_dir"
 
 base_bg=(
@@ -167,5 +168,18 @@ magick "${base_bg[@]}" \
   -stroke none -fill '#FFD65A' \
   -draw 'circle 64,86 64,90' \
   "$out_dir/unknown.png"
+
+if ! command -v image-processing >/dev/null 2>&1; then
+  echo "image-processing binary not found; cannot generate night weather icons" >&2
+  exit 1
+fi
+
+for icon in clear-night mainly-clear-night partly-cloudy-night; do
+  image-processing convert \
+    --from-svg "$svg_dir/${icon}.svg" \
+    --to png \
+    --out "$out_dir/${icon}.png" \
+    --overwrite >/dev/null
+done
 
 printf 'ok: generated weather icons in %s\n' "$out_dir"

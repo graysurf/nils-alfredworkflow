@@ -43,6 +43,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 - `ww` row format: `City min~max°C Summary x%` (single-line title).
 - Subtitle shows `Date Timezone Latitude,Longitude`.
 - Result rows map weather type to icon under `assets/icons/weather/*.png` (shared visual style).
+- `wt` current-city rows use local-time night variants for `clear`, `mainly clear`, and `partly cloudy` during `18:00-05:59`; hourly rows use each row's local hour.
 - `wt` keeps original today-row display as stage one, then opens hourly rows as stage two.
 - `ww` uses city-picker stage first, then returns fixed 7-day rows for the selected city.
 - Cache TTL is configurable via `WEATHER_CACHE_TTL_SECS` (`900` by default in workflow).

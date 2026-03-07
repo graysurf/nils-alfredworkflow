@@ -147,16 +147,55 @@ resolve_locale() {
   esac
 }
 
+resolve_icon_local_hour() {
+  local timezone="${1:-UTC}"
+  local override="${WEATHER_ICON_LOCAL_HOUR_OVERRIDE:-}"
+  local hour=""
+
+  override="$(printf '%s' "$override" | tr -d '[:space:]')"
+  if [[ "$override" =~ ^[0-9]{1,2}$ ]] && ((10#$override >= 0 && 10#$override <= 23)); then
+    printf '%02d\n' "$((10#$override))"
+    return 0
+  fi
+
+  if hour="$(TZ="$timezone" date +%H 2>/dev/null)" && [[ "$hour" =~ ^[0-9]{2}$ ]]; then
+    printf '%s\n' "$hour"
+    return 0
+  fi
+
+  date -u +%H
+}
+
 normalize_alfred_items() {
   local json_output="$1"
+  local display_location_override="${WEATHER_DISPLAY_LOCATION_OVERRIDE:-}"
+  local header_timezone=""
+  local current_local_hour=""
 
   if ! command -v jq >/dev/null 2>&1; then
     printf '%s\n' "$json_output"
     return 0
   fi
 
-  jq -ce '
-    def icon_name($summary):
+  header_timezone="$(jq -r '
+    if (.items | type != "array") or ((.items | length) == 0) then
+      ""
+    elif ((.items[0].title // "") | test("^.+ \\([^)]+\\)$")) then
+      ((.items[0].title // "") | capture("^(?<location>.+) \\((?<timezone>[^)]+)\\)$")).timezone
+    else
+      ""
+    end
+  ' <<<"$json_output" 2>/dev/null || true)"
+
+  if [[ "$period" == "today" ]]; then
+    current_local_hour="$(resolve_icon_local_hour "$header_timezone")"
+  fi
+
+  jq -ce \
+    --arg display_location_override "$display_location_override" \
+    --arg period "$period" \
+    --arg current_local_hour "$current_local_hour" '
+    def base_icon_name($summary):
       if $summary == "clear sky" or $summary == "晴朗" then
         "clear"
       elif $summary == "mainly clear" or $summary == "大致晴朗" then
@@ -185,6 +224,34 @@ normalize_alfred_items() {
         "unknown"
       end;
 
+    def night_icon_name($summary):
+      if $summary == "clear sky" or $summary == "晴朗" then
+        "clear-night"
+      elif $summary == "mainly clear" or $summary == "大致晴朗" then
+        "mainly-clear-night"
+      elif $summary == "partly cloudy" or $summary == "晴時多雲" then
+        "partly-cloudy-night"
+      else
+        base_icon_name($summary)
+      end;
+
+    def resolved_hour($time; $period; $current_local_hour):
+      if (($time // "") | test("^[0-9]{2}:[0-9]{2}$")) then
+        ($time[0:2] | tonumber)
+      elif $period == "today" and (($current_local_hour // "") | test("^[0-9]{2}$")) then
+        ($current_local_hour | tonumber)
+      else
+        null
+      end;
+
+    def icon_name($summary; $time; $period; $current_local_hour):
+      (resolved_hour($time; $period; $current_local_hour)) as $hour
+      | if $hour != null and ($hour < 6 or $hour >= 18) then
+          night_icon_name($summary)
+        else
+          base_icon_name($summary)
+        end;
+
     if (.items | type != "array") then
       error("missing items array")
     else
@@ -202,6 +269,7 @@ normalize_alfred_items() {
          end) as $header
         | ($header.location // ((.items[0].title // "") | sub(" \\([^)]*\\)$"; ""))) as $location
         | ($header.timezone // "UTC") as $timezone
+        | (if ($display_location_override | length) > 0 then $display_location_override else $location end) as $display_location
         | (if ((.items[0].subtitle // "") | test("lat=-?[0-9]+(?:\\.[0-9]+)? lon=-?[0-9]+(?:\\.[0-9]+)?"))
            then ((.items[0].subtitle // "") | capture("lat=(?<lat>-?[0-9]+(?:\\.[0-9]+)?) lon=(?<lon>-?[0-9]+(?:\\.[0-9]+)?)"))
            else null
@@ -228,28 +296,28 @@ normalize_alfred_items() {
                 | if $daily != null then
                     ($daily.summary | if test("^[A-Za-z ]+$") then ascii_downcase else . end) as $summary
                     | {
-                        "title": ($location + " " + $daily.min + "~" + $daily.max + "°C " + $summary + " " + (($rain.rain // "?") + "%")),
+                        "title": ($display_location + " " + $daily.min + "~" + $daily.max + "°C " + $summary + " " + (($rain.rain // "?") + "%")),
                         "subtitle": ($daily.date + " " + $timezone + " " + $lat + "," + $lon),
                         "arg": (if ((.arg // "") | length) == 0 then $daily.date else .arg end),
                         "valid": true,
                         "icon": {
-                          "path": ("assets/icons/weather/" + icon_name($summary) + ".png")
+                          "path": ("assets/icons/weather/" + icon_name($summary; null; $period; $current_local_hour) + ".png")
                         }
                       }
                   elif $hourly != null then
                     ($hourly.summary | if test("^[A-Za-z ]+$") then ascii_downcase else . end) as $summary
                     | {
-                        "title": ($location + " " + $hourly.time + " " + $hourly.temp + "°C " + $summary + " " + (($rain.rain // "?") + "%")),
+                        "title": ($display_location + " " + $hourly.time + " " + $hourly.temp + "°C " + $summary + " " + (($rain.rain // "?") + "%")),
                         "subtitle": ($hourly.date + " " + $timezone + " " + $lat + "," + $lon),
                         "arg": (if ((.arg // "") | length) == 0 then ($hourly.date + " " + $hourly.time) else .arg end),
                         "valid": true,
                         "icon": {
-                          "path": ("assets/icons/weather/" + icon_name($summary) + ".png")
+                          "path": ("assets/icons/weather/" + icon_name($summary; $hourly.time; $period; $current_local_hour) + ".png")
                         }
                       }
                   else
                     {
-                      "title": ($location + " " + $title),
+                      "title": ($display_location + " " + $title),
                       "subtitle": ($timezone + " " + $lat + "," + $lon),
                       "arg": (if ((.arg // "") | length) == 0 then $title else .arg end),
                       "valid": true,

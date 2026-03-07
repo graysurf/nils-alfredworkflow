@@ -1,8 +1,12 @@
 use crate::model::ForecastLocation;
+use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
+use std::fs;
 use std::hash::{Hash, Hasher};
+use std::io;
+use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ResolvedLocation {
     pub name: String,
     pub latitude: f64,
@@ -36,6 +40,47 @@ pub fn city_query_cache_key(city: &str) -> String {
 
 pub fn coordinate_label(lat: f64, lon: f64) -> String {
     format!("{:.4},{:.4}", round4(lat), round4(lon))
+}
+
+pub fn location_from_coordinates(lat: f64, lon: f64) -> ResolvedLocation {
+    ResolvedLocation {
+        name: coordinate_label(lat, lon),
+        latitude: lat,
+        longitude: lon,
+        timezone: "UTC".to_string(),
+    }
+}
+
+pub fn geocode_cache_path(config_cache_dir: &Path, city: &str) -> PathBuf {
+    config_cache_dir
+        .join("weather-cli")
+        .join("geocode")
+        .join(format!("{}.json", city_query_cache_key(city)))
+}
+
+pub fn read_cached_city_location(
+    config_cache_dir: &Path,
+    city: &str,
+) -> io::Result<Option<ResolvedLocation>> {
+    let path = geocode_cache_path(config_cache_dir, city);
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let payload = fs::read_to_string(path)?;
+    let parsed = serde_json::from_str::<ResolvedLocation>(&payload).ok();
+    Ok(parsed)
+}
+
+pub fn write_cached_city_location(
+    config_cache_dir: &Path,
+    city: &str,
+    location: &ResolvedLocation,
+) -> io::Result<()> {
+    let path = geocode_cache_path(config_cache_dir, city);
+    let payload = serde_json::to_vec(location)
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error.to_string()))?;
+    write_atomic(&path, &payload)
 }
 
 fn round4(value: f64) -> f64 {
@@ -72,6 +117,21 @@ fn slugify(raw: &str) -> String {
     }
 
     out.trim_matches('-').to_string()
+}
+
+fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    let parent = path.parent().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "cache path must have a parent directory",
+        )
+    })?;
+    fs::create_dir_all(parent)?;
+
+    let tmp_path = path.with_extension(format!("{}.tmp", std::process::id()));
+    fs::write(&tmp_path, bytes)?;
+    fs::rename(&tmp_path, path)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -120,5 +180,30 @@ mod tests {
         let key = slugify_for_cache("東京");
         assert!(key.starts_with('q'));
         assert_eq!(key.len(), 17);
+    }
+
+    #[test]
+    fn geocoding_cache_roundtrip_for_city_location() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let location = ResolvedLocation {
+            name: "Taipei".to_string(),
+            latitude: 25.033,
+            longitude: 121.5654,
+            timezone: "Asia/Taipei".to_string(),
+        };
+
+        write_cached_city_location(dir.path(), "Taipei", &location).expect("write cache");
+        let loaded = read_cached_city_location(dir.path(), "Taipei")
+            .expect("read cache")
+            .expect("cached location");
+
+        assert_eq!(loaded, location);
+    }
+
+    #[test]
+    fn geocoding_location_from_coordinates_uses_normalized_label() {
+        let location = location_from_coordinates(25.0330123, 121.5654123);
+        assert_eq!(location.name, "25.0330,121.5654");
+        assert_eq!(location.timezone, "UTC");
     }
 }

@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::RuntimeConfig;
 use crate::error::AppError;
-use crate::geocoding::{ResolvedLocation, city_query_cache_key, coordinate_label};
+use crate::geocoding::{
+    ResolvedLocation, city_query_cache_key, location_from_coordinates, read_cached_city_location,
+    write_cached_city_location,
+};
 use crate::model::{
     CacheMetadata, ForecastLocation, ForecastPeriod, HourlyForecastOutput, HourlyForecastPoint,
     LocationQuery,
@@ -53,7 +56,7 @@ where
     let (cache_key, mut resolved_location) = match location_query {
         LocationQuery::City(city) => (city_query_cache_key(city), None),
         _ => {
-            let location = resolve_location(providers, location_query)?;
+            let location = resolve_location(config, providers, location_query)?;
             let key = location.cache_key();
             (key, Some(location))
         }
@@ -90,7 +93,7 @@ where
         Some(location) => location,
         None => match cached.as_ref() {
             Some(record) => resolved_location_from_record(record),
-            None => resolve_location(providers, location_query)?,
+            None => resolve_location(config, providers, location_query)?,
         },
     };
 
@@ -116,19 +119,24 @@ enum FreshnessStatus {
 }
 
 fn resolve_location<P: ProviderApi>(
+    config: &RuntimeConfig,
     providers: &P,
     location: &LocationQuery,
 ) -> Result<ResolvedLocation, AppError> {
     match location {
-        LocationQuery::City(city) => providers.geocode_city(city).map_err(|error| {
-            AppError::runtime(format!("failed to resolve city '{city}': {error}"))
-        }),
-        LocationQuery::Coordinates { lat, lon } => Ok(ResolvedLocation {
-            name: coordinate_label(*lat, *lon),
-            latitude: *lat,
-            longitude: *lon,
-            timezone: "UTC".to_string(),
-        }),
+        LocationQuery::City(city) => {
+            if let Ok(Some(cached)) = read_cached_city_location(&config.cache_dir, city) {
+                return Ok(cached);
+            }
+
+            let resolved = providers.geocode_city(city).map_err(|error| {
+                AppError::runtime(format!("failed to resolve city '{city}': {error}"))
+            })?;
+
+            let _ = write_cached_city_location(&config.cache_dir, city, &resolved);
+            Ok(resolved)
+        }
+        LocationQuery::Coordinates { lat, lon } => Ok(location_from_coordinates(*lat, *lon)),
     }
 }
 
@@ -474,6 +482,32 @@ mod tests {
         assert_eq!(output.freshness.status, crate::model::FreshnessStatus::Live);
         assert_eq!(output.hourly.len(), 2);
         assert_eq!(providers.hourly_calls.get(), 1);
+    }
+
+    #[test]
+    fn hourly_service_uses_cached_geocode_when_hourly_cache_missing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let config = RuntimeConfig {
+            cache_dir: dir.path().to_path_buf(),
+            cache_ttl_secs: crate::config::WEATHER_CACHE_TTL_SECS,
+        };
+        let providers = FakeProviders::ok();
+        let query = LocationQuery::City("Tokyo".to_string());
+        let location = ResolvedLocation {
+            name: "Tokyo".to_string(),
+            latitude: 35.6762,
+            longitude: 139.6503,
+            timezone: "Asia/Tokyo".to_string(),
+        };
+
+        write_cached_city_location(&config.cache_dir, "Tokyo", &location).expect("write cache");
+
+        let output =
+            resolve_hourly_forecast(&config, &providers, fixed_now, &query, 24).expect("must pass");
+
+        assert_eq!(providers.geocode_calls.get(), 0);
+        assert_eq!(providers.hourly_calls.get(), 1);
+        assert_eq!(output.location.name, "Tokyo");
     }
 
     #[test]
