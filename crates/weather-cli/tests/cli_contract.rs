@@ -3,7 +3,8 @@ use std::process::{Command, Output};
 
 use serde_json::Value;
 use weather_cli::model::{
-    CacheMetadata, ForecastDay, ForecastLocation, ForecastOutput, ForecastPeriod, FreshnessStatus,
+    CacheMetadata, ForecastBatchEntry, ForecastBatchOutput, ForecastDay, ForecastLocation,
+    ForecastOutput, ForecastPeriod, FreshnessStatus,
 };
 
 fn run_cli(args: &[&str], envs: &[(&str, &str)]) -> Output {
@@ -88,6 +89,54 @@ fn cli_contract_freshness_status_serializes_in_snake_case() {
             .and_then(|f| f.get("status"))
             .and_then(serde_json::Value::as_str),
         Some("cache_stale_fallback")
+    );
+}
+
+#[test]
+fn cli_contract_batch_output_contains_entries_and_city_key() {
+    let output = ForecastBatchOutput {
+        period: ForecastPeriod::Today,
+        entries: vec![ForecastBatchEntry {
+            city: "Taipei".to_string(),
+            result: Some(ForecastOutput {
+                period: ForecastPeriod::Today,
+                location: ForecastLocation {
+                    name: "Taipei".to_string(),
+                    latitude: 25.033,
+                    longitude: 121.5654,
+                },
+                timezone: "Asia/Taipei".to_string(),
+                forecast: vec![ForecastDay {
+                    date: "2026-02-11".to_string(),
+                    weather_code: 3,
+                    summary_zh: "陰天".to_string(),
+                    temp_min_c: 14.5,
+                    temp_max_c: 19.9,
+                    precip_prob_max_pct: 13,
+                }],
+                source: "open_meteo".to_string(),
+                source_trace: vec![],
+                fetched_at: "2026-02-11T03:30:00Z".to_string(),
+                freshness: CacheMetadata {
+                    status: FreshnessStatus::Live,
+                    key: "today-taipei-25.0330-121.5654".to_string(),
+                    ttl_secs: 1800,
+                    age_secs: 0,
+                },
+            }),
+            error: None,
+        }],
+    };
+
+    let value = serde_json::to_value(output).expect("json");
+    assert_eq!(
+        value
+            .get("entries")
+            .and_then(Value::as_array)
+            .and_then(|entries| entries.first())
+            .and_then(|entry| entry.get("city"))
+            .and_then(Value::as_str),
+        Some("Taipei")
     );
 }
 

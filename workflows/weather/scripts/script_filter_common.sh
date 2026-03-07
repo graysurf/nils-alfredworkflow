@@ -307,7 +307,7 @@ if [[ ${#city_targets[@]} -eq 0 ]]; then
   city_targets=("$DEFAULT_CITY_FALLBACK")
 fi
 
-if [[ ${#city_targets[@]} -gt 1 ]] && ! command -v jq >/dev/null 2>&1; then
+if [[ ${#city_targets[@]} -gt 1 ]] && [[ "$period" == "hourly" ]] && ! command -v jq >/dev/null 2>&1; then
   emit_single_item "Missing jq for multi-city mode" "Install jq or query a single city." false
   exit 0
 fi
@@ -326,6 +326,32 @@ if [[ ${#city_targets[@]} -eq 1 ]]; then
     fi
 
     printf '%s\n' "$normalized_output"
+    exit 0
+  fi
+
+  err_msg="$(cat "$err_file")"
+  print_error_item "$period" "$err_msg"
+  exit 0
+fi
+
+if [[ "$period" != "hourly" ]]; then
+  cli_args=("$period" --output alfred-json --lang "$output_locale")
+  for city in "${city_targets[@]}"; do
+    cli_args+=(--city "$city")
+  done
+
+  if json_output="$("$weather_cli" "${cli_args[@]}" 2>"$err_file")"; then
+    if [[ -z "$json_output" ]]; then
+      print_error_item "$period" "weather-cli returned empty response"
+      exit 0
+    fi
+
+    if command -v jq >/dev/null 2>&1 && ! jq -e '.items | type == "array"' >/dev/null <<<"$json_output"; then
+      print_error_item "$period" "weather-cli returned malformed Alfred JSON"
+      exit 0
+    fi
+
+    printf '%s\n' "$json_output"
     exit 0
   fi
 

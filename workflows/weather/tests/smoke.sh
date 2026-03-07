@@ -136,7 +136,7 @@ shift || true
 
 mode=""
 lang=""
-city=""
+cities=()
 lat=""
 lon=""
 
@@ -147,7 +147,7 @@ while [[ $# -gt 0 ]]; do
     shift 2
     ;;
   --city)
-    city="${2:-}"
+    cities+=("${2:-}")
     shift 2
     ;;
   --lang)
@@ -186,71 +186,77 @@ summary="Cloudy"
 summary_en="Cloudy"
 rain_label="rain"
 
-location="city:${city}"
-timezone="Asia/Tokyo"
-lat_out="35.6762"
-lon_out="139.6503"
-if [[ -n "$lat" || -n "$lon" ]]; then
-  location="${lat},${lon}"
-  lat_out="${lat}"
-  lon_out="${lon}"
-  case "${lat},${lon}" in
-  35.6762,139.6503 | 35.68,139.69)
-    timezone="Asia/Tokyo"
-    ;;
-  34.6937,135.5023)
-    timezone="Asia/Tokyo"
-    ;;
-  25.0330,121.5654 | 25.03,121.56)
-    timezone="Asia/Taipei"
-    ;;
-  *)
-    timezone="UTC"
-    ;;
-  esac
-elif [[ -n "$city" ]]; then
-  location="$city"
-  case "$(printf '%s' "$city" | tr '[:upper:]' '[:lower:]')" in
-  tokyo)
-    timezone="Asia/Tokyo"
-    lat_out="35.6762"
-    lon_out="139.6503"
-    ;;
-  osaka)
-    timezone="Asia/Tokyo"
-    lat_out="34.6937"
-    lon_out="135.5023"
-    ;;
-  kyoto)
-    timezone="Asia/Tokyo"
-    lat_out="35.0116"
-    lon_out="135.7681"
-    summary_en="Mainly clear"
-    ;;
-  taipei)
-    timezone="Asia/Taipei"
-    lat_out="25.0330"
-    lon_out="121.5654"
-    ;;
-  taichung)
-    timezone="Asia/Taipei"
-    lat_out="24.1477"
-    lon_out="120.6736"
-    summary_en="Partly cloudy"
-    ;;
-  "los angeles")
-    timezone="America/Los_Angeles"
-    lat_out="34.0522"
-    lon_out="-118.2437"
-    summary_en="Clear sky"
-    ;;
-  *)
-    timezone="Asia/Tokyo"
-    lat_out="35.0000"
-    lon_out="139.0000"
-    ;;
-  esac
-fi
+resolve_stub_context() {
+  local city="${1:-}"
+
+  summary_en="Cloudy"
+  location="city:${city}"
+  timezone="Asia/Tokyo"
+  lat_out="35.6762"
+  lon_out="139.6503"
+
+  if [[ -n "$lat" || -n "$lon" ]]; then
+    location="${lat},${lon}"
+    lat_out="${lat}"
+    lon_out="${lon}"
+    case "${lat},${lon}" in
+    35.6762,139.6503 | 35.68,139.69)
+      timezone="Asia/Tokyo"
+      ;;
+    34.6937,135.5023)
+      timezone="Asia/Tokyo"
+      ;;
+    25.0330,121.5654 | 25.03,121.56)
+      timezone="Asia/Taipei"
+      ;;
+    *)
+      timezone="UTC"
+      ;;
+    esac
+  elif [[ -n "$city" ]]; then
+    location="$city"
+    case "$(printf '%s' "$city" | tr '[:upper:]' '[:lower:]')" in
+    tokyo)
+      timezone="Asia/Tokyo"
+      lat_out="35.6762"
+      lon_out="139.6503"
+      ;;
+    osaka)
+      timezone="Asia/Tokyo"
+      lat_out="34.6937"
+      lon_out="135.5023"
+      ;;
+    kyoto)
+      timezone="Asia/Tokyo"
+      lat_out="35.0116"
+      lon_out="135.7681"
+      summary_en="Mainly clear"
+      ;;
+    taipei)
+      timezone="Asia/Taipei"
+      lat_out="25.0330"
+      lon_out="121.5654"
+      ;;
+    taichung)
+      timezone="Asia/Taipei"
+      lat_out="24.1477"
+      lon_out="120.6736"
+      summary_en="Partly cloudy"
+      ;;
+    "los angeles")
+      timezone="America/Los_Angeles"
+      lat_out="34.0522"
+      lon_out="-118.2437"
+      summary_en="Clear sky"
+      ;;
+    *)
+      timezone="Asia/Tokyo"
+      lat_out="35.0000"
+      lon_out="139.0000"
+      ;;
+    esac
+  fi
+}
 
 weather_code_for_summary() {
   case "$1" in
@@ -350,11 +356,71 @@ hourly_icon_key_for_summary() {
   day_icon_key_for_summary "$summary"
 }
 
+city="${cities[0]:-}"
+resolve_stub_context "$city"
+
 weather_code="$(weather_code_for_summary "$summary_en")"
 summary="$summary_en"
 if [[ "$lang" == "zh" ]]; then
   summary="$(summary_zh_from_en "$summary_en")"
   rain_label="降雨"
+fi
+
+if [[ "$period" == "today" && ${#cities[@]} -gt 1 ]]; then
+  items=()
+  for city in "${cities[@]}"; do
+    resolve_stub_context "$city"
+    weather_code="$(weather_code_for_summary "$summary_en")"
+    summary="$summary_en"
+    if [[ "$lang" == "zh" ]]; then
+      summary="$(summary_zh_from_en "$summary_en")"
+      display_summary="$summary"
+      rain_label="降雨"
+    else
+      display_summary="$(printf '%s' "$summary" | tr '[:upper:]' '[:lower:]')"
+      rain_label="rain"
+    fi
+
+    current_icon_key="$(current_icon_key_for_summary "$summary_en")"
+    item="$(jq -nc \
+      --arg location "$location" \
+      --arg timezone "$timezone" \
+      --arg lat "$lat_out" \
+      --arg lon "$lon_out" \
+      --arg summary "$summary" \
+      --arg display_summary "$display_summary" \
+      --arg icon_key "$current_icon_key" \
+      --arg rain_label "$rain_label" \
+      --argjson weather_code "$weather_code" \
+      '{
+        title: ($location + " 12.0~18.0°C " + $display_summary + " 10%"),
+        subtitle: ("2026-02-12 " + $timezone + " " + $lat + "," + $lon),
+        arg: "2026-02-12",
+        valid: true,
+        icon: {
+          path: ("assets/icons/weather/" + $icon_key + ".png")
+        },
+        weather_meta: {
+          item_kind: "daily",
+          date: "2026-02-12",
+          summary: $summary,
+          weather_code: $weather_code,
+          icon_key: $icon_key,
+          is_night: ($icon_key | endswith("-night")),
+          temp_min_c_label: "12.0",
+          temp_max_c_label: "18.0",
+          precip_prob_max_pct_label: "10",
+          location_name: $location,
+          timezone: $timezone,
+          latitude_label: $lat,
+          longitude_label: $lon
+        }
+      }')"
+    items+=("$item")
+  done
+
+  printf '%s\n' "${items[@]}" | jq -sc '{items: .}'
+  exit 0
 fi
 
 if [[ "$period" == "hourly" ]]; then

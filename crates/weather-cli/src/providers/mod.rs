@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
@@ -44,12 +46,27 @@ pub struct ProviderHourlyForecast {
 
 pub trait ProviderApi {
     fn geocode_city(&self, city: &str) -> Result<ResolvedLocation, ProviderError>;
+    fn geocode_cities(&self, cities: &[String]) -> Vec<Result<ResolvedLocation, ProviderError>> {
+        cities.iter().map(|city| self.geocode_city(city)).collect()
+    }
     fn fetch_open_meteo_forecast(
         &self,
         lat: f64,
         lon: f64,
         forecast_days: usize,
     ) -> Result<ProviderForecast, ProviderError>;
+    fn fetch_open_meteo_forecasts_batch(
+        &self,
+        locations: &[ResolvedLocation],
+        forecast_days: usize,
+    ) -> Result<Vec<ProviderForecast>, ProviderError> {
+        locations
+            .iter()
+            .map(|location| {
+                self.fetch_open_meteo_forecast(location.latitude, location.longitude, forecast_days)
+            })
+            .collect()
+    }
     fn fetch_open_meteo_hourly_forecast(
         &self,
         lat: f64,
@@ -62,6 +79,18 @@ pub trait ProviderApi {
         lon: f64,
         forecast_days: usize,
     ) -> Result<ProviderForecast, ProviderError>;
+    fn fetch_met_no_forecasts_batch(
+        &self,
+        locations: &[ResolvedLocation],
+        forecast_days: usize,
+    ) -> Vec<Result<ProviderForecast, ProviderError>> {
+        locations
+            .iter()
+            .map(|location| {
+                self.fetch_met_no_forecast(location.latitude, location.longitude, forecast_days)
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -95,6 +124,41 @@ impl ProviderApi for HttpProviders {
         open_meteo::fetch_geocode(&self.client, city, self.retry_policy)
     }
 
+    fn geocode_cities(&self, cities: &[String]) -> Vec<Result<ResolvedLocation, ProviderError>> {
+        let (tx, rx) = mpsc::channel();
+
+        thread::scope(|scope| {
+            for (index, city) in cities.iter().cloned().enumerate() {
+                let tx = tx.clone();
+                let providers = self.clone();
+                scope.spawn(move || {
+                    let result =
+                        open_meteo::fetch_geocode(&providers.client, &city, providers.retry_policy);
+                    let _ = tx.send((index, result));
+                });
+            }
+            drop(tx);
+
+            let mut ordered = std::iter::repeat_with(|| None)
+                .take(cities.len())
+                .collect::<Vec<_>>();
+            for (index, result) in rx {
+                ordered[index] = Some(result);
+            }
+
+            ordered
+                .into_iter()
+                .map(|result| {
+                    result.unwrap_or_else(|| {
+                        Err(ProviderError::Transport(
+                            "missing parallel geocode result".to_string(),
+                        ))
+                    })
+                })
+                .collect()
+        })
+    }
+
     fn fetch_open_meteo_forecast(
         &self,
         lat: f64,
@@ -102,6 +166,14 @@ impl ProviderApi for HttpProviders {
         forecast_days: usize,
     ) -> Result<ProviderForecast, ProviderError> {
         open_meteo::fetch_forecast(&self.client, lat, lon, forecast_days, self.retry_policy)
+    }
+
+    fn fetch_open_meteo_forecasts_batch(
+        &self,
+        locations: &[ResolvedLocation],
+        forecast_days: usize,
+    ) -> Result<Vec<ProviderForecast>, ProviderError> {
+        open_meteo::fetch_forecasts_batch(&self.client, locations, forecast_days, self.retry_policy)
     }
 
     fn fetch_open_meteo_hourly_forecast(
@@ -120,6 +192,50 @@ impl ProviderApi for HttpProviders {
         forecast_days: usize,
     ) -> Result<ProviderForecast, ProviderError> {
         met_no::fetch_forecast(&self.client, lat, lon, forecast_days, self.retry_policy)
+    }
+
+    fn fetch_met_no_forecasts_batch(
+        &self,
+        locations: &[ResolvedLocation],
+        forecast_days: usize,
+    ) -> Vec<Result<ProviderForecast, ProviderError>> {
+        let (tx, rx) = mpsc::channel();
+
+        thread::scope(|scope| {
+            for (index, location) in locations.iter().cloned().enumerate() {
+                let tx = tx.clone();
+                let providers = self.clone();
+                scope.spawn(move || {
+                    let result = met_no::fetch_forecast(
+                        &providers.client,
+                        location.latitude,
+                        location.longitude,
+                        forecast_days,
+                        providers.retry_policy,
+                    );
+                    let _ = tx.send((index, result));
+                });
+            }
+            drop(tx);
+
+            let mut ordered = std::iter::repeat_with(|| None)
+                .take(locations.len())
+                .collect::<Vec<_>>();
+            for (index, result) in rx {
+                ordered[index] = Some(result);
+            }
+
+            ordered
+                .into_iter()
+                .map(|result| {
+                    result.unwrap_or_else(|| {
+                        Err(ProviderError::Transport(
+                            "missing parallel met.no result".to_string(),
+                        ))
+                    })
+                })
+                .collect()
+        })
     }
 }
 

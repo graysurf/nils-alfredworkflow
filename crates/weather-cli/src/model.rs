@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -71,6 +73,21 @@ pub struct ForecastOutput {
     pub source_trace: Vec<String>,
     pub fetched_at: String,
     pub freshness: CacheMetadata,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ForecastBatchEntry {
+    pub city: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<ForecastOutput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ForecastBatchOutput {
+    pub period: ForecastPeriod,
+    pub entries: Vec<ForecastBatchEntry>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -154,6 +171,28 @@ pub fn normalize_city(raw: &str) -> Result<String, ValidationError> {
         return Err(ValidationError::EmptyCity);
     }
     Ok(value.to_string())
+}
+
+pub fn normalize_cities<'a, I>(raw_cities: I) -> Result<Vec<String>, ValidationError>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let mut unique = Vec::new();
+    let mut seen = HashSet::new();
+
+    for raw_city in raw_cities {
+        let city = normalize_city(raw_city)?;
+        let dedupe_key = city.to_ascii_lowercase();
+        if seen.insert(dedupe_key) {
+            unique.push(city);
+        }
+    }
+
+    if unique.is_empty() {
+        return Err(ValidationError::MissingLocationInput);
+    }
+
+    Ok(unique)
 }
 
 pub fn validate_coordinates(lat: f64, lon: f64) -> Result<(), ValidationError> {
@@ -287,5 +326,17 @@ mod tests {
     fn model_normalize_city_trims_input() {
         let city = normalize_city("  Taipei  ").expect("city");
         assert_eq!(city, "Taipei");
+    }
+
+    #[test]
+    fn model_normalize_cities_preserves_order_and_dedupes_case_insensitively() {
+        let cities = normalize_cities(["Taipei", "tokyo", "TAIPEI", "Osaka"]).expect("cities");
+        assert_eq!(cities, vec!["Taipei", "tokyo", "Osaka"]);
+    }
+
+    #[test]
+    fn model_normalize_cities_rejects_empty_entries() {
+        let err = normalize_cities(["Taipei", "  "]).expect_err("must fail");
+        assert_eq!(err, ValidationError::EmptyCity);
     }
 }

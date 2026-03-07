@@ -8,8 +8,10 @@ Primary source is Open-Meteo, fallback source is MET Norway.
 ## Commands
 
 - `weather-cli today --city <name> [--json] [--lang <en|zh>]`
+- `weather-cli today --city <name> --city <name>... [--json] [--lang <en|zh>]`
 - `weather-cli today --lat <f64> --lon <f64> [--json] [--lang <en|zh>]`
 - `weather-cli week --city <name> [--json] [--lang <en|zh>]`
+- `weather-cli week --city <name> --city <name>... [--json] [--lang <en|zh>]`
 - `weather-cli week --lat <f64> --lon <f64> [--json] [--lang <en|zh>]`
 - `weather-cli hourly --city <name> [--json] [--lang <en|zh>] [--hours <1..48>]`
 - `weather-cli hourly --lat <f64> --lon <f64> [--json] [--lang <en|zh>] [--hours <1..48>]`
@@ -17,6 +19,7 @@ Primary source is Open-Meteo, fallback source is MET Norway.
 Location input rules:
 
 - Use either `--city` OR `--lat/--lon`.
+- Repeating `--city` enables multi-city batch mode for `today` and `week`.
 - `--lat` and `--lon` must be provided together.
 - `--city` cannot be empty.
 - `--lang` affects human/Alfred text labels only; JSON payload fields stay stable.
@@ -57,6 +60,51 @@ Daily (`today` / `week`) JSON payload:
 }
 ```
 
+Daily multi-city (`today` / `week` with repeated `--city`) JSON payload:
+
+```json
+{
+  "period": "today|week",
+  "entries": [
+    {
+      "city": "Taipei",
+      "result": {
+        "period": "today",
+        "location": {
+          "name": "Taipei",
+          "latitude": 25.033,
+          "longitude": 121.5654
+        },
+        "timezone": "Asia/Taipei",
+        "forecast": [
+          {
+            "date": "2026-02-11",
+            "weather_code": 3,
+            "summary_zh": "陰天",
+            "temp_min_c": 14.5,
+            "temp_max_c": 19.9,
+            "precip_prob_max_pct": 13
+          }
+        ],
+        "source": "open_meteo",
+        "source_trace": [],
+        "fetched_at": "2026-02-11T03:30:00Z",
+        "freshness": {
+          "status": "live|cache_fresh|cache_stale_fallback",
+          "key": "today-taipei-25.0330-121.5654",
+          "ttl_secs": 1800,
+          "age_secs": 0
+        }
+      }
+    },
+    {
+      "city": "Tokyo",
+      "error": "failed to resolve city 'Tokyo': open_meteo: ..."
+    }
+  ]
+}
+```
+
 Hourly (`hourly`) JSON payload:
 
 ```json
@@ -93,6 +141,8 @@ Hourly (`hourly`) JSON payload:
 - Forecast order:
   1. Open-Meteo (primary)
   2. MET Norway (fallback)
+- Multi-city daily mode resolves uncached geocoding misses in parallel and uses one Open-Meteo
+  batch forecast request when all target coordinates are known.
 - Hourly command currently uses Open-Meteo only (with cache stale fallback on upstream error).
 - If both providers fail and stale cache exists, return stale cache with `freshness.status=cache_stale_fallback`.
 - If all fail and no cache exists, command exits with runtime error.

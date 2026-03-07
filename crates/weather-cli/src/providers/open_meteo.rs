@@ -50,6 +50,15 @@ struct ForecastQuery<'a> {
 }
 
 #[derive(Debug, Serialize)]
+struct ForecastBatchQuery<'a> {
+    latitude: String,
+    longitude: String,
+    timezone: &'a str,
+    forecast_days: usize,
+    daily: &'a str,
+}
+
+#[derive(Debug, Serialize)]
 struct ForecastHourlyQuery<'a> {
     latitude: f64,
     longitude: f64,
@@ -125,6 +134,24 @@ pub fn fetch_forecast(
     )
 }
 
+pub fn fetch_forecasts_batch(
+    client: &Client,
+    locations: &[ResolvedLocation],
+    forecast_days: usize,
+    retry_policy: RetryPolicy,
+) -> Result<Vec<ProviderForecast>, ProviderError> {
+    if locations.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    execute_with_retry(
+        PROVIDER_NAME,
+        retry_policy,
+        || fetch_forecasts_batch_once(client, locations, forecast_days),
+        std::thread::sleep,
+    )
+}
+
 pub fn fetch_hourly_forecast(
     client: &Client,
     lat: f64,
@@ -168,6 +195,37 @@ fn fetch_forecast_once(
 
     let body = execute_request(client.get(FORECAST_ENDPOINT).query(&query))?;
     parse_forecast_response(&body)
+}
+
+fn fetch_forecasts_batch_once(
+    client: &Client,
+    locations: &[ResolvedLocation],
+    forecast_days: usize,
+) -> Result<Vec<ProviderForecast>, ProviderError> {
+    if locations.len() == 1 {
+        let location = &locations[0];
+        return fetch_forecast_once(client, location.latitude, location.longitude, forecast_days)
+            .map(|forecast| vec![forecast]);
+    }
+
+    let query = ForecastBatchQuery {
+        latitude: locations
+            .iter()
+            .map(|location| location.latitude.to_string())
+            .collect::<Vec<_>>()
+            .join(","),
+        longitude: locations
+            .iter()
+            .map(|location| location.longitude.to_string())
+            .collect::<Vec<_>>()
+            .join(","),
+        timezone: "auto",
+        forecast_days,
+        daily: FORECAST_DAILY_FIELDS,
+    };
+
+    let body = execute_request(client.get(FORECAST_ENDPOINT).query(&query))?;
+    parse_forecast_batch_response(&body, locations.len())
 }
 
 fn fetch_hourly_forecast_once(
@@ -247,7 +305,37 @@ fn parse_geocode_response(body: &str, city: &str) -> Result<ResolvedLocation, Pr
 fn parse_forecast_response(body: &str) -> Result<ProviderForecast, ProviderError> {
     let payload: ForecastResponse = serde_json::from_str(body)
         .map_err(|error| ProviderError::InvalidResponse(format!("forecast payload: {error}")))?;
+    provider_forecast_from_response(payload)
+}
 
+fn parse_forecast_batch_response(
+    body: &str,
+    expected_count: usize,
+) -> Result<Vec<ProviderForecast>, ProviderError> {
+    if expected_count == 1 {
+        return parse_forecast_response(body).map(|forecast| vec![forecast]);
+    }
+
+    let payloads: Vec<ForecastResponse> = serde_json::from_str(body).map_err(|error| {
+        ProviderError::InvalidResponse(format!("batch forecast payload: {error}"))
+    })?;
+
+    if payloads.len() != expected_count {
+        return Err(ProviderError::InvalidResponse(format!(
+            "batch forecast payload length mismatch: expected {expected_count}, got {}",
+            payloads.len()
+        )));
+    }
+
+    payloads
+        .into_iter()
+        .map(provider_forecast_from_response)
+        .collect()
+}
+
+fn provider_forecast_from_response(
+    payload: ForecastResponse,
+) -> Result<ProviderForecast, ProviderError> {
     let timezone = payload
         .timezone
         .map(|value| value.trim().to_string())

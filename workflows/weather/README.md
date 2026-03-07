@@ -52,6 +52,9 @@ Set these via Alfred's `Configure Workflow...` UI:
 - `wt` stage-one autocomplete now uses `city::<location>` instead of embedding coordinates in
   the visible query; when a cached geocoding result exists, the script reuses cached
   coordinates before fetching hourly rows.
+- `wt` multi-city stage-one no longer loops over `weather-cli` once per city in shell; it now
+  forwards repeated `--city` flags to `weather-cli`, which resolves uncached geocoding misses in
+  parallel and batches the Open-Meteo daily forecast call in Rust.
 - `wt` keeps original today-row display as stage one, then opens hourly rows as stage two.
 - `ww` uses city-picker stage first, then returns fixed 7-day rows for the selected city.
 - Cache TTL is configurable via `WEATHER_CACHE_TTL_SECS` (`900` by default in workflow).

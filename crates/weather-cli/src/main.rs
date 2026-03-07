@@ -7,12 +7,13 @@ use workflow_common::{
 };
 
 use weather_cli::{
+    batch_service,
     config::RuntimeConfig,
     error::AppError,
     hourly_service::{self, DEFAULT_HOURLY_COUNT},
     model::{
-        ForecastPeriod, ForecastRequest, HourlyForecastOutput, LocationQuery,
-        OutputMode as RequestOutputMode,
+        ForecastBatchOutput, ForecastOutput, ForecastPeriod, ForecastRequest, HourlyForecastOutput,
+        LocationQuery, OutputMode as RequestOutputMode,
     },
     providers::{HttpProviders, ProviderApi},
     service,
@@ -38,8 +39,8 @@ struct Cli {
 enum Commands {
     /// Today weather forecast.
     Today {
-        #[arg(long)]
-        city: Option<String>,
+        #[arg(long = "city")]
+        city: Vec<String>,
         #[arg(long, allow_hyphen_values = true)]
         lat: Option<f64>,
         #[arg(long, allow_hyphen_values = true)]
@@ -53,8 +54,8 @@ enum Commands {
     },
     /// 7-day weather forecast.
     Week {
-        #[arg(long)]
-        city: Option<String>,
+        #[arg(long = "city")]
+        city: Vec<String>,
         #[arg(long, allow_hyphen_values = true)]
         lat: Option<f64>,
         #[arg(long, allow_hyphen_values = true)]
@@ -231,7 +232,7 @@ where
             CommandArgs {
                 command: "weather.today",
                 period: ForecastPeriod::Today,
-                city: city.as_deref(),
+                cities: &city,
                 lat,
                 lon,
                 output,
@@ -253,7 +254,7 @@ where
             CommandArgs {
                 command: "weather.week",
                 period: ForecastPeriod::Week,
-                city: city.as_deref(),
+                cities: &city,
                 lat,
                 lon,
                 output,
@@ -291,7 +292,7 @@ where
 struct CommandArgs<'a> {
     command: &'static str,
     period: ForecastPeriod,
-    city: Option<&'a str>,
+    cities: &'a [String],
     lat: Option<f64>,
     lon: Option<f64>,
     output: Option<OutputModeArg>,
@@ -324,12 +325,43 @@ where
     let output_mode = select_output_mode(args.output.map(Into::into), args.json, OutputMode::Human)
         .map_err(|error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()))?;
     let output_language = args.lang.map(Into::into).unwrap_or(OutputLanguage::En);
+
+    if args.cities.len() > 1 {
+        if args.lat.is_some() || args.lon.is_some() {
+            return Err(user_error(
+                ERROR_CODE_USER_INVALID_INPUT,
+                "conflicting location input: use either repeated --city or --lat/--lon",
+            ));
+        }
+
+        let output = batch_service::resolve_forecast_batch(
+            config,
+            providers,
+            now_fn,
+            args.period,
+            args.cities,
+        )
+        .map_err(map_app_error)?;
+
+        return match output_mode {
+            OutputMode::Json => render_batch_json_envelope(args.command, &output),
+            OutputMode::Human => Ok(format_batch_text_output(&output, output_language)),
+            OutputMode::AlfredJson => render_batch_alfred_json(&output, output_language, now_fn()),
+        };
+    }
+
     let request_mode = match output_mode {
         OutputMode::Json => RequestOutputMode::Json,
         OutputMode::Human | OutputMode::AlfredJson => RequestOutputMode::Text,
     };
-    let request = ForecastRequest::new(args.period, args.city, args.lat, args.lon, request_mode)
-        .map_err(user_invalid_input)?;
+    let request = ForecastRequest::new(
+        args.period,
+        args.cities.first().map(String::as_str),
+        args.lat,
+        args.lon,
+        request_mode,
+    )
+    .map_err(user_invalid_input)?;
     let output =
         service::resolve_forecast(config, providers, now_fn, &request).map_err(map_app_error)?;
 
@@ -383,7 +415,7 @@ fn resolve_location_query(
 
 fn render_service_json_envelope(
     command: &str,
-    output: &weather_cli::model::ForecastOutput,
+    output: &ForecastOutput,
 ) -> Result<String, CliError> {
     let result = serde_json::to_string(output).map_err(|error| {
         runtime_error(
@@ -415,8 +447,25 @@ fn render_hourly_json_envelope(
     ))
 }
 
+fn render_batch_json_envelope(
+    command: &str,
+    output: &ForecastBatchOutput,
+) -> Result<String, CliError> {
+    let result = serde_json::to_string(output).map_err(|error| {
+        runtime_error(
+            ERROR_CODE_RUNTIME_SERIALIZE,
+            format!("failed to serialize batch output: {error}"),
+        )
+    })?;
+    Ok(build_success_envelope(
+        command,
+        EnvelopePayloadKind::Result,
+        &result,
+    ))
+}
+
 fn render_alfred_json(
-    output: &weather_cli::model::ForecastOutput,
+    output: &ForecastOutput,
     language: OutputLanguage,
     now: DateTime<Utc>,
 ) -> Result<String, CliError> {
@@ -473,6 +522,42 @@ fn render_alfred_json(
         runtime_error(
             ERROR_CODE_RUNTIME_SERIALIZE,
             format!("failed to serialize Alfred output: {error}"),
+        )
+    })
+}
+
+fn render_batch_alfred_json(
+    output: &ForecastBatchOutput,
+    language: OutputLanguage,
+    now: DateTime<Utc>,
+) -> Result<String, CliError> {
+    let mut items = Vec::new();
+
+    for entry in &output.entries {
+        if let Some(result) = &entry.result {
+            for day in &result.forecast {
+                items.push(alfred_daily_city_item(
+                    result,
+                    day,
+                    language,
+                    now,
+                    output.period == ForecastPeriod::Today,
+                ));
+            }
+            continue;
+        }
+
+        items.push(json!({
+            "title": format!("{}: forecast error", entry.city),
+            "subtitle": entry.error.as_deref().unwrap_or("failed to fetch forecast"),
+            "valid": false,
+        }));
+    }
+
+    serde_json::to_string(&json!({ "items": items })).map_err(|error| {
+        runtime_error(
+            ERROR_CODE_RUNTIME_SERIALIZE,
+            format!("failed to serialize Alfred batch output: {error}"),
         )
     })
 }
@@ -589,10 +674,7 @@ fn error_kind_label(kind: weather_cli::error::ErrorKind) -> &'static str {
     }
 }
 
-fn format_text_output(
-    output: &weather_cli::model::ForecastOutput,
-    language: OutputLanguage,
-) -> String {
+fn format_text_output(output: &ForecastOutput, language: OutputLanguage) -> String {
     let mut lines = vec![format!(
         "{} ({}) | source={} | freshness={}",
         output.location.name,
@@ -615,6 +697,24 @@ fn format_text_output(
     }
 
     lines.join("\n")
+}
+
+fn format_batch_text_output(output: &ForecastBatchOutput, language: OutputLanguage) -> String {
+    let mut sections = Vec::new();
+
+    for entry in &output.entries {
+        if let Some(result) = &entry.result {
+            sections.push(format_text_output(result, language));
+        } else {
+            sections.push(format!(
+                "{} | error={}",
+                entry.city,
+                entry.error.as_deref().unwrap_or("failed to fetch forecast"),
+            ));
+        }
+    }
+
+    sections.join("\n\n")
 }
 
 fn format_hourly_text_output(output: &HourlyForecastOutput, language: OutputLanguage) -> String {
@@ -665,6 +765,74 @@ fn split_datetime_label(datetime: &str) -> (&str, &str) {
 
 fn icon_path(icon_key: &str) -> String {
     format!("assets/icons/weather/{icon_key}.png")
+}
+
+fn alfred_daily_city_item(
+    output: &ForecastOutput,
+    day: &weather_cli::model::ForecastDay,
+    language: OutputLanguage,
+    now: DateTime<Utc>,
+    use_current_conditions_icon: bool,
+) -> serde_json::Value {
+    let summary = localized_summary(day, language);
+    let rendered_summary = if summary
+        .chars()
+        .all(|ch| ch.is_ascii_alphabetic() || ch == ' ')
+    {
+        summary.to_ascii_lowercase()
+    } else {
+        summary.clone()
+    };
+    let icon_key = if use_current_conditions_icon {
+        weather_cli::weather_icon::current_conditions_icon_key(
+            day.weather_code,
+            &output.timezone,
+            now,
+        )
+    } else {
+        weather_cli::weather_icon::daily_forecast_icon_key(day.weather_code)
+    };
+
+    json!({
+        "title": format!(
+            "{} {:.1}~{:.1}°C {} {}%",
+            output.location.name,
+            day.temp_min_c,
+            day.temp_max_c,
+            rendered_summary,
+            day.precip_prob_max_pct
+        ),
+        "subtitle": format!(
+            "{} {} {:.4},{:.4}",
+            day.date,
+            output.timezone,
+            output.location.latitude,
+            output.location.longitude
+        ),
+        "arg": day.date,
+        "valid": true,
+        "icon": {
+            "path": icon_path(icon_key),
+        },
+        "weather_meta": {
+            "item_kind": "daily",
+            "date": day.date,
+            "summary": summary,
+            "weather_code": day.weather_code,
+            "icon_key": icon_key,
+            "is_night": weather_cli::weather_icon::is_night_icon_key(icon_key),
+            "temp_min_c": day.temp_min_c,
+            "temp_max_c": day.temp_max_c,
+            "temp_min_c_label": format!("{:.1}", day.temp_min_c),
+            "temp_max_c_label": format!("{:.1}", day.temp_max_c),
+            "precip_prob_max_pct": day.precip_prob_max_pct,
+            "precip_prob_max_pct_label": day.precip_prob_max_pct.to_string(),
+            "location_name": output.location.name,
+            "timezone": output.timezone,
+            "latitude_label": format!("{:.4}", output.location.latitude),
+            "longitude_label": format!("{:.4}", output.location.longitude),
+        },
+    })
 }
 
 fn alfred_header_item(
@@ -778,6 +946,69 @@ mod tests {
         }
     }
 
+    struct MultiCityProviders {
+        batch_calls: std::cell::Cell<usize>,
+    }
+
+    impl MultiCityProviders {
+        fn new() -> Self {
+            Self {
+                batch_calls: std::cell::Cell::new(0),
+            }
+        }
+
+        fn location_for(city: &str) -> Result<ResolvedLocation, ProviderError> {
+            match city {
+                "Taipei" => Ok(ResolvedLocation {
+                    name: "Taipei".to_string(),
+                    latitude: 25.033,
+                    longitude: 121.5654,
+                    timezone: "Asia/Taipei".to_string(),
+                }),
+                "Tokyo" => Ok(ResolvedLocation {
+                    name: "Tokyo".to_string(),
+                    latitude: 35.6762,
+                    longitude: 139.6503,
+                    timezone: "Asia/Tokyo".to_string(),
+                }),
+                _ => Err(ProviderError::NotFound(city.to_string())),
+            }
+        }
+
+        fn forecast_for(city: &str) -> Result<ProviderForecast, ProviderError> {
+            let now = Utc
+                .with_ymd_and_hms(2026, 2, 11, 0, 0, 0)
+                .single()
+                .expect("time");
+
+            match city {
+                "Taipei" => Ok(ProviderForecast {
+                    timezone: "Asia/Taipei".to_string(),
+                    fetched_at: now,
+                    days: vec![ProviderForecastDay {
+                        date: "2026-02-11".to_string(),
+                        weather_code: 3,
+                        temp_min_c: 14.5,
+                        temp_max_c: 20.1,
+                        precip_prob_max_pct: 20,
+                    }],
+                }),
+                "Tokyo" => Ok(ProviderForecast {
+                    timezone: "Asia/Tokyo".to_string(),
+                    fetched_at: now,
+                    days: vec![ProviderForecastDay {
+                        date: "2026-02-11".to_string(),
+                        weather_code: 2,
+                        temp_min_c: 5.2,
+                        temp_max_c: 12.6,
+                        precip_prob_max_pct: 10,
+                    }],
+                }),
+                _ => Err(ProviderError::NotFound(city.to_string())),
+            }
+        }
+    }
+
     impl ProviderApi for FakeProviders {
         fn geocode_city(&self, _city: &str) -> Result<ResolvedLocation, ProviderError> {
             self.geocode_result.clone()
@@ -808,6 +1039,51 @@ mod tests {
             _forecast_days: usize,
         ) -> Result<ProviderForecast, ProviderError> {
             self.met_no_result.clone()
+        }
+    }
+
+    impl ProviderApi for MultiCityProviders {
+        fn geocode_city(&self, city: &str) -> Result<ResolvedLocation, ProviderError> {
+            Self::location_for(city)
+        }
+
+        fn fetch_open_meteo_forecast(
+            &self,
+            _lat: f64,
+            _lon: f64,
+            _forecast_days: usize,
+        ) -> Result<ProviderForecast, ProviderError> {
+            Err(ProviderError::Transport("unused".to_string()))
+        }
+
+        fn fetch_open_meteo_forecasts_batch(
+            &self,
+            locations: &[ResolvedLocation],
+            _forecast_days: usize,
+        ) -> Result<Vec<ProviderForecast>, ProviderError> {
+            self.batch_calls.set(self.batch_calls.get() + 1);
+            locations
+                .iter()
+                .map(|location| Self::forecast_for(&location.name))
+                .collect()
+        }
+
+        fn fetch_open_meteo_hourly_forecast(
+            &self,
+            _lat: f64,
+            _lon: f64,
+            _forecast_days: usize,
+        ) -> Result<ProviderHourlyForecast, ProviderError> {
+            Err(ProviderError::Transport("unused".to_string()))
+        }
+
+        fn fetch_met_no_forecast(
+            &self,
+            _lat: f64,
+            _lon: f64,
+            _forecast_days: usize,
+        ) -> Result<ProviderForecast, ProviderError> {
+            Err(ProviderError::Transport("unused".to_string()))
         }
     }
 
@@ -933,6 +1209,43 @@ mod tests {
                 .map(Vec::len),
             Some(1)
         );
+    }
+
+    #[test]
+    fn main_outputs_batch_json_contract_for_repeated_city_flags() {
+        let cli = Cli::parse_from([
+            "weather-cli",
+            "today",
+            "--city",
+            "Taipei",
+            "--city",
+            "Tokyo",
+            "--json",
+        ]);
+        let providers = MultiCityProviders::new();
+
+        let output = run_with(cli, &config_in_tempdir(), &providers, fixed_now)
+            .expect("batch json should pass");
+        let json: Value = serde_json::from_str(&output).expect("json");
+
+        assert_eq!(
+            json.get("command").and_then(Value::as_str),
+            Some("weather.today")
+        );
+        assert_eq!(
+            json.get("result")
+                .and_then(|result| result.get("period"))
+                .and_then(Value::as_str),
+            Some("today")
+        );
+        assert_eq!(
+            json.get("result")
+                .and_then(|result| result.get("entries"))
+                .and_then(Value::as_array)
+                .map(Vec::len),
+            Some(2)
+        );
+        assert_eq!(providers.batch_calls.get(), 1);
     }
 
     #[test]
@@ -1100,6 +1413,47 @@ mod tests {
             .and_then(|item| item.get("title"))
             .and_then(Value::as_str);
         assert_eq!(second_item_title, Some("2026-02-11 陰天 14.5~20.1°C"));
+    }
+
+    #[test]
+    fn main_outputs_batch_alfred_json_for_repeated_city_flags() {
+        let cli = Cli::parse_from([
+            "weather-cli",
+            "today",
+            "--city",
+            "Taipei",
+            "--city",
+            "Tokyo",
+            "--output",
+            "alfred-json",
+        ]);
+        let providers = MultiCityProviders::new();
+
+        let output =
+            run_with(cli, &config_in_tempdir(), &providers, fixed_now).expect("batch alfred mode");
+        let json: Value = serde_json::from_str(&output).expect("json");
+
+        assert_eq!(
+            json.get("items").and_then(Value::as_array).map(Vec::len),
+            Some(2)
+        );
+        assert_eq!(
+            json.get("items")
+                .and_then(Value::as_array)
+                .and_then(|items| items.first())
+                .and_then(|item| item.get("title"))
+                .and_then(Value::as_str),
+            Some("Taipei 14.5~20.1°C cloudy 20%")
+        );
+        assert_eq!(
+            json.get("items")
+                .and_then(Value::as_array)
+                .and_then(|items| items.get(1))
+                .and_then(|item| item.get("title"))
+                .and_then(Value::as_str),
+            Some("Tokyo 5.2~12.6°C partly cloudy 10%")
+        );
+        assert_eq!(providers.batch_calls.get(), 1);
     }
 
     #[test]
