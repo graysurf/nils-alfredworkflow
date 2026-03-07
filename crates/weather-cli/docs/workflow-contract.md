@@ -167,10 +167,14 @@ The `result` payload shape depends on the command.
 ## Alfred JSON Notes
 
 - `--output alfred-json` returns Alfred Script Filter JSON on `stdout`.
-- Single-city `today`, `week`, and `hourly` outputs include a header item with `weather_meta.item_kind="header"`, followed by forecast rows.
-- Batch `today` / `week` outputs are already flattened into forecast rows and do not include a header item.
-- Forecast rows carry `weather_meta` fields such as `item_kind`, `summary`, `weather_code`, `icon_key`, `is_night`, timezone, and coordinate labels.
-- Icon selection is Rust-owned and based on `weather_code` plus local time where applicable; workflow shell should not infer icons from summary strings.
+- Single-city `today`, `week`, and `hourly` outputs include a header item with
+  `weather_meta.item_kind="header"`, followed by forecast rows.
+- Batch `today` / `week` outputs are already flattened into forecast rows and do
+  not include a header item.
+- Forecast rows carry `weather_meta` fields such as `item_kind`, `summary`,
+  `weather_code`, `icon_key`, `is_night`, timezone, and coordinate labels.
+- Icon selection is Rust-owned and based on `weather_code` plus local time where
+  applicable; workflow shell should not infer icons from summary strings.
 
 ## Provider Policy
 
@@ -178,7 +182,8 @@ The `result` payload shape depends on the command.
 - Forecast order:
   1. Open-Meteo primary
   2. MET Norway fallback
-- Multi-city daily mode resolves uncached geocoding misses in parallel and uses one Open-Meteo batch forecast request once all target coordinates are known.
+- Multi-city daily mode resolves uncached geocoding misses in parallel and uses
+  one Open-Meteo batch forecast request once all target coordinates are known.
 - If the Open-Meteo batch request fails, fallback remains per city through MET Norway.
 - Hourly currently uses Open-Meteo only, with stale cache fallback on upstream error.
 - If both providers fail and stale weather cache exists, return stale cache with `freshness.status=cache_stale_fallback`.

@@ -21,6 +21,7 @@ ACTION_UID="E7A2F2B8-9BB0-4F7A-A2A9-9074CBF90AA0"
 for required in \
   workflow.toml \
   README.md \
+  TROUBLESHOOTING.md \
   src/info.plist.template \
   src/assets/icon.png \
   scripts/script_filter_common.sh \
@@ -30,6 +31,14 @@ for required in \
   scripts/action_copy.sh \
   tests/smoke.sh; do
   assert_file "$workflow_dir/$required"
+done
+
+for required in \
+  README.md \
+  crates/weather-cli/README.md \
+  crates/weather-cli/docs/README.md \
+  crates/weather-cli/docs/workflow-contract.md; do
+  assert_file "$repo_root/$required"
 done
 
 weather_icons=(
@@ -75,6 +84,20 @@ done
 
 require_bin jq
 require_bin rg
+require_bin npx
+
+markdown_docs=(
+  "$repo_root/README.md"
+  "$repo_root/crates/weather-cli/README.md"
+  "$repo_root/crates/weather-cli/docs/README.md"
+  "$repo_root/crates/weather-cli/docs/workflow-contract.md"
+  "$workflow_dir/README.md"
+  "$workflow_dir/TROUBLESHOOTING.md"
+)
+
+npx --yes markdownlint-cli2@0.21.0 \
+  --config "$repo_root/.markdownlint-cli2.jsonc" \
+  "${markdown_docs[@]}"
 
 manifest="$workflow_dir/workflow.toml"
 [[ "$(toml_string "$manifest" id)" == "weather" ]] || fail "workflow id mismatch"

@@ -70,6 +70,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 ## Local Validation
 
 - `bash workflows/weather/tests/smoke.sh`
+  Includes targeted markdownlint checks for weather-related docs.
 - `scripts/workflow-test.sh --id weather`
 - `scripts/workflow-pack.sh --id weather`
 

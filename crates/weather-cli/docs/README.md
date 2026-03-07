@@ -13,5 +13,8 @@ Crate-local documentation index for `nils-weather-cli`.
 
 ## Canonical Documents
 
-- [`../README.md`](../README.md): command surface, batch behavior, runtime configuration, and validation.
-- [`workflow-contract.md`](workflow-contract.md): canonical JSON envelope, Alfred JSON, batch payload, provider, and cache contract for workflow integration.
+- [`../README.md`](../README.md): command surface, batch behavior, runtime
+  configuration, and validation.
+- [`workflow-contract.md`](workflow-contract.md): canonical JSON envelope,
+  Alfred JSON, batch payload, provider, and cache contract for workflow
+  integration.

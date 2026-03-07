@@ -5,12 +5,14 @@ No-token weather CLI for the Alfred weather workflow.
 ## Commands
 
 - `weather-cli today`
-  - Location input: repeated `--city <CITY>` for single-city or batch city mode, or `--lat <LAT> --lon <LON>`
+  - Location input: repeated `--city <CITY>` for single-city or batch city mode,
+    or `--lat <LAT> --lon <LON>`
   - Output: `--output <human|json|alfred-json>` or `--json`
   - Labels: `--lang <en|zh>`
   - Description: current-day daily forecast
 - `weather-cli week`
-  - Location input: repeated `--city <CITY>` for single-city or batch city mode, or `--lat <LAT> --lon <LON>`
+  - Location input: repeated `--city <CITY>` for single-city or batch city mode,
+    or `--lat <LAT> --lon <LON>`
   - Output: `--output <human|json|alfred-json>` or `--json`
   - Labels: `--lang <en|zh>`
   - Description: 7-day daily forecast
@@ -24,9 +26,13 @@ No-token weather CLI for the Alfred weather workflow.
 ## Batch Behavior
 
 - Repeating `--city` is supported on `today` and `week` only.
-- Batch city input is trimmed and deduped case-insensitively while preserving first-seen order.
-- Batch mode reuses persistent geocoding cache, resolves cache misses in parallel, and issues one Open-Meteo daily batch request once all coordinates are known.
-- If the batch primary request fails, fallback remains per city through MET Norway, with stale weather cache reuse preserved per city.
+- Batch city input is trimmed and deduped case-insensitively while preserving
+  first-seen order.
+- Batch mode reuses persistent geocoding cache, resolves cache misses in
+  parallel, and issues one Open-Meteo daily batch request once all coordinates
+  are known.
+- If the batch primary request fails, fallback remains per city through
+  MET Norway, with stale weather cache reuse preserved per city.
 - `hourly` remains a single-location command.
 
 ## Environment Variables
@@ -42,9 +48,11 @@ No-token weather CLI for the Alfred weather workflow.
   - Success: `{ "schema_version": "v1", "command": "...", "ok": true, "result": ... }`
   - Error: `{ "schema_version": "v1", "command": "...", "ok": false, "error": ... }`
 - Single-city `result` payloads use the daily or hourly forecast object shape.
-- Repeated `--city` on `today` / `week` returns a batch `result` payload with `entries[]`, where each entry contains either `result` or `error`.
+- Repeated `--city` on `today` / `week` returns a batch `result` payload with
+  `entries[]`, where each entry contains either `result` or `error`.
 - `--output alfred-json` returns Alfred Script Filter JSON:
-  - Single-city daily and hourly outputs include a header item followed by forecast rows.
+  - Single-city daily and hourly outputs include a header item followed by
+    forecast rows.
   - Batch daily outputs are already flattened into forecast rows without header items.
 - `--lang` only affects human-readable and Alfred labels; machine JSON fields stay stable.
 - Exit codes: `0` success, `1` runtime/provider error, `2` user/input error.
@@ -55,6 +63,12 @@ No-token weather CLI for the Alfred weather workflow.
 - MET Norway fallback
 - Freshness states: `live`, `cache_fresh`, `cache_stale_fallback`
 - Geocoding cache is stored separately under `<cache>/weather-cli/geocode/*.json`
+
+## Standards Status
+
+- README/command docs: compliant.
+- Human-readable default plus explicit `json` / `alfred-json` modes: compliant.
+- JSON success and error envelopes: compliant.
 
 ## References
 

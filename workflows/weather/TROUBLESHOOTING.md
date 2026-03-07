@@ -42,14 +42,14 @@ command -v jq || echo "jq missing: single-city normalization and local validatio
 
 ## Common failures and actions
 
-| Symptom                            | Likely cause                                      | Action                                                                    |
-| ---------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------- |
-| `weather-cli binary not found` row | Binary absent in lookup paths                     | Re-package workflow or set `WEATHER_CLI_BIN` to executable absolute path. |
-| `Invalid location input`           | Bad city/coordinate format                        | Use `City` or `lat,lon` (example: `25.03,121.56`).                        |
-| `Location not found`               | Ambiguous/unknown city                            | Use more specific name or coordinates.                                    |
-| `Weather provider unavailable`     | Upstream provider/API transient issue             | Retry later before changing workflow code/config.                         |
-| `Weather output format error`      | Custom/old `weather-cli` returned unexpected JSON | Use packaged pinned binary or update local override binary.               |
-| Single-city rows show raw header / extra metadata | `jq` missing, so shell cannot normalize single-city Alfred rows | Install `jq` for local runs or use the packaged workflow environment.     |
+| Symptom | Likely cause | Action |
+| --- | --- | --- |
+| `weather-cli binary not found` row | Binary absent in lookup paths | Re-package workflow or set `WEATHER_CLI_BIN` to executable absolute path. |
+| `Invalid location input` | Bad city/coordinate format | Use `City` or `lat,lon` (example: `25.03,121.56`). |
+| `Location not found` | Ambiguous/unknown city | Use more specific name or coordinates. |
+| `Weather provider unavailable` | Upstream provider/API transient issue | Retry later before changing workflow code/config. |
+| `Weather output format error` | Custom/old `weather-cli` returned unexpected JSON | Use packaged pinned binary or update local override binary. |
+| `Single-city rows show raw header / extra metadata` | `jq` missing, so shell cannot normalize single-city Alfred rows | Install `jq` for local runs or use the packaged workflow environment. |
 
 If only `ww` mode looks odd, verify the two-stage flow first: `ww <query>` to pick a city, then select the city row.
 If only `wt` stage two looks odd, inspect the persistent geocoding cache under the workflow cache root:
