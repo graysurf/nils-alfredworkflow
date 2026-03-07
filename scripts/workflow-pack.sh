@@ -242,19 +242,6 @@ if updated:
 PY
 }
 
-emit_installed_target_ids() {
-  local id bundle_id
-
-  while IFS= read -r id; do
-    [[ -n "$id" ]] || continue
-    bundle_id="$(wfc_bundle_id_for_workflow_id "$repo_root" "$id" || true)"
-    [[ -n "$bundle_id" ]] || continue
-    if wfc_find_installed_workflow_dir_by_bundle_id "$prefs_root" "$bundle_id" >/dev/null; then
-      printf '%s\n' "$id"
-    fi
-  done < <(wfc_list_workflow_ids "$repo_root")
-}
-
 background_install_one_from_artifact() {
   local id="$1"
   local artifact="$2"
