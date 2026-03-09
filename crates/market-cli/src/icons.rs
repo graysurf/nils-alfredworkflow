@@ -1,6 +1,7 @@
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use reqwest::blocking::Client;
@@ -11,6 +12,7 @@ use crate::config::{
 use crate::icon_asset_filename;
 
 const ICON_FETCH_TIMEOUT_SECS: u64 = 3;
+static WRITE_TMP_SUFFIX: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum FetchOutcome {
@@ -102,7 +104,8 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
     })?;
     fs::create_dir_all(parent)?;
 
-    let tmp_path = path.with_extension(format!("{}.tmp", std::process::id()));
+    let suffix = WRITE_TMP_SUFFIX.fetch_add(1, Ordering::Relaxed);
+    let tmp_path = path.with_extension(format!("{}.{}.tmp", std::process::id(), suffix));
     fs::write(&tmp_path, bytes)?;
     fs::rename(&tmp_path, path)?;
     Ok(())
@@ -243,5 +246,32 @@ mod tests {
             resolve_icon_path_with(&config, "BTC", &mut |_| Err(io::Error::other("offline")));
 
         assert_eq!(resolved, None);
+    }
+
+    #[test]
+    fn write_atomic_supports_concurrent_writes_to_same_path() {
+        let config = config_in_tempdir();
+        let path = config.icon_cache_dir().join("shared.png");
+        let expected = (0..4)
+            .map(|idx| format!("bytes-{idx}").into_bytes())
+            .collect::<Vec<_>>();
+
+        std::thread::scope(|scope| {
+            let mut handles = Vec::new();
+
+            for bytes in expected.clone() {
+                let path = path.clone();
+                handles.push(scope.spawn(move || {
+                    write_atomic(&path, &bytes).expect("concurrent write must succeed");
+                }));
+            }
+
+            for handle in handles {
+                handle.join().expect("writer must not panic");
+            }
+        });
+
+        let actual = fs::read(&path).expect("read final icon");
+        assert!(expected.into_iter().any(|candidate| candidate == actual));
     }
 }
