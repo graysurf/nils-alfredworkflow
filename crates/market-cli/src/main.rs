@@ -208,8 +208,8 @@ fn run_with<P, N>(
     now_fn: N,
 ) -> Result<String, CliError>
 where
-    P: ProviderApi,
-    N: Fn() -> DateTime<Utc> + Copy,
+    P: ProviderApi + Clone + Send,
+    N: Fn() -> DateTime<Utc> + Copy + Send,
 {
     match cli.command {
         Commands::Fx {
@@ -436,8 +436,8 @@ fn render_favorites_alfred_output<P, N>(
     default_fiat: &str,
 ) -> Result<String, CliError>
 where
-    P: ProviderApi,
-    N: Fn() -> DateTime<Utc> + Copy,
+    P: ProviderApi + Clone + Send,
+    N: Fn() -> DateTime<Utc> + Copy + Send,
 {
     let mut items = Vec::with_capacity(favorites.len() + 1);
     items.push(
@@ -449,11 +449,26 @@ where
             .with_valid(false),
     );
 
-    for favorite in favorites {
-        items.push(build_favorite_quote_item(
-            config, providers, now_fn, favorite,
-        ));
-    }
+    let favorite_items =
+        std::thread::scope(|scope| {
+            let mut handles = Vec::with_capacity(favorites.len());
+
+            for favorite in favorites {
+                let config = config.clone();
+                let providers = providers.clone();
+                let favorite = favorite.clone();
+
+                handles.push(scope.spawn(move || {
+                    build_favorite_quote_item(&config, &providers, now_fn, &favorite)
+                }));
+            }
+
+            handles
+                .into_iter()
+                .map(|handle| handle.join().expect("favorite worker panicked"))
+                .collect::<Vec<_>>()
+        });
+    items.extend(favorite_items);
 
     Feedback::new(items).to_json().map_err(|error| {
         runtime_error(
@@ -669,6 +684,7 @@ mod tests {
 
     use super::*;
 
+    #[derive(Clone)]
     struct FakeProviders {
         fx_result: Result<MarketQuote, ProviderError>,
         crypto_coinbase_result: Result<MarketQuote, ProviderError>,
@@ -723,6 +739,7 @@ mod tests {
         }
     }
 
+    #[derive(Clone, Copy)]
     struct FavoritesProviders;
 
     impl ProviderApi for FavoritesProviders {
