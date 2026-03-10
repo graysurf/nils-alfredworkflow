@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `b8f253c38fff9e6f2d1bd36f8b08d9954e93d65a14ae35bdb962f27b837d2202`
+- Data source fingerprint (SHA256): `de215b3e1c3a509eed85a2adc376c94a3ec2d0dd6a92fe6a77f6d0a2b64248e9`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `9da87a1f42fc88f28c858ba494d5c67f2e76905f54ac1ba8d1a6b3d84e1a133f` | `cargo metadata --format-version 1 --locked` |
+| Cargo lockfile | `Cargo.lock` | `9890769f8736adb0f208f591316dade4080920f045b23d40b9ec2b7e6ca86ad3` | `cargo metadata --format-version 1 --locked` |
 | Node lockfile | `package-lock.json` | `b9b2637f9a78fd4588306901ad18853aca1aa5caffc8e3850a5d4e04c7f10ee6` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -310,7 +310,7 @@ Do not edit manually.
 | url | 2.5.8 | MIT OR Apache-2.0 | <https://github.com/servo/rust-url> |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT | <https://github.com/hsivonen/utf8_iter> |
 | utf8parse | 0.2.2 | Apache-2.0 OR MIT | <https://github.com/alacritty/vte> |
-| uuid | 1.21.0 | Apache-2.0 OR MIT | <https://github.com/uuid-rs/uuid> |
+| uuid | 1.22.0 | Apache-2.0 OR MIT | <https://github.com/uuid-rs/uuid> |
 | vcpkg | 0.2.15 | MIT/Apache-2.0 | <https://github.com/mcgoo/vcpkg-rs> |
 | version_check | 0.9.5 | MIT/Apache-2.0 | <https://github.com/SergioBenitez/version_check> |
 | walkdir | 2.5.0 | Unlicense/MIT | <https://github.com/BurntSushi/walkdir> |
