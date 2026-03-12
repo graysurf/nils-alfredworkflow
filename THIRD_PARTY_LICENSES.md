@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `de215b3e1c3a509eed85a2adc376c94a3ec2d0dd6a92fe6a77f6d0a2b64248e9`
+- Data source fingerprint (SHA256): `bdc43b07389d94f94dfd6e2f83bac47899d444ce666b4fe56e5d5ecccf2ebffe`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `9890769f8736adb0f208f591316dade4080920f045b23d40b9ec2b7e6ca86ad3` | `cargo metadata --format-version 1 --locked` |
+| Cargo lockfile | `Cargo.lock` | `566776fcd6a2c16bc05fa33b7fdffcc5ed6c6d2fed3930d38fc7e22b8914ec97` | `cargo metadata --format-version 1 --locked` |
 | Node lockfile | `package-lock.json` | `b9b2637f9a78fd4588306901ad18853aca1aa5caffc8e3850a5d4e04c7f10ee6` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -215,7 +215,7 @@ Do not edit manually.
 | ptr_meta | 0.1.4 | MIT | <https://github.com/djkoloski/ptr_meta> |
 | ptr_meta_derive | 0.1.4 | MIT | <https://github.com/djkoloski/ptr_meta> |
 | quinn | 0.11.9 | MIT OR Apache-2.0 | <https://github.com/quinn-rs/quinn> |
-| quinn-proto | 0.11.13 | MIT OR Apache-2.0 | <https://github.com/quinn-rs/quinn> |
+| quinn-proto | 0.11.14 | MIT OR Apache-2.0 | <https://github.com/quinn-rs/quinn> |
 | quinn-udp | 0.5.14 | MIT OR Apache-2.0 | <https://github.com/quinn-rs/quinn> |
 | quote | 1.0.44 | MIT OR Apache-2.0 | <https://github.com/dtolnay/quote> |
 | r-efi | 5.3.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | <https://github.com/r-efi/r-efi> |
