@@ -16,7 +16,8 @@ browser.
 - `bgm` empty query menu uses deterministic order; type-category quick rows are pinned at the bottom.
 - Support typed prefixes in one input grammar: `[type] query`.
 - Type mapping: `all`, `book`, `anime`, `music`, `game`, `real`.
-- Script-level guardrails: queue-safe async query coalescing and TTL cache for repeated typing.
+- Default typing debounce comes from Alfred's 1 second Script Filter queue delay; same-query cache stays opt-in and
+  shared coalescing can be re-enabled via runtime variables.
 - Runtime orchestration is shared via `scripts/lib/script_filter_search_driver.sh`; Bangumi API fetch/error mapping
   remains local.
 - API-first production path: `script_filter.sh` calls `bangumi-cli query` only.
@@ -69,7 +70,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `BANGUMI_CLI_BIN`                       | Optional absolute executable override for `bangumi-cli`.                                                                                                                   |
 | `BANGUMI_QUERY_CACHE_TTL_SECONDS`       | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits).                                                                            |
-| `BANGUMI_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `1`. Shared coalesce helper uses non-blocking stability checks so queued typing does not dispatch prefix queries early. |
+| `BANGUMI_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `0` so pasted/final queries do not wait twice; non-zero values still keep queue-safe final-query priority. |
 | `BANGUMI_QUERY_COALESCE_RERUN_SECONDS`  | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`.                                                                                          |
 | `BANGUMI_SCRAPER_ENABLE`                | Future bridge feature flag. Default disabled; do not enable in production yet.                                                                                             |
 

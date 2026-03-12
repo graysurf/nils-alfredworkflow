@@ -319,6 +319,11 @@ opt_in_cache_log="$tmp_dir/bangumi-opt-in-cache.log"
 opt_in_cache_hits="$(wc -l <"$opt_in_cache_log" | tr -d '[:space:]')"
 [[ "$opt_in_cache_hits" == "1" ]] || fail "query cache should work when BANGUMI_QUERY_CACHE_TTL_SECONDS is explicitly set"
 
+default_settle_log="$tmp_dir/bangumi-default-settle.log"
+default_settle_json="$({ BANGUMI_STUB_LOG="$default_settle_log" env -u BANGUMI_QUERY_COALESCE_SETTLE_SECONDS BANGUMI_QUERY_CACHE_TTL_SECONDS=0 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "anime pasted"; })"
+assert_jq_json "$default_settle_json" '.items[0].subtitle == "query=anime pasted"' "default settle should fetch Bangumi results immediately"
+[[ "$(grep -c -- '--input anime pasted --mode alfred' "$default_settle_log" || true)" -eq 1 ]] || fail "default settle should invoke bangumi-cli immediately"
+
 coalesce_queue_log="$tmp_dir/bangumi-coalesce-queue.log"
 coalesce_queue_se="$({ BANGUMI_STUB_LOG="$coalesce_queue_log" BANGUMI_QUERY_CACHE_TTL_SECONDS=0 BANGUMI_QUERY_COALESCE_SETTLE_SECONDS=1 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "se"; })"
 coalesce_queue_sev="$({ BANGUMI_STUB_LOG="$coalesce_queue_log" BANGUMI_QUERY_CACHE_TTL_SECONDS=0 BANGUMI_QUERY_COALESCE_SETTLE_SECONDS=1 BANGUMI_CLI_BIN="$tmp_dir/stubs/bangumi-cli-ok" "$workflow_dir/scripts/script_filter.sh" "sev"; })"

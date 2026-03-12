@@ -80,6 +80,17 @@ OPEN_STUB_OUT="$tmp_dir/open-arg.txt" PATH="$tmp_dir/bin:$PATH" \
   "$workflow_dir/scripts/action_open.sh" "$action_arg"
 [[ "$(cat "$tmp_dir/open-arg.txt")" == "$action_arg" ]] || fail "action_open.sh must pass URL to open"
 
+cat >"$tmp_dir/bin/google-requery" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$1" >"$GOOGLE_REQUERY_OUT"
+EOS
+chmod +x "$tmp_dir/bin/google-requery"
+
+GOOGLE_REQUERY_OUT="$tmp_dir/requery-arg.txt" GOOGLE_REQUERY_COMMAND="$tmp_dir/bin/google-requery" \
+  "$workflow_dir/scripts/action_open.sh" "google-requery:search:rust book"
+[[ "$(cat "$tmp_dir/requery-arg.txt")" == "gg res::rust book" ]] || fail "action_open.sh must requery Alfred for google requery args"
+
 cat >"$tmp_dir/stubs/brave-cli-ok" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -102,7 +113,7 @@ if [[ "${1:-}" == "query" ]]; then
     printf '\n'
     exit 0
   fi
-  printf '{"items":[{"title":"%s","subtitle":"Search \\"%s\\" | Press Tab to load search results","autocomplete":"res::%s","valid":false},{"title":"%s guide","subtitle":"Search \\"%s guide\\" | Press Tab to load search results","autocomplete":"res::%s guide","valid":false}]}' "$input" "$input" "$input" "$input" "$input" "$input"
+  printf '{"items":[{"title":"Show Web Results: %s","subtitle":"Press Enter to load Brave web results now","arg":"google-requery:search:%s","valid":true},{"title":"%s","subtitle":"Search \\"%s\\" | Press Tab to load search results","autocomplete":"res::%s","valid":false},{"title":"%s guide","subtitle":"Search \\"%s guide\\" | Press Tab to load search results","autocomplete":"res::%s guide","valid":false}]}' "$input" "$input" "$input" "$input" "$input" "$input" "$input" "$input"
   printf '\n'
   exit 0
 fi
@@ -151,20 +162,25 @@ EOS
 chmod +x "$tmp_dir/stubs/brave-cli-suggest-down"
 
 suggest_json="$({ BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "rust"; })"
-assert_jq_json "$suggest_json" '.items | type == "array" and length >= 1' "gg suggest stage must output items array"
-assert_jq_json "$suggest_json" '.items[0].title == "rust"' "gg suggest first item should keep raw query"
-assert_jq_json "$suggest_json" '.items[0].autocomplete == "res::rust"' "gg suggest item must expose res:: autocomplete token"
-assert_jq_json "$suggest_json" '.items[0].valid == false' "gg suggest rows must be non-actionable"
+assert_jq_json "$suggest_json" '.items | type == "array" and length >= 2' "gg suggest stage must output items array"
+assert_jq_json "$suggest_json" '.items[0].title == "Show Web Results: rust"' "gg suggest direct row title mismatch"
+assert_jq_json "$suggest_json" '.items[0].arg == "google-requery:search:rust"' "gg suggest direct row arg mismatch"
+assert_jq_json "$suggest_json" '.items[0].valid == true' "gg suggest direct row must be actionable"
+assert_jq_json "$suggest_json" '.items[1].title == "rust"' "gg suggest second item should keep raw query"
+assert_jq_json "$suggest_json" '.items[1].autocomplete == "res::rust"' "gg suggest item must expose res:: autocomplete token"
+assert_jq_json "$suggest_json" '.items[1].valid == false' "gg autocomplete rows must remain non-actionable"
 
 detail_json="$({ BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "res::rust book"; })"
 assert_jq_json "$detail_json" '.items[0].title == "stub-result"' "gg detail stage should forward search results"
 assert_jq_json "$detail_json" '.items[0].subtitle == "query=rust book"' "gg detail stage must strip res:: prefix before search"
 
 env_query_json="$({ BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" alfred_workflow_query="rust async" "$workflow_dir/scripts/script_filter.sh"; })"
-assert_jq_json "$env_query_json" '.items[0].autocomplete == "res::rust async"' "gg script_filter must support Alfred query via env fallback"
+assert_jq_json "$env_query_json" '.items[0].arg == "google-requery:search:rust async"' "gg script_filter must expose direct row for env fallback"
+assert_jq_json "$env_query_json" '.items[1].autocomplete == "res::rust async"' "gg script_filter must support Alfred query via env fallback"
 
 stdin_query_json="$(printf 'rustlang' | BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh")"
-assert_jq_json "$stdin_query_json" '.items[0].autocomplete == "res::rustlang"' "gg script_filter must support query via stdin fallback"
+assert_jq_json "$stdin_query_json" '.items[0].arg == "google-requery:search:rustlang"' "gg script_filter must expose direct row for stdin fallback"
+assert_jq_json "$stdin_query_json" '.items[1].autocomplete == "res::rustlang"' "gg script_filter must support query via stdin fallback"
 
 suggest_down_json="$({ BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-suggest-down" "$workflow_dir/scripts/script_filter.sh" "rust"; })"
 assert_jq_json "$suggest_down_json" '.items[0].title == "Google suggestions unavailable"' "gg suggest-down title mapping mismatch"
@@ -196,11 +212,18 @@ default_cache_hits="$(wc -l <"$default_cache_log" | tr -d '[:space:]')"
 
 cache_probe_log="$tmp_dir/brave-cache-probe.log"
 cache_probe_first="$({ BRAVE_STUB_LOG="$cache_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=30 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "cache-hit"; })"
-assert_jq_json "$cache_probe_first" '.items[0].autocomplete == "res::cache-hit"' "gg cache probe first response mismatch"
+assert_jq_json "$cache_probe_first" '.items[0].arg == "google-requery:search:cache-hit"' "gg cache probe direct row mismatch"
+assert_jq_json "$cache_probe_first" '.items[1].autocomplete == "res::cache-hit"' "gg cache probe first response mismatch"
 
 cache_probe_second="$({ BRAVE_STUB_LOG="$cache_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=30 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "cache-hit"; })"
-assert_jq_json "$cache_probe_second" '.items[0].autocomplete == "res::cache-hit"' "gg cache probe second response mismatch"
+assert_jq_json "$cache_probe_second" '.items[1].autocomplete == "res::cache-hit"' "gg cache probe second response mismatch"
 [[ "$(wc -l <"$cache_probe_log")" -eq 1 ]] || fail "gg same-query cache should avoid duplicate brave-cli invocation"
+
+default_settle_log="$tmp_dir/brave-default-settle.log"
+default_settle_json="$({ BRAVE_STUB_LOG="$default_settle_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 env -u BRAVE_QUERY_COALESCE_SETTLE_SECONDS BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "paste query"; })"
+assert_jq_json "$default_settle_json" '.items[0].arg == "google-requery:search:paste query"' "gg default settle should expose direct row immediately"
+assert_jq_json "$default_settle_json" '.items[1].autocomplete == "res::paste query"' "gg default settle should return autocomplete rows immediately"
+[[ "$(grep -c -- '--input paste query --mode' "$default_settle_log" || true)" -eq 1 ]] || fail "gg default settle should fetch pasted query immediately"
 
 coalesce_probe_log="$tmp_dir/brave-coalesce-probe.log"
 coalesce_pending_a="$({ BRAVE_STUB_LOG="$coalesce_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=1 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "mayda"; })"
@@ -212,7 +235,8 @@ assert_jq_json "$coalesce_pending_a" '.items[0].title == "Fetching Google sugges
 assert_jq_json "$coalesce_pending_a" '.items[0].valid == false' "gg coalesce first pending item must be invalid"
 assert_jq_json "$coalesce_pending_b" '.items[0].title == "Fetching Google suggestions..."' "gg coalesce second pending title mismatch"
 assert_jq_json "$coalesce_pending_b" '.items[0].valid == false' "gg coalesce second pending item must be invalid"
-assert_jq_json "$coalesce_result" '.items[0].autocomplete == "res::mayday"' "gg coalesce final result query mismatch"
+assert_jq_json "$coalesce_result" '.items[0].arg == "google-requery:search:mayday"' "gg coalesce final direct row mismatch"
+assert_jq_json "$coalesce_result" '.items[1].autocomplete == "res::mayday"' "gg coalesce final result query mismatch"
 [[ "$(grep -c -- '--input mayda --mode' "$coalesce_probe_log" || true)" -eq 0 ]] || fail "gg coalesce should avoid mayda backend invocation"
 [[ "$(grep -c -- '--input mayday' "$coalesce_probe_log" || true)" -eq 1 ]] || fail "gg coalesce should invoke mayday exactly once"
 
@@ -281,7 +305,7 @@ if [[ "\${1:-}" == "query" ]]; then
     printf '\\n'
     exit 0
   fi
-  printf '{"items":[{"title":"${marker}","subtitle":"query=%s","autocomplete":"res::%s","valid":false}]}' "\$input" "\$input"
+  printf '{"items":[{"title":"Show Web Results: %s","subtitle":"Press Enter to load Brave web results now","arg":"google-requery:search:%s","valid":true},{"title":"${marker}","subtitle":"query=%s","autocomplete":"res::%s","valid":false}]}' "\$input" "\$input" "\$input" "\$input"
   printf '\\n'
   exit 0
 fi
@@ -330,8 +354,9 @@ run_layout_check() {
 
   local output
   output="$(BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_QUERY_CACHE_TTL_SECONDS=0 "$copied_script" "demo")"
-  assert_jq_json "$output" ".items[0].title == \"$marker\"" "gg script_filter failed to resolve $mode brave-cli path"
-  assert_jq_json "$output" '.items[0].autocomplete == "res::demo"' "gg layout check must keep res:: autocomplete token"
+  assert_jq_json "$output" '.items[0].arg == "google-requery:search:demo"' "gg layout check must expose direct row"
+  assert_jq_json "$output" ".items[1].title == \"$marker\"" "gg script_filter failed to resolve $mode brave-cli path"
+  assert_jq_json "$output" '.items[1].autocomplete == "res::demo"' "gg layout check must keep res:: autocomplete token"
 
   local direct_output
   direct_output="$(BRAVE_QUERY_COALESCE_SETTLE_SECONDS=0 BRAVE_QUERY_CACHE_TTL_SECONDS=0 "$copied_direct_script" "demo")"
@@ -377,6 +402,7 @@ assert_file "$packaged_dir/bin/brave-cli"
 assert_file "$packaged_dir/scripts/script_filter_direct.sh"
 assert_file "$packaged_dir/scripts/lib/script_filter_query_policy.sh"
 assert_file "$packaged_dir/scripts/lib/script_filter_async_coalesce.sh"
+assert_file "$packaged_dir/scripts/lib/workflow_action_requery.sh"
 
 if command -v plutil >/dev/null 2>&1; then
   plutil -lint "$packaged_plist" >/dev/null || fail "packaged plist lint failed"

@@ -233,11 +233,16 @@ assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"'
 assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke spotify-cli backend"
 
+default_settle_log="$tmp_dir/spotify-default-settle.log"
+default_settle_json="$({ SPOTIFY_STUB_LOG="$default_settle_log" env -u SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS SPOTIFY_QUERY_CACHE_TTL_SECONDS=0 SPOTIFY_CLI_BIN="$tmp_dir/stubs/spotify-cli-ok" "$workflow_dir/scripts/script_filter.sh" "city pop"; })"
+assert_jq_json "$default_settle_json" '.items[0].subtitle == "query=city pop"' "default settle should fetch Spotify results immediately"
+[[ "$(grep -c -- '--query city pop --mode' "$default_settle_log" || true)" -eq 1 ]] || fail "default settle should invoke spotify-cli immediately"
+
 coalesce_probe_log="$tmp_dir/spotify-coalesce.log"
-coalesce_pending_a="$({ SPOTIFY_STUB_LOG="$coalesce_probe_log" env -u SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS SPOTIFY_QUERY_CACHE_TTL_SECONDS=0 SPOTIFY_CLI_BIN="$tmp_dir/stubs/spotify-cli-ok" "$workflow_dir/scripts/script_filter.sh" "sym"; })"
-coalesce_pending_b="$({ SPOTIFY_STUB_LOG="$coalesce_probe_log" env -u SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS SPOTIFY_QUERY_CACHE_TTL_SECONDS=0 SPOTIFY_CLI_BIN="$tmp_dir/stubs/spotify-cli-ok" "$workflow_dir/scripts/script_filter.sh" "symphony"; })"
+coalesce_pending_a="$({ SPOTIFY_STUB_LOG="$coalesce_probe_log" SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS=1 SPOTIFY_QUERY_CACHE_TTL_SECONDS=0 SPOTIFY_CLI_BIN="$tmp_dir/stubs/spotify-cli-ok" "$workflow_dir/scripts/script_filter.sh" "sym"; })"
+coalesce_pending_b="$({ SPOTIFY_STUB_LOG="$coalesce_probe_log" SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS=1 SPOTIFY_QUERY_CACHE_TTL_SECONDS=0 SPOTIFY_CLI_BIN="$tmp_dir/stubs/spotify-cli-ok" "$workflow_dir/scripts/script_filter.sh" "symphony"; })"
 sleep 1.1
-coalesce_result="$({ SPOTIFY_STUB_LOG="$coalesce_probe_log" env -u SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS SPOTIFY_QUERY_CACHE_TTL_SECONDS=0 SPOTIFY_CLI_BIN="$tmp_dir/stubs/spotify-cli-ok" "$workflow_dir/scripts/script_filter.sh" "symphony"; })"
+coalesce_result="$({ SPOTIFY_STUB_LOG="$coalesce_probe_log" SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS=1 SPOTIFY_QUERY_CACHE_TTL_SECONDS=0 SPOTIFY_CLI_BIN="$tmp_dir/stubs/spotify-cli-ok" "$workflow_dir/scripts/script_filter.sh" "symphony"; })"
 
 assert_jq_json "$coalesce_pending_a" '.items[0].title == "Searching Spotify..." and .items[0].valid == false' "coalesce first pending item mismatch"
 assert_jq_json "$coalesce_pending_b" '.items[0].title == "Searching Spotify..." and .items[0].valid == false' "coalesce second pending item mismatch"
