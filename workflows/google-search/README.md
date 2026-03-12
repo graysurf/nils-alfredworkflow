@@ -36,19 +36,19 @@ Set these via Alfred's "Configure Workflow..." UI:
 
 ## Keyword
 
-| Keyword      | Behavior                                                                                                        |
-| ------------ | --------------------------------------------------------------------------------------------------------------- |
+| Keyword      | Behavior                                                                                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `gg <query>` | Two-stage flow: first fetch Google suggestions, prepend an Enter-to-load direct-result row, then load Brave web results through `res::` autocomplete token. |
-| `gb <query>` | Direct Brave mode: call `brave-cli search` immediately and open selected URL.                                   |
+| `gb <query>` | Direct Brave mode: call `brave-cli search` immediately and open selected URL.                                                                               |
 
 ## Advanced Runtime Parameters
 
-| Parameter                             | Description                                                                                     |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `BRAVE_CLI_BIN`                       | Optional override path for `brave-cli` (useful for local debugging).                            |
-| `BRAVE_QUERY_CACHE_TTL_SECONDS`       | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits). |
+| Parameter                             | Description                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `BRAVE_CLI_BIN`                       | Optional override path for `brave-cli` (useful for local debugging).                              |
+| `BRAVE_QUERY_CACHE_TTL_SECONDS`       | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits).   |
 | `BRAVE_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `0` so pasted/final queries do not wait twice. |
-| `BRAVE_QUERY_COALESCE_RERUN_SECONDS`  | Optional Alfred rerun interval while waiting for async result. Default `0.4`.                   |
+| `BRAVE_QUERY_COALESCE_RERUN_SECONDS`  | Optional Alfred rerun interval while waiting for async result. Default `0.4`.                     |
 
 ## Validation
 

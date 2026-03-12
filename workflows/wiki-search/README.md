@@ -42,13 +42,13 @@ Set these via Alfred's "Configure Workflow..." UI:
 
 ## Advanced Runtime Parameters
 
-| Parameter                            | Description                                                                                     |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `WIKI_CLI_BIN`                       | Optional override path for `wiki-cli` (useful for local debugging).                             |
-| `WIKI_REQUERY_COMMAND`               | Optional override command used by `action_open.sh` to trigger requery (test/debug helper).      |
-| `WIKI_QUERY_CACHE_TTL_SECONDS`       | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits). |
+| Parameter                            | Description                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `WIKI_CLI_BIN`                       | Optional override path for `wiki-cli` (useful for local debugging).                               |
+| `WIKI_REQUERY_COMMAND`               | Optional override command used by `action_open.sh` to trigger requery (test/debug helper).        |
+| `WIKI_QUERY_CACHE_TTL_SECONDS`       | Optional same-query cache TTL (seconds). Default `0` (disabled to avoid stale mid-typing hits).   |
 | `WIKI_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `0` so pasted/final queries do not wait twice. |
-| `WIKI_QUERY_COALESCE_RERUN_SECONDS`  | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`.               |
+| `WIKI_QUERY_COALESCE_RERUN_SECONDS`  | Optional Alfred rerun interval while waiting for coalesced result. Default `0.4`.                 |
 
 ## Troubleshooting
 
