@@ -85,7 +85,9 @@ sfsd_run_search_flow() {
   # Current flow checks cache before settle-window coalescing; defaulting to 0
   # avoids stale prefix hits surfacing ahead of the final query.
   cache_ttl_seconds="$(sfac_resolve_positive_int_env "$cache_ttl_env" "0")"
-  settle_seconds="$(sfac_resolve_non_negative_number_env "$settle_env" "1")"
+  # Alfred Script Filters already use a 1-second queue delay in this repo, so
+  # shared coalescing stays opt-in to avoid double waiting for pasted/full queries.
+  settle_seconds="$(sfac_resolve_non_negative_number_env "$settle_env" "0")"
   rerun_seconds="$(sfac_resolve_non_negative_number_env "$rerun_env" "0.4")"
 
   if sfac_load_cache_result "$query" "$cache_ttl_seconds"; then

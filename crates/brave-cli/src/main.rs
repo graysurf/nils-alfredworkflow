@@ -434,22 +434,28 @@ mod tests {
         .expect("query suggest should succeed");
 
         let json: Value = serde_json::from_str(&output).expect("output should be json");
-        let first_item = json
+        let items = json
             .get("items")
             .and_then(Value::as_array)
-            .and_then(|items| items.first())
-            .expect("suggest item should exist");
+            .expect("suggest items should exist");
+        let first_item = items.first().expect("direct-result item should exist");
+        let second_item = items.get(1).expect("autocomplete item should exist");
 
         assert_eq!(
             first_item.get("title").and_then(Value::as_str),
-            Some("rust")
+            Some("Show Web Results: rust")
         );
         assert_eq!(
-            first_item.get("autocomplete").and_then(Value::as_str),
+            first_item.get("arg").and_then(Value::as_str),
+            Some("google-requery:search:rust")
+        );
+        assert_eq!(first_item.get("valid").and_then(Value::as_bool), Some(true));
+        assert_eq!(
+            second_item.get("autocomplete").and_then(Value::as_str),
             Some("res::rust")
         );
         assert_eq!(
-            first_item.get("valid").and_then(Value::as_bool),
+            second_item.get("valid").and_then(Value::as_bool),
             Some(false)
         );
     }

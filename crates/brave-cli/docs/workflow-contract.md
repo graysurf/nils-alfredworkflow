@@ -18,7 +18,9 @@ error-to-feedback mapping, and environment variable constraints.
 Two-stage (`gg`) token grammar:
 
 - Suggest stage input: arbitrary query text (`rust`, `rust async`, ...).
-- Suggest stage output rows expose Alfred `autocomplete` tokens:
+- Suggest stage output prepends one actionable direct-result row for the base query:
+  - `arg = google-requery:search:<QUERY>`
+- Suggest stage also exposes Alfred `autocomplete` tokens:
   - `res::<QUERY>`
 - Search stage input: query string beginning with `res::`.
 - Search stage output rows map to Brave web search results.
@@ -45,7 +47,18 @@ Top-level output must always be valid Alfred JSON:
 }
 ```
 
-Suggest-stage item schema (two-stage `gg`):
+Direct-result shortcut schema (two-stage `gg`):
+
+```json
+{
+  "title": "Show Web Results: Suggestion text",
+  "subtitle": "Press Enter to load Brave web results now",
+  "arg": "google-requery:search:Suggestion text",
+  "valid": true
+}
+```
+
+Autocomplete suggestion schema (two-stage `gg`):
 
 ```json
 {
@@ -68,7 +81,11 @@ Search-stage success item schema (`gg` second stage and `gb` direct):
 
 Rules:
 
-- Suggest-stage rows:
+- Direct-result shortcut row:
+  - `title` is required and uses the normalized base query.
+  - `arg` is required and uses `google-requery:search:<query>` so `gg` can Enter into stage-two results.
+  - `valid` must be `true`.
+- Autocomplete suggestion rows:
   - `title` is required and sourced from suggestion text.
   - `autocomplete` is required and uses `res::<query>` grammar.
   - `valid` must be `false` to force stage transition via autocomplete.

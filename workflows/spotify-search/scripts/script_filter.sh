@@ -167,9 +167,9 @@ if sfqp_is_short_query "$query" 2; then
   exit 0
 fi
 
-# Keep Spotify search responsive while avoiding transient prefix queries.
+# Alfred queue delay already debounces live typing; shared coalescing is opt-in.
 : "${SPOTIFY_QUERY_CACHE_TTL_SECONDS:=0}"
-: "${SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS:=1}"
+: "${SPOTIFY_QUERY_COALESCE_SETTLE_SECONDS:=0}"
 : "${SPOTIFY_QUERY_COALESCE_RERUN_SECONDS:=0.4}"
 
 # Shared driver owns cache/coalesce orchestration only.

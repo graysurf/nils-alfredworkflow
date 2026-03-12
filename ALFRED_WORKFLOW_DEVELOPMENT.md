@@ -249,15 +249,17 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
   - `sfac_init_context "<workflow-id>" "<fallback-cache-dir>"`
 - Resolve tunables with helper validators (avoid inline parsing):
   - cache TTL: `sfac_resolve_positive_int_env "<PREFIX>_QUERY_CACHE_TTL_SECONDS" "0"`
-  - settle window: `sfac_resolve_non_negative_number_env "<PREFIX>_QUERY_COALESCE_SETTLE_SECONDS" "2"`
+  - settle window: `sfac_resolve_non_negative_number_env "<PREFIX>_QUERY_COALESCE_SETTLE_SECONDS" "0"`
   - rerun interval: `sfac_resolve_non_negative_number_env "<PREFIX>_QUERY_COALESCE_RERUN_SECONDS" "0.4"`
 - Async flow contract:
   1. Shared driver (`sfsd_run_search_flow`) checks cache before settle-window final-query coalescing.
   2. For live-typing suggest/search Script Filters, keep default cache TTL at `0` to avoid stale prefix hits.
-  3. Shared coalesce helper must be queue-safe: settle-window checks are non-blocking and require the latest query to
-     remain unchanged for `settle` seconds.
-  4. If query is not final yet, return pending row via `sfac_emit_pending_item_json` with `rerun`.
-  5. On backend completion, write cache via `sfac_store_cache_result` for both success (`ok`) and error (`err`) paths.
+  3. If Alfred already provides the repository-standard 1 second Script Filter queue delay, keep the default settle
+     window at `0` to avoid double waiting for pasted/final queries.
+  4. Shared coalesce helper must remain queue-safe when enabled: settle-window checks are non-blocking and require the
+     latest query to remain unchanged for `settle` seconds.
+  5. If query is not final yet, return pending row via `sfac_emit_pending_item_json` with `rerun`.
+  6. On backend completion, write cache via `sfac_store_cache_result` for both success (`ok`) and error (`err`) paths.
 
 ### `sfsd_run_search_flow` cache policy standard
 

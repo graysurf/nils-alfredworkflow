@@ -385,11 +385,16 @@ assert_jq_json "$short_query_json" '.items[0].title == "Keep typing (2+ chars)"'
 assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short query guidance subtitle must mention minimum length"
 [[ ! -s "$short_query_log" ]] || fail "short query should not invoke cambridge-cli backend"
 
+default_settle_log="$tmp_dir/cambridge-default-settle.log"
+default_settle_json="$({ CAMBRIDGE_STUB_LOG="$default_settle_log" env -u CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "open"; })"
+assert_jq_json "$default_settle_json" '.items[0].title == "open - Cambridge"' "default settle should fetch Cambridge results immediately"
+[[ "$(grep -c -- '--input open --mode alfred' "$default_settle_log" || true)" -eq 1 ]] || fail "default settle should invoke cambridge-cli immediately"
+
 coalesce_probe_log="$tmp_dir/cambridge-coalesce.log"
-coalesce_pending_a="$({ CAMBRIDGE_STUB_LOG="$coalesce_probe_log" env -u CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "sym"; })"
-coalesce_pending_b="$({ CAMBRIDGE_STUB_LOG="$coalesce_probe_log" env -u CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "symphony"; })"
+coalesce_pending_a="$({ CAMBRIDGE_STUB_LOG="$coalesce_probe_log" CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS=1 CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "sym"; })"
+coalesce_pending_b="$({ CAMBRIDGE_STUB_LOG="$coalesce_probe_log" CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS=1 CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "symphony"; })"
 sleep 1.1
-coalesce_result="$({ CAMBRIDGE_STUB_LOG="$coalesce_probe_log" env -u CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "symphony"; })"
+coalesce_result="$({ CAMBRIDGE_STUB_LOG="$coalesce_probe_log" CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS=1 CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "symphony"; })"
 
 assert_jq_json "$coalesce_pending_a" '.items[0].title == "Searching Cambridge..." and .items[0].valid == false' "coalesce first pending item mismatch"
 assert_jq_json "$coalesce_pending_b" '.items[0].title == "Searching Cambridge..." and .items[0].valid == false' "coalesce second pending item mismatch"

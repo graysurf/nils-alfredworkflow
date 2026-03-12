@@ -10,6 +10,9 @@ const MISSING_SEARCH_TOKEN_SUBTITLE: &str = "Use res::<query>, for example res::
 const SUGGEST_EMPTY_TITLE: &str = "No suggestions found";
 const SUGGEST_EMPTY_SUBTITLE: &str = "Type another query to fetch suggestions";
 const SUGGEST_GUIDANCE: &str = "Press Tab to load search results";
+const DIRECT_RESULTS_TITLE_PREFIX: &str = "Show Web Results";
+const DIRECT_RESULTS_SUBTITLE: &str = "Press Enter to load Brave web results now";
+const DIRECT_RESULTS_ARG_PREFIX: &str = "google-requery:search:";
 
 const NO_RESULTS_TITLE: &str = "No results found";
 const NO_RESULTS_SUBTITLE: &str = "Try a different search query";
@@ -28,8 +31,10 @@ pub fn missing_search_target_feedback() -> Feedback {
 
 pub fn suggestions_to_feedback(query: &str, suggestions: &[String]) -> Feedback {
     let mut candidates = Vec::new();
-    if let Some(base_query) = normalize_text(query) {
-        candidates.push(base_query);
+    let mut base_query = None;
+    if let Some(normalized_query) = normalize_text(query) {
+        base_query = Some(normalized_query.clone());
+        candidates.push(normalized_query);
     }
 
     for candidate in suggestions {
@@ -49,15 +54,21 @@ pub fn suggestions_to_feedback(query: &str, suggestions: &[String]) -> Feedback 
         return single_invalid_item(SUGGEST_EMPTY_TITLE, SUGGEST_EMPTY_SUBTITLE);
     }
 
-    let items = candidates
-        .into_iter()
-        .map(|candidate| {
-            Item::new(candidate.clone())
-                .with_subtitle(format!("Search \"{candidate}\" | {SUGGEST_GUIDANCE}"))
-                .with_autocomplete(format!("res::{candidate}"))
-                .with_valid(false)
-        })
-        .collect();
+    let mut items = Vec::with_capacity(candidates.len() + usize::from(base_query.is_some()));
+    if let Some(query) = base_query {
+        items.push(
+            Item::new(format!("{DIRECT_RESULTS_TITLE_PREFIX}: {query}"))
+                .with_subtitle(DIRECT_RESULTS_SUBTITLE)
+                .with_arg(format!("{DIRECT_RESULTS_ARG_PREFIX}{query}"))
+                .with_valid(true),
+        );
+    }
+    items.extend(candidates.into_iter().map(|candidate| {
+        Item::new(candidate.clone())
+            .with_subtitle(format!("Search \"{candidate}\" | {SUGGEST_GUIDANCE}"))
+            .with_autocomplete(format!("res::{candidate}"))
+            .with_valid(false)
+    }));
     Feedback::new(items)
 }
 
@@ -195,25 +206,35 @@ mod tests {
             ],
         );
 
-        assert_eq!(feedback.items.len(), 3);
-        assert_eq!(feedback.items[0].title, "rust");
-        assert_eq!(feedback.items[0].autocomplete.as_deref(), Some("res::rust"));
+        assert_eq!(feedback.items.len(), 4);
+        assert_eq!(feedback.items[0].title, "Show Web Results: rust");
         assert_eq!(
-            feedback.items[1].autocomplete.as_deref(),
+            feedback.items[0].arg.as_deref(),
+            Some("google-requery:search:rust")
+        );
+        assert_eq!(feedback.items[0].valid, Some(true));
+        assert_eq!(feedback.items[1].title, "rust");
+        assert_eq!(feedback.items[1].autocomplete.as_deref(), Some("res::rust"));
+        assert_eq!(
+            feedback.items[2].autocomplete.as_deref(),
             Some("res::rust language")
         );
         assert_eq!(
-            feedback.items[2].autocomplete.as_deref(),
+            feedback.items[3].autocomplete.as_deref(),
             Some("res::rust book")
         );
         assert!(
-            feedback.items[0]
+            feedback.items[1]
                 .subtitle
                 .as_deref()
                 .is_some_and(|subtitle| subtitle.contains("Press Tab")),
             "suggest subtitle should include transition guidance"
         );
-        assert!(feedback.items.iter().all(|item| item.valid == Some(false)));
+        assert!(
+            feedback.items[1..]
+                .iter()
+                .all(|item| item.valid == Some(false))
+        );
     }
 
     #[test]
