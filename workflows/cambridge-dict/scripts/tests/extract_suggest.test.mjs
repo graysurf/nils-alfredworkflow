@@ -4,7 +4,10 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { extractSuggestFromHtml } from '../lib/extract_suggest.mjs';
+import {
+  extractExactEntryCandidateFromHtml,
+  extractSuggestFromHtml,
+} from '../lib/extract_suggest.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -142,4 +145,29 @@ test('extractSuggestFromHtml prefers spellcheck suggestion links over unrelated 
     ['lymph', 'sympathy', 'symphony'],
   );
   assert.ok(!items.some((item) => item.entry === 'at sixes and sevens'));
+});
+
+test('extractExactEntryCandidateFromHtml preserves escaped entities without double unescaping', () => {
+  const html = `
+    <!doctype html>
+    <html>
+      <body>
+        <div class="entry-body">
+          <h1 class="di-title"><span class="hw">&amp;quot;open&amp;quot;</span></h1>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const candidate = extractExactEntryCandidateFromHtml({
+    html,
+    mode: 'english',
+    pageUrl: 'https://dictionary.cambridge.org/dictionary/english/%26quot%3Bopen%26quot%3B',
+  });
+
+  assert.deepEqual(candidate, {
+    entry: '&quot;open&quot;',
+    label: '&quot;open&quot;',
+    url: 'https://dictionary.cambridge.org/dictionary/english/%26quot%3Bopen%26quot%3B',
+  });
 });

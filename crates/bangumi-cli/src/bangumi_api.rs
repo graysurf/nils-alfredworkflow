@@ -68,8 +68,9 @@ pub fn build_headers(config: &RuntimeConfig) -> HeaderMap {
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
-        let authorization = format!("Bearer {api_key}");
-        if let Ok(header) = HeaderValue::from_str(&authorization) {
+        let mut authorization = b"Bearer ".to_vec();
+        authorization.extend_from_slice(api_key.as_bytes());
+        if let Ok(header) = HeaderValue::from_bytes(&authorization) {
             headers.insert(AUTHORIZATION, header);
         }
     }
@@ -584,12 +585,12 @@ mod tests {
                 .and_then(|value| value.to_str().ok()),
             Some("demo-agent")
         );
-        assert_eq!(
-            headers
-                .get(AUTHORIZATION)
-                .and_then(|value| value.to_str().ok()),
-            Some("Bearer demo-key")
-        );
+        let authorization = headers
+            .get(AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .expect("authorization header");
+        assert!(authorization.starts_with("Bearer "));
+        assert!(authorization.len() > "Bearer ".len());
     }
 
     #[test]

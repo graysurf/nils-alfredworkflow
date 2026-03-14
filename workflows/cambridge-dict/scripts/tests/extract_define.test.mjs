@@ -140,3 +140,31 @@ test('extractDefineFromHtml supports list-item examples without nested eg spans'
 
   assert.deepEqual(entry.examples, ['He took off his shoes to cool his sweaty feet.']);
 });
+
+test('extractDefineFromHtml preserves escaped entities without double unescaping', () => {
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <title>&amp;quot;open&amp;quot; | Cambridge Dictionary</title>
+      </head>
+      <body>
+        <div class="entry-body">
+          <h1 class="di-title"><span class="hw">&amp;quot;open&amp;quot;</span></h1>
+          <div class="sense-body">
+            <div class="def">&amp;lt;escaped&amp;gt; value</div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const entry = extractDefineFromHtml({
+    html,
+    mode: 'english',
+    entry: '&quot;open&quot;',
+  });
+
+  assert.equal(entry.headword, '&quot;open&quot;');
+  assert.deepEqual(entry.definitions, ['&lt;escaped&gt; value']);
+});

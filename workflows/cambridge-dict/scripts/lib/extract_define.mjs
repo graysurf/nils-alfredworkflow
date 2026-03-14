@@ -8,7 +8,6 @@ function escapeRegExp(value) {
 function decodeHtmlEntities(value) {
   return value
     .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
@@ -16,14 +15,19 @@ function decodeHtmlEntities(value) {
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
       String.fromCodePoint(Number.parseInt(hex, 16)),
     )
-    .replace(/&#([0-9]+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 10)));
+    .replace(/&#([0-9]+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 10)))
+    .replace(/&amp;/gi, '&');
 }
 
-function normalizeText(value) {
-  return decodeHtmlEntities(String(value ?? '').replace(/<[^>]+>/g, ' '))
+function collapseText(value) {
+  return String(value ?? '')
     .replace(/\s+/g, ' ')
     .replace(/\s+([,.;:!?])/g, '$1')
     .trim();
+}
+
+function normalizeText(value) {
+  return collapseText(decodeHtmlEntities(String(value ?? '').replace(/<[^>]+>/g, ' ')));
 }
 
 function primaryClassFromSelector(selector) {
@@ -144,7 +148,7 @@ function firstClassText(html, selectors) {
 }
 
 function looksLikeHeadingCopy(value) {
-  const normalized = normalizeText(value).toLowerCase();
+  const normalized = collapseText(value).toLowerCase();
   return (
     normalized.startsWith('meaning of ') ||
     normalized.startsWith('translation of ') ||
@@ -202,7 +206,7 @@ function pairBilingualDefinitions({ englishDefinitions, translatedDefinitions, l
   const seen = new Set();
 
   const addLine = (line) => {
-    const normalized = normalizeText(line);
+    const normalized = collapseText(line);
     if (!normalized) {
       return false;
     }
@@ -235,12 +239,12 @@ function pairBilingualDefinitions({ englishDefinitions, translatedDefinitions, l
 }
 
 function mergeBilingualLine(text, translation) {
-  const normalizedText = normalizeText(text);
+  const normalizedText = collapseText(text);
   if (!normalizedText) {
     return '';
   }
 
-  const normalizedTranslation = normalizeText(translation);
+  const normalizedTranslation = collapseText(translation);
   if (!normalizedTranslation || normalizedTranslation.toLowerCase() === normalizedText.toLowerCase()) {
     return normalizedText;
   }
@@ -323,7 +327,7 @@ function collectExampleLines({ html, selectors, limit }) {
   const seen = new Set();
 
   const addLine = (value) => {
-    const normalized = normalizeText(value);
+    const normalized = collapseText(value);
     if (!normalized) {
       return false;
     }

@@ -1,3 +1,5 @@
+use std::io::{self, Write};
+
 use serde_json::{Value, json};
 
 use crate::error::{AppError, ErrorKind, redact_sensitive};
@@ -19,11 +21,21 @@ pub struct RenderedOutput {
 
 impl RenderedOutput {
     pub fn emit(&self) {
+        let stdout_handle = io::stdout();
+        let stderr_handle = io::stderr();
+        let mut stdout = stdout_handle.lock();
+        let mut stderr = stderr_handle.lock();
+        self.emit_to(&mut stdout, &mut stderr);
+    }
+
+    fn emit_to(&self, stdout: &mut impl Write, stderr: &mut impl Write) {
         if !self.stdout.is_empty() {
-            print!("{}", self.stdout);
+            let _ = stdout.write_all(self.stdout.as_bytes());
+            let _ = stdout.flush();
         }
         if !self.stderr.is_empty() {
-            eprint!("{}", self.stderr);
+            let _ = stderr.write_all(self.stderr.as_bytes());
+            let _ = stderr.flush();
         }
     }
 }
@@ -151,5 +163,23 @@ mod tests {
                 .and_then(Value::as_str),
             Some("auth_invalid_input")
         );
+    }
+
+    #[test]
+    fn emit_writes_stdout_and_stderr_to_provided_streams() {
+        let output = super::RenderedOutput {
+            stdout: "{\"ok\":true}\n".to_string(),
+            stderr: "error\n".to_string(),
+        };
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        output.emit_to(&mut stdout, &mut stderr);
+
+        assert_eq!(
+            String::from_utf8(stdout).expect("stdout utf8"),
+            "{\"ok\":true}\n"
+        );
+        assert_eq!(String::from_utf8(stderr).expect("stderr utf8"), "error\n");
     }
 }

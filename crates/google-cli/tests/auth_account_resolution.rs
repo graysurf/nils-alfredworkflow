@@ -16,7 +16,7 @@ fn mk_metadata(accounts: &[&str], default_account: Option<&str>) -> AccountMetad
 fn resolves_explicit_account() {
     let metadata = mk_metadata(&["a@example.com", "b@example.com"], None);
     let resolved = resolve_account(Some("b@example.com"), &metadata).expect("resolved");
-    assert_eq!(resolved.account, "b@example.com");
+    assert!(resolved.account == "b@example.com");
     assert_eq!(resolved.source, ResolutionSource::Explicit);
 }
 
@@ -28,15 +28,15 @@ fn resolves_alias_then_default_then_single() {
         .insert("work".to_string(), "b@example.com".to_string());
 
     let alias = resolve_account(Some("work"), &metadata).expect("alias");
-    assert_eq!(alias.account, "b@example.com");
+    assert!(alias.account == "b@example.com");
     assert_eq!(alias.source, ResolutionSource::Alias);
 
     let default_account = resolve_account(None, &metadata).expect("default");
-    assert_eq!(default_account.account, "a@example.com");
+    assert!(default_account.account == "a@example.com");
     assert_eq!(default_account.source, ResolutionSource::Default);
 
     let single = resolve_account(None, &mk_metadata(&["solo@example.com"], None)).expect("single");
-    assert_eq!(single.account, "solo@example.com");
+    assert!(single.account == "solo@example.com");
     assert_eq!(single.source, ResolutionSource::Single);
 }
 

@@ -8,7 +8,6 @@ function escapeRegExp(value) {
 function decodeHtmlEntities(value) {
   return value
     .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
@@ -16,7 +15,14 @@ function decodeHtmlEntities(value) {
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
       String.fromCodePoint(Number.parseInt(hex, 16)),
     )
-    .replace(/&#([0-9]+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 10)));
+    .replace(/&#([0-9]+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 10)))
+    .replace(/&amp;/gi, '&');
+}
+
+function collapseText(value) {
+  return String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function stripTags(value) {
@@ -24,9 +30,7 @@ function stripTags(value) {
 }
 
 function normalizeText(value) {
-  return stripTags(value)
-    .replace(/\s+/g, ' ')
-    .trim();
+  return collapseText(stripTags(value));
 }
 
 function primaryClassFromSelector(selector) {
@@ -251,7 +255,7 @@ function dedupeKey(entry) {
 }
 
 function normalizeHeadwordCandidate(value) {
-  const normalized = normalizeText(value);
+  const normalized = collapseText(value);
   if (!normalized) {
     return '';
   }
