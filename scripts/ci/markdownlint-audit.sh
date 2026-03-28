@@ -6,7 +6,7 @@ usage() {
 Usage:
   markdownlint-audit.sh [--strict]
 
-Run workspace Markdown lint checks using markdownlint-cli2 and the repo baseline config.
+Run workspace Markdown lint checks using rumdl and the repo baseline config.
 
 Options:
   --strict   Treat lint failures as hard failures (exit 1)
@@ -46,9 +46,9 @@ if ! command -v npx >/dev/null 2>&1; then
   exit 2
 fi
 
-config_file="$repo_root/.markdownlint-cli2.jsonc"
+config_file="$repo_root/.rumdl.toml"
 if [[ ! -f "$config_file" ]]; then
-  echo "error: missing markdownlint config: $config_file" >&2
+  echo "error: missing rumdl config: $config_file" >&2
   exit 2
 fi
 
@@ -64,7 +64,8 @@ if [[ ${#md_files[@]} -eq 0 ]]; then
 fi
 
 lint_cmd=(
-  npx --yes markdownlint-cli2@0.21.0
+  npx --no-install rumdl
+  check
   --config "$config_file"
 )
 lint_cmd+=("${md_files[@]}")

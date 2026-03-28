@@ -18,7 +18,7 @@ This document lists required local tools for development, linting, testing, and 
 - Workflow SVG asset conversion: `image-processing` (required when regenerating SVG-based workflow assets)
 - Shell tooling: `shellcheck`, `shfmt`
 - Node runtime: `node`, `npm`
-- Node dependency: `playwright` package (managed via root `package.json`)
+- Node dependencies: `playwright` and `rumdl` packages (managed via root `package.json`)
 - SHA-256 provider (at least one): `shasum` or `sha256sum` or `openssl`
 - Packaging/runtime helpers: `zip`, `unzip`, `open` (macOS install/runtime), `xdg-open` (Linux CI/local smoke
   compatibility)

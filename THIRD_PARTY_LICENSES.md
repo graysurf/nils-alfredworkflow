@@ -12,7 +12,7 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `c264b6ea0a1db9927b18bffe041509741e846793299984f51a1c93b0e7cd0e1e`
+- Data source fingerprint (SHA256): `58ff9620a4e1ada00c30968ab22de5213f0cca2b5f4c41171140b91649f5b795`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
@@ -20,7 +20,7 @@ Do not edit manually.
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
 | Cargo lockfile | `Cargo.lock` | `3f52428b5772c4acdee65efc0b634da5ed74076cfaa23e99ad6940593dc6a7b0` | `cargo metadata --format-version 1 --locked` |
-| Node lockfile | `package-lock.json` | `49e2ab3b6b09005c42bedb4e41aff0af209febc62a67d15a670e4614a66ff4f9` | `jq package-lock extraction` |
+| Node lockfile | `package-lock.json` | `8f4a4b745a60fcb6cbaa07283b4d3b93735a88d66f272da8a09253a4476e5f41` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
 
@@ -380,13 +380,21 @@ Do not edit manually.
 | zerovec-derive | 0.11.2 | Unicode-3.0 | <https://github.com/unicode-org/icu4x> |
 | zmij | 1.0.20 | MIT | <https://github.com/dtolnay/zmij> |
 
-## Node Packages (3 packages)
+## Node Packages (11 packages)
 
 | Package | Version | License | Resolved |
 | --- | --- | --- | --- |
+| @rumdl/cli-darwin-arm64 | 0.1.62 | MIT | <https://registry.npmjs.org/@rumdl/cli-darwin-arm64/-/cli-darwin-arm64-0.1.62.tgz> |
+| @rumdl/cli-darwin-x64 | 0.1.62 | MIT | <https://registry.npmjs.org/@rumdl/cli-darwin-x64/-/cli-darwin-x64-0.1.62.tgz> |
+| @rumdl/cli-linux-arm64 | 0.1.62 | MIT | <https://registry.npmjs.org/@rumdl/cli-linux-arm64/-/cli-linux-arm64-0.1.62.tgz> |
+| @rumdl/cli-linux-arm64-musl | 0.1.62 | MIT | <https://registry.npmjs.org/@rumdl/cli-linux-arm64-musl/-/cli-linux-arm64-musl-0.1.62.tgz> |
+| @rumdl/cli-linux-x64 | 0.1.62 | MIT | <https://registry.npmjs.org/@rumdl/cli-linux-x64/-/cli-linux-x64-0.1.62.tgz> |
+| @rumdl/cli-linux-x64-musl | 0.1.62 | MIT | <https://registry.npmjs.org/@rumdl/cli-linux-x64-musl/-/cli-linux-x64-musl-0.1.62.tgz> |
+| @rumdl/cli-win32-x64 | 0.1.62 | MIT | <https://registry.npmjs.org/@rumdl/cli-win32-x64/-/cli-win32-x64-0.1.62.tgz> |
 | fsevents | 2.3.2 | MIT | <https://registry.npmjs.org/fsevents/-/fsevents-2.3.2.tgz> |
 | playwright | 1.58.2 | Apache-2.0 | <https://registry.npmjs.org/playwright/-/playwright-1.58.2.tgz> |
 | playwright-core | 1.58.2 | Apache-2.0 | <https://registry.npmjs.org/playwright-core/-/playwright-core-1.58.2.tgz> |
+| rumdl | 0.1.62 | MIT | <https://registry.npmjs.org/rumdl/-/rumdl-0.1.62.tgz> |
 
 ## External Packaged Runtime
 

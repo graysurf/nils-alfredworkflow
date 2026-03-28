@@ -15,5 +15,8 @@
   },
   "dependencies": {
     "playwright": "^1.54.0"
+  },
+  "devDependencies": {
+    "rumdl": "0.1.62"
   }
 }

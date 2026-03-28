@@ -95,8 +95,8 @@ markdown_docs=(
   "$workflow_dir/TROUBLESHOOTING.md"
 )
 
-npx --yes markdownlint-cli2@0.21.0 \
-  --config "$repo_root/.markdownlint-cli2.jsonc" \
+npx --no-install rumdl check \
+  --config "$repo_root/.rumdl.toml" \
   "${markdown_docs[@]}"
 
 manifest="$workflow_dir/workflow.toml"
