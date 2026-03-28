@@ -186,7 +186,15 @@ test_clean_write_and_check() {
     dump_last_run
     return 1
   fi
+  if ! assert_contains "$(cat "$fixture/THIRD_PARTY_LICENSES.md")" "supported macOS/Linux targets" "generated licenses target scope"; then
+    dump_last_run
+    return 1
+  fi
   if ! assert_contains "$(cat "$fixture/THIRD_PARTY_NOTICES.md")" "## Notice Extraction Policy" "generated notices content"; then
+    dump_last_run
+    return 1
+  fi
+  if ! assert_contains "$(cat "$fixture/THIRD_PARTY_NOTICES.md")" "supported macOS/Linux targets" "generated notices target scope"; then
     dump_last_run
     return 1
   fi
