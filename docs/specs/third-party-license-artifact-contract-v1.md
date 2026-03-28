@@ -45,7 +45,9 @@ The artifact MUST include these markdown tables with exact column order:
 
 ## Input Sources
 
-- Rust dependencies: `Cargo.lock` via `cargo metadata --format-version 1 --locked`.
+- Rust dependencies: `Cargo.lock` via the union of
+  `cargo metadata --format-version 1 --locked --filter-platform <target>` for supported platform targets
+  (`aarch64-apple-darwin`, `x86_64-apple-darwin`, `x86_64-unknown-linux-gnu`).
 - Node dependencies: `package-lock.json`.
 - Runtime crate pin: `scripts/lib/codex_cli_version.sh`, using
   `CODEX_CLI_CRATE` and `CODEX_CLI_VERSION`.

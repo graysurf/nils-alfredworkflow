@@ -125,6 +125,11 @@ tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/third-party-artifacts.XXXXXX")"
 trap 'rm -rf "$tmp_root"' EXIT
 
 cargo_metadata_json="$tmp_root/cargo-metadata.json"
+cargo_metadata_targets=(
+  "aarch64-apple-darwin"
+  "x86_64-apple-darwin"
+  "x86_64-unknown-linux-gnu"
+)
 rust_packages_json="$tmp_root/rust-packages.json"
 rust_summary_tsv="$tmp_root/rust-summary.tsv"
 rust_crates_tsv="$tmp_root/rust-crates.tsv"
@@ -134,10 +139,26 @@ runtime_response_json="$tmp_root/runtime-crate.json"
 generated_licenses_file="$tmp_root/THIRD_PARTY_LICENSES.md"
 generated_notices_file="$tmp_root/THIRD_PARTY_NOTICES.md"
 
-(
-  cd "$repo_root"
-  cargo metadata --format-version 1 --locked >"$cargo_metadata_json"
-)
+declare -a cargo_metadata_target_files=()
+for cargo_metadata_target in "${cargo_metadata_targets[@]}"; do
+  cargo_metadata_target_slug="$(printf '%s' "$cargo_metadata_target" | tr -c '[:alnum:]' '_')"
+  cargo_metadata_target_file="$tmp_root/cargo-metadata-${cargo_metadata_target_slug}.json"
+  (
+    cd "$repo_root"
+    cargo metadata --format-version 1 --locked --filter-platform "$cargo_metadata_target" >"$cargo_metadata_target_file"
+  )
+  cargo_metadata_target_files+=("$cargo_metadata_target_file")
+done
+
+jq -s '
+{
+  packages: (
+    map(.packages)
+    | add
+    | unique_by(.name, .version, .source, .id, .manifest_path)
+  )
+}
+' "${cargo_metadata_target_files[@]}" >"$cargo_metadata_json"
 
 jq -c '
 [
@@ -277,7 +298,7 @@ Do not edit manually.
 
 ## Scope
 
-- Rust third-party crates resolved from \`Cargo.lock\` via \`cargo metadata --locked\` (workspace crates excluded).
+- Rust third-party crates resolved from \`Cargo.lock\` via \`cargo metadata --locked\` across supported macOS/Linux targets (workspace crates excluded).
 - Node third-party packages resolved from \`package-lock.json\` (root package excluded).
 - External packaged runtime crate resolved from \`scripts/lib/codex_cli_version.sh\` with metadata from crates.io.
 - Contract: \`docs/specs/third-party-artifacts-contract-v1.md\`.
@@ -294,7 +315,7 @@ Do not edit manually.
 __LICENSE_MD__
 
   printf "| Cargo lockfile | \`%s\` | \`%s\` | \`%s\` |\n" "Cargo.lock" "$cargo_lock_sha" \
-    "cargo metadata --format-version 1 --locked"
+    "cargo metadata --format-version 1 --locked --filter-platform per supported target"
   printf "| Node lockfile | \`%s\` | \`%s\` | \`%s\` |\n" "package-lock.json" "$package_lock_sha" \
     "jq package-lock extraction"
   printf "| Runtime crate pin | \`%s\` | \`%s\` | \`%s\` |\n" "scripts/lib/codex_cli_version.sh" "$runtime_pin_script_sha" \
@@ -540,7 +561,7 @@ lines: list[str] = [
     "",
     "This file documents third-party notice-file discovery for Rust crates used by this workspace.",
     "",
-    "- Data source: `cargo metadata --format-version 1 --locked`",
+    "- Data source: `cargo metadata --format-version 1 --locked --filter-platform` union for supported macOS/Linux targets",
     f"- Cargo.lock SHA256: `{lock_hash}`",
     f"- Third-party crates (`source != null`): {len(third_party)}",
     "",

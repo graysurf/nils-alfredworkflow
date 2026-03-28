@@ -42,7 +42,7 @@ Use this file for day-to-day development, quality gates, and local validation fl
 - Format fix: `cargo fmt --all`
 - Lint: `cargo clippy --workspace --all-targets -- -D warnings`
 - CLI standards audit: `scripts/cli-standards-audit.sh`
-- Markdown lint audit: `bash scripts/ci/markdownlint-audit.sh --strict`
+- Markdown lint audit (`rumdl`): `bash scripts/ci/markdownlint-audit.sh --strict`
 - Full lint entrypoint (includes `cli-standards-audit`, `docs-placement-audit`, and `markdownlint-audit`):
   `scripts/workflow-lint.sh`
 - Shared foundation audit (also included in full lint entrypoint):
