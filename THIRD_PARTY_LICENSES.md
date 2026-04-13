@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `2695ecd1377c5f8c599b2bb90ed81b02782ef07238e6a5cb2ff5fd1e8daa533e`
+- Data source fingerprint (SHA256): `1a269776e7749d428490e493abf24fcb7bf2aed840cf50d4fa045974189502c3`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `b3661fa9da7437c67d3537db358c538d97a106b27c7a0c73d0672d039e4374b5` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `3e0017db679744fbd74c461956bf45938258510ee544a50e61ae626d70fb350c` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `8f4a4b745a60fcb6cbaa07283b4d3b93735a88d66f272da8a09253a4476e5f41` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -224,7 +224,7 @@ Do not edit manually.
 | rkyv | 0.7.46 | MIT | <https://github.com/rkyv/rkyv> |
 | rkyv_derive | 0.7.46 | MIT | <https://github.com/rkyv/rkyv> |
 | rusqlite | 0.38.0 | MIT | <https://github.com/rusqlite/rusqlite> |
-| rust_decimal | 1.40.0 | MIT | <https://github.com/paupino/rust-decimal> |
+| rust_decimal | 1.41.0 | MIT | <https://github.com/paupino/rust-decimal> |
 | rustc-hash | 2.1.1 | Apache-2.0 OR MIT | <https://github.com/rust-lang/rustc-hash> |
 | rustix | 1.1.3 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | <https://github.com/bytecodealliance/rustix> |
 | rustls | 0.23.36 | Apache-2.0 OR ISC OR MIT | <https://github.com/rustls/rustls> |
