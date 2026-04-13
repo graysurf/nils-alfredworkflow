@@ -3,7 +3,7 @@
 This file documents third-party notice-file discovery for Rust crates used by this workspace.
 
 - Data source: `cargo metadata --format-version 1 --locked --filter-platform` union for supported macOS/Linux targets
-- Cargo.lock SHA256: `c85e248b0f52d62e35512fa36dbade1477de1bb5c23a6f7ac54754d024591452`
+- Cargo.lock SHA256: `b3661fa9da7437c67d3537db358c538d97a106b27c7a0c73d0672d039e4374b5`
 - Third-party crates (`source != null`): 254
 
 ## Notice Extraction Policy
@@ -2047,7 +2047,7 @@ This file documents third-party notice-file discovery for Rust crates used by th
   - `LICENSE-APACHE`
   - `LICENSE-MIT`
 
-### uuid 1.22.0
+### uuid 1.23.0
 
 - License: `Apache-2.0 OR MIT`
 - Source: `crates.io`

@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `015ca154adffe9e8d270eef52d445d9b31170c980aa81b78a1f269a4ea11a4c1`
+- Data source fingerprint (SHA256): `2695ecd1377c5f8c599b2bb90ed81b02782ef07238e6a5cb2ff5fd1e8daa533e`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `c85e248b0f52d62e35512fa36dbade1477de1bb5c23a6f7ac54754d024591452` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `b3661fa9da7437c67d3537db358c538d97a106b27c7a0c73d0672d039e4374b5` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `8f4a4b745a60fcb6cbaa07283b4d3b93735a88d66f272da8a09253a4476e5f41` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -288,7 +288,7 @@ Do not edit manually.
 | url | 2.5.8 | MIT OR Apache-2.0 | <https://github.com/servo/rust-url> |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT | <https://github.com/hsivonen/utf8_iter> |
 | utf8parse | 0.2.2 | Apache-2.0 OR MIT | <https://github.com/alacritty/vte> |
-| uuid | 1.22.0 | Apache-2.0 OR MIT | <https://github.com/uuid-rs/uuid> |
+| uuid | 1.23.0 | Apache-2.0 OR MIT | <https://github.com/uuid-rs/uuid> |
 | vcpkg | 0.2.15 | MIT/Apache-2.0 | <https://github.com/mcgoo/vcpkg-rs> |
 | version_check | 0.9.5 | MIT/Apache-2.0 | <https://github.com/SergioBenitez/version_check> |
 | walkdir | 2.5.0 | Unlicense/MIT | <https://github.com/BurntSushi/walkdir> |
