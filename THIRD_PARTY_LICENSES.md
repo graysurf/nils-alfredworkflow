@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `1a269776e7749d428490e493abf24fcb7bf2aed840cf50d4fa045974189502c3`
+- Data source fingerprint (SHA256): `3a1517cd42a4ef951f222879c3e68d229a72b9b928d2f27d36a73ed943bff24c`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `3e0017db679744fbd74c461956bf45938258510ee544a50e61ae626d70fb350c` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `df40c8b8091b9f09013de469e784cddc361774e6cd402f80f684fb09a6baf367` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `8f4a4b745a60fcb6cbaa07283b4d3b93735a88d66f272da8a09253a4476e5f41` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -205,7 +205,7 @@ Do not edit manually.
 | quinn-udp | 0.5.14 | MIT OR Apache-2.0 | <https://github.com/quinn-rs/quinn> |
 | quote | 1.0.44 | MIT OR Apache-2.0 | <https://github.com/dtolnay/quote> |
 | radium | 0.7.0 | MIT | <https://github.com/bitvecto-rs/radium> |
-| rand | 0.10.0 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
+| rand | 0.10.1 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand | 0.8.5 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand | 0.9.2 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand_chacha | 0.3.1 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
