@@ -137,13 +137,42 @@ fi
   node --input-type=module -e "import('playwright').then(() => process.stdout.write('ok: playwright package resolved\n'))"
 )
 
+verify_chromium_binary() {
+  (
+    cd "$workflow_dir"
+    node --input-type=module -e "
+      import('playwright').then(async ({ chromium }) => {
+        const { existsSync } = await import('node:fs');
+        const expected = chromium.executablePath();
+        if (!expected || !existsSync(expected)) {
+          process.stderr.write('error: chromium binary missing at ' + (expected || '<unknown>') + '\n');
+          process.exit(1);
+        }
+        process.stdout.write('ok: chromium binary present at ' + expected + '\n');
+      });
+    "
+  )
+}
+
 if [[ "$check_only" -eq 1 ]]; then
+  if [[ "$install_browser" -eq 1 ]]; then
+    if ! verify_chromium_binary; then
+      echo "error: chromium binary not installed; run scripts/setup-cambridge-workflow-runtime.sh to install" >&2
+      exit 1
+    fi
+  else
+    log "info: browser presence check skipped (--skip-browser)"
+  fi
   log "ok: cambridge runtime check passed at $workflow_dir"
   exit 0
 fi
 
 if [[ "$install_browser" -eq 1 ]]; then
   npx --prefix "$workflow_dir" playwright install chromium
+  if ! verify_chromium_binary; then
+    echo "error: chromium binary still missing after 'playwright install chromium'" >&2
+    exit 1
+  fi
   log "ok: playwright chromium installed"
 else
   log "info: browser install skipped (--skip-browser)"
