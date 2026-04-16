@@ -114,7 +114,39 @@ cambridge_runtime_bootstrap_helper_path() {
 
 cambridge_runtime_issue_message() {
   local lower="${1:-}"
-  [[ "$lower" == *"node"*"not found"* || "$lower" == *"playwright"* || "$lower" == *"chromium executable doesn't exist"* || "$lower" == *"browser executable"* || "$lower" == *"cambridge_node_bin"* ]]
+  [[ "$lower" == *"node"*"not found"* ||
+    "$lower" == *"playwright"* ||
+    "$lower" == *"chromium executable doesn't exist"* ||
+    "$lower" == *"executable doesn't exist"* ||
+    "$lower" == *"browsertype.launch"* ||
+    "$lower" == *"browser executable"* ||
+    "$lower" == *"cambridge_node_bin"* ]]
+}
+
+cambridge_detect_runtime_issue_in_json() {
+  local json_output="${1:-}"
+  command -v jq >/dev/null 2>&1 || return 1
+  [[ -n "$json_output" ]] || return 1
+
+  local sole_invalid
+  sole_invalid="$(jq -r 'if (.items | type == "array") and (.items | length == 1) and (.items[0].valid == false) then "1" else "" end' <<<"$json_output" 2>/dev/null || true)"
+  [[ "$sole_invalid" == "1" ]] || return 1
+
+  local title subtitle
+  title="$(jq -r '.items[0].title // ""' <<<"$json_output" 2>/dev/null || true)"
+  subtitle="$(jq -r '.items[0].subtitle // ""' <<<"$json_output" 2>/dev/null || true)"
+
+  local combined_lower
+  combined_lower="$(printf '%s %s' "$title" "$subtitle" | tr '[:upper:]' '[:lower:]')"
+  if cambridge_runtime_issue_message "$combined_lower"; then
+    if [[ -n "$subtitle" ]]; then
+      printf '%s\n' "$subtitle"
+    else
+      printf '%s\n' "$title"
+    fi
+    return 0
+  fi
+  return 1
 }
 
 cambridge_runtime_bootstrap_supported() {
@@ -362,6 +394,13 @@ cambridge_query_fetch_json() {
     if command -v jq >/dev/null 2>&1; then
       if ! jq -e '.items | type == "array"' >/dev/null <<<"$json_output"; then
         echo "cambridge-cli returned malformed Alfred JSON" >&2
+        return 1
+      fi
+
+      local runtime_issue_subtitle
+      runtime_issue_subtitle="$(cambridge_detect_runtime_issue_in_json "$json_output" || true)"
+      if [[ -n "$runtime_issue_subtitle" ]]; then
+        printf '%s\n' "$runtime_issue_subtitle" >&2
         return 1
       fi
     fi

@@ -220,6 +220,15 @@ exit 3
 EOS
 chmod +x "$tmp_dir/stubs/cambridge-cli-runtime"
 
+cat >"$tmp_dir/stubs/cambridge-cli-runtime-json" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+cat <<'JSON'
+{"items":[{"title":"Cambridge suggestions unavailable","subtitle":"code: unknown | browserType.launch: Executable doesn't exist at /ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-mac-arm64/chrome-headless-shell | hint: retry later","valid":false}]}
+JSON
+EOS
+chmod +x "$tmp_dir/stubs/cambridge-cli-runtime-json"
+
 cat >"$tmp_dir/stubs/cambridge-runtime-bootstrap" <<'EOS'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -363,6 +372,21 @@ mkdir -p "$runtime_bootstrap_fail_state_dir"
 printf 'err\t%s\n' "$(date +%s)" >"$runtime_bootstrap_fail_state_dir/bootstrap.result"
 runtime_bootstrap_fail_json="$({ ALFRED_WORKFLOW_CACHE="$runtime_bootstrap_fail_cache" CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-runtime" CAMBRIDGE_RUNTIME_BOOTSTRAP_HELPER="$tmp_dir/stubs/cambridge-runtime-bootstrap-fail" "$workflow_dir/scripts/script_filter.sh" "open"; })"
 assert_jq_json "$runtime_bootstrap_fail_json" '.items[0].title == "Automatic Cambridge runtime setup failed"' "recent runtime bootstrap failure should surface dedicated item"
+
+runtime_json_cache="$tmp_dir/alfred-cache-runtime-json"
+mkdir -p "$runtime_json_cache"
+runtime_json_no_helper="$({ ALFRED_WORKFLOW_CACHE="$runtime_json_cache" CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-runtime-json" CAMBRIDGE_RUNTIME_BOOTSTRAP_HELPER="$tmp_dir/stubs/missing-runtime-bootstrap" "$workflow_dir/scripts/script_filter.sh" "open"; })"
+assert_jq_json "$runtime_json_no_helper" '.items[0].title == "Node/Playwright runtime unavailable"' "cambridge-cli success JSON with runtime subtitle should route to runtime error"
+
+runtime_bootstrap_json_cache="$tmp_dir/alfred-cache-runtime-bootstrap-json"
+mkdir -p "$runtime_bootstrap_json_cache"
+runtime_bootstrap_from_json="$({ ALFRED_WORKFLOW_CACHE="$runtime_bootstrap_json_cache" CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-runtime-json" CAMBRIDGE_RUNTIME_BOOTSTRAP_HELPER="$tmp_dir/stubs/cambridge-runtime-bootstrap" CAMBRIDGE_BOOTSTRAP_WORKFLOW_DIR_OUT="$tmp_dir/bootstrap-workflow-dir-json.txt" "$workflow_dir/scripts/script_filter.sh" "open"; })"
+assert_jq_json "$runtime_bootstrap_from_json" '.items[0].title == "Installing Cambridge runtime..."' "cambridge-cli success JSON with runtime subtitle should trigger bootstrap"
+for _ in $(seq 1 20); do
+  [[ -f "$tmp_dir/bootstrap-workflow-dir-json.txt" ]] && break
+  sleep 0.1
+done
+[[ "$(cat "$tmp_dir/bootstrap-workflow-dir-json.txt")" == "$workflow_dir" ]] || fail "runtime bootstrap from JSON subtitle must target workflow install directory"
 
 missing_layout="$tmp_dir/layout-missing"
 missing_script="$missing_layout/workflows/cambridge-dict/scripts/script_filter.sh"

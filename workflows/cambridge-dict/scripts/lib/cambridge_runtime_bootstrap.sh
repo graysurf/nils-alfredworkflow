@@ -140,6 +140,20 @@ fi
   )
   npx --prefix "$workflow_dir" playwright --version
   npx --prefix "$workflow_dir" playwright install chromium
+  (
+    cd "$workflow_dir"
+    node --input-type=module -e "
+      import('playwright').then(async ({ chromium }) => {
+        const { existsSync } = await import('node:fs');
+        const expected = chromium.executablePath();
+        if (!expected || !existsSync(expected)) {
+          process.stderr.write('error: chromium binary missing at ' + (expected || '<unknown>') + '\n');
+          process.exit(1);
+        }
+        process.stdout.write('ok: chromium binary present at ' + expected + '\n');
+      });
+    "
+  )
   echo "ok: cambridge runtime ready"
 } >>"$log_file" 2>&1
 

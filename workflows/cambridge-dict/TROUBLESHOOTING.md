@@ -32,6 +32,12 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 - `Automatic Cambridge runtime setup failed`: auto-bootstrap ran but `npm install` or
   `playwright install chromium` failed.
   Action: check the bootstrap log in Alfred cache, fix Node/npm/network access, then retry.
+- `browserType.launch: Executable doesn't exist` / `chromium executable doesn't exist`:
+  Playwright npm package is installed but the Chromium binary is missing or points at a different revision
+  (typically after a Playwright dependency bump).
+  Action: auto-bootstrap should kick in automatically; if it does not, run
+  `scripts/setup-cambridge-workflow-runtime.sh` to re-download the matching Chromium binary, or manually run
+  `npx --prefix <installed-workflow-dir> playwright install chromium`.
 - `Node/Playwright runtime unavailable`: Alfred cannot locate `node`/`npm`, or auto-bootstrap is disabled or
   unavailable.
   Action: install Node.js, ensure Alfred PATH can resolve it, or run
