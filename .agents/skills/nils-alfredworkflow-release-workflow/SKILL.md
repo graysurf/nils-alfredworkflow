@@ -85,3 +85,15 @@ Failure modes:
 7. Wait release workflow for the tag to complete with `success`.
 8. Wait release page to appear for the tag.
 9. If CI/release workflow fails, fix root cause on branch, update/push fix commit, then recreate/re-push tag and repeat until green.
+
+## Alternate entry points
+
+This skill is also reachable through the Claude Code `/release` slash command,
+which dispatches here via `<repo>/.agents/scripts/release.sh` — a thin wrapper
+that `exec`s the script above. Args forward unchanged; behaviour is identical
+whether you invoke the skill directly or type `/release v0.1.0`.
+
+The skill script remains the canonical implementation per the multi-CLI mirror
+rule (see claude-kit's `docs/dispatcher-commands.md`): codex / opencode discover
+work through `.agents/skills/`, Claude Code reaches the same logic through the
+dispatcher convention.
