@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `617842b637ee7a58e82b5fad7f017fcf4da5d68ebf146fa019c571750826d44f`
+- Data source fingerprint (SHA256): `376638baa3152917666a479f9a6f564cc3ad4289b4f5d0b60934826a1f12606d`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `5296f28d47429fe701267d9407e5161810aba6b55a78d6a3cff357fbb6bd0b8a` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `42a08ae14f797831cc65efc16fee3338d6d0b438d9e54b5df80258086d32cb2c` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `ddea137eacf1f89a35038c3fe20f40f67ea80d54b0d85a5d4591d94ddffdf5c3` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -207,7 +207,7 @@ Do not edit manually.
 | radium | 0.7.0 | MIT | <https://github.com/bitvecto-rs/radium> |
 | rand | 0.10.1 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand | 0.8.5 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
-| rand | 0.9.2 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
+| rand | 0.9.3 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand_chacha | 0.3.1 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand_chacha | 0.9.0 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand_core | 0.10.0 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand_core> |
@@ -230,7 +230,7 @@ Do not edit manually.
 | rustls | 0.23.36 | Apache-2.0 OR ISC OR MIT | <https://github.com/rustls/rustls> |
 | rustls-native-certs | 0.8.3 | Apache-2.0 OR ISC OR MIT | <https://github.com/rustls/rustls-native-certs> |
 | rustls-pki-types | 1.14.0 | MIT OR Apache-2.0 | <https://github.com/rustls/pki-types> |
-| rustls-webpki | 0.103.10 | ISC | <https://github.com/rustls/webpki> |
+| rustls-webpki | 0.103.12 | ISC | <https://github.com/rustls/webpki> |
 | ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 | <https://github.com/dtolnay/ryu> |
 | same-file | 1.0.6 | Unlicense/MIT | <https://github.com/BurntSushi/same-file> |
 | schemars | 0.9.0 | MIT | <https://github.com/GREsau/schemars> |
