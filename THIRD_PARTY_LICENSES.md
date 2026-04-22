@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `376638baa3152917666a479f9a6f564cc3ad4289b4f5d0b60934826a1f12606d`
+- Data source fingerprint (SHA256): `58e108894e409a154c620b951b716f8f6df810df86b4136433b5db17a18a5c4f`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `42a08ae14f797831cc65efc16fee3338d6d0b438d9e54b5df80258086d32cb2c` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `c6379db6f599db68e91adb22877f8da49a551aa8fdf02138077cdb03a301c2b4` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `ddea137eacf1f89a35038c3fe20f40f67ea80d54b0d85a5d4591d94ddffdf5c3` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -181,7 +181,7 @@ Do not edit manually.
 | num_cpus | 1.17.0 | MIT OR Apache-2.0 | <https://github.com/seanmonstar/num_cpus> |
 | num_threads | 0.1.7 | MIT OR Apache-2.0 | <https://github.com/jhpratt/num_threads> |
 | once_cell | 1.21.3 | MIT OR Apache-2.0 | <https://github.com/matklad/once_cell> |
-| open | 5.3.3 | MIT | <https://github.com/Byron/open-rs> |
+| open | 5.3.4 | MIT | <https://github.com/Byron/open-rs> |
 | openssl-probe | 0.2.1 | MIT OR Apache-2.0 | <https://github.com/rustls/openssl-probe> |
 | option-ext | 0.2.0 | MPL-2.0 | <https://github.com/soc/option-ext.git> |
 | pathdiff | 0.2.3 | MIT/Apache-2.0 | <https://github.com/Manishearth/pathdiff> |
@@ -288,7 +288,7 @@ Do not edit manually.
 | url | 2.5.8 | MIT OR Apache-2.0 | <https://github.com/servo/rust-url> |
 | utf8_iter | 1.0.4 | Apache-2.0 OR MIT | <https://github.com/hsivonen/utf8_iter> |
 | utf8parse | 0.2.2 | Apache-2.0 OR MIT | <https://github.com/alacritty/vte> |
-| uuid | 1.23.0 | Apache-2.0 OR MIT | <https://github.com/uuid-rs/uuid> |
+| uuid | 1.23.1 | Apache-2.0 OR MIT | <https://github.com/uuid-rs/uuid> |
 | vcpkg | 0.2.15 | MIT/Apache-2.0 | <https://github.com/mcgoo/vcpkg-rs> |
 | version_check | 0.9.5 | MIT/Apache-2.0 | <https://github.com/SergioBenitez/version_check> |
 | walkdir | 2.5.0 | Unlicense/MIT | <https://github.com/BurntSushi/walkdir> |
