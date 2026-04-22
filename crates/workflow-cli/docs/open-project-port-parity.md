@@ -26,7 +26,7 @@
 | Subtitle format | Emit `commit_text • last_used_text`; missing values render as `No recent commits` and `N/A`. | `crates/workflow-common/src/feedback.rs`, `crates/workflow-common/src/git.rs` |
 | Alfred entrypoints | Support `c`, `code`, and `github` script-filter entrypoints in workflow object graph. | `workflows/open-project/src/info.plist.template` |
 | Shift routing | Shift modifier route from project list opens GitHub action path. | `workflows/open-project/src/info.plist.template`, `crates/alfred-core/src/lib.rs` |
-| GitHub remote behavior | Normalize `git@github.com:owner/repo(.git)` and `https://github.com/owner/repo(.git)` to canonical URL; unsupported/missing origin returns explicit error. | `crates/workflow-common/src/git.rs`, `crates/workflow-cli/src/main.rs`, `workflows/open-project/scripts/action_open_github.sh` |
+| Remote URL behavior | Normalize `git@host:path(.git)`, `ssh://git@host[:port]/path(.git)`, and `https://host/path(.git)` to `https://<host>/<path>`. `github.com` is the single strict case (path must be exactly `owner/repo`); any other host accepts two or more path segments, so GitLab subgroups, Gitea organizations, and self-hosted instances resolve without configuration. Missing origin or unparseable URL → explicit error. | `crates/workflow-common/src/git.rs`, `crates/workflow-cli/src/main.rs`, `workflows/open-project/scripts/action_open_github.sh` |
 | CLI command contract | `script-filter` prints Alfred JSON only; `record-usage` and `github-url` print plain output only. | `crates/workflow-cli/src/main.rs` |
 
 ## Optional Improvements (Not Required For Parity)

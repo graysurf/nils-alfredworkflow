@@ -4,8 +4,8 @@ use clap::{Parser, Subcommand, ValueEnum};
 use workflow_common::{
     EnvelopePayloadKind, OutputMode, RuntimeConfig, ScriptFilterMode, WorkflowError,
     build_alfred_error_feedback, build_error_details_json, build_error_envelope,
-    build_script_filter_feedback_with_mode, build_success_envelope, github_url_for_project,
-    record_usage, select_output_mode,
+    build_script_filter_feedback_with_mode, build_success_envelope, record_usage,
+    select_output_mode, web_url_for_project,
 };
 
 #[derive(Debug, Parser)]
@@ -38,7 +38,7 @@ enum Commands {
         #[arg(long)]
         path: PathBuf,
     },
-    /// Resolve project origin URL to a canonical GitHub URL.
+    /// Resolve project origin URL to its canonical web URL (`https://<host>/<path>`).
     GithubUrl {
         /// Selected project path.
         #[arg(long)]
@@ -205,7 +205,7 @@ fn run_with_config(cli: Cli, config: &RuntimeConfig) -> Result<String, AppError>
         }
         Commands::GithubUrl { path } => {
             validate_project_path(&path)?;
-            github_url_for_project(&path).map_err(map_workflow_error)
+            web_url_for_project(&path).map_err(map_workflow_error)
         }
     }
 }
@@ -583,6 +583,43 @@ mod tests {
 
         assert_eq!(err.kind, ErrorKind::User);
         assert_eq!(err.code, ERROR_CODE_USER_OUTPUT_MODE_CONFLICT);
+    }
+
+    #[test]
+    fn github_url_command_resolves_gitlab_subgroup_origin() {
+        let temp = tempdir().expect("create temp dir");
+        let root = temp.path().join("projects");
+        let repo = root.join("alpha");
+        init_repo(&repo);
+
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args([
+                "remote",
+                "add",
+                "origin",
+                "git@gitlab.com:gitlab-org/gitlab-foss/scripts.git",
+            ])
+            .status()
+            .expect("set git remote");
+        assert!(status.success(), "git remote add should succeed");
+
+        let config = RuntimeConfig {
+            project_roots: vec![root],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 10,
+        };
+
+        let url = run_with_config(
+            Cli {
+                command: Commands::GithubUrl { path: repo.clone() },
+            },
+            &config,
+        )
+        .expect("github-url should resolve gitlab subgroup origin without any configuration");
+        assert_eq!(url, "https://gitlab.com/gitlab-org/gitlab-foss/scripts");
     }
 
     #[test]
