@@ -12,7 +12,9 @@ Shared CLI for open-project workflow actions and script-filter rendering.
   - Description: Record usage timestamp for a selected project path.
 - `workflow-cli github-url`
   - Options: `--path <PATH>`
-  - Description: Resolve project origin URL to canonical GitHub URL.
+  - Description: Resolve project origin URL to its canonical web URL (`https://<host>/<path>`). GitHub origins are
+    validated as `owner/repo`; any other host accepts `≥2`-segment paths to support GitLab subgroups, Gitea, Bitbucket,
+    and similar layouts.
 
 ## Environment Variables
 

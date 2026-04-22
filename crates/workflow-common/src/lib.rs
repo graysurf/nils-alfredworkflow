@@ -3,7 +3,7 @@
 //! - `config`: environment/default parsing and path expansion.
 //! - `discovery`: git repository scan + query filtering.
 //! - `usage_log`: usage file read/write + timestamp sort keys.
-//! - `git`: git metadata helpers and GitHub URL normalization.
+//! - `git`: git metadata helpers and remote URL normalization for GitHub + generic `host/path` hosts.
 //! - `feedback`: Alfred item assembly.
 //! - `output_contract`: shared output modes + JSON envelope helpers.
 //! - `list_parser`: ordered comma/newline list parsing utilities.
@@ -27,7 +27,7 @@ pub use feedback::{
     ScriptFilterMode, build_script_filter_feedback, build_script_filter_feedback_with_mode,
     no_projects_feedback, subtitle_format,
 };
-pub use git::{github_url_for_project, normalize_github_remote};
+pub use git::{normalize_remote, web_url_for_project};
 pub use list_parser::{parse_ordered_list_with, split_ordered_list};
 pub use output_contract::{
     ENVELOPE_SCHEMA_VERSION, EnvelopePayloadKind, OutputMode, OutputModeSelectionError,

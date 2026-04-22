@@ -8,7 +8,7 @@ Shared open-project domain and output-contract utilities reused by workflow crat
 - Ordered list parsing: `split_ordered_list` and `parse_ordered_list_with` for deterministic comma/newline config lists.
 - Project discovery: `Project`, `discover_projects`, `filter_projects`.
 - Alfred feedback assembly: `build_feedback`, `build_script_filter_feedback`, and `Feedback` re-export.
-- Git + errors: `github_url_for_project`, `normalize_github_remote`, `WorkflowError`.
+- Git + errors: `web_url_for_project`, `normalize_remote` (GitHub strict `owner/repo`; other hosts accept `host/path` with ≥2 segments), `WorkflowError`.
 - Output contract: `OutputMode`, `select_output_mode`, envelope builders, and `redact_sensitive`.
 - Usage log: `record_usage` and `parse_usage_timestamp`.
 

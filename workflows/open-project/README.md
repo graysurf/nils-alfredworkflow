@@ -1,7 +1,7 @@
 # Open Project - Alfred Workflow
 
-Fuzzy-find local Git projects from one or more base directories, open them in your editor, and jump to GitHub remotes
-from Alfred.
+Fuzzy-find local Git projects from one or more base directories, open them in your editor, and jump to their remote
+web page (GitHub, GitLab, Gitea, Bitbucket, …) from Alfred.
 
 ## Screenshot
 
@@ -13,7 +13,8 @@ from Alfred.
 - Search projects with `c` or `code` and rank results by recent usage.
 - Show per-project metadata (latest commit summary and last opened timestamp).
 - Open selected project in your editor with `Enter`.
-- Open selected project on GitHub with `github <query>` or `Shift+Enter`.
+- Open selected project's remote URL with `github <query>` or `Shift+Enter`. Works with GitHub, GitLab (including
+  self-hosted and subgroups), Gitea, Bitbucket, Codeberg, Gogs — any host whose web URL mirrors the clone URL path.
 
 ## Configuration
 
@@ -28,11 +29,11 @@ Set these via Alfred's "Configure Workflow..." UI:
 
 ## Keywords
 
-| Keyword          | Behavior                                     |
-| ---------------- | -------------------------------------------- |
-| `c <query>`      | Search and open matching project in editor.  |
-| `code <query>`   | Same behavior as `c`.                        |
-| `github <query>` | Search and open matching project GitHub URL. |
+| Keyword          | Behavior                                                                      |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `c <query>`      | Search and open matching project in editor.                                   |
+| `code <query>`   | Same behavior as `c`.                                                         |
+| `github <query>` | Search and open matching project's remote URL (GitHub / GitLab / Gitea / …). |
 
 ## Advanced Runtime Parameters
 
