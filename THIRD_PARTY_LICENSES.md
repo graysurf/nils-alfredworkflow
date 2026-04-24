@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `20b02e07e96d170e86a18ca6005d1c85e54f43bbd9afaf9ee77667b78d9ba7f3`
+- Data source fingerprint (SHA256): `07d16b7096f651ba6aedfe0b3d22e8d740847c483f90fc8514442d0bf2897c20`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `42b7566f71ef925a93ac069e3897648e170f06ed8d7658531c266edf4f4b0063` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `1020a9abf7e84a895d55d43406360cb86cba9893294910b1996439e1e3e75f95` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `ddea137eacf1f89a35038c3fe20f40f67ea80d54b0d85a5d4591d94ddffdf5c3` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -206,7 +206,7 @@ Do not edit manually.
 | quote | 1.0.44 | MIT OR Apache-2.0 | <https://github.com/dtolnay/quote> |
 | radium | 0.7.0 | MIT | <https://github.com/bitvecto-rs/radium> |
 | rand | 0.10.1 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
-| rand | 0.8.5 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
+| rand | 0.8.6 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand | 0.9.3 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand_chacha | 0.3.1 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
 | rand_chacha | 0.9.0 | MIT OR Apache-2.0 | <https://github.com/rust-random/rand> |
