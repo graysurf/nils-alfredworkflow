@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `58e108894e409a154c620b951b716f8f6df810df86b4136433b5db17a18a5c4f`
+- Data source fingerprint (SHA256): `20b02e07e96d170e86a18ca6005d1c85e54f43bbd9afaf9ee77667b78d9ba7f3`
 - Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `c6379db6f599db68e91adb22877f8da49a551aa8fdf02138077cdb03a301c2b4` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `42b7566f71ef925a93ac069e3897648e170f06ed8d7658531c266edf4f4b0063` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `ddea137eacf1f89a35038c3fe20f40f67ea80d54b0d85a5d4591d94ddffdf5c3` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
@@ -230,7 +230,7 @@ Do not edit manually.
 | rustls | 0.23.36 | Apache-2.0 OR ISC OR MIT | <https://github.com/rustls/rustls> |
 | rustls-native-certs | 0.8.3 | Apache-2.0 OR ISC OR MIT | <https://github.com/rustls/rustls-native-certs> |
 | rustls-pki-types | 1.14.0 | MIT OR Apache-2.0 | <https://github.com/rustls/pki-types> |
-| rustls-webpki | 0.103.12 | ISC | <https://github.com/rustls/webpki> |
+| rustls-webpki | 0.103.13 | ISC | <https://github.com/rustls/webpki> |
 | ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 | <https://github.com/dtolnay/ryu> |
 | same-file | 1.0.6 | Unlicense/MIT | <https://github.com/BurntSushi/same-file> |
 | schemars | 0.9.0 | MIT | <https://github.com/GREsau/schemars> |
