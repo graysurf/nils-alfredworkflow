@@ -190,25 +190,6 @@ ensure_cargo_on_path() {
   fi
 }
 
-setup_sccache() {
-  local sccache_bin=""
-  if ! sccache_bin="$(command -v sccache 2>/dev/null)"; then
-    return
-  fi
-
-  if [[ -z "${RUSTC_WRAPPER:-}" ]]; then
-    export RUSTC_WRAPPER="$sccache_bin"
-  fi
-
-  if [[ "${RUSTC_WRAPPER:-}" == "$sccache_bin" || "${RUSTC_WRAPPER:-}" == "sccache" ]]; then
-    if [[ -z "${SCCACHE_DIR:-}" ]]; then
-      export SCCACHE_DIR="$HOME/.cache/sccache"
-    fi
-    run mkdir -p "$SCCACHE_DIR"
-    echo "ok: using sccache (SCCACHE_DIR=$SCCACHE_DIR)"
-  fi
-}
-
 install_cargo_tool() {
   local package="$1"
   local subcommand="$2"
@@ -228,7 +209,6 @@ install_cargo_tool() {
 main() {
   ensure_rustup
   ensure_cargo_on_path
-  setup_sccache
   ensure_native_build_prereqs
 
   run rustup toolchain install "$toolchain"
