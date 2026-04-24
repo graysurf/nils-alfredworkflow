@@ -1,9 +1,7 @@
-mod common;
-
 use serde_json::Value;
 use tempfile::tempdir;
 
-use common::TestHarness;
+use crate::common::TestHarness;
 
 #[test]
 fn service_json_success_envelope_has_required_keys() {

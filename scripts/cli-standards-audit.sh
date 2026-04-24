@@ -99,7 +99,10 @@ for crate_dir in "${crate_dirs[@]}"; do
   cargo_toml="$crate_dir/Cargo.toml"
   readme="$crate_dir/README.md"
   main_rs="$crate_dir/src/main.rs"
-  contract_test="$crate_dir/tests/cli_contract.rs"
+  contract_test="$crate_dir/tests/integration/cli_contract.rs"
+  if [[ ! -f "$contract_test" && -f "$crate_dir/tests/integration/cli_contract.rs" ]]; then
+    contract_test="$crate_dir/tests/integration/cli_contract.rs"
+  fi
 
   crate_failures=0
   crate_warnings=0
@@ -182,14 +185,14 @@ for crate_dir in "${crate_dirs[@]}"; do
     done
 
     if [[ ${#missing_keys[@]} -eq 0 ]]; then
-      echo "  PASS: envelope contract key assertions present in tests/cli_contract.rs"
+      echo "  PASS: envelope contract key assertions present in tests/integration/cli_contract.rs"
     else
-      echo "  WARN: tests/cli_contract.rs missing envelope assertions for: ${missing_keys[*]}"
+      echo "  WARN: tests/integration/cli_contract.rs missing envelope assertions for: ${missing_keys[*]}"
       crate_warnings=$((crate_warnings + 1))
       warnings=$((warnings + 1))
     fi
   else
-    echo "  WARN: missing tests/cli_contract.rs (add envelope success/failure contract tests)"
+    echo "  WARN: missing tests/integration/cli_contract.rs (add envelope success/failure contract tests)"
     crate_warnings=$((crate_warnings + 1))
     warnings=$((warnings + 1))
   fi

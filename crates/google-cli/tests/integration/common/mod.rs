@@ -11,7 +11,7 @@ pub struct TestHarness {
     log_path: PathBuf,
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, clippy::new_without_default)]
 impl TestHarness {
     pub fn new() -> Self {
         let temp = tempdir().expect("create tempdir");
