@@ -12,8 +12,8 @@ use market_cli::model::{
 };
 use serde_json::Value;
 
-const BTC_ICON_FIXTURE: &[u8] = include_bytes!("fixtures/icons/btc.png");
-const GENERIC_ICON_FIXTURE: &[u8] = include_bytes!("fixtures/icons/generic.png");
+const BTC_ICON_FIXTURE: &[u8] = include_bytes!("../fixtures/icons/btc.png");
+const GENERIC_ICON_FIXTURE: &[u8] = include_bytes!("../fixtures/icons/generic.png");
 
 fn run_cli(args: &[&str], envs: &[(&str, &str)]) -> Output {
     let mut cmd = Command::new(resolve_cli_path());

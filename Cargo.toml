@@ -43,3 +43,12 @@ tempfile = "3"
 thiserror = "2"
 toml = "0.8"
 walkdir = "2"
+
+[profile.dev]
+# Faster dev/test link times: drop full DWARF (keep line tables so backtraces
+# remain accurate) and leave debug info in .o files instead of packing a .dSYM
+# on macOS. The link-heavy phase dominates dev-loop rebuild cost in this
+# workspace; these two flags cut rebuild/link time with no effect on test
+# semantics.
+debug = "line-tables-only"
+split-debuginfo = "unpacked"

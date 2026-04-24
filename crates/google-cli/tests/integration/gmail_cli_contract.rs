@@ -1,5 +1,4 @@
-#[path = "common/native_gmail.rs"]
-mod native_gmail;
+use crate::native_gmail;
 
 use serde_json::{Value, json};
 use tempfile::tempdir;

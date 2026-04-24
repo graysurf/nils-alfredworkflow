@@ -1,7 +1,4 @@
-mod common;
-
-#[path = "common/native_drive.rs"]
-mod native_drive;
+use crate::native_drive;
 
 use serde_json::{Value, json};
 use tempfile::tempdir;
