@@ -119,7 +119,13 @@ build on the corrected inventory. T1.4 reads `workflows/*/workflow.toml` (no wri
   - No section name conflict with `ALFRED_WORKFLOW_DEVELOPMENT.md` (root file is routing, not standards).
 - **Validation**:
   - `rg -n '^- ' TROUBLESHOOTING.md` shows the curated list.
-  - `for w in $(rg -oP 'workflows/\K[a-z0-9-]+(?=/TROUBLESHOOTING\.md)' TROUBLESHOOTING.md); do test -f "workflows/$w/TROUBLESHOOTING.md" || echo "MISSING: $w"; done` returns no `MISSING:` lines.
+  - Workflow runbook back-reference check returns no `MISSING:` lines:
+
+    ```bash
+    for w in $(rg -oP 'workflows/\K[a-z0-9-]+(?=/TROUBLESHOOTING\.md)' TROUBLESHOOTING.md); do
+      test -f "workflows/$w/TROUBLESHOOTING.md" || echo "MISSING: $w"
+    done
+    ```
 
 ### Task 1.3: `Verify DEVELOPMENT / BINARY_DEPENDENCIES / AGENTS tooling references`
 
@@ -144,10 +150,22 @@ build on the corrected inventory. T1.4 reads `workflows/*/workflow.toml` (no wri
   - No mention of removed tooling (e.g., sccache) remains.
   - `AGENT_DOCS.toml` `[[document]]` paths exist on disk.
 - **Validation**:
-  - `for p in $(rg -oP 'scripts/[a-zA-Z0-9_./-]+\\.sh' DEVELOPMENT.md BINARY_DEPENDENCIES.md AGENTS.md AGENT_DOCS.toml | sort -u); do test -e "$p" || echo "MISSING: $p"; done`
-    returns nothing.
-  - `expected=$(rg -c '^\\[\\[document\\]\\]' AGENT_DOCS.toml); agent-docs resolve --context project-dev --strict --format checklist | rg -q "present=$expected missing=0" && echo OK`
-    prints `OK` (count derived dynamically so adding a future required doc does not break this check).
+  - Confirm every `scripts/...sh` reference resolves on disk:
+
+    ```bash
+    for p in $(rg -oP 'scripts/[a-zA-Z0-9_./-]+\.sh' DEVELOPMENT.md BINARY_DEPENDENCIES.md AGENTS.md AGENT_DOCS.toml | sort -u); do
+      test -e "$p" || echo "MISSING: $p"
+    done
+    ```
+
+  - Confirm `agent-docs` reports `present=$expected missing=0` (count derived dynamically so adding a future
+    required doc does not break this check):
+
+    ```bash
+    expected=$(rg -c '^\[\[document\]\]' AGENT_DOCS.toml)
+    agent-docs resolve --context project-dev --strict --format checklist \
+      | rg -q "present=$expected missing=0" && echo OK
+    ```
 
 ### Task 1.4: `Polish root README.md workflow table and links`
 
@@ -304,8 +322,14 @@ ensures error-code references stay coherent across the trio.
 - **Validation**:
   - `rg -n '^> Status: ' docs/specs/cli-shared-runtime-contract.md docs/specs/cli-json-envelope-v1.md docs/specs/cli-error-code-registry.md`
     returns 3 matches.
-  - `for code in $(rg -oP '\"error_code\"\\s*:\\s*\"\\K[a-zA-Z0-9_]+' docs/specs/cli-error-code-registry.md | sort -u); do rg -q "$code" crates/ || echo "ORPHAN: $code"; done`
-    returns no `ORPHAN:` lines (or each orphan has a documented historical reason).
+  - Walk every `error_code` example and confirm it appears in `crates/` (no `ORPHAN:` lines, or each orphan has
+    a documented historical reason):
+
+    ```bash
+    for code in $(rg -oP '"error_code"\s*:\s*"\K[a-zA-Z0-9_]+' docs/specs/cli-error-code-registry.md | sort -u); do
+      rg -q "$code" crates/ || echo "ORPHAN: $code"
+    done
+    ```
 
 ### Task 3.2: `Audit shared-foundation / script-refactor / CI specs`
 
@@ -327,8 +351,16 @@ ensures error-code references stay coherent across the trio.
   - Every `.github/workflows/*.yml` reference resolves.
   - No reference to a removed helper or removed CI job remains.
 - **Validation**:
-  - `for p in $(rg -oP 'scripts/lib/\\K[a-zA-Z0-9_./-]+\\.sh' docs/specs/workflow-shared-foundations-policy.md docs/specs/workflow-script-refactor-contract.md | sort -u); do test -f "scripts/lib/$p" || echo "MISSING: $p"; done`
-    returns no `MISSING:` lines.
+  - Walk every `scripts/lib/...sh` reference and confirm the helper exists (returns no `MISSING:` lines):
+
+    ```bash
+    for p in $(rg -oP 'scripts/lib/\K[a-zA-Z0-9_./-]+\.sh' \
+        docs/specs/workflow-shared-foundations-policy.md \
+        docs/specs/workflow-script-refactor-contract.md | sort -u); do
+      test -f "scripts/lib/$p" || echo "MISSING: $p"
+    done
+    ```
+
   - `rg -n '\\.github/workflows/' docs/specs/ci-refactor-contract.md` results all resolve under the actual
     workflows directory.
 
@@ -354,8 +386,16 @@ ensures error-code references stay coherent across the trio.
   - `google-cli-native-contract.md` `auth|gmail|drive` subcommands match the clap tree in
     `crates/google-cli/src/`.
 - **Validation**:
-  - `rg -n '^> Status: ' docs/specs/script-filter-input-policy.md docs/specs/crate-docs-placement-policy.md docs/specs/google-cli-native-contract.md docs/specs/steam-search-workflow-contract.md`
-    returns 4 matches.
+  - Confirm all four policy specs have status banners (4 matches):
+
+    ```bash
+    rg -n '^> Status: ' \
+      docs/specs/script-filter-input-policy.md \
+      docs/specs/crate-docs-placement-policy.md \
+      docs/specs/google-cli-native-contract.md \
+      docs/specs/steam-search-workflow-contract.md
+    ```
+
   - `cargo run -p nils-google-cli -- --help` subcommand list matches the spec's command tree.
 
 ### Task 3.4: `Resolve third-party contract duplication`
@@ -981,8 +1021,17 @@ sweep so the sweep can assert compliance.
   - Per-README diff size stays small (no narrative rewrites); reviewer can scan each workflow's diff in
     under one minute.
 - **Validation**:
-  - `for w in workflows/*/; do for s in $(rg -oP 'scripts/[a-zA-Z0-9_./-]+\\.sh' "$w/README.md" 2>/dev/null | sort -u); do test -e "$s" || echo "MISSING: $w -> $s"; done; done`
-    returns no `MISSING:` lines.
+  - Walk every workflow README's `scripts/...sh` references and confirm each script exists (returns no
+    `MISSING:` lines):
+
+    ```bash
+    for w in workflows/*/; do
+      for s in $(rg -oP 'scripts/[a-zA-Z0-9_./-]+\.sh' "$w/README.md" 2>/dev/null | sort -u); do
+        test -e "$s" || echo "MISSING: $w -> $s"
+      done
+    done
+    ```
+
   - `bash scripts/workflow-shared-foundation-audit.sh --check` passes.
   - `bash scripts/workflow-sync-script-filter-policy.sh --check` passes.
 
