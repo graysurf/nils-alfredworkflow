@@ -6,7 +6,9 @@ use youtube_cli::{
     youtube_api::{self, VideoSearchResult, YouTubeApiError},
 };
 
-use workflow_common::{EnvelopePayloadKind, build_error_envelope, build_success_envelope};
+use workflow_common::{
+    EnvelopePayloadKind, OutputMode, build_error_envelope, build_success_envelope,
+};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "YouTube workflow CLI")]
@@ -23,16 +25,25 @@ enum Commands {
         #[arg(long)]
         query: String,
         /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
-        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
-        mode: OutputMode,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 #[value(rename_all = "kebab-case")]
-enum OutputMode {
-    ServiceJson,
-    Alfred,
+enum OutputModeArg {
+    Json,
+    AlfredJson,
+}
+
+impl From<OutputModeArg> for OutputMode {
+    fn from(value: OutputModeArg) -> Self {
+        match value {
+            OutputModeArg::Json => OutputMode::Json,
+            OutputModeArg::AlfredJson => OutputMode::AlfredJson,
+        }
+    }
 }
 
 impl Cli {
@@ -44,7 +55,7 @@ impl Cli {
 
     fn output_mode(&self) -> OutputMode {
         match &self.command {
-            Commands::Search { mode, .. } => *mode,
+            Commands::Search { output, .. } => (*output).into(),
         }
     }
 }
@@ -120,11 +131,14 @@ fn main() {
         }
         Err(error) => {
             match mode {
-                OutputMode::ServiceJson => {
+                OutputMode::Json => {
                     println!("{}", serialize_service_error(command, &error));
                 }
-                OutputMode::Alfred => {
+                OutputMode::AlfredJson => {
                     eprintln!("error: {}", error.message);
+                }
+                OutputMode::Human => {
+                    unreachable!("only json and alfred-json output modes are supported")
                 }
             }
             std::process::exit(error.exit_code());
@@ -146,7 +160,7 @@ where
     SearchVideos: Fn(&RuntimeConfig, &str) -> Result<Vec<VideoSearchResult>, YouTubeApiError>,
 {
     match cli.command {
-        Commands::Search { query, mode } => {
+        Commands::Search { query, output } => {
             let query = query.trim();
             if query.is_empty() {
                 return Err(AppError::user("query must not be empty"));
@@ -156,7 +170,7 @@ where
             let videos = search_videos(&config, query).map_err(AppError::from_youtube_api)?;
 
             let payload = feedback::videos_to_feedback(&videos);
-            render_feedback(mode, "search", payload)
+            render_feedback(output.into(), "search", payload)
         }
     }
 }
@@ -167,10 +181,10 @@ fn render_feedback(
     payload: alfred_core::Feedback,
 ) -> Result<String, AppError> {
     match mode {
-        OutputMode::Alfred => payload
+        OutputMode::AlfredJson => payload
             .to_json()
             .map_err(|error| AppError::runtime(format!("failed to serialize feedback: {error}"))),
-        OutputMode::ServiceJson => {
+        OutputMode::Json => {
             let payload_json = payload.to_json().map_err(|error| {
                 AppError::runtime(format!("failed to serialize feedback: {error}"))
             })?;
@@ -180,6 +194,7 @@ fn render_feedback(
                 &payload_json,
             ))
         }
+        OutputMode::Human => unreachable!("only json and alfred-json output modes are supported"),
     }
 }
 
@@ -245,8 +260,8 @@ mod tests {
             "search",
             "--query",
             "rust",
-            "--mode",
-            "service-json",
+            "--output",
+            "json",
         ]);
 
         let output = run_with(
@@ -265,7 +280,7 @@ mod tests {
         let json: Value = serde_json::from_str(&output).expect("output must be JSON");
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(json.get("command").and_then(Value::as_str), Some("search"));
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
@@ -342,7 +357,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(json.get("command").and_then(Value::as_str), Some("search"));
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));

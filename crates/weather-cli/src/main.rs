@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::json;
 use workflow_common::{
     EnvelopePayloadKind, OutputMode, build_alfred_error_feedback, build_error_details_json,
-    build_error_envelope, build_success_envelope, redact_sensitive, select_output_mode,
+    build_error_envelope, build_success_envelope, redact_sensitive,
 };
 
 use weather_cli::{
@@ -48,10 +48,8 @@ enum Commands {
         lat: Option<f64>,
         #[arg(long, allow_hyphen_values = true)]
         lon: Option<f64>,
-        #[arg(long, value_enum)]
-        output: Option<OutputModeArg>,
-        #[arg(long)]
-        json: bool,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::Human)]
+        output: OutputModeArg,
         #[arg(long, value_enum)]
         lang: Option<LanguageArg>,
     },
@@ -63,10 +61,8 @@ enum Commands {
         lat: Option<f64>,
         #[arg(long, allow_hyphen_values = true)]
         lon: Option<f64>,
-        #[arg(long, value_enum)]
-        output: Option<OutputModeArg>,
-        #[arg(long)]
-        json: bool,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::Human)]
+        output: OutputModeArg,
         #[arg(long, value_enum)]
         lang: Option<LanguageArg>,
     },
@@ -78,10 +74,8 @@ enum Commands {
         lat: Option<f64>,
         #[arg(long, allow_hyphen_values = true)]
         lon: Option<f64>,
-        #[arg(long, value_enum)]
-        output: Option<OutputModeArg>,
-        #[arg(long)]
-        json: bool,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::Human)]
+        output: OutputModeArg,
         #[arg(long, value_enum)]
         lang: Option<LanguageArg>,
         #[arg(long, default_value_t = DEFAULT_HOURLY_COUNT)]
@@ -90,7 +84,6 @@ enum Commands {
 }
 
 const ERROR_CODE_USER_INVALID_INPUT: &str = "user.invalid_input";
-const ERROR_CODE_USER_OUTPUT_MODE_CONFLICT: &str = "user.output_mode_conflict";
 const ERROR_CODE_RUNTIME_PROVIDER_INIT: &str = "runtime.provider_init_failed";
 const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
 
@@ -175,17 +168,9 @@ impl Cli {
 
     fn output_mode_hint(&self) -> OutputMode {
         match &self.command {
-            Commands::Today { output, json, .. }
-            | Commands::Week { output, json, .. }
-            | Commands::Hourly { output, json, .. } => {
-                if *json {
-                    OutputMode::Json
-                } else if let Some(explicit) = output {
-                    (*explicit).into()
-                } else {
-                    OutputMode::Human
-                }
-            }
+            Commands::Today { output, .. }
+            | Commands::Week { output, .. }
+            | Commands::Hourly { output, .. } => (*output).into(),
         }
     }
 }
@@ -226,7 +211,6 @@ where
             lat,
             lon,
             output,
-            json,
             lang,
         } => run_command(
             config,
@@ -239,7 +223,6 @@ where
                 lat,
                 lon,
                 output,
-                json,
                 lang,
             },
         ),
@@ -248,7 +231,6 @@ where
             lat,
             lon,
             output,
-            json,
             lang,
         } => run_command(
             config,
@@ -261,7 +243,6 @@ where
                 lat,
                 lon,
                 output,
-                json,
                 lang,
             },
         ),
@@ -270,7 +251,6 @@ where
             lat,
             lon,
             output,
-            json,
             lang,
             hours,
         } => run_hourly_command(
@@ -283,7 +263,6 @@ where
                 lat,
                 lon,
                 output,
-                json,
                 lang,
                 hours,
             },
@@ -298,8 +277,7 @@ struct CommandArgs<'a> {
     cities: &'a [String],
     lat: Option<f64>,
     lon: Option<f64>,
-    output: Option<OutputModeArg>,
-    json: bool,
+    output: OutputModeArg,
     lang: Option<LanguageArg>,
 }
 
@@ -309,8 +287,7 @@ struct HourlyCommandArgs<'a> {
     city: Option<&'a str>,
     lat: Option<f64>,
     lon: Option<f64>,
-    output: Option<OutputModeArg>,
-    json: bool,
+    output: OutputModeArg,
     lang: Option<LanguageArg>,
     hours: usize,
 }
@@ -325,8 +302,7 @@ where
     P: ProviderApi,
     N: Fn() -> DateTime<Utc> + Copy,
 {
-    let output_mode = select_output_mode(args.output.map(Into::into), args.json, OutputMode::Human)
-        .map_err(|error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()))?;
+    let output_mode: OutputMode = args.output.into();
     let output_language = args.lang.map(Into::into).unwrap_or(OutputLanguage::En);
 
     if args.cities.len() > 1 {
@@ -385,8 +361,7 @@ where
     P: ProviderApi,
     N: Fn() -> DateTime<Utc> + Copy,
 {
-    let output_mode = select_output_mode(args.output.map(Into::into), args.json, OutputMode::Human)
-        .map_err(|error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()))?;
+    let output_mode: OutputMode = args.output.into();
     let output_language = args.lang.map(Into::into).unwrap_or(OutputLanguage::En);
     let location = resolve_location_query(args.city, args.lat, args.lon)?;
     let output =
@@ -1252,7 +1227,14 @@ mod tests {
 
     #[test]
     fn main_outputs_today_json_contract() {
-        let cli = Cli::parse_from(["weather-cli", "today", "--city", "Taipei", "--json"]);
+        let cli = Cli::parse_from([
+            "weather-cli",
+            "today",
+            "--city",
+            "Taipei",
+            "--output",
+            "json",
+        ]);
 
         let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
             .expect("today should pass");
@@ -1260,7 +1242,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(Value::as_str),
@@ -1307,7 +1289,14 @@ mod tests {
                 .collect(),
         });
 
-        let cli = Cli::parse_from(["weather-cli", "week", "--city", "Taipei", "--json"]);
+        let cli = Cli::parse_from([
+            "weather-cli",
+            "week",
+            "--city",
+            "Taipei",
+            "--output",
+            "json",
+        ]);
 
         let output =
             run_with(cli, &config_in_tempdir(), &providers, fixed_now).expect("week should pass");
@@ -1315,7 +1304,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(Value::as_str),
@@ -1338,7 +1327,14 @@ mod tests {
 
     #[test]
     fn main_outputs_hourly_json_contract() {
-        let cli = Cli::parse_from(["weather-cli", "hourly", "--city", "Tokyo", "--json"]);
+        let cli = Cli::parse_from([
+            "weather-cli",
+            "hourly",
+            "--city",
+            "Tokyo",
+            "--output",
+            "json",
+        ]);
 
         let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
             .expect("hourly should pass");
@@ -1346,7 +1342,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(Value::as_str),
@@ -1370,7 +1366,8 @@ mod tests {
             "Taipei",
             "--city",
             "Tokyo",
-            "--json",
+            "--output",
+            "json",
         ]);
         let providers = MultiCityProviders::new();
 
@@ -1407,7 +1404,8 @@ mod tests {
             "34.0522",
             "--lon",
             "-118.2437",
-            "--json",
+            "--output",
+            "json",
         ])
         .expect("negative longitude should parse");
 
@@ -1444,7 +1442,14 @@ mod tests {
 
     #[test]
     fn main_maps_runtime_provider_failure() {
-        let cli = Cli::parse_from(["weather-cli", "today", "--city", "Taipei", "--json"]);
+        let cli = Cli::parse_from([
+            "weather-cli",
+            "today",
+            "--city",
+            "Taipei",
+            "--output",
+            "json",
+        ]);
 
         let providers = FakeProviders {
             open_meteo_result: Err(ProviderError::Transport("timeout".to_string())),
@@ -1722,21 +1727,17 @@ mod tests {
     }
 
     #[test]
-    fn main_rejects_conflicting_json_flags() {
-        let cli = Cli::parse_from([
+    fn main_rejects_unknown_output_value() {
+        let result = Cli::try_parse_from([
             "weather-cli",
             "today",
             "--city",
             "Taipei",
-            "--json",
             "--output",
-            "human",
+            "yaml",
         ]);
-
-        let err = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
-            .expect_err("must fail");
-        assert_eq!(err.kind, weather_cli::error::ErrorKind::User);
-        assert_eq!(err.code, ERROR_CODE_USER_OUTPUT_MODE_CONFLICT);
+        let err = result.expect_err("must fail when output value is invalid");
+        assert_eq!(err.kind(), clap::error::ErrorKind::InvalidValue);
     }
 
     #[test]

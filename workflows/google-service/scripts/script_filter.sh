@@ -268,7 +268,7 @@ run_google_json() {
   shift
 
   apply_google_cli_env_overrides
-  "$google_cli" --json "$@"
+  "$google_cli" --output json "$@"
 }
 
 array_contains() {

@@ -1,6 +1,4 @@
-use std::fmt;
-
-pub const ENVELOPE_SCHEMA_VERSION: &str = "v1";
+pub const ENVELOPE_SCHEMA_VERSION: &str = "cli-envelope@v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputMode {
@@ -20,9 +18,9 @@ impl OutputMode {
 
     pub fn parse(raw: &str) -> Option<Self> {
         match raw.trim().to_ascii_lowercase().as_str() {
-            "human" | "text" => Some(Self::Human),
+            "human" => Some(Self::Human),
             "json" => Some(Self::Json),
-            "alfred-json" | "alfred_json" | "alfred" => Some(Self::AlfredJson),
+            "alfred-json" => Some(Self::AlfredJson),
             _ => None,
         }
     }
@@ -32,36 +30,6 @@ impl OutputMode {
 pub enum EnvelopePayloadKind {
     Result,
     Results,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct OutputModeSelectionError {
-    pub explicit: OutputMode,
-}
-
-impl fmt::Display for OutputModeSelectionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "conflicting output mode flags: --json requires --output json (got {})",
-            self.explicit.as_str()
-        )
-    }
-}
-
-pub fn select_output_mode(
-    explicit: Option<OutputMode>,
-    json_flag: bool,
-    default_mode: OutputMode,
-) -> Result<OutputMode, OutputModeSelectionError> {
-    match (explicit, json_flag) {
-        (Some(mode), true) if mode != OutputMode::Json => {
-            Err(OutputModeSelectionError { explicit: mode })
-        }
-        (Some(mode), _) => Ok(mode),
-        (None, true) => Ok(OutputMode::Json),
-        (None, false) => Ok(default_mode),
-    }
 }
 
 pub fn build_feedback_result_envelope(
@@ -267,30 +235,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn output_mode_parse_accepts_aliases() {
+    fn output_mode_parse_accepts_canonical_values_only() {
         assert_eq!(OutputMode::parse("human"), Some(OutputMode::Human));
-        assert_eq!(OutputMode::parse("text"), Some(OutputMode::Human));
         assert_eq!(OutputMode::parse("json"), Some(OutputMode::Json));
         assert_eq!(
-            OutputMode::parse("alfred_json"),
+            OutputMode::parse("alfred-json"),
             Some(OutputMode::AlfredJson)
         );
+        assert_eq!(OutputMode::parse("text"), None);
+        assert_eq!(OutputMode::parse("alfred"), None);
+        assert_eq!(OutputMode::parse("alfred_json"), None);
         assert_eq!(OutputMode::parse("invalid"), None);
-    }
-
-    #[test]
-    fn output_mode_select_rejects_conflicting_json_flag() {
-        let err = select_output_mode(Some(OutputMode::Human), true, OutputMode::Human)
-            .expect_err("must fail");
-        assert_eq!(err.explicit, OutputMode::Human);
-        assert!(err.to_string().contains("--json requires --output json"));
     }
 
     #[test]
     fn envelope_builders_emit_required_keys() {
         let success =
             build_success_envelope("weather.today", EnvelopePayloadKind::Result, "{\"foo\":1}");
-        assert!(success.contains("\"schema_version\":\"v1\""));
+        assert!(success.contains("\"schema_version\":\"cli-envelope@v1\""));
         assert!(success.contains("\"command\":\"weather.today\""));
         assert!(success.contains("\"ok\":true"));
         assert!(success.contains("\"result\":{\"foo\":1}"));

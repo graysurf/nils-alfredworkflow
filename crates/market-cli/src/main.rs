@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use rust_decimal::Decimal;
 use workflow_common::{
     EnvelopePayloadKind, OutputMode, build_alfred_error_feedback, build_error_details_json,
-    build_error_envelope, build_success_envelope, redact_sensitive, select_output_mode,
+    build_error_envelope, build_success_envelope, redact_sensitive,
 };
 
 use market_cli::{
@@ -35,10 +35,8 @@ enum Commands {
         quote: String,
         #[arg(long)]
         amount: String,
-        #[arg(long, value_enum)]
-        output: Option<OutputModeArg>,
-        #[arg(long)]
-        json: bool,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::Human)]
+        output: OutputModeArg,
     },
     /// Query crypto spot price (Coinbase with Kraken fallback).
     Crypto {
@@ -48,10 +46,8 @@ enum Commands {
         quote: String,
         #[arg(long)]
         amount: String,
-        #[arg(long, value_enum)]
-        output: Option<OutputModeArg>,
-        #[arg(long)]
-        json: bool,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::Human)]
+        output: OutputModeArg,
     },
     /// Evaluate market expressions and return Alfred Script Filter JSON.
     Expr {
@@ -59,10 +55,8 @@ enum Commands {
         query: String,
         #[arg(long, default_value = "USD")]
         default_fiat: String,
-        #[arg(long, value_enum)]
-        output: Option<OutputModeArg>,
-        #[arg(long)]
-        json: bool,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
     /// Render configured market favorites as non-actionable Alfred rows.
     Favorites {
@@ -70,15 +64,12 @@ enum Commands {
         list: Option<String>,
         #[arg(long, default_value = "USD")]
         default_fiat: String,
-        #[arg(long, value_enum)]
-        output: Option<OutputModeArg>,
-        #[arg(long)]
-        json: bool,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
 }
 
 const ERROR_CODE_USER_INVALID_INPUT: &str = "user.invalid_input";
-const ERROR_CODE_USER_OUTPUT_MODE_CONFLICT: &str = "user.output_mode_conflict";
 const ERROR_CODE_RUNTIME_PROVIDER_INIT: &str = "runtime.provider_init_failed";
 const ERROR_CODE_RUNTIME_PROVIDER_FAILED: &str = "runtime.provider_failed";
 const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
@@ -148,33 +139,10 @@ impl Cli {
 
     fn output_mode_hint(&self) -> OutputMode {
         match &self.command {
-            Commands::Fx { output, json, .. } | Commands::Crypto { output, json, .. } => {
-                if *json {
-                    OutputMode::Json
-                } else if let Some(explicit) = output {
-                    (*explicit).into()
-                } else {
-                    OutputMode::Human
-                }
-            }
-            Commands::Expr { output, json, .. } => {
-                if *json {
-                    OutputMode::Json
-                } else if let Some(explicit) = output {
-                    (*explicit).into()
-                } else {
-                    OutputMode::AlfredJson
-                }
-            }
-            Commands::Favorites { output, json, .. } => {
-                if *json {
-                    OutputMode::Json
-                } else if let Some(explicit) = output {
-                    (*explicit).into()
-                } else {
-                    OutputMode::AlfredJson
-                }
-            }
+            Commands::Fx { output, .. }
+            | Commands::Crypto { output, .. }
+            | Commands::Expr { output, .. }
+            | Commands::Favorites { output, .. } => (*output).into(),
         }
     }
 }
@@ -217,7 +185,6 @@ where
             quote,
             amount,
             output,
-            json,
         } => run_market_command(
             config,
             providers,
@@ -229,8 +196,6 @@ where
                 quote: &quote,
                 amount: &amount,
                 output,
-                json_flag: json,
-                default_mode: OutputMode::Human,
             },
         ),
         Commands::Crypto {
@@ -238,7 +203,6 @@ where
             quote,
             amount,
             output,
-            json,
         } => run_market_command(
             config,
             providers,
@@ -250,23 +214,17 @@ where
                 quote: &quote,
                 amount: &amount,
                 output,
-                json_flag: json,
-                default_mode: OutputMode::Human,
             },
         ),
         Commands::Expr {
             query,
             default_fiat,
             output,
-            json,
         } => {
             let feedback =
                 expression::evaluate_query(config, providers, now_fn, &query, &default_fiat)
                     .map_err(map_app_error)?;
-            let output_mode =
-                select_output_mode(output.map(Into::into), json, OutputMode::AlfredJson).map_err(
-                    |error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()),
-                )?;
+            let output_mode: OutputMode = output.into();
             let alfred_json = feedback.to_json().map_err(|error| {
                 runtime_error(
                     ERROR_CODE_RUNTIME_SERIALIZE,
@@ -288,16 +246,12 @@ where
             list,
             default_fiat,
             output,
-            json,
         } => {
             let favorites = parse_favorites_list(list.as_deref(), &default_fiat)
                 .map_err(|error| user_error(ERROR_CODE_USER_INVALID_INPUT, error.to_string()))?;
             let default_fiat = normalize_fx_symbol(&default_fiat, "default_fiat")
                 .map_err(|error| user_error(ERROR_CODE_USER_INVALID_INPUT, error.to_string()))?;
-            let output_mode =
-                select_output_mode(output.map(Into::into), json, OutputMode::AlfredJson).map_err(
-                    |error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()),
-                )?;
+            let output_mode: OutputMode = output.into();
 
             match output_mode {
                 OutputMode::Human => Ok(format_favorites_human_output(&favorites)),
@@ -332,9 +286,7 @@ struct MarketCommandArgs<'a> {
     base: &'a str,
     quote: &'a str,
     amount: &'a str,
-    output: Option<OutputModeArg>,
-    json_flag: bool,
-    default_mode: OutputMode,
+    output: OutputModeArg,
 }
 
 fn run_market_command<P, N>(
@@ -347,12 +299,7 @@ where
     P: ProviderApi,
     N: Fn() -> DateTime<Utc>,
 {
-    let output_mode = select_output_mode(
-        args.output.map(Into::into),
-        args.json_flag,
-        args.default_mode,
-    )
-    .map_err(|error| user_error(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()))?;
+    let output_mode: OutputMode = args.output.into();
     let request = MarketRequest::new(args.kind, args.base, args.quote, args.amount)
         .map_err(|error| user_error(ERROR_CODE_USER_INVALID_INPUT, error.to_string()))?;
     let result =
@@ -886,7 +833,8 @@ mod tests {
             "TWD",
             "--amount",
             "100",
-            "--json",
+            "--output",
+            "json",
         ]);
 
         let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
@@ -895,7 +843,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(Value::as_str),
@@ -932,7 +880,8 @@ mod tests {
             "USD",
             "--amount",
             "0.5",
-            "--json",
+            "--output",
+            "json",
         ]);
 
         let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
@@ -1140,14 +1089,14 @@ mod tests {
 
     #[test]
     fn main_outputs_expr_json_envelope_when_requested() {
-        let cli = Cli::parse_from(["market-cli", "expr", "--query", "1+5", "--json"]);
+        let cli = Cli::parse_from(["market-cli", "expr", "--query", "1+5", "--output", "json"]);
         let output = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
             .expect("expr should pass");
         let json: Value = serde_json::from_str(&output).expect("json");
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(Value::as_str),
@@ -1434,7 +1383,8 @@ mod tests {
             "btc,eth,usd,jpy",
             "--default-fiat",
             "USD",
-            "--json",
+            "--output",
+            "json",
         ]);
 
         let direct = run_with(alfred_cli, &config, &FavoritesProviders, fixed_now)
@@ -1453,8 +1403,8 @@ mod tests {
     }
 
     #[test]
-    fn main_rejects_conflicting_json_flags() {
-        let cli = Cli::parse_from([
+    fn main_rejects_unknown_output_value() {
+        let result = Cli::try_parse_from([
             "market-cli",
             "fx",
             "--base",
@@ -1463,15 +1413,11 @@ mod tests {
             "TWD",
             "--amount",
             "100",
-            "--json",
             "--output",
-            "human",
+            "yaml",
         ]);
-        let err = run_with(cli, &config_in_tempdir(), &FakeProviders::ok(), fixed_now)
-            .expect_err("must fail");
-
-        assert_eq!(err.kind, market_cli::error::ErrorKind::User);
-        assert_eq!(err.code, ERROR_CODE_USER_OUTPUT_MODE_CONFLICT);
+        let err = result.expect_err("must fail when output value is invalid");
+        assert_eq!(err.kind(), clap::error::ErrorKind::InvalidValue);
     }
 
     #[test]

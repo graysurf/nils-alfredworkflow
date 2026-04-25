@@ -151,13 +151,13 @@ write_state() {
 emit_ok() {
   local command_id="$1"
   local result_json="$2"
-  jq -cn --arg cmd "$command_id" --argjson result "$result_json" '{schema_version:"v1",command:$cmd,ok:true,result:$result}'
+  jq -cn --arg cmd "$command_id" --argjson result "$result_json" '{schema_version:"cli-envelope@v1",command:$cmd,ok:true,result:$result}'
 }
 
 emit_error() {
   local command_id="$1"
   local message="$2"
-  jq -cn --arg cmd "$command_id" --arg msg "$message" '{schema_version:"v1",command:$cmd,ok:false,error:{code:"NILS_GOOGLE_005",message:$msg,details:{kind:"user",exit_code:2}}}'
+  jq -cn --arg cmd "$command_id" --arg msg "$message" '{schema_version:"cli-envelope@v1",command:$cmd,ok:false,error:{code:"NILS_GOOGLE_005",message:$msg,details:{kind:"user",exit_code:2}}}'
 }
 
 if [[ "${1:-}" == "--json" ]]; then

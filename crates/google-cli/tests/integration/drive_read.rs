@@ -34,7 +34,7 @@ fn drive_json_contract_covers_ls_search_and_get() {
     let ls = native_drive::run(
         temp.path(),
         &[
-            "--json", "drive", "ls", "--parent", "folder-1", "--max", "10",
+            "--output", "json", "drive", "ls", "--parent", "folder-1", "--max", "10",
         ],
         &[
             (
@@ -60,7 +60,15 @@ fn drive_json_contract_covers_ls_search_and_get() {
 
     let search = native_drive::run(
         temp.path(),
-        &["--json", "drive", "search", "name:report", "--max", "10"],
+        &[
+            "--output",
+            "json",
+            "drive",
+            "search",
+            "name:report",
+            "--max",
+            "10",
+        ],
         &[
             (
                 "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
@@ -82,7 +90,7 @@ fn drive_json_contract_covers_ls_search_and_get() {
 
     let get = native_drive::run(
         temp.path(),
-        &["--json", "drive", "get", "file-1"],
+        &["--output", "json", "drive", "get", "file-1"],
         &[
             (
                 "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
@@ -111,7 +119,7 @@ fn drive_get_missing_file_maps_to_not_found_error() {
     let fixture_path = native_drive::write_fixture(temp.path(), &json!({ "files": [] }));
     let output = native_drive::run(
         temp.path(),
-        &["--json", "drive", "get", "missing-file"],
+        &["--output", "json", "drive", "get", "missing-file"],
         &[(
             "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
             fixture_path.to_string_lossy().as_ref(),
@@ -137,7 +145,8 @@ fn drive_commands_reuse_shared_account_resolution_and_error_when_ambiguous() {
     let add_a = native_drive::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "a@example.com",
@@ -152,7 +161,8 @@ fn drive_commands_reuse_shared_account_resolution_and_error_when_ambiguous() {
     let add_b = native_drive::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "b@example.com",
@@ -194,7 +204,7 @@ fn drive_commands_reuse_shared_account_resolution_and_error_when_ambiguous() {
 
     let output = native_drive::run(
         temp.path(),
-        &["--json", "drive", "ls"],
+        &["--output", "json", "drive", "ls"],
         &[(
             "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
             fixture_path.to_string_lossy().as_ref(),

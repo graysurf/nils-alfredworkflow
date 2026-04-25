@@ -100,7 +100,7 @@ execute_generate() {
   local query="${1:-}"
   local randomer_cli
   randomer_cli="$(resolve_randomer_cli)"
-  "$randomer_cli" generate --format "$query" --count 10 --mode alfred
+  "$randomer_cli" generate --format "$query" --count 10 --output alfred-json
 }
 
 resolve_query() {

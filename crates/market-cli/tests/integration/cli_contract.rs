@@ -123,7 +123,7 @@ fn cli_contract_amount_validation_rejects_zero() {
 fn service_json_error_envelope_has_required_keys() {
     let output = run_cli(
         &[
-            "fx", "--base", "USD", "--quote", "TWD", "--amount", "0", "--json",
+            "fx", "--base", "USD", "--quote", "TWD", "--amount", "0", "--output", "json",
         ],
         &[("MARKET_TEST_SECRET", "unused")],
     );
@@ -132,7 +132,7 @@ fn service_json_error_envelope_has_required_keys() {
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
         json.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(
         json.get("command").and_then(Value::as_str),
@@ -158,7 +158,7 @@ fn service_json_error_envelope_redacts_secret_like_input() {
     let amount = format!("token={secret}");
     let output = run_cli(
         &[
-            "fx", "--base", "USD", "--quote", "TWD", "--amount", &amount, "--json",
+            "fx", "--base", "USD", "--quote", "TWD", "--amount", &amount, "--output", "json",
         ],
         &[],
     );
@@ -635,7 +635,8 @@ fn service_json_error_envelope_for_invalid_favorites_token_has_required_keys() {
             "btc,eth!",
             "--default-fiat",
             "USD",
-            "--json",
+            "--output",
+            "json",
         ],
         &[],
     );
@@ -645,7 +646,7 @@ fn service_json_error_envelope_for_invalid_favorites_token_has_required_keys() {
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
         json.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(
         json.get("command").and_then(Value::as_str),
@@ -689,7 +690,8 @@ fn service_json_error_envelope_for_invalid_favorites_default_fiat_has_required_k
             "",
             "--default-fiat",
             "USDT",
-            "--json",
+            "--output",
+            "json",
         ],
         &[],
     );
@@ -699,7 +701,7 @@ fn service_json_error_envelope_for_invalid_favorites_default_fiat_has_required_k
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
         json.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(
         json.get("command").and_then(Value::as_str),
@@ -785,7 +787,8 @@ fn cli_contract_favorites_json_envelope_matches_alfred_output() {
             "usd,jpy",
             "--default-fiat",
             "USD",
-            "--json",
+            "--output",
+            "json",
         ],
         &[(MARKET_CACHE_DIR_ENV, cache_dir_value.as_str())],
     );
@@ -800,7 +803,7 @@ fn cli_contract_favorites_json_envelope_matches_alfred_output() {
 
     assert_eq!(
         envelope.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(
         envelope.get("command").and_then(Value::as_str),
@@ -824,7 +827,7 @@ fn cli_contract_fx_cache_ttl_override_applies_to_cached_fx_json_output() {
     let cache_dir_value = cache_dir.path().display().to_string();
     let output = run_cli(
         &[
-            "fx", "--base", "USD", "--quote", "TWD", "--amount", "100", "--json",
+            "fx", "--base", "USD", "--quote", "TWD", "--amount", "100", "--output", "json",
         ],
         &[
             (MARKET_CACHE_DIR_ENV, cache_dir_value.as_str()),
@@ -860,7 +863,7 @@ fn cli_contract_crypto_cache_ttl_override_applies_to_cached_crypto_json_output()
     let cache_dir_value = cache_dir.path().display().to_string();
     let output = run_cli(
         &[
-            "crypto", "--base", "BTC", "--quote", "USD", "--amount", "1", "--json",
+            "crypto", "--base", "BTC", "--quote", "USD", "--amount", "1", "--output", "json",
         ],
         &[
             (MARKET_CACHE_DIR_ENV, cache_dir_value.as_str()),

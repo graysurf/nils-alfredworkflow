@@ -19,7 +19,7 @@ test -x workflows/weather/bin/weather-cli && echo "bundled weather-cli found"
 command -v weather-cli || true
 
 # CLI contract checks
-cargo run -q -p nils-weather-cli -- today --output json --city Tokyo | jq -e '.schema_version == "v1" and .ok == true'
+cargo run -q -p nils-weather-cli -- today --output json --city Tokyo | jq -e '.schema_version == "cli-envelope@v1" and .ok == true'
 cargo run -q -p nils-weather-cli -- today --output alfred-json --city Tokyo | jq -e '.items | type == "array"'
 cargo run -q -p nils-weather-cli -- today --output alfred-json --city Tokyo --city Osaka | jq -e '.items | type == "array"'
 

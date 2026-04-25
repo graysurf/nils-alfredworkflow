@@ -41,7 +41,8 @@ fn gmail_thread_get_and_modify_cover_fetch_and_label_mutation() {
     let get = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "gmail",
             "thread",
             "get",
@@ -70,7 +71,8 @@ fn gmail_thread_get_and_modify_cover_fetch_and_label_mutation() {
     let modify = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "gmail",
             "thread",
             "modify",
@@ -99,7 +101,14 @@ fn gmail_thread_get_and_modify_cover_fetch_and_label_mutation() {
 
     let missing = native_gmail::run(
         temp.path(),
-        &["--json", "gmail", "thread", "get", "missing-thread"],
+        &[
+            "--output",
+            "json",
+            "gmail",
+            "thread",
+            "get",
+            "missing-thread",
+        ],
         &[(
             "GOOGLE_CLI_GMAIL_FIXTURE_PATH",
             fixture_path.to_string_lossy().as_ref(),

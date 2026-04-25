@@ -21,8 +21,8 @@ fn service_json_success_envelope_has_required_keys() {
             "Asia/Taipei,America/New_York",
             "--config-zones",
             "",
-            "--mode",
-            "service-json",
+            "--output",
+            "json",
         ],
         &[],
     );
@@ -31,7 +31,7 @@ fn service_json_success_envelope_has_required_keys() {
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
         json.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(json.get("command").and_then(Value::as_str), Some("now"));
     assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
@@ -54,8 +54,8 @@ fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
             "Mars/Olympus",
             "--config-zones",
             "",
-            "--mode",
-            "service-json",
+            "--output",
+            "json",
         ],
         &[("TIMEZONE_TEST_SECRET", secret)],
     );

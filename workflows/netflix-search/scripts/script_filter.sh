@@ -198,7 +198,7 @@ netflix_search_fetch_json() {
   search_query="$(build_netflix_site_query "$query")"
 
   local json_output
-  if json_output="$("$brave_cli" search --query "$search_query" --mode alfred 2>"$err_file")"; then
+  if json_output="$("$brave_cli" search --query "$search_query" --output alfred-json 2>"$err_file")"; then
     rm -f "$err_file"
     if [[ -z "$json_output" ]]; then
       echo "brave-cli returned empty response" >&2
@@ -214,7 +214,7 @@ netflix_search_fetch_json() {
   local brave_country_segment
   brave_country_segment="$(resolve_brave_country_segment)"
   if [[ -n "$brave_country_segment" ]] && is_country_param_validation_error "$raw_err"; then
-    if json_output="$(env -u BRAVE_COUNTRY "$brave_cli" search --query "$search_query" --mode alfred 2>"$err_file")"; then
+    if json_output="$(env -u BRAVE_COUNTRY "$brave_cli" search --query "$search_query" --output alfred-json 2>"$err_file")"; then
       rm -f "$err_file"
       if [[ -z "$json_output" ]]; then
         echo "brave-cli returned empty response" >&2

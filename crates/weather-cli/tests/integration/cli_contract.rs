@@ -142,13 +142,16 @@ fn cli_contract_batch_output_contains_entries_and_city_key() {
 
 #[test]
 fn service_json_error_envelope_has_required_keys() {
-    let output = run_cli(&["today", "--json"], &[("WEATHER_TEST_SECRET", "unused")]);
+    let output = run_cli(
+        &["today", "--output", "json"],
+        &[("WEATHER_TEST_SECRET", "unused")],
+    );
     assert_eq!(output.status.code(), Some(2));
 
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
         json.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(
         json.get("command").and_then(Value::as_str),
@@ -169,20 +172,13 @@ fn service_json_error_envelope_has_required_keys() {
 }
 
 #[test]
-fn service_json_error_conflict_returns_machine_readable_code() {
-    let output = run_cli(
-        &["today", "--city", "Taipei", "--json", "--output", "human"],
-        &[],
-    );
+fn unknown_output_value_is_rejected_by_clap() {
+    let output = run_cli(&["today", "--city", "Taipei", "--output", "yaml"], &[]);
     assert_eq!(output.status.code(), Some(2));
-
-    let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
-    assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
-    assert_eq!(
-        json.get("error")
-            .and_then(|error| error.get("code"))
-            .and_then(Value::as_str),
-        Some("user.output_mode_conflict")
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("invalid value 'yaml'"),
+        "expected clap rejection message, got: {stderr}"
     );
 }
 

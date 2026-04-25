@@ -13,30 +13,29 @@
 
 ## Canonical Output Mode Contract
 
-1. Output mode selection must use canonical values:
-   - `human`
-   - `json`
-   - `alfred-json`
-2. Commands with mixed rendering support must expose `--output <human|json|alfred-json>` as the canonical selector.
-3. `--json` is a temporary compatibility alias that maps only to `--output json`; new code must not introduce additional
-   aliases.
-4. Conflict handling is mandatory: combining `--json` with non-json explicit output mode must fail with a user/input
-   error.
+1. Output mode selection uses the canonical `--output <value>` flag. Standard values are:
+   - `human` — colored, human-readable terminal output
+   - `json` — service JSON envelope (`cli-envelope@v1`)
+   - `alfred-json` — Alfred script-filter feedback JSON
+2. Each CLI exposes a `--output <value>` flag whose accepted values are the subset it actually implements
+   (e.g. script-filter CLIs expose `--output <json|alfred-json>`; terminal CLIs expose `--output <human|json>`).
+3. CLI-specific extensions (such as `google-cli`'s `plain` value for stable script-parseable text) are permitted as
+   additional values on the canonical flag, but must not redefine standard values.
+4. There are no compatibility aliases. `--json`, `--plain`, `--mode`, value aliases like `text` / `alfred` /
+   `alfred_json` / `service-json` are forbidden.
 5. Command defaults:
    - direct terminal commands default to `human`
-   - script-filter compatibility commands may default to `alfred-json` until migration rows are closed
+   - script-filter compatibility commands default to `alfred-json`
    - no command may implicitly default to service JSON mode
 
 ## Forbidden Legacy Compatibility Aliases
 
-The following aliases and branches are forbidden for new implementations and are scheduled for deletion where currently
-present:
+The following aliases and flag forms are forbidden:
 
-- Value aliases: `text`, `alfred`, `alfred_json`
-- Legacy mode flag forms: `--mode service-json`, `--mode alfred`
-- Implicit JSON-first default behavior for script-filter command paths
+- Value aliases: `text`, `alfred`, `alfred_json`, `service-json`
+- Legacy flag forms: `--mode`, `--json`, `--plain`, short forms `-j`, `-p` reserved as output toggles
 
-All remaining occurrences must be tracked in crate `README.md` standards sections until removed.
+All remaining occurrences must be migrated to canonical `--output <value>`.
 
 ## JSON Envelope And Error Contract
 

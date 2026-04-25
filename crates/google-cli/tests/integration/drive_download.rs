@@ -26,7 +26,8 @@ fn seed_auth(config_dir: &Path) {
     let set = run(
         config_dir,
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "credentials",
             "set",
@@ -42,7 +43,8 @@ fn seed_auth(config_dir: &Path) {
     let add = run(
         config_dir,
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "drive@example.com",
@@ -88,7 +90,8 @@ fn drive_download_writes_destination_path() {
     let output = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "download",
             "file-123",
@@ -130,7 +133,8 @@ fn drive_download_supports_export_format() {
     let output = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "download",
             "file-123",
@@ -171,7 +175,8 @@ fn drive_download_rejects_existing_path_without_overwrite() {
     let output = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "download",
             "file-123",
@@ -203,7 +208,7 @@ fn drive_download_missing_file_maps_not_found() {
 
     let output = run(
         temp.path(),
-        &["--json", "drive", "download", "missing-file"],
+        &["--output", "json", "drive", "download", "missing-file"],
         &[(
             "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
             fixture.to_string_lossy().as_ref(),

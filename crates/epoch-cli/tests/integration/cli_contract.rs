@@ -14,13 +14,13 @@ fn run_cli(args: &[&str], envs: &[(&str, &str)]) -> Output {
 
 #[test]
 fn service_json_success_envelope_has_required_keys() {
-    let output = run_cli(&["convert", "--query", "0", "--mode", "service-json"], &[]);
+    let output = run_cli(&["convert", "--query", "0", "--output", "json"], &[]);
     assert_eq!(output.status.code(), Some(0));
 
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
         json.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(json.get("command").and_then(Value::as_str), Some("convert"));
     assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
@@ -37,13 +37,7 @@ fn service_json_success_envelope_has_required_keys() {
 fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
     let secret = "epoch-contract-secret";
     let output = run_cli(
-        &[
-            "convert",
-            "--query",
-            "invalid query",
-            "--mode",
-            "service-json",
-        ],
+        &["convert", "--query", "invalid query", "--output", "json"],
         &[("EPOCH_TEST_SECRET", secret)],
     );
     assert_eq!(output.status.code(), Some(2));

@@ -8,7 +8,9 @@ use epoch_cli::{
     feedback,
     parser::{self, QueryInput},
 };
-use workflow_common::{EnvelopePayloadKind, build_error_envelope, build_success_envelope};
+use workflow_common::{
+    EnvelopePayloadKind, OutputMode, build_error_envelope, build_success_envelope,
+};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "Epoch conversion workflow CLI")]
@@ -25,16 +27,25 @@ enum Commands {
         #[arg(long, default_value = "")]
         query: String,
         /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
-        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
-        mode: OutputMode,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 #[value(rename_all = "kebab-case")]
-enum OutputMode {
-    ServiceJson,
-    Alfred,
+enum OutputModeArg {
+    Json,
+    AlfredJson,
+}
+
+impl From<OutputModeArg> for OutputMode {
+    fn from(value: OutputModeArg) -> Self {
+        match value {
+            OutputModeArg::Json => OutputMode::Json,
+            OutputModeArg::AlfredJson => OutputMode::AlfredJson,
+        }
+    }
 }
 
 impl Cli {
@@ -46,7 +57,7 @@ impl Cli {
 
     fn output_mode(&self) -> OutputMode {
         match &self.command {
-            Commands::Convert { mode, .. } => *mode,
+            Commands::Convert { output, .. } => (*output).into(),
         }
     }
 }
@@ -62,11 +73,14 @@ fn main() {
         }
         Err(error) => {
             match mode {
-                OutputMode::ServiceJson => {
+                OutputMode::Json => {
                     println!("{}", serialize_service_error(command, &error));
                 }
-                OutputMode::Alfred => {
+                OutputMode::AlfredJson => {
                     eprintln!("error: {}", error.message);
+                }
+                OutputMode::Human => {
+                    unreachable!("only json and alfred-json output modes are supported")
                 }
             }
             std::process::exit(error.exit_code());
@@ -88,7 +102,7 @@ where
     ReadClipboard: Fn() -> Option<String>,
 {
     match cli.command {
-        Commands::Convert { query, mode } => {
+        Commands::Convert { query, output } => {
             let now = now();
             let today = now.date_naive();
             let parsed = parser::parse_query(&query, today)?;
@@ -100,7 +114,7 @@ where
             }
 
             let payload = feedback::rows_to_feedback(&rows);
-            render_feedback(mode, "convert", payload)
+            render_feedback(output.into(), "convert", payload)
         }
     }
 }
@@ -111,10 +125,10 @@ fn render_feedback(
     payload: alfred_core::Feedback,
 ) -> Result<String, AppError> {
     match mode {
-        OutputMode::Alfred => payload
+        OutputMode::AlfredJson => payload
             .to_json()
             .map_err(|error| AppError::runtime(format!("failed to serialize feedback: {error}"))),
-        OutputMode::ServiceJson => {
+        OutputMode::Json => {
             let result = payload.to_json().map_err(|error| {
                 AppError::runtime(format!("failed to serialize feedback: {error}"))
             })?;
@@ -124,6 +138,7 @@ fn render_feedback(
                 &result,
             ))
         }
+        OutputMode::Human => unreachable!("only json and alfred-json output modes are supported"),
     }
 }
 
@@ -234,14 +249,7 @@ mod tests {
 
     #[test]
     fn main_convert_service_json_mode_wraps_result_in_v1_envelope() {
-        let cli = Cli::parse_from([
-            "epoch-cli",
-            "convert",
-            "--query",
-            "0",
-            "--mode",
-            "service-json",
-        ]);
+        let cli = Cli::parse_from(["epoch-cli", "convert", "--query", "0", "--output", "json"]);
 
         let output =
             run_with(cli, fixed_now, || None).expect("service-json conversion should pass");
@@ -249,7 +257,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(json.get("command").and_then(Value::as_str), Some("convert"));
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
@@ -310,7 +318,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(json.get("command").and_then(Value::as_str), Some("convert"));
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));

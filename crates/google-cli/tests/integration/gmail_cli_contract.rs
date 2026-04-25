@@ -31,7 +31,8 @@ fn gmail_json_contract_covers_search_get_thread_and_send() {
     let search = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "gmail",
             "search",
             "from:team@example.com",
@@ -66,7 +67,9 @@ fn gmail_json_contract_covers_search_get_thread_and_send() {
 
     let get = native_gmail::run(
         temp.path(),
-        &["--json", "gmail", "get", "msg-1", "--format", "full"],
+        &[
+            "--output", "json", "gmail", "get", "msg-1", "--format", "full",
+        ],
         &[
             (
                 "GOOGLE_CLI_GMAIL_FIXTURE_PATH",
@@ -89,7 +92,8 @@ fn gmail_json_contract_covers_search_get_thread_and_send() {
     let thread_get = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "gmail",
             "thread",
             "get",
@@ -112,7 +116,8 @@ fn gmail_json_contract_covers_search_get_thread_and_send() {
     let send = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "gmail",
             "send",
             "--to",
@@ -176,7 +181,8 @@ fn gmail_plain_contract_emits_human_text() {
     let output = native_gmail::run(
         temp.path(),
         &[
-            "--plain",
+            "--output",
+            "plain",
             "gmail",
             "search",
             "from:team@example.com",
@@ -202,7 +208,7 @@ fn gmail_get_missing_message_maps_to_not_found_error() {
 
     let output = native_gmail::run(
         temp.path(),
-        &["--json", "gmail", "get", "missing-message"],
+        &["--output", "json", "gmail", "get", "missing-message"],
         &[(
             "GOOGLE_CLI_GMAIL_FIXTURE_PATH",
             fixture_path.to_string_lossy().as_ref(),

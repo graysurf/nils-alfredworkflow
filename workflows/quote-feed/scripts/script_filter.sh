@@ -82,7 +82,7 @@ execute_quote_feed() {
     return 1
   fi
 
-  "$quote_cli" feed --query "$query" --mode alfred
+  "$quote_cli" feed --query "$query" --output alfred-json
 }
 
 query="${1:-}"

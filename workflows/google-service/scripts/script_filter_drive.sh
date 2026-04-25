@@ -302,7 +302,7 @@ run_google_json_capture() {
   local captured_output=""
   local captured_rc=0
   set +e
-  captured_output="$("$google_cli" --json "$@" 2>&1)"
+  captured_output="$("$google_cli" --output json "$@" 2>&1)"
   captured_rc=$?
   set -e
 

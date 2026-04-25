@@ -83,7 +83,7 @@ execute_timezone_now() {
     return 1
   fi
 
-  "$timezone_cli" now --query "$query" --config-zones "$config_zones" --mode alfred
+  "$timezone_cli" now --query "$query" --config-zones "$config_zones" --output alfred-json
 }
 
 query="${1:-}"

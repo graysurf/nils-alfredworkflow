@@ -70,7 +70,8 @@ mod tests {
             "google-cli",
             "--account",
             "me@example.com",
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "me@example.com",
@@ -79,7 +80,10 @@ mod tests {
 
         let request = cli.into_request().expect("request");
         assert_eq!(request.global.account.as_deref(), Some("me@example.com"));
-        assert!(request.global.json);
+        assert_eq!(
+            request.global.output,
+            crate::cmd::common::OutputModeArg::Json
+        );
         assert_eq!(request.invocation.path, vec!["auth", "add"]);
         assert_eq!(request.invocation.args, vec!["me@example.com", "--manual"]);
         assert_eq!(request.invocation.command_id, "google.auth.add");

@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use crate::error::{AppError, ErrorKind, redact_sensitive};
 
-pub const ENVELOPE_SCHEMA_VERSION: &str = "v1";
+pub const ENVELOPE_SCHEMA_VERSION: &str = "cli-envelope@v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputMode {
@@ -129,7 +129,7 @@ mod tests {
         let json: Value = serde_json::from_str(&output.stdout).expect("json");
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(Value::as_str),

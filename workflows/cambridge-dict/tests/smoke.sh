@@ -412,7 +412,7 @@ assert_jq_json "$short_query_json" '.items[0].subtitle | contains("2")' "short q
 default_settle_log="$tmp_dir/cambridge-default-settle.log"
 default_settle_json="$({ CAMBRIDGE_STUB_LOG="$default_settle_log" env -u CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "open"; })"
 assert_jq_json "$default_settle_json" '.items[0].title == "open - Cambridge"' "default settle should fetch Cambridge results immediately"
-[[ "$(grep -c -- '--input open --mode alfred' "$default_settle_log" || true)" -eq 1 ]] || fail "default settle should invoke cambridge-cli immediately"
+[[ "$(grep -c -- '--input open --output alfred-json' "$default_settle_log" || true)" -eq 1 ]] || fail "default settle should invoke cambridge-cli immediately"
 
 coalesce_probe_log="$tmp_dir/cambridge-coalesce.log"
 coalesce_pending_a="$({ CAMBRIDGE_STUB_LOG="$coalesce_probe_log" CAMBRIDGE_QUERY_COALESCE_SETTLE_SECONDS=1 CAMBRIDGE_QUERY_CACHE_TTL_SECONDS=0 CAMBRIDGE_CLI_BIN="$tmp_dir/stubs/cambridge-cli-ok" "$workflow_dir/scripts/script_filter.sh" "sym"; })"
@@ -423,8 +423,8 @@ coalesce_result="$({ CAMBRIDGE_STUB_LOG="$coalesce_probe_log" CAMBRIDGE_QUERY_CO
 assert_jq_json "$coalesce_pending_a" '.items[0].title == "Searching Cambridge..." and .items[0].valid == false' "coalesce first pending item mismatch"
 assert_jq_json "$coalesce_pending_b" '.items[0].title == "Searching Cambridge..." and .items[0].valid == false' "coalesce second pending item mismatch"
 assert_jq_json "$coalesce_result" '.items[0].title == "open - Cambridge"' "coalesce final result mismatch"
-[[ "$(grep -c -- '--input sym --mode alfred' "$coalesce_probe_log" || true)" -eq 0 ]] || fail "coalesce should avoid sym backend invocation"
-[[ "$(grep -c -- '--input symphony --mode alfred' "$coalesce_probe_log" || true)" -eq 1 ]] || fail "coalesce should invoke symphony exactly once"
+[[ "$(grep -c -- '--input sym --output alfred-json' "$coalesce_probe_log" || true)" -eq 0 ]] || fail "coalesce should avoid sym backend invocation"
+[[ "$(grep -c -- '--input symphony --output alfred-json' "$coalesce_probe_log" || true)" -eq 1 ]] || fail "coalesce should invoke symphony exactly once"
 
 default_cache_log="$tmp_dir/cambridge-default-cache.log"
 {

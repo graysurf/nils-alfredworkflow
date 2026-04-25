@@ -30,7 +30,8 @@ fn credentials_set_and_list_roundtrip() {
     let set_output = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "credentials",
             "set",
@@ -43,7 +44,11 @@ fn credentials_set_and_list_roundtrip() {
     );
     assert_eq!(set_output.status.code(), Some(0));
 
-    let list_output = run(temp.path(), &["--json", "auth", "credentials", "list"], &[]);
+    let list_output = run(
+        temp.path(),
+        &["--output", "json", "auth", "credentials", "list"],
+        &[],
+    );
     assert_eq!(list_output.status.code(), Some(0));
     let payload = json(&list_output);
 
@@ -72,7 +77,8 @@ fn manual_add_persists_token_metadata_and_status() {
     let _ = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "credentials",
             "set",
@@ -87,7 +93,8 @@ fn manual_add_persists_token_metadata_and_status() {
     let add_output = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "me@example.com",
@@ -99,7 +106,7 @@ fn manual_add_persists_token_metadata_and_status() {
     );
     assert_eq!(add_output.status.code(), Some(0));
 
-    let list_output = run(temp.path(), &["--json", "auth", "list"], &[]);
+    let list_output = run(temp.path(), &["--output", "json", "auth", "list"], &[]);
     assert_eq!(list_output.status.code(), Some(0));
     let list_payload = json(&list_output);
     let accounts = list_payload
@@ -110,7 +117,7 @@ fn manual_add_persists_token_metadata_and_status() {
     assert_eq!(accounts.len(), 1);
     assert_eq!(accounts[0].as_str(), Some("me@example.com"));
 
-    let status_output = run(temp.path(), &["--json", "auth", "status"], &[]);
+    let status_output = run(temp.path(), &["--output", "json", "auth", "status"], &[]);
     assert_eq!(status_output.status.code(), Some(0));
     let status_payload = json(&status_output);
     assert_eq!(
