@@ -1,8 +1,17 @@
 # Market CLI Contract
 
+> Status: active
+
 ## Purpose
 
 This document defines the command and JSON output contract for the `market-cli` capability.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix `NILS_MARKET_*`: [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+- Expression grammar: [`expression-rules.md`](expression-rules.md)
+
 Scope includes market data retrieval (`fx`, `crypto`) and Alfred-facing expression output (`expr`).
 It also includes favorites-list output for the `market-expression` workflow empty-query state (`favorites`).
 

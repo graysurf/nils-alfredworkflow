@@ -1,8 +1,16 @@
 # weather-cli contract
 
+> Status: active
+
 ## Goal
 
 Provide token-free weather forecast data for current day, 7-day horizon, and hourly forecast.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix `NILS_WEATHER_*`: [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+
 Primary source is Open-Meteo, with MET Norway as fallback where supported.
 
 ## Commands

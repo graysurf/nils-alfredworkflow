@@ -1,5 +1,7 @@
 # Market Expression Rules (Alfred v1)
 
+> Status: active
+
 ## Purpose
 
 Define the input and calculation rules for Alfred FX/crypto expressions. This document is the implementation and testing
