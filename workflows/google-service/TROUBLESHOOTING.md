@@ -48,7 +48,7 @@ ls -l "${ALFRED_WORKFLOW_DATA:-}"/active-account.v1.json 2>/dev/null || true
 | `gsm unread/latest/search` returns nothing unexpectedly | Query is too restrictive or account context differs from expected inbox | Start with `gsm latest`, then narrow query terms (or switch account via `gsa switch <email>`). |
 | `gsm search/latest` row count is not as expected | Max setting is too low/high or invalid | Set `GOOGLE_MAIL_SEARCH_MAX` / `GOOGLE_MAIL_LATEST_MAX` in workflow config (`1..500`). Invalid values fall back to default `25`. |
 | `gsm` rows show but Enter does not open Gmail page | Browser opener not available in runtime (`open`/`xdg-open`) | Ensure macOS `open` (default) or Linux `xdg-open` is available, then retry. |
-| `gs` 沒有顯示 all-account unread summary | Toggle 預設關閉 | 在 workflow config 設 `GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD=1` 後重開 Alfred 查詢。 |
+| `gs` does not show the all-account unread summary | Toggle is disabled by default | Set `GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD=1` in workflow config, then run the Alfred query again. |
 
 ## Validation
 
