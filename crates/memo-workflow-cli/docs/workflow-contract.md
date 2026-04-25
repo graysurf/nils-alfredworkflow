@@ -1,8 +1,16 @@
 # Memo Add Workflow Contract
 
+> Status: active
+
 ## Goal
 
 Provide a capture-first Alfred workflow for quick memo insertion backed by `nils-memo-cli@0.6.5`.
+
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix (future allocation): [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
 
 ## Primary user behavior
 

@@ -1,8 +1,18 @@
 # Multi Timezone Workflow Contract
 
+> Status: active
+
 ## Purpose
 
 This document defines the runtime behavior contract for the `multi-timezone` Alfred workflow.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix `NILS_TIMEZONE_*`: [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+- Ordered-list parsing standard for `MULTI_TZ_ZONES`:
+  [`ALFRED_WORKFLOW_DEVELOPMENT.md`](../../../ALFRED_WORKFLOW_DEVELOPMENT.md) → *Ordered config list parsing standard*.
+
 It is the source of truth for timezone input precedence, local-timezone fallback behavior,
 row ordering, Alfred item JSON shape, copy-action behavior, and error mapping.
 

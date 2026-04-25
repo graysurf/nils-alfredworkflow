@@ -1,10 +1,20 @@
 # Steam Search Workflow Contract
 
+> Status: active
+
 ## Purpose
 
 This document defines the `nils-steam-cli` runtime contract for `steam-search`: query handling,
 region/language runtime config, Steam Store API usage, Alfred JSON mapping, region-switch requery
 args, and deterministic error behavior.
+
+Cross-references:
+
+- Workflow-level Steam contract:
+  [`docs/specs/steam-search-workflow-contract.md`](../../../docs/specs/steam-search-workflow-contract.md)
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix (future allocation): [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
 
 ## Keyword and Query Handling
 
