@@ -1,8 +1,16 @@
 # Epoch Converter Workflow Contract
 
+> Status: active
+
 ## Purpose
 
 This document defines the runtime behavior contract for the `epoch-converter` Alfred workflow.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix `NILS_EPOCH_*`: [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+
 It is the source of truth for query parsing, conversion output rows, Alfred item JSON shape,
 copy-action behavior, and fallback error mapping.
 

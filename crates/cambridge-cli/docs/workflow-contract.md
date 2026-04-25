@@ -1,6 +1,13 @@
 # Cambridge Dict Contract
 
+> Status: active
+
 This document defines the functional/runtime contract for `workflows/cambridge-dict`.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix `NILS_CAMBRIDGE_*`: [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
 
 ## Keyword and Query Handling
 

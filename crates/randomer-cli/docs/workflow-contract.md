@@ -1,8 +1,16 @@
 # Randomer Workflow Contract
 
+> Status: active
+
 ## Goal
 
 Define the canonical behavior contract for the `randomer` workflow and `randomer-cli` runtime.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix `NILS_RANDOMER_*`: [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+
 This contract is the source of truth for keyword routing, supported format invariants, Alfred item
 shape, copy behavior, and error handling.
 
