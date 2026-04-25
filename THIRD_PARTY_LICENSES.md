@@ -12,17 +12,17 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `07d16b7096f651ba6aedfe0b3d22e8d740847c483f90fc8514442d0bf2897c20`
-- Runtime metadata fingerprint (SHA256): `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a`
+- Data source fingerprint (SHA256): `410b633fd666ad5ff74c5450a6f6f61f948b54e36dc31bfe8f953ef6c5f738b0`
+- Runtime metadata fingerprint (SHA256): `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `1020a9abf7e84a895d55d43406360cb86cba9893294910b1996439e1e3e75f95` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `d4c3b08bde3089038b8c2634c13ee523d0488fd8b3f39a83eb842642372e33dd` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `ddea137eacf1f89a35038c3fe20f40f67ea80d54b0d85a5d4591d94ddffdf5c3` | `jq package-lock extraction` |
-| Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `2d57b8cdd02f406d90c507aeb74e2d95a4702fdc488d51fc8c33dac7b08a270b` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
-| Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> | `a5d19009244f4fb9f5b80271a574dc294b6d08bb96d9739be6bec6b374e2515a` | `curl crates.io API plus jq normalized fields` |
+| Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `65863452d659031214590bf2d8e8ee4b1a21d70c546647d30d373053ea7ad036` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
+| Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.7.3> | `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20` | `curl crates.io API plus jq normalized fields` |
 
 ## Rust License Summary (254 crates)
 
@@ -83,7 +83,7 @@ Do not edit manually.
 | chrono-tz | 0.10.4 | MIT OR Apache-2.0 | <https://github.com/chronotope/chrono-tz> |
 | clap | 4.5.60 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_builder | 4.5.60 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
-| clap_complete | 4.5.66 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
+| clap_complete | 4.6.2 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_derive | 4.5.55 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_lex | 1.0.0 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | colorchoice | 1.0.4 | MIT OR Apache-2.0 | <https://github.com/rust-cli/anstyle.git> |
@@ -164,7 +164,7 @@ Do not edit manually.
 | keyring | 3.6.3 | MIT OR Apache-2.0 | <https://github.com/hwchen/keyring-rs.git> |
 | lazy_static | 1.5.0 | MIT OR Apache-2.0 | <https://github.com/rust-lang-nursery/lazy-static.rs> |
 | libc | 0.2.181 | MIT OR Apache-2.0 | <https://github.com/rust-lang/libc> |
-| libsqlite3-sys | 0.36.0 | MIT | <https://github.com/rusqlite/rusqlite> |
+| libsqlite3-sys | 0.37.0 | MIT | <https://github.com/rusqlite/rusqlite> |
 | linux-raw-sys | 0.11.0 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | <https://github.com/sunfishcode/linux-raw-sys> |
 | litemap | 0.8.1 | Unicode-3.0 | <https://github.com/unicode-org/icu4x> |
 | log | 0.4.29 | MIT OR Apache-2.0 | <https://github.com/rust-lang/log> |
@@ -174,8 +174,8 @@ Do not edit manually.
 | mime | 0.3.17 | MIT OR Apache-2.0 | <https://github.com/hyperium/mime> |
 | mime_guess | 2.0.5 | MIT | <https://github.com/abonander/mime_guess> |
 | mio | 1.1.1 | MIT | <https://github.com/tokio-rs/mio> |
-| nils-common | 0.6.5 | MIT | <https://github.com/sympoies/nils-cli> |
-| nils-memo-cli | 0.6.5 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-common | 0.7.3 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-memo-cli | 0.7.3 | MIT | <https://github.com/sympoies/nils-cli> |
 | num-conv | 0.2.0 | MIT OR Apache-2.0 | <https://github.com/jhpratt/num-conv> |
 | num-traits | 0.2.19 | MIT OR Apache-2.0 | <https://github.com/rust-num/num-traits> |
 | num_cpus | 1.17.0 | MIT OR Apache-2.0 | <https://github.com/seanmonstar/num_cpus> |
@@ -223,7 +223,7 @@ Do not edit manually.
 | ring | 0.17.14 | Apache-2.0 AND ISC | <https://github.com/briansmith/ring> |
 | rkyv | 0.7.46 | MIT | <https://github.com/rkyv/rkyv> |
 | rkyv_derive | 0.7.46 | MIT | <https://github.com/rkyv/rkyv> |
-| rusqlite | 0.38.0 | MIT | <https://github.com/rusqlite/rusqlite> |
+| rusqlite | 0.39.0 | MIT | <https://github.com/rusqlite/rusqlite> |
 | rust_decimal | 1.41.0 | MIT | <https://github.com/paupino/rust-decimal> |
 | rustc-hash | 2.1.1 | Apache-2.0 OR MIT | <https://github.com/rust-lang/rustc-hash> |
 | rustix | 1.1.3 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | <https://github.com/bytecodealliance/rustix> |
@@ -330,7 +330,7 @@ Do not edit manually.
 
 | Crate | Version | License | Repository | Source |
 | --- | --- | --- | --- | --- |
-| nils-codex-cli | 0.6.5 | MIT | <https://github.com/sympoies/nils-cli> | <https://crates.io/api/v1/crates/nils-codex-cli/0.6.5> |
+| nils-codex-cli | 0.7.3 | MIT | <https://github.com/sympoies/nils-cli> | <https://crates.io/api/v1/crates/nils-codex-cli/0.7.3> |
 
 ## Regeneration
 

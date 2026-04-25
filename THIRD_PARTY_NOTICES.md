@@ -3,7 +3,7 @@
 This file documents third-party notice-file discovery for Rust crates used by this workspace.
 
 - Data source: `cargo metadata --format-version 1 --locked --filter-platform` union for supported macOS/Linux targets
-- Cargo.lock SHA256: `1020a9abf7e84a895d55d43406360cb86cba9893294910b1996439e1e3e75f95`
+- Cargo.lock SHA256: `d4c3b08bde3089038b8c2634c13ee523d0488fd8b3f39a83eb842642372e33dd`
 - Third-party crates (`source != null`): 254
 
 ## Notice Extraction Policy
@@ -260,7 +260,7 @@ This file documents third-party notice-file discovery for Rust crates used by th
   - `LICENSE-APACHE`
   - `LICENSE-MIT`
 
-### clap_complete 4.5.66
+### clap_complete 4.6.2
 
 - License: `MIT OR Apache-2.0`
 - Source: `crates.io`
@@ -966,7 +966,7 @@ This file documents third-party notice-file discovery for Rust crates used by th
   - `LICENSE-APACHE`
   - `LICENSE-MIT`
 
-### libsqlite3-sys 0.36.0
+### libsqlite3-sys 0.37.0
 
 - License: `MIT`
 - Source: `crates.io`
@@ -1053,14 +1053,14 @@ This file documents third-party notice-file discovery for Rust crates used by th
 - License file references:
   - `LICENSE`
 
-### nils-common 0.6.5
+### nils-common 0.7.3
 
 - License: `MIT`
 - Source: `crates.io`
 - Notice files: No explicit NOTICE file discovered.
 - License file reference: none declared
 
-### nils-memo-cli 0.6.5
+### nils-memo-cli 0.7.3
 
 - License: `MIT`
 - Source: `crates.io`
@@ -1480,7 +1480,7 @@ This file documents third-party notice-file discovery for Rust crates used by th
 - License file references:
   - `LICENSE`
 
-### rusqlite 0.38.0
+### rusqlite 0.39.0
 
 - License: `MIT`
 - Source: `crates.io`
