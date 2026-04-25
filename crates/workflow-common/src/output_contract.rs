@@ -260,12 +260,12 @@ mod tests {
         let details = build_error_details_json("runtime", 1);
         let failure = build_error_envelope(
             "weather.today",
-            "runtime.provider_failed",
+            "NILS_WEATHER_002",
             "token=abc",
             Some(&details),
         );
         assert!(failure.contains("\"ok\":false"));
-        assert!(failure.contains("\"code\":\"runtime.provider_failed\""));
+        assert!(failure.contains("\"code\":\"NILS_WEATHER_002\""));
         assert!(failure.contains("\"details\":{\"kind\":\"runtime\",\"exit_code\":1}"));
         assert!(failure.contains("token=[REDACTED]"));
     }
@@ -281,8 +281,8 @@ mod tests {
 
     #[test]
     fn alfred_error_feedback_builder_redacts_sensitive_message() {
-        let payload = build_alfred_error_feedback("runtime.failed", "token=abc123");
-        assert!(payload.contains("Error [runtime.failed]"));
+        let payload = build_alfred_error_feedback("NILS_COMMON_005", "token=abc123");
+        assert!(payload.contains("Error [NILS_COMMON_005]"));
         assert!(payload.contains("token=[REDACTED]"));
         assert!(!payload.contains("abc123"));
     }

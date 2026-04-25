@@ -6,18 +6,18 @@ use std::path::{Component, Path, PathBuf};
 pub const EXIT_CODE_RUNTIME: i32 = 1;
 pub const EXIT_CODE_USER: i32 = 2;
 
-const ERROR_CODE_USER_INVALID_WORKFLOW_ROOT: &str = "user.invalid_workflow_root";
-const ERROR_CODE_USER_INVALID_README_SOURCE: &str = "user.invalid_readme_source";
-const ERROR_CODE_USER_README_NOT_FOUND: &str = "user.readme_not_found";
-const ERROR_CODE_USER_PLIST_NOT_FOUND: &str = "user.plist_not_found";
-const ERROR_CODE_USER_REMOTE_IMAGE_NOT_ALLOWED: &str = "user.remote_image_not_allowed";
-const ERROR_CODE_USER_INVALID_IMAGE_PATH: &str = "user.invalid_image_path";
-const ERROR_CODE_USER_IMAGE_NOT_FOUND: &str = "user.image_not_found";
-const ERROR_CODE_USER_PLIST_README_KEY_MISSING: &str = "user.plist_readme_key_missing";
-const ERROR_CODE_RUNTIME_READ_FAILED: &str = "runtime.read_failed";
-const ERROR_CODE_RUNTIME_WRITE_FAILED: &str = "runtime.write_failed";
-const ERROR_CODE_RUNTIME_CREATE_DIR_FAILED: &str = "runtime.create_dir_failed";
-const ERROR_CODE_RUNTIME_COPY_FAILED: &str = "runtime.copy_failed";
+const ERROR_CODE_USER_INVALID_WORKFLOW_ROOT: &str = "NILS_WORKFLOW_README_001";
+const ERROR_CODE_USER_INVALID_README_SOURCE: &str = "NILS_WORKFLOW_README_002";
+const ERROR_CODE_USER_README_NOT_FOUND: &str = "NILS_WORKFLOW_README_003";
+const ERROR_CODE_USER_PLIST_NOT_FOUND: &str = "NILS_WORKFLOW_README_004";
+const ERROR_CODE_USER_REMOTE_IMAGE_NOT_ALLOWED: &str = "NILS_WORKFLOW_README_005";
+const ERROR_CODE_USER_INVALID_IMAGE_PATH: &str = "NILS_WORKFLOW_README_006";
+const ERROR_CODE_USER_IMAGE_NOT_FOUND: &str = "NILS_WORKFLOW_README_007";
+const ERROR_CODE_USER_PLIST_README_KEY_MISSING: &str = "NILS_WORKFLOW_README_008";
+const ERROR_CODE_RUNTIME_READ_FAILED: &str = "NILS_WORKFLOW_README_009";
+const ERROR_CODE_RUNTIME_WRITE_FAILED: &str = "NILS_WORKFLOW_README_010";
+const ERROR_CODE_RUNTIME_CREATE_DIR_FAILED: &str = "NILS_WORKFLOW_README_011";
+const ERROR_CODE_RUNTIME_COPY_FAILED: &str = "NILS_WORKFLOW_README_012";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorKind {

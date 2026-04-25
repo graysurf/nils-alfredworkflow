@@ -55,7 +55,7 @@ Error JSON output uses:
   "command": "weather.today",
   "ok": false,
   "error": {
-    "code": "user.invalid_input",
+    "code": "NILS_WEATHER_001",
     "message": "missing location input: use --city or --lat/--lon",
     "details": {}
   }

@@ -83,9 +83,10 @@ enum Commands {
     },
 }
 
-const ERROR_CODE_USER_INVALID_INPUT: &str = "user.invalid_input";
-const ERROR_CODE_RUNTIME_PROVIDER_INIT: &str = "runtime.provider_init_failed";
-const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
+const ERROR_CODE_USER_INVALID_INPUT: &str = "NILS_WEATHER_001";
+const ERROR_CODE_RUNTIME_PROVIDER_INIT: &str = "NILS_WEATHER_002";
+const ERROR_CODE_RUNTIME_PROVIDER_FAILED: &str = "NILS_WEATHER_002";
+const ERROR_CODE_RUNTIME_SERIALIZE: &str = "NILS_COMMON_005";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum OutputModeArg {
@@ -658,7 +659,7 @@ fn map_app_error(error: AppError) -> CliError {
             user_error(ERROR_CODE_USER_INVALID_INPUT, error.message)
         }
         weather_cli::error::ErrorKind::Runtime => {
-            runtime_error("runtime.provider_failed", error.message)
+            runtime_error(ERROR_CODE_RUNTIME_PROVIDER_FAILED, error.message)
         }
     }
 }
@@ -1463,7 +1464,7 @@ mod tests {
         let err =
             run_with(cli, &config_in_tempdir(), &providers, fixed_now).expect_err("must fail");
         assert_eq!(err.kind, weather_cli::error::ErrorKind::Runtime);
-        assert_eq!(err.code, "runtime.provider_failed");
+        assert_eq!(err.code, ERROR_CODE_RUNTIME_PROVIDER_FAILED);
         assert_eq!(err.exit_code(), 1);
     }
 

@@ -143,7 +143,7 @@ fn service_json_error_envelope_has_required_keys() {
         json.get("error")
             .and_then(|error| error.get("code"))
             .and_then(Value::as_str),
-        Some("user.invalid_input")
+        Some("NILS_MARKET_001")
     );
     assert!(
         json.get("error")
@@ -657,7 +657,7 @@ fn service_json_error_envelope_for_invalid_favorites_token_has_required_keys() {
         json.get("error")
             .and_then(|error| error.get("code"))
             .and_then(Value::as_str),
-        Some("user.invalid_input")
+        Some("NILS_MARKET_001")
     );
     assert_eq!(
         json.get("error")
@@ -712,7 +712,7 @@ fn service_json_error_envelope_for_invalid_favorites_default_fiat_has_required_k
         json.get("error")
             .and_then(|error| error.get("code"))
             .and_then(Value::as_str),
-        Some("user.invalid_input")
+        Some("NILS_MARKET_001")
     );
     assert_eq!(
         json.get("error")
