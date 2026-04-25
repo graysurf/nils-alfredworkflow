@@ -1,5 +1,7 @@
 # CLI JSON Envelope v1
 
+> Status: active
+
 ## Purpose
 
 Defines one shared JSON envelope for all service-consumed CLI `--json` outputs across `crates/*-cli`.

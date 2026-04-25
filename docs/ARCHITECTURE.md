@@ -68,7 +68,7 @@ with a `> Status:` banner; treat the banner as the source of truth for whether a
 - [`third-party-artifacts-contract-v1.md`](specs/third-party-artifacts-contract-v1.md) —
   contract for generating and shipping `THIRD_PARTY_*.md` plus `.sha256` release-bundle assets.
 - [`third-party-license-artifact-contract-v1.md`](specs/third-party-license-artifact-contract-v1.md) —
-  license-only artifact contract; cross-references the contract above.
+  superseded forwarding stub; redirects to the canonical artifacts contract above.
 
 ### Per-domain contracts
 

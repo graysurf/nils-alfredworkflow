@@ -1,5 +1,7 @@
 # Google CLI native contract
 
+> Status: active
+
 ## Purpose
 
 Define the native Rust command contract for `google-cli` over the repo-scoped Google surface: `auth`, `gmail`, and

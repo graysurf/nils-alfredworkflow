@@ -1,5 +1,7 @@
 # Script Filter Input Policy (Shared)
 
+> Status: active
+
 ## Defaults
 
 - `queue_delay_seconds`: `1 second`

@@ -1,5 +1,7 @@
 # Workflow Shared Foundations Policy
 
+> Status: active
+
 ## Scope
 
 - This document is the canonical policy for shared foundation extraction across Alfred workflows in this repository.

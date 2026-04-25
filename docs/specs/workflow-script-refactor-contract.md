@@ -1,5 +1,7 @@
 # Workflow Script Refactor Contract
 
+> Status: frozen — post-Sprint-3 deliverable; the rules below are not relaxed without an explicit successor spec.
+
 ## Scope
 
 This contract freezes Sprint 3 shared-lane behavior for Task 3.1, Task 3.2, and Task 3.4:
