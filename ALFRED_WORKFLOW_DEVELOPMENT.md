@@ -330,19 +330,27 @@ xattr -dr com.apple.quarantine "$WORKFLOW_DIR"
 
 ### Workflow-local runbooks
 
+Ground truth for the workflow set is `ls workflows/`. The list below is sorted alphabetically and must include every
+non-removed workflow directory.
+
 - `workflows/_template/TROUBLESHOOTING.md`
+- `workflows/bangumi-search/TROUBLESHOOTING.md`
+- `workflows/bilibili-search/TROUBLESHOOTING.md`
 - `workflows/cambridge-dict/TROUBLESHOOTING.md`
 - `workflows/codex-cli/TROUBLESHOOTING.md`
 - `workflows/epoch-converter/TROUBLESHOOTING.md`
 - `workflows/google-search/TROUBLESHOOTING.md`
+- `workflows/google-service/TROUBLESHOOTING.md`
 - `workflows/imdb-search/TROUBLESHOOTING.md`
 - `workflows/market-expression/TROUBLESHOOTING.md`
 - `workflows/memo-add/TROUBLESHOOTING.md`
 - `workflows/multi-timezone/TROUBLESHOOTING.md`
+- `workflows/netflix-search/TROUBLESHOOTING.md`
 - `workflows/open-project/TROUBLESHOOTING.md`
 - `workflows/quote-feed/TROUBLESHOOTING.md`
 - `workflows/randomer/TROUBLESHOOTING.md`
 - `workflows/spotify-search/TROUBLESHOOTING.md`
+- `workflows/steam-search/TROUBLESHOOTING.md`
 - `workflows/weather/TROUBLESHOOTING.md`
 - `workflows/wiki-search/TROUBLESHOOTING.md`
 - `workflows/youtube-search/TROUBLESHOOTING.md`
