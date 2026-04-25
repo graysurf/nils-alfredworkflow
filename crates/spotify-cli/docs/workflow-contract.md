@@ -1,8 +1,16 @@
 # Spotify Search Workflow Contract
 
+> Status: active
+
 ## Purpose
 
 This document defines the runtime behavior contract for the `spotify-search` Alfred workflow.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix `NILS_SPOTIFY_*`: [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+
 It is the source of truth for query handling, Alfred item JSON shape, truncation behavior,
 error-to-feedback mapping, and environment variable constraints.
 
