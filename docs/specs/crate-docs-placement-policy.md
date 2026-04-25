@@ -1,5 +1,7 @@
 # Crate Documentation Placement Policy
 
+> Status: active
+
 ## Scope
 
 - This policy applies to all markdown documentation in this repository.

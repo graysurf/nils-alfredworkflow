@@ -1,5 +1,7 @@
 # CLI Shared Runtime Contract (Sprint 2)
 
+> Status: active
+
 ## Scope
 
 - This shared runtime contract applies to CLI crates under `crates/*-cli` and shared runtime helpers in

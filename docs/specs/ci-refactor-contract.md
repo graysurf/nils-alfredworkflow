@@ -1,5 +1,8 @@
 # CI Refactor Contract (Sprint 1 Tasks 1.1-1.2)
 
+> Status: frozen — post-Sprint-1 contract; canonical entrypoints are not bypassed without an explicit
+> successor spec.
+
 This document freezes the post-refactor CI routing contract for:
 
 - `.github/workflows/ci.yml`

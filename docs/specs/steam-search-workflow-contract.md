@@ -1,5 +1,7 @@
 # Steam Search Workflow Contract
 
+> Status: active
+
 ## Goal
 
 - Define the `steam-search` source contract, region semantics, and fallback behavior.

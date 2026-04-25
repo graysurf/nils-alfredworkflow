@@ -1,5 +1,7 @@
 # CLI Error Code Registry (v1)
 
+> Status: active
+
 ## Purpose
 
 Provides stable machine error codes shared by all CLI crates using JSON envelope v1.

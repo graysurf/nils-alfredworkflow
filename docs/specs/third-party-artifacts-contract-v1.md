@@ -1,5 +1,8 @@
 # Third-Party Artifacts Contract v1
 
+> Status: active — covers `THIRD_PARTY_LICENSES.md` and `THIRD_PARTY_NOTICES.md`. The license-only spec
+> `third-party-license-artifact-contract-v1.md` is superseded by this document.
+
 ## Purpose
 
 This contract defines deterministic generation requirements for:
