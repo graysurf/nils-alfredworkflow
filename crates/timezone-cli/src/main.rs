@@ -127,8 +127,8 @@ fn render_feedback(
 
 fn error_code(error: &AppError) -> &'static str {
     match error.kind {
-        timezone_cli::error::ErrorKind::User => "timezone.user",
-        timezone_cli::error::ErrorKind::Runtime => "timezone.runtime",
+        timezone_cli::error::ErrorKind::User => "NILS_TIMEZONE_001",
+        timezone_cli::error::ErrorKind::Runtime => "NILS_TIMEZONE_002",
     }
 }
 
@@ -309,7 +309,7 @@ mod tests {
             json.get("error")
                 .and_then(|error| error.get("code"))
                 .and_then(Value::as_str),
-            Some("timezone.user")
+            Some("NILS_TIMEZONE_001")
         );
         assert!(
             json.get("error")

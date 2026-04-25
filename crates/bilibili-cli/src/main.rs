@@ -112,8 +112,8 @@ impl AppError {
 
     fn code(&self) -> &'static str {
         match self.kind {
-            ErrorKind::User => "bilibili.user",
-            ErrorKind::Runtime => "bilibili.runtime",
+            ErrorKind::User => "NILS_BILIBILI_001",
+            ErrorKind::Runtime => "NILS_BILIBILI_002",
         }
     }
 }
@@ -321,6 +321,6 @@ mod tests {
         let payload: Value =
             serde_json::from_str(&serialize_service_error("query", &err)).expect("valid json");
         assert_eq!(payload["ok"], false);
-        assert_eq!(payload["error"]["code"], "bilibili.user");
+        assert_eq!(payload["error"]["code"], "NILS_BILIBILI_001");
     }
 }

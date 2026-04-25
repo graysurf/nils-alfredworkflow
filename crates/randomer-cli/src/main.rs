@@ -112,8 +112,8 @@ impl AppError {
 
     fn code(&self) -> &'static str {
         match self.kind {
-            ErrorKind::User => "randomer.user",
-            ErrorKind::Runtime => "randomer.runtime",
+            ErrorKind::User => "NILS_RANDOMER_001",
+            ErrorKind::Runtime => "NILS_RANDOMER_002",
         }
     }
 }
@@ -346,7 +346,7 @@ mod tests {
             json.get("error")
                 .and_then(|error| error.get("code"))
                 .and_then(Value::as_str),
-            Some("randomer.user")
+            Some("NILS_RANDOMER_001")
         );
         assert!(
             json.get("error")

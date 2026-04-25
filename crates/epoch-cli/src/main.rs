@@ -129,8 +129,8 @@ fn render_feedback(
 
 fn error_code(error: &AppError) -> &'static str {
     match error.kind {
-        epoch_cli::error::ErrorKind::User => "epoch.user",
-        epoch_cli::error::ErrorKind::Runtime => "epoch.runtime",
+        epoch_cli::error::ErrorKind::User => "NILS_EPOCH_001",
+        epoch_cli::error::ErrorKind::Runtime => "NILS_EPOCH_002",
     }
 }
 
@@ -319,7 +319,7 @@ mod tests {
             json.get("error")
                 .and_then(|error| error.get("code"))
                 .and_then(Value::as_str),
-            Some("epoch.user")
+            Some("NILS_EPOCH_001")
         );
         assert!(
             json.get("error")
