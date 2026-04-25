@@ -54,6 +54,8 @@ Use this file for maintainer-side packaging, install, and macOS acceptance flows
   - `scripts/workflow-pack.sh --id <workflow-id> --install`
 - For workflows that use helper-based runtime resolution, verify the shared resolver policy:
   - `bash scripts/workflow-cli-resolver-audit.sh --check`
+  - Read-only check, no `--apply` mode. The audit reports drift only; remediation is manual (or via the
+    workflow-specific runbook).
 - If Gatekeeper blocks execution, start from:
   - `ALFRED_WORKFLOW_DEVELOPMENT.md`
   - `workflows/<workflow-id>/TROUBLESHOOTING.md`

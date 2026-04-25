@@ -34,3 +34,45 @@ For operator standards and command gates, see:
 - [ALFRED_WORKFLOW_DEVELOPMENT.md](../ALFRED_WORKFLOW_DEVELOPMENT.md)
 - [DEVELOPMENT.md](../DEVELOPMENT.md)
 - [docs/PACKAGING.md](PACKAGING.md)
+
+## Spec navigation
+
+Canonical contracts live in [`docs/specs/`](specs/). Specs are grouped below by domain. Every active spec opens
+with a `> Status:` banner; treat the banner as the source of truth for whether a spec is binding.
+
+### CLI runtime contracts
+
+- [`cli-shared-runtime-contract.md`](specs/cli-shared-runtime-contract.md) —
+  shared runtime/output contract for every CLI crate (entrypoints, json mode, exit codes).
+- [`cli-json-envelope-v1.md`](specs/cli-json-envelope-v1.md) —
+  v1 JSON envelope shape (`status`, `data`, `error`) emitted by every CLI subcommand.
+- [`cli-error-code-registry.md`](specs/cli-error-code-registry.md) —
+  registry of allowed `error_code` values, with provenance and historical reservations.
+
+### Workflow and shared-foundation policies
+
+- [`workflow-shared-foundations-policy.md`](specs/workflow-shared-foundations-policy.md) —
+  extraction boundary, helper inventory, rollout/rollback rules for `scripts/lib/*`.
+- [`workflow-script-refactor-contract.md`](specs/workflow-script-refactor-contract.md) —
+  per-workflow script refactor checklist and migration guarantees.
+- [`script-filter-input-policy.md`](specs/script-filter-input-policy.md) —
+  Alfred Script Filter input policy (queue delay, alfredfiltersresults, `config.type`).
+- [`crate-docs-placement-policy.md`](specs/crate-docs-placement-policy.md) —
+  required `crates/<name>/README.md` + `crates/<name>/docs/README.md`, allowed root markdown set, and
+  `docs/` category list.
+
+### CI and release contracts
+
+- [`ci-refactor-contract.md`](specs/ci-refactor-contract.md) —
+  CI gate ordering, sprint/task labels, and rollout invariants for the `validate` job.
+- [`third-party-artifacts-contract-v1.md`](specs/third-party-artifacts-contract-v1.md) —
+  contract for generating and shipping `THIRD_PARTY_*.md` plus `.sha256` release-bundle assets.
+- [`third-party-license-artifact-contract-v1.md`](specs/third-party-license-artifact-contract-v1.md) —
+  license-only artifact contract; cross-references the contract above.
+
+### Per-domain contracts
+
+- [`google-cli-native-contract.md`](specs/google-cli-native-contract.md) —
+  `nils-google-cli` native command tree (`auth/gmail/drive`) and config/env-var contract.
+- [`steam-search-workflow-contract.md`](specs/steam-search-workflow-contract.md) —
+  Steam region rotation, language switching, and result-row contract.
