@@ -160,9 +160,23 @@ emit_error() {
   jq -cn --arg cmd "$command_id" --arg msg "$message" '{schema_version:"cli-envelope@v1",command:$cmd,ok:false,error:{code:"NILS_GOOGLE_005",message:$msg,details:{kind:"user",exit_code:2}}}'
 }
 
-if [[ "${1:-}" == "--json" ]]; then
-  shift
-fi
+while [[ "$#" -gt 0 ]]; do
+  case "${1:-}" in
+  --output)
+    [[ "${2:-}" == "json" ]] || {
+      emit_error "google.unknown" "unsupported output mode: ${2:-}"
+      exit 2
+    }
+    shift 2
+    ;;
+  --output=json)
+    shift
+    ;;
+  *)
+    break
+    ;;
+  esac
+done
 
 selected_account=""
 while [[ "${1:-}" == "-a" || "${1:-}" == "--account" ]]; do
