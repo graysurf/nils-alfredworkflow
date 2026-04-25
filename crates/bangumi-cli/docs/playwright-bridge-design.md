@@ -1,5 +1,9 @@
 # Bangumi Playwright Bridge Design (Future Path)
 
+> Status: frozen — pre-implementation design doc; the bridge is scaffolded behind
+> `BANGUMI_SCRAPER_ENABLE` and the `scraper-bridge` cargo gate, both default-off. Live runtime stays
+> API-first per [`workflow-contract.md`](workflow-contract.md).
+
 This design describes a future Rust-to-Node Playwright bridge for Bangumi scraping.
 Current runtime remains API-first; this bridge is scaffolded and disabled by default.
 
