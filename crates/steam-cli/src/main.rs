@@ -103,8 +103,8 @@ impl AppError {
 
     fn code(&self) -> &'static str {
         match self.kind {
-            ErrorKind::User => "steam.user",
-            ErrorKind::Runtime => "steam.runtime",
+            ErrorKind::User => "NILS_STEAM_001",
+            ErrorKind::Runtime => "NILS_STEAM_002",
         }
     }
 }
@@ -410,7 +410,7 @@ mod tests {
             json.get("error")
                 .and_then(|error| error.get("code"))
                 .and_then(Value::as_str),
-            Some("steam.user")
+            Some("NILS_STEAM_001")
         );
     }
 }
