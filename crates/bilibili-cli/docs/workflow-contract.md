@@ -1,8 +1,16 @@
 # Bilibili Search Workflow Contract
 
+> Status: active
+
 ## Purpose
 
 This document defines the runtime behavior contract for the `bilibili-search` Alfred workflow.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix (future allocation): [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+
 It is the source of truth for query handling, request contract, Alfred item mapping,
 error-to-feedback mapping, and environment variable constraints.
 

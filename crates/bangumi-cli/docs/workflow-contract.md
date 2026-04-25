@@ -1,6 +1,15 @@
 # Bangumi Search Workflow Contract
 
+> Status: active
+
 This document defines the runtime contract for `workflows/bangumi-search` and `nils-bangumi-cli`.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix (future allocation): [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+- Companion design doc for the future scraper bridge:
+  [`playwright-bridge-design.md`](playwright-bridge-design.md).
 
 ## Input Grammar
 

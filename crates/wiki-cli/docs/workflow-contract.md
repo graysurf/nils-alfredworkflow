@@ -1,8 +1,18 @@
 # Wiki Search Workflow Contract
 
+> Status: active
+
 ## Purpose
 
 This document defines the runtime behavior contract for the `wiki-search` Alfred workflow.
+Cross-references:
+
+- Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
+- JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
+- Reserved error-code prefix `NILS_WIKI_*`: [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+- Ordered-list parsing standard for `WIKI_LANGUAGE_OPTIONS`:
+  [`ALFRED_WORKFLOW_DEVELOPMENT.md`](../../../ALFRED_WORKFLOW_DEVELOPMENT.md) → *Ordered config list parsing standard*.
+
 It is the source of truth for query handling, Alfred item JSON shape, snippet normalization
 and truncation, language-switch requery behavior, error-to-feedback mapping, and
 environment variable constraints.
