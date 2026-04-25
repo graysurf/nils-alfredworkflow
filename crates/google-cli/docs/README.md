@@ -14,6 +14,8 @@ Crate-local documentation index for `nils-google-cli`.
 ## Canonical Documents
 
 - [`../README.md`](../README.md): crate purpose, commands, runtime configuration, and validation.
+- [`workflow-contract.md`](workflow-contract.md): per-subcommand JSON envelope, reserved error codes, account
+  resolution, env vars, and exit-code semantics for `auth`/`gmail`/`drive`.
 - [`auth-setup-guide.md`](auth-setup-guide.md): end-to-end OAuth setup and multi-account operator guide.
 - [`auth.md`](auth.md): auth command scope, storage model, and troubleshooting.
 - [`gmail.md`](gmail.md): Gmail command surface and native runtime notes.

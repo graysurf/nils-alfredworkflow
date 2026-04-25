@@ -88,6 +88,10 @@ Behavior summary:
 - Human-readable mode: compliant.
 - JSON service envelope (`schema_version/command/ok`): compliant.
 
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+
 ## Validation
 
 - `cargo test -p nils-workflow-readme-cli`
