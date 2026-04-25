@@ -14,4 +14,6 @@ Crate-local documentation index for `nils-workflow-cli`.
 ## Canonical Documents
 
 - [`../README.md`](../README.md): crate purpose, commands, runtime configuration, and validation.
+- [`workflow-contract.md`](workflow-contract.md): per-subcommand JSON envelope, error codes, exit-code semantics,
+  and the host-agnostic `github-url` policy.
 - [`open-project-port-parity.md`](open-project-port-parity.md): canonical parity notes for open-project workflow migration.
