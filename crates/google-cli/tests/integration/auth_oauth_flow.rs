@@ -27,7 +27,8 @@ fn seed_credentials(config_dir: &Path) {
     let output = run(
         config_dir,
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "credentials",
             "set",
@@ -49,7 +50,8 @@ fn remote_step_two_rejects_state_mismatch_and_accepts_matching_state() {
     let step_one = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "me@example.com",
@@ -71,7 +73,8 @@ fn remote_step_two_rejects_state_mismatch_and_accepts_matching_state() {
     let mismatch = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "me@example.com",
@@ -98,7 +101,8 @@ fn remote_step_two_rejects_state_mismatch_and_accepts_matching_state() {
     let step_two = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "me@example.com",
@@ -137,7 +141,7 @@ fn loopback_mode_requires_test_callback_or_test_code() {
 
     let output = run(
         temp.path(),
-        &["--json", "auth", "add", "me@example.com"],
+        &["--output", "json", "auth", "add", "me@example.com"],
         &[],
     );
     assert_eq!(output.status.code(), Some(2));

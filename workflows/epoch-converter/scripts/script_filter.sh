@@ -85,7 +85,7 @@ execute_epoch_convert() {
     return 1
   fi
 
-  "$epoch_cli" convert --query "$query" --mode alfred
+  "$epoch_cli" convert --query "$query" --output alfred-json
 }
 
 query="${1:-}"

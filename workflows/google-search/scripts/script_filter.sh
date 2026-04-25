@@ -112,7 +112,7 @@ google_query_fetch_json() {
   fi
 
   local json_output
-  if json_output="$("$brave_cli" query --input "$query" --mode alfred 2>"$err_file")"; then
+  if json_output="$("$brave_cli" query --input "$query" --output alfred-json 2>"$err_file")"; then
     rm -f "$err_file"
     if [[ -z "$json_output" ]]; then
       echo "brave-cli returned empty response" >&2

@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use randomer_cli::{RandomerError, generate_feedback, list_formats_feedback, list_types_feedback};
-use workflow_common::{EnvelopePayloadKind, build_error_envelope, build_success_envelope};
+use workflow_common::{
+    EnvelopePayloadKind, OutputMode, build_error_envelope, build_success_envelope,
+};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "Randomer workflow CLI")]
@@ -17,8 +19,8 @@ enum Commands {
         #[arg(long)]
         query: Option<String>,
         /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
-        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
-        mode: OutputMode,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
     /// List type keys for selector flow in rrv mode.
     ListTypes {
@@ -26,8 +28,8 @@ enum Commands {
         #[arg(long)]
         query: Option<String>,
         /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
-        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
-        mode: OutputMode,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
     /// Generate values for a specific format.
     Generate {
@@ -38,16 +40,25 @@ enum Commands {
         #[arg(long, default_value_t = 1)]
         count: usize,
         /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
-        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
-        mode: OutputMode,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 #[value(rename_all = "kebab-case")]
-enum OutputMode {
-    ServiceJson,
-    Alfred,
+enum OutputModeArg {
+    Json,
+    AlfredJson,
+}
+
+impl From<OutputModeArg> for OutputMode {
+    fn from(value: OutputModeArg) -> Self {
+        match value {
+            OutputModeArg::Json => OutputMode::Json,
+            OutputModeArg::AlfredJson => OutputMode::AlfredJson,
+        }
+    }
 }
 
 impl Cli {
@@ -61,9 +72,9 @@ impl Cli {
 
     fn output_mode(&self) -> OutputMode {
         match &self.command {
-            Commands::ListFormats { mode, .. } => *mode,
-            Commands::ListTypes { mode, .. } => *mode,
-            Commands::Generate { mode, .. } => *mode,
+            Commands::ListFormats { output, .. } => (*output).into(),
+            Commands::ListTypes { output, .. } => (*output).into(),
+            Commands::Generate { output, .. } => (*output).into(),
         }
     }
 }
@@ -129,11 +140,14 @@ fn main() {
         }
         Err(error) => {
             match mode {
-                OutputMode::ServiceJson => {
+                OutputMode::Json => {
                     println!("{}", serialize_service_error(command, &error));
                 }
-                OutputMode::Alfred => {
+                OutputMode::AlfredJson => {
                     eprintln!("error: {}", error.message);
+                }
+                OutputMode::Human => {
+                    unreachable!("only json and alfred-json output modes are supported")
                 }
             }
             std::process::exit(error.exit_code());
@@ -143,22 +157,22 @@ fn main() {
 
 fn run(cli: Cli) -> Result<String, AppError> {
     match cli.command {
-        Commands::ListFormats { query, mode } => {
+        Commands::ListFormats { query, output } => {
             let payload = list_formats_feedback(query.as_deref());
-            render_feedback(mode, "list-formats", payload)
+            render_feedback(output.into(), "list-formats", payload)
         }
-        Commands::ListTypes { query, mode } => {
+        Commands::ListTypes { query, output } => {
             let payload = list_types_feedback(query.as_deref());
-            render_feedback(mode, "list-types", payload)
+            render_feedback(output.into(), "list-types", payload)
         }
         Commands::Generate {
             format,
             count,
-            mode,
+            output,
         } => {
             let payload =
                 generate_feedback(format.as_str(), count).map_err(AppError::from_randomer)?;
-            render_feedback(mode, "generate", payload)
+            render_feedback(output.into(), "generate", payload)
         }
     }
 }
@@ -169,10 +183,10 @@ fn render_feedback(
     payload: alfred_core::Feedback,
 ) -> Result<String, AppError> {
     match mode {
-        OutputMode::Alfred => payload.to_json().map_err(|error| {
+        OutputMode::AlfredJson => payload.to_json().map_err(|error| {
             AppError::runtime(format!("failed to serialize Alfred feedback: {error}"))
         }),
-        OutputMode::ServiceJson => {
+        OutputMode::Json => {
             let result = payload.to_json().map_err(|error| {
                 AppError::runtime(format!("failed to serialize Alfred feedback: {error}"))
             })?;
@@ -182,6 +196,7 @@ fn render_feedback(
                 &result,
             ))
         }
+        OutputMode::Human => unreachable!("only json and alfred-json output modes are supported"),
     }
 }
 
@@ -217,13 +232,13 @@ mod tests {
 
     #[test]
     fn list_formats_service_json_mode_wraps_result_in_v1_envelope() {
-        let cli = Cli::parse_from(["randomer-cli", "list-formats", "--mode", "service-json"]);
+        let cli = Cli::parse_from(["randomer-cli", "list-formats", "--output", "json"]);
         let output = run(cli).expect("list-formats should succeed");
         let json: Value = serde_json::from_str(&output).expect("output should be JSON");
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(Value::as_str),
@@ -334,7 +349,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(Value::as_str),

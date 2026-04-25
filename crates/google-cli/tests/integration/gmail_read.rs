@@ -42,7 +42,8 @@ fn gmail_search_and_get_use_native_account_and_header_selection() {
     let search = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "gmail",
             "search",
             "from:team@example.com",
@@ -79,7 +80,8 @@ fn gmail_search_and_get_use_native_account_and_header_selection() {
     let get = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "gmail",
             "get",
             "msg-1",

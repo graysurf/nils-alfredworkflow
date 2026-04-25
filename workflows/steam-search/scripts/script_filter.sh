@@ -161,7 +161,7 @@ steam_search_fetch_json() {
   fi
 
   local json_output
-  if json_output="$(STEAM_REGION="$STEAM_ACTIVE_REGION" "$steam_cli" search --query "$query" --mode alfred 2>"$err_file")"; then
+  if json_output="$(STEAM_REGION="$STEAM_ACTIVE_REGION" "$steam_cli" search --query "$query" --output alfred-json 2>"$err_file")"; then
     rm -f "$err_file"
 
     if [[ -z "$json_output" ]]; then

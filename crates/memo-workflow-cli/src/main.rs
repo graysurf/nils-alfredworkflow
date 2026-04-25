@@ -163,7 +163,7 @@ struct JsonEnvelope<T> {
     error: Option<String>,
 }
 
-const ENVELOPE_SCHEMA_VERSION: &str = "v1";
+const ENVELOPE_SCHEMA_VERSION: &str = "cli-envelope@v1";
 
 fn main() {
     let cli = Cli::parse();

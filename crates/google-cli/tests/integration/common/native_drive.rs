@@ -25,7 +25,8 @@ pub fn seed_credentials(config_dir: &Path) {
     let output = run(
         config_dir,
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "credentials",
             "set",
@@ -44,7 +45,8 @@ pub fn seed_account(config_dir: &Path, account: &str) {
     let output = run(
         config_dir,
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             account,

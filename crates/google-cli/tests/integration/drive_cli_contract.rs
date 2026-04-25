@@ -26,7 +26,7 @@ fn drive_json_contract_covers_ls_search_get_and_upload() {
 
     let ls = native_drive::run(
         temp.path(),
-        &["--json", "drive", "ls", "--parent", "folder-1"],
+        &["--output", "json", "drive", "ls", "--parent", "folder-1"],
         &[
             (
                 "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
@@ -44,7 +44,7 @@ fn drive_json_contract_covers_ls_search_get_and_upload() {
 
     let search = native_drive::run(
         temp.path(),
-        &["--json", "drive", "search", "report"],
+        &["--output", "json", "drive", "search", "report"],
         &[
             (
                 "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
@@ -57,7 +57,7 @@ fn drive_json_contract_covers_ls_search_get_and_upload() {
 
     let get = native_drive::run(
         temp.path(),
-        &["--json", "drive", "get", "file-1"],
+        &["--output", "json", "drive", "get", "file-1"],
         &[
             (
                 "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
@@ -74,7 +74,8 @@ fn drive_json_contract_covers_ls_search_get_and_upload() {
     let upload = native_drive::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "upload",
             upload_source.to_string_lossy().as_ref(),
@@ -119,7 +120,7 @@ fn drive_plain_contract_emits_human_text() {
 
     let output = native_drive::run(
         temp.path(),
-        &["--plain", "drive", "search", "report"],
+        &["--output", "plain", "drive", "search", "report"],
         &[(
             "GOOGLE_CLI_DRIVE_FIXTURE_PATH",
             fixture_path.to_string_lossy().as_ref(),
@@ -160,7 +161,8 @@ fn drive_download_executes_natively_and_writes_output() {
     let output = native_drive::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "download",
             "file-123",

@@ -15,7 +15,7 @@ fn run_cli(args: &[&str], envs: &[(&str, &str)]) -> Output {
 #[test]
 fn service_json_success_envelope_has_required_keys() {
     let output = run_cli(
-        &["list-formats", "--mode", "service-json"],
+        &["list-formats", "--output", "json"],
         &[("RANDOMER_TEST_SECRET", "unused")],
     );
     assert_eq!(output.status.code(), Some(0));
@@ -23,7 +23,7 @@ fn service_json_success_envelope_has_required_keys() {
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
         json.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(
         json.get("command").and_then(Value::as_str),
@@ -43,13 +43,7 @@ fn service_json_success_envelope_has_required_keys() {
 fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
     let secret = "randomer-contract-secret";
     let output = run_cli(
-        &[
-            "generate",
-            "--format",
-            "unknown-format",
-            "--mode",
-            "service-json",
-        ],
+        &["generate", "--format", "unknown-format", "--output", "json"],
         &[("RANDOMER_TEST_SECRET", secret)],
     );
     assert_eq!(output.status.code(), Some(2));

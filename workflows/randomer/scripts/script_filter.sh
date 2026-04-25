@@ -94,7 +94,7 @@ execute_list_formats() {
   local query="${1:-}"
   local randomer_cli
   randomer_cli="$(resolve_randomer_cli)"
-  "$randomer_cli" list-formats --query "$query" --mode alfred
+  "$randomer_cli" list-formats --query "$query" --output alfred-json
 }
 
 query="${1:-}"

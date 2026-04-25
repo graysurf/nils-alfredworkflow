@@ -5,7 +5,7 @@ use workflow_common::{
     EnvelopePayloadKind, OutputMode, RuntimeConfig, ScriptFilterMode, WorkflowError,
     build_alfred_error_feedback, build_error_details_json, build_error_envelope,
     build_script_filter_feedback_with_mode, build_success_envelope, record_usage,
-    select_output_mode, web_url_for_project,
+    web_url_for_project,
 };
 
 #[derive(Debug, Parser)]
@@ -25,12 +25,9 @@ enum Commands {
         /// Display mode for icon treatment.
         #[arg(long, value_enum, default_value_t = ScriptFilterModeArg::Open)]
         mode: ScriptFilterModeArg,
-        /// Explicit output mode (`human`, `json`, `alfred-json`).
-        #[arg(long, value_enum)]
-        output: Option<OutputModeArg>,
-        /// Legacy compatibility flag for JSON service mode.
-        #[arg(long)]
-        json: bool,
+        /// Canonical output mode (`human`, `json`, or `alfred-json`).
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
     /// Record usage timestamp for a selected project path.
     RecordUsage {
@@ -117,7 +114,6 @@ impl AppError {
 }
 
 const ERROR_CODE_USER_INVALID_PATH: &str = "user.invalid_path";
-const ERROR_CODE_USER_OUTPUT_MODE_CONFLICT: &str = "user.output_mode_conflict";
 const ERROR_CODE_RUNTIME_GIT: &str = "runtime.git_failed";
 const ERROR_CODE_RUNTIME_USAGE_WRITE: &str = "runtime.usage_persist_failed";
 const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
@@ -133,15 +129,7 @@ impl Cli {
 
     fn output_mode_hint(&self) -> OutputMode {
         match &self.command {
-            Commands::ScriptFilter { output, json, .. } => {
-                if *json {
-                    OutputMode::Json
-                } else if let Some(mode) = output {
-                    (*mode).into()
-                } else {
-                    OutputMode::AlfredJson
-                }
-            }
+            Commands::ScriptFilter { output, .. } => (*output).into(),
             Commands::RecordUsage { .. } | Commands::GithubUrl { .. } => OutputMode::Human,
         }
     }
@@ -174,12 +162,8 @@ fn run_with_config(cli: Cli, config: &RuntimeConfig) -> Result<String, AppError>
             query,
             mode,
             output,
-            json,
         } => {
-            let output_mode =
-                select_output_mode(output.map(Into::into), json, OutputMode::AlfredJson).map_err(
-                    |error| AppError::user(ERROR_CODE_USER_OUTPUT_MODE_CONFLICT, error.to_string()),
-                )?;
+            let output_mode: OutputMode = output.into();
             let feedback = build_script_filter_feedback_with_mode(&query, config, mode.into());
             let alfred_json = feedback.to_json().map_err(|error| {
                 AppError::runtime(
@@ -340,8 +324,7 @@ mod tests {
                 command: Commands::ScriptFilter {
                     query: String::new(),
                     mode: ScriptFilterModeArg::Open,
-                    output: Some(OutputModeArg::Json),
-                    json: false,
+                    output: OutputModeArg::Json,
                 },
             },
             &config,
@@ -352,7 +335,7 @@ mod tests {
             serde_json::from_str(&output).expect("script-filter output should be valid JSON");
         assert_eq!(
             json.get("schema_version").and_then(|x| x.as_str()),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(
             json.get("command").and_then(|x| x.as_str()),
@@ -505,8 +488,7 @@ mod tests {
                 command: Commands::ScriptFilter {
                     query: String::new(),
                     mode: ScriptFilterModeArg::Github,
-                    output: None,
-                    json: false,
+                    output: OutputModeArg::AlfredJson,
                 },
             },
             &config,
@@ -545,8 +527,7 @@ mod tests {
                 command: Commands::ScriptFilter {
                     query: String::new(),
                     mode: ScriptFilterModeArg::Open,
-                    output: None,
-                    json: false,
+                    output: OutputModeArg::AlfredJson,
                 },
             },
             &config,
@@ -556,33 +537,6 @@ mod tests {
         let json: serde_json::Value =
             serde_json::from_str(&output).expect("script-filter output should be valid JSON");
         assert!(json.get("items").is_some());
-    }
-
-    #[test]
-    fn script_filter_rejects_conflicting_json_flags() {
-        let temp = tempdir().expect("create temp dir");
-        let config = RuntimeConfig {
-            project_roots: vec![temp.path().join("projects")],
-            usage_file: temp.path().join("usage.log"),
-            vscode_path: "code".to_string(),
-            max_results: 10,
-        };
-
-        let err = run_with_config(
-            Cli {
-                command: Commands::ScriptFilter {
-                    query: String::new(),
-                    mode: ScriptFilterModeArg::Open,
-                    output: Some(OutputModeArg::Human),
-                    json: true,
-                },
-            },
-            &config,
-        )
-        .expect_err("must fail");
-
-        assert_eq!(err.kind, ErrorKind::User);
-        assert_eq!(err.code, ERROR_CODE_USER_OUTPUT_MODE_CONFLICT);
     }
 
     #[test]

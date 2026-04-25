@@ -29,7 +29,8 @@ fn drive_upload_infers_mime_and_supports_replace_behavior() {
     let output = native_drive::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "upload",
             upload_source.to_string_lossy().as_ref(),
@@ -84,7 +85,8 @@ fn drive_upload_allows_explicit_mime_override() {
     let output = native_drive::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "upload",
             upload_source.to_string_lossy().as_ref(),
@@ -138,7 +140,8 @@ fn drive_upload_missing_source_maps_to_drive_input_error() {
     let output = native_drive::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "upload",
             missing_path.to_string_lossy().as_ref(),

@@ -7,7 +7,9 @@ use timezone_cli::{
     feedback, local_tz,
     parser::{self, TimezoneEntry},
 };
-use workflow_common::{EnvelopePayloadKind, build_error_envelope, build_success_envelope};
+use workflow_common::{
+    EnvelopePayloadKind, OutputMode, build_error_envelope, build_success_envelope,
+};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "Multi-timezone workflow CLI")]
@@ -27,16 +29,25 @@ enum Commands {
         #[arg(long = "config-zones", default_value = "")]
         config_zones: String,
         /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
-        #[arg(long, value_enum, default_value_t = OutputMode::Alfred)]
-        mode: OutputMode,
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
     },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 #[value(rename_all = "kebab-case")]
-enum OutputMode {
-    ServiceJson,
-    Alfred,
+enum OutputModeArg {
+    Json,
+    AlfredJson,
+}
+
+impl From<OutputModeArg> for OutputMode {
+    fn from(value: OutputModeArg) -> Self {
+        match value {
+            OutputModeArg::Json => OutputMode::Json,
+            OutputModeArg::AlfredJson => OutputMode::AlfredJson,
+        }
+    }
 }
 
 impl Cli {
@@ -48,7 +59,7 @@ impl Cli {
 
     fn output_mode(&self) -> OutputMode {
         match &self.command {
-            Commands::Now { mode, .. } => *mode,
+            Commands::Now { output, .. } => (*output).into(),
         }
     }
 }
@@ -64,11 +75,14 @@ fn main() {
         }
         Err(error) => {
             match mode {
-                OutputMode::ServiceJson => {
+                OutputMode::Json => {
                     println!("{}", serialize_service_error(command, &error));
                 }
-                OutputMode::Alfred => {
+                OutputMode::AlfredJson => {
                     eprintln!("error: {}", error.message);
+                }
+                OutputMode::Human => {
+                    unreachable!("only json and alfred-json output modes are supported")
                 }
             }
             std::process::exit(error.exit_code());
@@ -93,12 +107,12 @@ where
         Commands::Now {
             query,
             config_zones,
-            mode,
+            output,
         } => {
             let zones = resolve_zones(&query, &config_zones, detect_local)?;
             let rows = convert::now_rows(now(), &zones);
             let payload = feedback::rows_to_feedback(&rows);
-            render_feedback(mode, "now", payload)
+            render_feedback(output.into(), "now", payload)
         }
     }
 }
@@ -109,10 +123,10 @@ fn render_feedback(
     payload: alfred_core::Feedback,
 ) -> Result<String, AppError> {
     match mode {
-        OutputMode::Alfred => payload.to_json().map_err(|error| {
+        OutputMode::AlfredJson => payload.to_json().map_err(|error| {
             AppError::runtime(format!("failed to serialize timezone feedback: {error}"))
         }),
-        OutputMode::ServiceJson => {
+        OutputMode::Json => {
             let result = payload.to_json().map_err(|error| {
                 AppError::runtime(format!("failed to serialize timezone feedback: {error}"))
             })?;
@@ -122,6 +136,7 @@ fn render_feedback(
                 &result,
             ))
         }
+        OutputMode::Human => unreachable!("only json and alfred-json output modes are supported"),
     }
 }
 
@@ -218,8 +233,8 @@ mod tests {
             "Asia/Taipei",
             "--config-zones",
             "",
-            "--mode",
-            "service-json",
+            "--output",
+            "json",
         ]);
 
         let output = run_with(cli, fixed_now, || fixed_local("UTC")).expect("run should pass");
@@ -227,7 +242,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(json.get("command").and_then(Value::as_str), Some("now"));
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(true));
@@ -300,7 +315,7 @@ mod tests {
 
         assert_eq!(
             json.get("schema_version").and_then(Value::as_str),
-            Some("v1")
+            Some("cli-envelope@v1")
         );
         assert_eq!(json.get("command").and_then(Value::as_str), Some("now"));
         assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));

@@ -16,7 +16,7 @@ fn run_cli(args: &[&str], envs: &[(&str, &str)]) -> Output {
 fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
     let secret = "bilibili-contract-secret";
     let output = run_cli(
-        &["query", "--input", "   ", "--mode", "service-json"],
+        &["query", "--input", "   ", "--output", "json"],
         &[("BILIBILI_UID", secret)],
     );
     assert_eq!(output.status.code(), Some(2));
@@ -24,7 +24,7 @@ fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
     let json: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
     assert_eq!(
         json.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(json.get("command").and_then(Value::as_str), Some("query"));
     assert_eq!(json.get("ok").and_then(Value::as_bool), Some(false));
@@ -44,7 +44,7 @@ fn service_json_error_envelope_has_required_keys_and_no_secret_leak() {
 
 #[test]
 fn alfred_mode_keeps_stderr_error_behavior() {
-    let output = run_cli(&["query", "--input", "   ", "--mode", "alfred"], &[]);
+    let output = run_cli(&["query", "--input", "   ", "--output", "alfred-json"], &[]);
     assert_eq!(output.status.code(), Some(2));
     assert!(output.stdout.is_empty());
     assert!(

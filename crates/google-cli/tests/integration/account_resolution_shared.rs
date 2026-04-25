@@ -11,7 +11,8 @@ fn gmail_commands_reuse_shared_account_resolution_and_error_when_ambiguous() {
     let add_a = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "a@example.com",
@@ -26,7 +27,8 @@ fn gmail_commands_reuse_shared_account_resolution_and_error_when_ambiguous() {
     let add_b = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "b@example.com",
@@ -72,7 +74,7 @@ fn gmail_commands_reuse_shared_account_resolution_and_error_when_ambiguous() {
 
     let output = native_gmail::run(
         temp.path(),
-        &["--json", "gmail", "search", "hello"],
+        &["--output", "json", "gmail", "search", "hello"],
         &[(
             "GOOGLE_CLI_GMAIL_FIXTURE_PATH",
             fixture_path.to_string_lossy().as_ref(),
@@ -98,7 +100,8 @@ fn gmail_commands_resolve_default_or_explicit_account() {
     let add_a = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "default@example.com",
@@ -131,7 +134,7 @@ fn gmail_commands_resolve_default_or_explicit_account() {
 
     let output = native_gmail::run(
         temp.path(),
-        &["--json", "gmail", "search", "hello"],
+        &["--output", "json", "gmail", "search", "hello"],
         &[(
             "GOOGLE_CLI_GMAIL_FIXTURE_PATH",
             fixture_path.to_string_lossy().as_ref(),

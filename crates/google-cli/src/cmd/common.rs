@@ -1,21 +1,37 @@
 use std::ffi::OsString;
 
-use clap::Args;
+use clap::{Args, ValueEnum};
 
 use crate::error::AppError;
 use crate::output::OutputMode;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
+#[value(rename_all = "kebab-case")]
+pub enum OutputModeArg {
+    #[default]
+    Human,
+    Json,
+    Plain,
+}
+
+impl From<OutputModeArg> for OutputMode {
+    fn from(value: OutputModeArg) -> Self {
+        match value {
+            OutputModeArg::Human => OutputMode::Human,
+            OutputModeArg::Json => OutputMode::Json,
+            OutputModeArg::Plain => OutputMode::Plain,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct GlobalOptions {
     /// Account email for auth-scoped commands.
     #[arg(short = 'a', long, global = true)]
     pub account: Option<String>,
-    /// Emit machine-readable JSON envelope output.
-    #[arg(short = 'j', long, global = true, default_value_t = false)]
-    pub json: bool,
-    /// Emit stable plain-text output.
-    #[arg(short = 'p', long, global = true, default_value_t = false)]
-    pub plain: bool,
+    /// Canonical output mode: `human` (default), `json` (envelope), or `plain` (script-parseable).
+    #[arg(long, value_enum, global = true, default_value_t = OutputModeArg::Human)]
+    pub output: OutputModeArg,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
@@ -78,21 +94,10 @@ impl Invocation {
 
 impl GlobalOptions {
     pub fn output_mode_hint(&self) -> OutputMode {
-        if self.json {
-            OutputMode::Json
-        } else if self.plain {
-            OutputMode::Plain
-        } else {
-            OutputMode::Human
-        }
+        self.output.into()
     }
 
     pub fn validate(&self) -> Result<(), AppError> {
-        if self.json && self.plain {
-            return Err(AppError::invalid_output_flags(
-                "`--json` cannot be combined with `--plain`",
-            ));
-        }
         Ok(())
     }
 }
@@ -129,22 +134,7 @@ fn sanitize_token(input: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{GlobalOptions, dynamic_command_id};
-
-    #[test]
-    fn validate_rejects_conflicting_output_modes() {
-        let options = GlobalOptions {
-            json: true,
-            plain: true,
-            ..Default::default()
-        };
-
-        let error = options.validate().expect_err("conflict should fail");
-        assert_eq!(
-            error.code(),
-            crate::error::ERROR_CODE_USER_INVALID_OUTPUT_FLAGS
-        );
-    }
+    use super::dynamic_command_id;
 
     #[test]
     fn dynamic_command_id_appends_nested_action() {

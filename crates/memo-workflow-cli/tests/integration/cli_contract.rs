@@ -27,7 +27,7 @@ fn item_display_id(item_id: &str) -> String {
 fn assert_json_success_envelope(payload: &Value, command: &str) {
     assert_eq!(
         payload.get("schema_version").and_then(Value::as_str),
-        Some("v1")
+        Some("cli-envelope@v1")
     );
     assert_eq!(
         payload.get("command").and_then(Value::as_str),

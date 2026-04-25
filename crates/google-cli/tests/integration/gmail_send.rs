@@ -15,7 +15,8 @@ fn gmail_send_builds_mime_with_attachment_and_thread_metadata() {
     let output = native_gmail::run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "gmail",
             "send",
             "--to",

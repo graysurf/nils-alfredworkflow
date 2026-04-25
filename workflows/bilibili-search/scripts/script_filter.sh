@@ -95,7 +95,7 @@ bilibili_query_execute() {
     return 1
   fi
 
-  "$bilibili_cli" query --input "$query" --mode alfred
+  "$bilibili_cli" query --input "$query" --output alfred-json
 }
 
 execute_bilibili_search_flow() {

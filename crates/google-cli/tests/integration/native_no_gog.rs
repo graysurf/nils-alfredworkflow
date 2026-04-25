@@ -26,7 +26,8 @@ fn seed_auth(config_dir: &Path) {
     let set = run(
         config_dir,
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "credentials",
             "set",
@@ -42,7 +43,8 @@ fn seed_auth(config_dir: &Path) {
     let add = run(
         config_dir,
         &[
-            "--json",
+            "--output",
+            "json",
             "auth",
             "add",
             "me@example.com",
@@ -62,7 +64,7 @@ fn auth_commands_run_without_gog_binary() {
 
     let output = run(
         temp.path(),
-        &["--json", "auth", "list"],
+        &["--output", "json", "auth", "list"],
         &[("GOOGLE_CLI_GOG_BIN", missing.to_string_lossy().as_ref())],
     );
     assert_eq!(output.status.code(), Some(0));
@@ -105,7 +107,7 @@ fn gmail_commands_run_without_gog_binary() {
     let missing = temp.path().join("missing-gog");
     let output = run(
         temp.path(),
-        &["--json", "gmail", "search", "hello"],
+        &["--output", "json", "gmail", "search", "hello"],
         &[
             ("GOOGLE_CLI_GOG_BIN", missing.to_string_lossy().as_ref()),
             (
@@ -151,7 +153,7 @@ fn drive_ls_runs_without_gog_binary() {
 
     let output = run(
         temp.path(),
-        &["--json", "drive", "ls", "--parent", "folder-1"],
+        &["--output", "json", "drive", "ls", "--parent", "folder-1"],
         &[
             ("GOOGLE_CLI_GOG_BIN", missing.to_string_lossy().as_ref()),
             (
@@ -199,7 +201,8 @@ fn drive_download_runs_without_gog_binary() {
     let output = run(
         temp.path(),
         &[
-            "--json",
+            "--output",
+            "json",
             "drive",
             "download",
             "file-123",
