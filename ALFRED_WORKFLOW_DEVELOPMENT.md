@@ -137,6 +137,13 @@ Every `workflows/<workflow-id>/TROUBLESHOOTING.md` must include:
 - `## Validation`
 - `## Rollback guidance`
 
+The four canonical sections are the contract. Two narrow exceptions are explicitly allowed:
+
+- `workflows/_template/TROUBLESHOOTING.md` may carry an additional `## Placeholder checklist` section to
+  guide authors when scaffolding a new workflow runbook from the template. This exception is template-only;
+  scaffolded copies must remove the section before shipping.
+- No other workflow runbook may add sections beyond the four canonical names.
+
 ### Script Filter JSON contract
 
 - Script Filter scripts must always return valid Alfred JSON, including failure paths.

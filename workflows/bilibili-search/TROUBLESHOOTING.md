@@ -32,18 +32,6 @@ Run these checks after any runtime/config change:
 - `scripts/workflow-test.sh --id bilibili-search`
 - `scripts/workflow-pack.sh --id bilibili-search`
 
-## First-release support window (D0-D2)
-
-- Monitor failure classes separately: invalid config, API unavailable, malformed payload, empty suggestions.
-- Emergency disable triggers:
-  - Script-filter malformed JSON observed at any time.
-  - API unavailable failures exceed 30% of sampled queries for 30 minutes.
-- Operator response template:
-  - Current status (degraded/disabled)
-  - Scope (`bilibili-search` only)
-  - Workaround (manual browser search)
-  - Next update time
-
 ## Rollback guidance
 
 Use this when API failures are sustained or workflow usability drops sharply.

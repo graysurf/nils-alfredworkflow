@@ -57,7 +57,7 @@ No `CODEX_SECRET_DIR` saved secrets behavior:
 
 - End users: no extra install when using release artifact.
 - `.alfredworkflow` bundles `codex-cli@0.6.5` (release-coupled runtime version).
-- Pinned runtime metadata is centralized in `scripts/lib/codex_cli_runtime.sh`.
+- Pinned runtime metadata is centralized in `scripts/lib/codex_cli_version.sh`.
 - Bundled target: macOS `arm64`.
 
 Fallback runtime sources (when bundled binary is unavailable):

@@ -2,7 +2,7 @@
 
 Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md)
 
-## Quick checks
+## Quick operator checks
 
 Run from repository root.
 
@@ -29,7 +29,7 @@ bash workflows/google-service/scripts/script_filter_mail.sh "unread" | jq -e '.i
 ls -l "${ALFRED_WORKFLOW_DATA:-}"/active-account.v1.json 2>/dev/null || true
 ```
 
-## Common failures
+## Common failures and actions
 
 | Symptom | Likely cause | Action |
 | --- | --- | --- |
@@ -50,7 +50,7 @@ ls -l "${ALFRED_WORKFLOW_DATA:-}"/active-account.v1.json 2>/dev/null || true
 | `gsm` rows show but Enter does not open Gmail page | Browser opener not available in runtime (`open`/`xdg-open`) | Ensure macOS `open` (default) or Linux `xdg-open` is available, then retry. |
 | `gs` 沒有顯示 all-account unread summary | Toggle 預設關閉 | 在 workflow config 設 `GOOGLE_GS_SHOW_ALL_ACCOUNTS_UNREAD=1` 後重開 Alfred 查詢。 |
 
-## Validation commands
+## Validation
 
 ```bash
 bash workflows/google-service/tests/smoke.sh
@@ -58,7 +58,7 @@ bash scripts/workflow-sync-script-filter-policy.sh --check --workflows google-se
 scripts/workflow-pack.sh --id google-service
 ```
 
-## Rollback
+## Rollback guidance
 
 1. Re-import previous known-good `.alfredworkflow` artifact.
 2. Clear workflow-local active pointer if needed:
