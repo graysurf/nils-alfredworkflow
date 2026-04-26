@@ -1,0 +1,60 @@
+# cargo-deny policy for nils-alfredworkflow.
+# Schema reference: https://embarkstudios.github.io/cargo-deny/checks/cfg.html
+#
+# Goal: catch RustSec advisories early and keep the license/source surface
+# aligned with what `THIRD_PARTY_LICENSES.md` already declares the workspace
+# ships with. Tighten over time; warn-first to avoid breaking dependabot PRs.
+
+[graph]
+all-features = false
+no-default-features = false
+
+[advisories]
+version = 2
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "deny"
+ignore = [
+    # google-apis-common is unmaintained upstream; the recommended
+    # replacement (`googleapis/google-cloud-rust`) is still in early
+    # preview and does not yet cover the Drive/Gmail surface that
+    # `nils-google-cli` depends on. Track migration in a follow-up
+    # plan; ignore here until a credible swap exists.
+    "RUSTSEC-2025-0066",
+]
+
+[licenses]
+version = 2
+confidence-threshold = 0.93
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Unlicense",
+    "Zlib",
+]
+exceptions = []
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+allow = []
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

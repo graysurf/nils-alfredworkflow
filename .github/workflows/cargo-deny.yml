@@ -1,0 +1,26 @@
+name: cargo-deny
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    # Daily 02:17 UTC sweep so newly-published advisories surface even
+    # when no PR traffic is moving the workspace.
+    - cron: "17 2 * * *"
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories bans licenses sources
+          arguments: --all-features --workspace
