@@ -604,4 +604,5 @@ post-refactor LoC is measured.**
 - Sprint 6: assessment doc only; no rollback work.
 - Catastrophic: revert the merge SHAs in reverse order
   (Sprint 4 → 3 → 2 → 1). The clippy/cargo-deny gates from PR
+
   #154/#155 will still run against the restored tree.
