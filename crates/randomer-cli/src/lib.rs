@@ -1,3 +1,11 @@
+// `randomer-cli` production paths now route every fallible call through
+// `?` plus a `NILS_RANDOMER_<NNN>` code (see
+// `docs/specs/cli-error-code-registry.md`); lock the gate so future
+// regressions surface as build errors instead of silent panics. Tests
+// keep `unwrap()` / `expect()` for compactness — see the `#[allow]` on
+// `mod tests` below.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+
 use std::fmt;
 
 use alfred_core::{Feedback, Item, ItemIcon, ItemModifier};
@@ -224,9 +232,11 @@ fn random_imei<R: Rng + ?Sized>(rng: &mut R) -> String {
     let checksum = imei_checksum_for_body(&digits);
     digits.push(checksum);
 
+    // Every value comes from `rng.random_range(0..=9u8)`, so the cast is
+    // already in-bounds — no panic surface even with `unwrap_used` denied.
     digits
         .into_iter()
-        .map(|digit| char::from(b'0' + u8::try_from(digit).expect("digit in 0..=9")))
+        .map(|digit| char::from(b'0' + (digit as u8)))
         .collect()
 }
 
@@ -262,9 +272,8 @@ fn random_unit_number<R: Rng + ?Sized>(rng: &mut R) -> String {
 
         let checksum = unit_checksum(candidate.as_str());
         if checksum <= 9 {
-            candidate.push(char::from(
-                b'0' + u8::try_from(checksum).expect("checksum in 0..=9"),
-            ));
+            // Guarded by `checksum <= 9`, so the truncating cast is safe.
+            candidate.push(char::from(b'0' + (checksum as u8)));
             return candidate;
         }
     }
@@ -281,7 +290,9 @@ fn unit_checksum(base: &str) -> u32 {
 
 fn unit_value(ch: char) -> u32 {
     if ch.is_ascii_digit() {
-        ch.to_digit(10).expect("digit")
+        // `is_ascii_digit()` guarantees `(ch as u32) - (b'0' as u32)` is
+        // in `0..=9`, so we skip the panicky `to_digit` path entirely.
+        u32::from(ch as u8 - b'0')
     } else {
         unit_letter_value(ch)
     }
@@ -349,6 +360,7 @@ fn random_phone<R: Rng + ?Sized>(rng: &mut R) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use rand::{SeedableRng, rngs::StdRng};
 
