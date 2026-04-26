@@ -33,3 +33,6 @@ yup-oauth2 = "=12.1.2"
 [dev-dependencies]
 tempfile.workspace = true
 wiremock = "=0.6.5"
+
+[lints]
+workspace = true

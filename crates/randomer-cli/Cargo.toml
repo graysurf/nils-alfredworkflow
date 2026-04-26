@@ -23,3 +23,6 @@ uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
 serde_json.workspace = true
+
+[lints]
+workspace = true

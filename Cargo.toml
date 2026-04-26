@@ -31,6 +31,15 @@ license = "CC0-1.0"
 repository = "https://github.com/sympoies/nils-alfredworkflow"
 version = "1.2.7"
 
+[workspace.lints.clippy]
+# Surface every `unwrap()` / `expect()` as a clippy warning so the
+# unwrap-cleanup wave can attack one crate at a time. Per-crate cleanup
+# PRs flip these to `deny` at the crate root via
+# `#![deny(clippy::unwrap_used, clippy::expect_used)]` once that crate's
+# production paths route failures through `?` + `NILS_<DOMAIN>_NNN`.
+unwrap_used = "warn"
+expect_used = "warn"
+
 [workspace.dependencies]
 anyhow = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

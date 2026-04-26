@@ -17,3 +17,6 @@ workflow-common = { package = "nils-workflow-common", path = "../workflow-common
 [dev-dependencies]
 serde_json.workspace = true
 tempfile.workspace = true
+
+[lints]
+workspace = true

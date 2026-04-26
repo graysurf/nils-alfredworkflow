@@ -43,6 +43,30 @@ jobs:
       - name: Lint (includes cli-standards-audit, docs-placement-audit, markdownlint-audit)
         run: bash scripts/ci/ci-run-gates.sh lint
 
+      - name: Clippy unwrap/expect surface (warn-only — visibility for unwrap-cleanup wave)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          log=$(mktemp)
+          trap 'rm -f "$log"' EXIT
+          # Capture clippy output unconditionally; warn-level workspace
+          # lints should never error, but if they do we still want the
+          # surface count published rather than failing CI.
+          cargo clippy --workspace --tests --no-deps >"$log" 2>&1 || true
+          total=$(grep -E '^warning: `nils-' "$log" | awk -F'generated ' '{print $2}' | awk '{s+=$1} END {print s+0}')
+          {
+            echo "## Clippy unwrap/expect surface"
+            echo ""
+            echo "Total clippy warnings (workspace, tests included): **${total:-0}**"
+            echo ""
+            echo '<details><summary>Per-target breakdown</summary>'
+            echo ''
+            echo '```'
+            grep -E '^warning: `nils-' "$log" | sed 's/^warning: //' | sort || true
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Third-party artifacts audit (strict)
         run: bash scripts/ci/ci-run-gates.sh third-party-artifacts-audit
 
