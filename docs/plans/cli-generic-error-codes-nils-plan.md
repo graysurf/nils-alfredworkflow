@@ -319,8 +319,13 @@ open a draft PR via `create-feature-pr`.
 - **Dependencies**:
   - none
 - **Acceptance criteria**:
-  - `rg -nE 'user\.invalid_path|user\.invalid_input|user\.invalid_workflow_root|user\.invalid_readme_source|user\.readme_not_found|user\.plist_not_found|user\.remote_image_not_allowed|user\.invalid_image_path|user\.image_not_found|user\.plist_readme_key_missing|runtime\.git_failed|runtime\.usage_persist_failed|runtime\.provider_init_failed|runtime\.provider_failed|runtime\.serialize_failed|runtime\.read_failed|runtime\.write_failed|runtime\.create_dir_failed|runtime\.copy_failed' workflows/`
-    returns either zero hits, or a list that this task explicitly addresses.
+  - The following audit returns either zero hits, or a list that this task
+    explicitly addresses:
+
+    ```sh
+    rg -nE 'user\.invalid_path|user\.invalid_input|user\.invalid_workflow_root|user\.invalid_readme_source|user\.readme_not_found|user\.plist_not_found|user\.remote_image_not_allowed|user\.invalid_image_path|user\.image_not_found|user\.plist_readme_key_missing|runtime\.git_failed|runtime\.usage_persist_failed|runtime\.provider_init_failed|runtime\.provider_failed|runtime\.serialize_failed|runtime\.read_failed|runtime\.write_failed|runtime\.create_dir_failed|runtime\.copy_failed' workflows/
+    ```
+
   - If hits are found, the audit log notes which scripts were updated and
     why; otherwise note "no shell consumers, audit clean" in the PR body.
 - **Validation**:
