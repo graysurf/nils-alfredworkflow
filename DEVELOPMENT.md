@@ -41,6 +41,10 @@ Use this file for day-to-day development, quality gates, and local validation fl
 - Format check: `cargo fmt --all -- --check`
 - Format fix: `cargo fmt --all`
 - Lint: `cargo clippy --workspace --all-targets -- -D warnings`
+- Unwrap surface (warn-only): `clippy::unwrap_used` and `clippy::expect_used` are configured at the workspace level (see
+  root `Cargo.toml` `[workspace.lints.clippy]`). Per-crate cleanup PRs may flip them to `deny` at the crate root via
+  `#![deny(clippy::unwrap_used, clippy::expect_used)]` once production paths route failures through `?` plus a
+  `NILS_<DOMAIN>_NNN` code from `docs/specs/cli-error-code-registry.md`.
 - CLI standards audit: `scripts/cli-standards-audit.sh`
 - Markdown lint audit (`rumdl`): `bash scripts/ci/markdownlint-audit.sh --strict`
 - Full lint entrypoint (includes `cli-standards-audit`, `docs-placement-audit`, and `markdownlint-audit`):
