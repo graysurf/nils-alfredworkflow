@@ -1,3 +1,9 @@
+// Production paths in this binary route every fallible call through `?`
+// plus a `NILS_RANDOMER_<NNN>` code; lock the gate so future regressions
+// surface as build errors. Tests keep `unwrap()` / `expect()` for
+// compactness — see the `#[allow]` on `mod tests` below.
+#![deny(clippy::unwrap_used, clippy::expect_used)]
+
 use clap::{Parser, Subcommand, ValueEnum};
 use randomer_cli::{RandomerError, generate_feedback, list_formats_feedback, list_types_feedback};
 use workflow_common::{
@@ -205,6 +211,7 @@ fn serialize_service_error(command: &'static str, error: &AppError) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use serde_json::Value;
 
