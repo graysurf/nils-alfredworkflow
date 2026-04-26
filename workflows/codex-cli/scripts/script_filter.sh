@@ -1,6 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Defense-in-depth tmp cleanup — each mktemp callsite below pushes its
+# path here; the trap then sweeps any file that survives the happy-path
+# `rm -f` (e.g. on SIGINT, jq/awk crash, or an early-return path that
+# bypasses the explicit cleanup line).
+__codex_tmp_files=()
+# shellcheck disable=SC2317,SC2329  # invoked by `trap`, not by direct call
+__codex_tmp_cleanup() {
+  local f
+  for f in "${__codex_tmp_files[@]:-}"; do
+    if [[ -n "${f:-}" ]]; then
+      rm -rf -- "$f" 2>/dev/null || true
+    fi
+  done
+}
+trap __codex_tmp_cleanup EXIT INT TERM
+
 workflow_script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 runtime_meta="$workflow_script_dir/lib/codex_cli_runtime.sh"
 if [[ ! -f "$runtime_meta" ]]; then
@@ -380,6 +396,7 @@ capture_command_output_with_stdout_priority() {
   local stdout_file stderr_file
   stdout_file="$(mktemp "${TMPDIR:-/tmp}/codex-diag-stdout.XXXXXX")"
   stderr_file="$(mktemp "${TMPDIR:-/tmp}/codex-diag-stderr.XXXXXX")"
+  __codex_tmp_files+=("$stdout_file" "$stderr_file")
 
   local capture_rc=0
   set +e
@@ -1342,6 +1359,7 @@ build_diag_account_lookup_map() {
   raw_file="$(mktemp "${TMPDIR:-/tmp}/codex-cxau-sort.raw.XXXXXX")"
   local map_file
   map_file="$(mktemp "${TMPDIR:-/tmp}/codex-cxau-sort.map.XXXXXX")"
+  __codex_tmp_files+=("$raw_file" "$map_file")
 
   if ! jq -r '.results // [] | .[] | [(.source // ""), (.name // ""), (.summary.weekly_reset_epoch // 9999999999), (.raw_usage.email // ""), (.summary.weekly_reset_local // "-"), (.summary.non_weekly_label // "5h"), (.summary.non_weekly_remaining // "null"), (.summary.weekly_remaining // "null"), ((.summary.non_weekly_reset_epoch // "null") | tostring)] | @tsv' "$output_path" >"$raw_file"; then
     rm -f "$raw_file" "$map_file"
@@ -1792,6 +1810,7 @@ handle_use_query() {
   if [[ -n "$account_lookup_file" && -f "$account_lookup_file" ]]; then
     local ranking_file
     ranking_file="$(mktemp "${TMPDIR:-/tmp}/codex-cxau-rank.XXXXXX")"
+    __codex_tmp_files+=("$ranking_file")
     for file in "${files[@]}"; do
       local meta epoch
       meta="$(lookup_diag_account_meta "$account_lookup_file" "$file" || true)"
