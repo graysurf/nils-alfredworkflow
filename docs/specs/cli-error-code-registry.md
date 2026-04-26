@@ -36,6 +36,7 @@ Provides stable machine error codes shared by all CLI crates using JSON envelope
 | `epoch-cli` (`nils-epoch-cli`) | `NILS_EPOCH_` | `001-099` |
 | `google-cli` (`nils-google-cli`) | `NILS_GOOGLE_` | `001-099` |
 | `market-cli` (`nils-market-cli`) | `NILS_MARKET_` | `001-099` |
+| `memo-workflow-cli` (`nils-memo-workflow-cli`) | `NILS_MEMO_` | `001-099` |
 | `quote-cli` (`nils-quote-cli`) | `NILS_QUOTE_` | `001-099` |
 | `randomer-cli` (`nils-randomer-cli`) | `NILS_RANDOMER_` | `001-099` |
 | `spotify-cli` (`nils-spotify-cli`) | `NILS_SPOTIFY_` | `001-099` |
@@ -81,6 +82,8 @@ that promote out of these generic buckets without breaking existing consumers.
 | `NILS_GOOGLE_014` | google | Drive runtime failure |
 | `NILS_MARKET_001` | market | invalid symbol/amount expression |
 | `NILS_MARKET_002` | market | provider unavailable/rate-limited |
+| `NILS_MEMO_001` | memo-workflow | invalid user input (parse/validation, missing config) |
+| `NILS_MEMO_002` | memo-workflow | runtime/upstream failure (sqlite, serialization, IO) |
 | `NILS_QUOTE_001` | quote | invalid user input / quote config value |
 | `NILS_QUOTE_002` | quote | quote refresh/storage runtime failure |
 | `NILS_RANDOMER_001` | randomer | invalid user input (unknown format, invalid count) |

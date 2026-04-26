@@ -946,12 +946,22 @@ fn update_delete_invalid_item_id_returns_usage_error() {
         .output()
         .expect("update should run");
     assert_eq!(update.status.code(), Some(2));
+    let update_stderr = String::from_utf8_lossy(&update.stderr);
+    assert!(
+        update_stderr.contains("error[NILS_MEMO_001]"),
+        "update stderr must surface NILS_MEMO_001, got: {update_stderr}"
+    );
 
     let delete = Command::new(bin())
         .args(["delete", "--item-id", "bad", "--mode", "json"])
         .output()
         .expect("delete should run");
     assert_eq!(delete.status.code(), Some(2));
+    let delete_stderr = String::from_utf8_lossy(&delete.stderr);
+    assert!(
+        delete_stderr.contains("error[NILS_MEMO_001]"),
+        "delete stderr must surface NILS_MEMO_001, got: {delete_stderr}"
+    );
 }
 
 fn resolve_cli_path() -> PathBuf {

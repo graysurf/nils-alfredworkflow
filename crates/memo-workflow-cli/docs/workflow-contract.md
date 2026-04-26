@@ -10,7 +10,7 @@ Cross-references:
 
 - Shared runtime + envelope: [`docs/specs/cli-shared-runtime-contract.md`](../../../docs/specs/cli-shared-runtime-contract.md)
 - JSON envelope shape: [`docs/specs/cli-json-envelope-v1.md`](../../../docs/specs/cli-json-envelope-v1.md)
-- Reserved error-code prefix (future allocation): [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
+- Error-code prefix `NILS_MEMO_` (`001-099`): [`docs/specs/cli-error-code-registry.md`](../../../docs/specs/cli-error-code-registry.md)
 
 ## Primary user behavior
 

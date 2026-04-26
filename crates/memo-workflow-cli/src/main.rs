@@ -165,11 +165,21 @@ struct JsonEnvelope<T> {
 
 const ENVELOPE_SCHEMA_VERSION: &str = "cli-envelope@v1";
 
+const ERROR_CODE_USER_INVALID_INPUT: &str = "NILS_MEMO_001";
+const ERROR_CODE_RUNTIME_FAILURE: &str = "NILS_MEMO_002";
+
+fn error_code(error: &AppError) -> &'static str {
+    match error {
+        AppError::User(_) => ERROR_CODE_USER_INVALID_INPUT,
+        AppError::Runtime(_) => ERROR_CODE_RUNTIME_FAILURE,
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
 
     if let Err(error) = run(cli) {
-        eprintln!("{}", error.message());
+        eprintln!("error[{}]: {}", error_code(&error), error.message());
         std::process::exit(error.exit_code());
     }
 }
