@@ -6,10 +6,13 @@ set -euo pipefail
 # `rm -f` (e.g. on SIGINT, jq/awk crash, or an early-return path that
 # bypasses the explicit cleanup line).
 __codex_tmp_files=()
+# shellcheck disable=SC2317,SC2329  # invoked by `trap`, not by direct call
 __codex_tmp_cleanup() {
   local f
   for f in "${__codex_tmp_files[@]:-}"; do
-    [[ -n "${f:-}" ]] && rm -rf -- "$f" 2>/dev/null || true
+    if [[ -n "${f:-}" ]]; then
+      rm -rf -- "$f" 2>/dev/null || true
+    fi
   done
 }
 trap __codex_tmp_cleanup EXIT INT TERM
