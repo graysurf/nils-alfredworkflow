@@ -48,7 +48,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
+# unwrap_used / expect_used surface as `warn` workspace-wide and are tracked
+# by the dedicated CI step that publishes the count to the GitHub step
+# summary. They stay allowed under the strict gate until per-crate cleanup
+# PRs flip them to `deny` at the crate root.
+cargo clippy --workspace --all-targets -- \
+  -D warnings \
+  -A clippy::unwrap_used \
+  -A clippy::expect_used
 "$repo_root/scripts/cli-standards-audit.sh"
 "$repo_root/scripts/docs-placement-audit.sh" --strict
 bash "$repo_root/scripts/ci/markdownlint-audit.sh" --strict

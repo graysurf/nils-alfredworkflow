@@ -40,9 +40,11 @@ Use this file for day-to-day development, quality gates, and local validation fl
 
 - Format check: `cargo fmt --all -- --check`
 - Format fix: `cargo fmt --all`
-- Lint: `cargo clippy --workspace --all-targets -- -D warnings`
+- Lint: `cargo clippy --workspace --all-targets -- -D warnings -A clippy::unwrap_used -A clippy::expect_used`
 - Unwrap surface (warn-only): `clippy::unwrap_used` and `clippy::expect_used` are configured at the workspace level (see
-  root `Cargo.toml` `[workspace.lints.clippy]`). Per-crate cleanup PRs may flip them to `deny` at the crate root via
+  root `Cargo.toml` `[workspace.lints.clippy]`) but allowed under the strict `-D warnings` gate. The dedicated
+  *Clippy unwrap/expect surface* CI step publishes the per-target warning count to the GitHub step summary so cleanup
+  progress is visible. Per-crate cleanup PRs flip them to `deny` at the crate root via
   `#![deny(clippy::unwrap_used, clippy::expect_used)]` once production paths route failures through `?` plus a
   `NILS_<DOMAIN>_NNN` code from `docs/specs/cli-error-code-registry.md`.
 - CLI standards audit: `scripts/cli-standards-audit.sh`
