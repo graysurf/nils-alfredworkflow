@@ -76,5 +76,5 @@ fn rejects_remote_image_urls() {
     .expect_err("remote image should be rejected");
 
     assert_eq!(error.kind(), ErrorKind::User);
-    assert_eq!(error.code(), "user.remote_image_not_allowed");
+    assert_eq!(error.code(), "NILS_WORKFLOW_README_005");
 }

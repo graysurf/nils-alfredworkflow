@@ -69,10 +69,10 @@ enum Commands {
     },
 }
 
-const ERROR_CODE_USER_INVALID_INPUT: &str = "user.invalid_input";
-const ERROR_CODE_RUNTIME_PROVIDER_INIT: &str = "runtime.provider_init_failed";
-const ERROR_CODE_RUNTIME_PROVIDER_FAILED: &str = "runtime.provider_failed";
-const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
+const ERROR_CODE_USER_INVALID_INPUT: &str = "NILS_MARKET_001";
+const ERROR_CODE_RUNTIME_PROVIDER_INIT: &str = "NILS_MARKET_002";
+const ERROR_CODE_RUNTIME_PROVIDER_FAILED: &str = "NILS_MARKET_002";
+const ERROR_CODE_RUNTIME_SERIALIZE: &str = "NILS_COMMON_005";
 const FAVORITES_PROMPT_TITLE: &str = "Enter a market expression";
 const FAVORITES_PROMPT_EXAMPLE: &str = "Example: 1 BTC + 3 ETH to JPY";
 const FAVORITES_QUOTE_UNAVAILABLE_SUBTITLE: &str =

@@ -113,7 +113,7 @@ fn service_json_error_envelope_has_required_keys() {
         json.get("error")
             .and_then(|error| error.get("code"))
             .and_then(Value::as_str),
-        Some("user.readme_not_found")
+        Some("NILS_WORKFLOW_README_003")
     );
 }
 

@@ -44,6 +44,7 @@ Provides stable machine error codes shared by all CLI crates using JSON envelope
 | `weather-cli` (`nils-weather-cli`) | `NILS_WEATHER_` | `001-099` |
 | `wiki-cli` (`nils-wiki-cli`) | `NILS_WIKI_` | `001-099` |
 | `workflow-cli` (`nils-workflow-cli`) | `NILS_WORKFLOW_` | `001-099` |
+| `workflow-readme-cli` (`nils-workflow-readme-cli`) | `NILS_WORKFLOW_README_` | `001-099` |
 | `youtube-cli` (`nils-youtube-cli`) | `NILS_YOUTUBE_` | `001-099` |
 
 ## Seed Registry (Initial Assignments)
@@ -97,6 +98,19 @@ that promote out of these generic buckets without breaking existing consumers.
 | `NILS_WIKI_002` | wiki | Wikipedia API runtime failure |
 | `NILS_WORKFLOW_001` | workflow | project path not found/not directory |
 | `NILS_WORKFLOW_002` | workflow | git origin/command failure |
+| `NILS_WORKFLOW_003` | workflow | usage log persistence failure |
+| `NILS_WORKFLOW_README_001` | workflow-readme | invalid Alfred workflow root path |
+| `NILS_WORKFLOW_README_002` | workflow-readme | invalid README source path |
+| `NILS_WORKFLOW_README_003` | workflow-readme | README source file not found |
+| `NILS_WORKFLOW_README_004` | workflow-readme | workflow info.plist not found |
+| `NILS_WORKFLOW_README_005` | workflow-readme | remote image URL not permitted |
+| `NILS_WORKFLOW_README_006` | workflow-readme | invalid local image path or unsupported extension |
+| `NILS_WORKFLOW_README_007` | workflow-readme | image asset file not found |
+| `NILS_WORKFLOW_README_008` | workflow-readme | info.plist missing readme key |
+| `NILS_WORKFLOW_README_009` | workflow-readme | filesystem read failure |
+| `NILS_WORKFLOW_README_010` | workflow-readme | filesystem write failure |
+| `NILS_WORKFLOW_README_011` | workflow-readme | directory creation failure |
+| `NILS_WORKFLOW_README_012` | workflow-readme | file copy failure |
 | `NILS_YOUTUBE_001` | youtube | invalid user input (empty query, missing API key) |
 | `NILS_YOUTUBE_002` | youtube | YouTube API runtime failure (HTTP, quota, transport) |
 

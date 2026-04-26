@@ -113,10 +113,10 @@ impl AppError {
     }
 }
 
-const ERROR_CODE_USER_INVALID_PATH: &str = "user.invalid_path";
-const ERROR_CODE_RUNTIME_GIT: &str = "runtime.git_failed";
-const ERROR_CODE_RUNTIME_USAGE_WRITE: &str = "runtime.usage_persist_failed";
-const ERROR_CODE_RUNTIME_SERIALIZE: &str = "runtime.serialize_failed";
+const ERROR_CODE_USER_INVALID_PATH: &str = "NILS_WORKFLOW_001";
+const ERROR_CODE_RUNTIME_GIT: &str = "NILS_WORKFLOW_002";
+const ERROR_CODE_RUNTIME_USAGE_WRITE: &str = "NILS_WORKFLOW_003";
+const ERROR_CODE_RUNTIME_SERIALIZE: &str = "NILS_COMMON_005";
 
 impl Cli {
     fn command_name(&self) -> &'static str {
