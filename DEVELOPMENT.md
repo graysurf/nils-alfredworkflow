@@ -19,9 +19,8 @@ Use this file for day-to-day development, quality gates, and local validation fl
 
 - If Rust/cargo (or required cargo tools) are not installed yet, run:
   - `scripts/setup-rust-tooling.sh`
-- For local Python helper isolation, create the repository virtual environment with uv:
-  - `uv venv .venv`
-  - `source .venv/bin/activate`
+- For one-off Python helper isolation, use uv with `python3` without creating a repository virtual environment:
+  - `uv run --python python3 --isolated python <script-or-module>`
 - For workflows that use Node + Playwright tooling, run:
   - `scripts/setup-node-playwright.sh`
   - Add `--install-browser` only when you need live Playwright scraping checks.

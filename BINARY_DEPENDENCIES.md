@@ -19,7 +19,7 @@ This document lists required local tools for development, linting, testing, and 
 - Shell tooling: `shellcheck`, `shfmt`
 - Node runtime: `node`, `npm`
 - Node dependencies: `playwright` and `rumdl` packages (managed via root `package.json`)
-- Python virtual environment manager: `uv`
+- Python command runner for isolated helper execution: `uv`
 - SHA-256 provider (at least one): `shasum` or `sha256sum` or `openssl`
 - Packaging/runtime helpers: `zip`, `unzip`, `open` (macOS install/runtime), `xdg-open` (Linux CI/local smoke
   compatibility)
@@ -54,7 +54,7 @@ scripts/setup-rust-tooling.sh
 # Shell tools
 brew install shellcheck shfmt
 
-# Python virtual environment manager
+# Python command runner
 brew install uv
 
 # Workflow SVG asset conversion
@@ -82,7 +82,7 @@ sudo apt-get install -y build-essential pkg-config libssl-dev git jq ripgrep she
 # Rust + cargo tools used by this repo
 scripts/setup-rust-tooling.sh
 
-# Python virtual environment manager
+# Python command runner
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Node + Playwright deps for cambridge-dict scraper tests
