@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `44a6899751c8ccd97fdb5ef27558d198cd2ccdea7349152b51a81c1a6e0ba25c`
+- Data source fingerprint (SHA256): `c36239d8295c0bf825e78484996e73209922918394386a3f3721fb9aacc63444`
 - Runtime metadata fingerprint (SHA256): `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `399e101c6b7e46414c35d673caa0bc80988db7c01ae01df7890ff24369d698d6` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `215a9e9c68dd4e2a13105d35df43afd01d0fd20206ad440d218633a8ab55dd64` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `d7832067a1c2001a82cf05c4bf28914deeb7fbd1a87e78886646e7bb73d21def` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `65863452d659031214590bf2d8e8ee4b1a21d70c546647d30d373053ea7ad036` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.7.3> | `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20` | `curl crates.io API plus jq normalized fields` |
@@ -304,7 +304,7 @@ Do not edit manually.
 | once_cell | 1.21.4 | MIT OR Apache-2.0 | <https://github.com/matklad/once_cell> |
 | oneshot | 0.1.13 | MIT OR Apache-2.0 | <https://github.com/faern/oneshot> |
 | opaque-debug | 0.3.1 | MIT OR Apache-2.0 | <https://github.com/RustCrypto/utils> |
-| open | 5.3.4 | MIT | <https://github.com/Byron/open-rs> |
+| open | 5.3.5 | MIT | <https://github.com/Byron/open-rs> |
 | openssl | 0.10.79 | Apache-2.0 | <https://github.com/rust-openssl/rust-openssl> |
 | openssl-macros | 0.1.1 | MIT/Apache-2.0 | - |
 | openssl-probe | 0.2.1 | MIT OR Apache-2.0 | <https://github.com/rustls/openssl-probe> |
