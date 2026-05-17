@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 
-use keyring::Entry;
+use keyring_core::{Entry, Error as KeyringError};
 use serde::{Deserialize, Serialize};
 
 use super::config::AuthPaths;
@@ -122,32 +122,37 @@ fn mode() -> String {
 
 fn set_keyring_token(account: &str, token: &StoredToken) -> Result<(), String> {
     let payload = serde_json::to_string(token).map_err(|error| error.to_string())?;
-    let entry = Entry::new(KEYRING_SERVICE_NAME, account).map_err(|error| error.to_string())?;
+    let entry = keyring_entry(account)?;
     entry
         .set_password(&payload)
         .map_err(|error| error.to_string())
 }
 
 fn get_keyring_token(account: &str) -> Result<Option<StoredToken>, String> {
-    let entry = Entry::new(KEYRING_SERVICE_NAME, account).map_err(|error| error.to_string())?;
+    let entry = keyring_entry(account)?;
     match entry.get_password() {
         Ok(payload) => {
             let token: StoredToken =
                 serde_json::from_str(&payload).map_err(|error| error.to_string())?;
             Ok(Some(token))
         }
-        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(KeyringError::NoEntry) => Ok(None),
         Err(error) => Err(error.to_string()),
     }
 }
 
 fn delete_keyring_token(account: &str) -> Result<bool, String> {
-    let entry = Entry::new(KEYRING_SERVICE_NAME, account).map_err(|error| error.to_string())?;
+    let entry = keyring_entry(account)?;
     match entry.delete_credential() {
         Ok(()) => Ok(true),
-        Err(keyring::Error::NoEntry) => Ok(false),
+        Err(KeyringError::NoEntry) => Ok(false),
         Err(error) => Err(error.to_string()),
     }
+}
+
+fn keyring_entry(account: &str) -> Result<Entry, String> {
+    keyring::use_native_store(false).map_err(|error| error.to_string())?;
+    Entry::new(KEYRING_SERVICE_NAME, account).map_err(|error| error.to_string())
 }
 
 fn write_file_token(paths: &AuthPaths, account: &str, token: &StoredToken) -> Result<(), AppError> {
