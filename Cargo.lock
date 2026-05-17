@@ -2561,6 +2561,7 @@ dependencies = [
  "google-drive3",
  "google-gmail1",
  "keyring",
+ "keyring-core",
  "mail-builder",
  "mime_guess",
  "open",
