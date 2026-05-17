@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `089db442854aef65ce307e4472121874c2105f51440edf0961d49e431bab622f`
+- Data source fingerprint (SHA256): `3d0266f512537e243b8e0ee5b85455545c7bf5e8bdf145c3cd17077f90494bcb`
 - Runtime metadata fingerprint (SHA256): `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `cf984022293652f6242f9cc4af483eb018615b7e080bc3a9290e3656d5a62b20` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `13172421a3b83849f0f16fc6ac8a68b22b45e35b6bdb9ea25c1909acb3ed7fae` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `d7832067a1c2001a82cf05c4bf28914deeb7fbd1a87e78886646e7bb73d21def` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `65863452d659031214590bf2d8e8ee4b1a21d70c546647d30d373053ea7ad036` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.7.3> | `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20` | `curl crates.io API plus jq normalized fields` |
@@ -181,7 +181,7 @@ Do not edit manually.
 | num_cpus | 1.17.0 | MIT OR Apache-2.0 | <https://github.com/seanmonstar/num_cpus> |
 | num_threads | 0.1.7 | MIT OR Apache-2.0 | <https://github.com/jhpratt/num_threads> |
 | once_cell | 1.21.4 | MIT OR Apache-2.0 | <https://github.com/matklad/once_cell> |
-| open | 5.3.4 | MIT | <https://github.com/Byron/open-rs> |
+| open | 5.3.5 | MIT | <https://github.com/Byron/open-rs> |
 | openssl-probe | 0.2.1 | MIT OR Apache-2.0 | <https://github.com/rustls/openssl-probe> |
 | option-ext | 0.2.0 | MPL-2.0 | <https://github.com/soc/option-ext.git> |
 | pathdiff | 0.2.3 | MIT/Apache-2.0 | <https://github.com/Manishearth/pathdiff> |
