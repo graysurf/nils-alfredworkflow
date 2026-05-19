@@ -718,9 +718,9 @@ dependencies = [
 
 [[package]]
 name = "clap_complete"
-version = "4.6.2"
+version = "4.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ff7a1dccbdd8b078c2bdebff47e404615151534d5043da397ec50286816f9cb"
+checksum = "660c0520455b1013b9bcb0393d5f643d7e4454fb69c915b8d6d2aa0e9a45acc3"
 dependencies = [
  "clap",
 ]
@@ -2529,9 +2529,9 @@ dependencies = [
 
 [[package]]
 name = "nils-common"
-version = "0.7.3"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2c47a42501a7bb2c2a651869fdf03bb9488ff9a2f828fb235c1eeb364e37ac3"
+checksum = "a4c5309bcf9d579db7a73d841f48b359bb0085e58983401da02e5096d9248566"
 dependencies = [
  "base64",
  "serde_json",
@@ -2591,9 +2591,9 @@ dependencies = [
 
 [[package]]
 name = "nils-memo-cli"
-version = "0.7.3"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bf03654f996cc229d503f4974313cf420e7511a2216035a004e4a5fa561bc1d"
+checksum = "98412684a78a9c972f597a7164d464525d6b678ecca820efaed0a6e0b95471ca"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3730,7 +3730,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.4.15",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
