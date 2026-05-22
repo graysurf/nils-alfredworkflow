@@ -126,6 +126,45 @@ EOS
   chmod +x "$stub_path"
 }
 
+workflow_smoke_write_xdg_open_stub() {
+  local stub_path="$1"
+  mkdir -p "$(dirname "$stub_path")"
+
+  cat >"$stub_path" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+out="${XDG_OPEN_STUB_OUT:-${OPEN_STUB_OUT:-}}"
+: "${out:?missing XDG_OPEN_STUB_OUT or OPEN_STUB_OUT}"
+printf '%s\n' "$1" >"$out"
+EOS
+  chmod +x "$stub_path"
+}
+
+workflow_smoke_write_osascript_stub() {
+  local stub_path="$1"
+  mkdir -p "$(dirname "$stub_path")"
+
+  cat >"$stub_path" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+: "${OSASCRIPT_STUB_OUT:?missing OSASCRIPT_STUB_OUT}"
+{
+  if [[ "$#" -gt 0 ]]; then
+    printf 'argv:'
+    for arg in "$@"; do
+      printf ' %s' "$arg"
+    done
+    printf '\n'
+  else
+    printf 'stdin:\n'
+    cat
+    printf '\n'
+  fi
+} >>"$OSASCRIPT_STUB_OUT"
+EOS
+  chmod +x "$stub_path"
+}
+
 workflow_smoke_write_pbcopy_stub() {
   local stub_path="$1"
   mkdir -p "$(dirname "$stub_path")"

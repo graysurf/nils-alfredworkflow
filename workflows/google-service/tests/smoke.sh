@@ -104,6 +104,10 @@ mkdir -p "$smoke_tmp/bin" "$smoke_tmp/data"
 mkdir -p "$smoke_tmp/config"
 stub_accounts_file="$smoke_tmp/accounts.json"
 stub_log="$smoke_tmp/google-cli.log"
+open_stub_log="$smoke_tmp/open.log"
+osascript_stub_log="$smoke_tmp/osascript.log"
+pbcopy_stub_log="$smoke_tmp/pbcopy.log"
+xdg_open_stub_log="$smoke_tmp/xdg-open.log"
 remote_state_file="$smoke_tmp/config/remote-state.v1.json"
 
 cat >"$stub_accounts_file" <<'JSON'
@@ -568,6 +572,10 @@ drive)
 esac
 EOS
 chmod +x "$smoke_tmp/bin/google-cli"
+workflow_smoke_write_open_stub "$smoke_tmp/bin/open"
+workflow_smoke_write_xdg_open_stub "$smoke_tmp/bin/xdg-open"
+workflow_smoke_write_osascript_stub "$smoke_tmp/bin/osascript"
+workflow_smoke_write_pbcopy_stub "$smoke_tmp/bin/pbcopy"
 
 script_filter_empty="$workflow_dir/scripts/script_filter_empty.sh"
 script_filter="$workflow_dir/scripts/script_filter.sh"
@@ -589,6 +597,39 @@ base_env=(
 
 run_with_env() {
   env "${base_env[@]}" "$@"
+}
+
+run_action_with_env() {
+  env "${base_env[@]}" \
+    "PATH=$smoke_tmp/bin:$PATH" \
+    "OPEN_STUB_OUT=$open_stub_log" \
+    "XDG_OPEN_STUB_OUT=$xdg_open_stub_log" \
+    "OSASCRIPT_STUB_OUT=$osascript_stub_log" \
+    "PBCOPY_STUB_OUT=$pbcopy_stub_log" \
+    bash "$action_open" "$@"
+}
+
+reset_ui_logs() {
+  : >"$open_stub_log"
+  : >"$osascript_stub_log"
+  : >"$pbcopy_stub_log"
+  : >"$xdg_open_stub_log"
+}
+
+assert_osascript_log_contains() {
+  local pattern="$1"
+  local message="$2"
+  if ! rg -n --fixed-strings "$pattern" "$osascript_stub_log" >/dev/null; then
+    fail "$message"
+  fi
+}
+
+assert_open_stub_value() {
+  local expected="$1"
+  local message="$2"
+  if [[ "$(cat "$open_stub_log")" != "$expected" ]]; then
+    fail "$message"
+  fi
 }
 
 root_json="$(run_with_env bash "$script_filter_empty" "")"
@@ -705,40 +746,82 @@ assert_jq_json "$direct_callback_query_json" '[.items[] | select(.arg == "login:
 login_manual_json="$(run_with_env bash "$script_filter" "login c@example.com --manual --code manual-code")"
 assert_jq_json "$login_manual_json" '[.items[] | select(.arg == "login::manual::c@example.com::manual-code")] | length == 1' "manual login token mismatch"
 
-run_with_env bash "$action_open" "prompt::login" >/dev/null
-run_with_env bash "$action_open" "prompt::auth" >/dev/null
-run_with_env bash "$action_open" "prompt::switch" >/dev/null
-run_with_env bash "$action_open" "prompt::remove" >/dev/null
-run_with_env bash "$action_open" "prompt::mail-unread" >/dev/null
-run_with_env bash "$action_open" "prompt::mail-unread-account::a@example.com" >/dev/null
+reset_ui_logs
+run_action_with_env "prompt::login" >/dev/null
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsa login "' "prompt login should requery Alfred via stub"
+reset_ui_logs
+run_action_with_env "prompt::auth" >/dev/null
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsa "' "prompt auth should requery Alfred via stub"
+reset_ui_logs
+run_action_with_env "prompt::switch" >/dev/null
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsa switch "' "prompt switch should requery Alfred via stub"
+reset_ui_logs
+run_action_with_env "prompt::remove" >/dev/null
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsa remove "' "prompt remove should requery Alfred via stub"
+reset_ui_logs
+run_action_with_env "prompt::mail-unread" >/dev/null
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsm unread"' "prompt unread should requery Alfred via stub"
+reset_ui_logs
+run_action_with_env "prompt::mail-unread-account::a@example.com" >/dev/null
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsm unread --account a@example.com"' "prompt unread account should requery Alfred via stub"
 
-run_with_env bash "$action_open" "switch::b@example.com" >/dev/null
+reset_ui_logs
+run_action_with_env "switch::b@example.com" >/dev/null
+assert_osascript_log_contains 'display notification "Active account: b@example.com" with title "Google Service Workflow"' "switch should notify via osascript stub"
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsa"' "switch should requery Alfred via stub"
 active_file="$smoke_tmp/data/active-account.v1.json"
 assert_file "$active_file"
 assert_jq_file "$active_file" '.active_account == "b@example.com"' "switch action should persist active account"
 root_after_switch_json="$(run_with_env bash "$script_filter_empty" "")"
 assert_jq_json "$root_after_switch_json" '.items[0].title == "Current account: b@example.com"' "gs should show workflow active account after switch"
 
-step1_output="$(run_with_env bash "$action_open" "login::remote::step1::c@example.com")"
+reset_ui_logs
+step1_output="$(run_action_with_env "login::remote::step1::c@example.com")"
 assert_jq_json "$step1_output" '.ok == true and .result.step == 1' "remote step1 output mismatch"
+assert_open_stub_value "https://accounts.google.com/o/oauth2/v2/auth?state=state-c@example.com&login_hint=c@example.com" "remote step1 should open auth URL via stub"
+[[ "$(cat "$pbcopy_stub_log")" == "state-c@example.com" ]] || fail "remote step1 should copy state via stub"
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsa "' "remote step1 should requery Alfred via stub"
 
-step2_output="$(run_with_env bash "$action_open" "login::remote::step2::c@example.com::state-c@example.com::code-123")"
+reset_ui_logs
+step2_output="$(run_action_with_env "login::remote::step2::c@example.com::state-c@example.com::code-123")"
 assert_jq_json "$step2_output" '.ok == true and .result.step == 2' "remote step2 output mismatch"
+assert_osascript_log_contains 'display notification "Login success: c@example.com" with title "Google Service Workflow"' "remote step2 should notify via stub"
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsa"' "remote step2 should requery Alfred via stub"
 assert_jq_file "$active_file" '.active_account == "c@example.com"' "step2 should set active account"
 
-remove_output="$(run_with_env bash "$action_open" "remove::c@example.com::1")"
+reset_ui_logs
+remove_output="$(run_action_with_env "remove::c@example.com::1")"
 assert_jq_json "$remove_output" '.ok == true and .result.account == "c@example.com"' "remove output mismatch"
+assert_osascript_log_contains 'display notification "Removed: c@example.com" with title "Google Service Workflow"' "remove should notify via stub"
+assert_osascript_log_contains 'tell application "Alfred 5" to search "gsa"' "remove should requery Alfred via stub"
 assert_jq_file "$active_file" '.active_account == "a@example.com"' "remove should rebalance active account"
 
-drive_download_output="$(run_with_env bash "$action_open" "drive-download::file-1::2")"
+reset_ui_logs
+drive_download_output="$(run_action_with_env "drive-download::file-1::2")"
 assert_jq_json "$drive_download_output" '.ok == true and .command == "google.drive.download"' "drive download output mismatch"
+assert_osascript_log_contains 'display notification "Downloaded: Keyboard_Configuration.docx · result.count=2" with title "Google Service Workflow"' "drive download should notify via stub"
 assert_file "$smoke_tmp/home/Downloads/Keyboard_Configuration.docx"
 
-run_with_env bash "$action_open" "drive-open-home" >/dev/null
-run_with_env bash "$action_open" "drive-open-search::keyboard" >/dev/null
-run_with_env bash "$action_open" "gmail-open-home" >/dev/null
-run_with_env bash "$action_open" "gmail-open-search::keyboard" >/dev/null
-run_with_env bash "$action_open" "gmail-open-message::msg-1" >/dev/null
+reset_ui_logs
+run_action_with_env "drive-open-home" >/dev/null
+assert_open_stub_value "https://drive.google.com/drive/home" "drive home should open URL via stub"
+assert_osascript_log_contains 'display notification "Opened Google Drive home" with title "Google Service Workflow"' "drive home should notify via stub"
+reset_ui_logs
+run_action_with_env "drive-open-search::keyboard" >/dev/null
+assert_open_stub_value "https://drive.google.com/drive/search?q=keyboard" "drive search should open URL via stub"
+assert_osascript_log_contains 'display notification "Opened Drive search: keyboard" with title "Google Service Workflow"' "drive search should notify via stub"
+reset_ui_logs
+run_action_with_env "gmail-open-home" >/dev/null
+assert_open_stub_value "https://mail.google.com/mail/u/0/#inbox" "gmail home should open URL via stub"
+assert_osascript_log_contains 'display notification "Opened Gmail inbox" with title "Google Service Workflow"' "gmail home should notify via stub"
+reset_ui_logs
+run_action_with_env "gmail-open-search::keyboard" >/dev/null
+assert_open_stub_value "https://mail.google.com/mail/u/0/#search/keyboard" "gmail search should open URL via stub"
+assert_osascript_log_contains 'display notification "Opened Gmail search: keyboard" with title "Google Service Workflow"' "gmail search should notify via stub"
+reset_ui_logs
+run_action_with_env "gmail-open-message::msg-1" >/dev/null
+assert_open_stub_value "https://mail.google.com/mail/u/0/#all/msg-1" "gmail message should open URL via stub"
+assert_osascript_log_contains 'display notification "Opened Gmail message: msg-1" with title "Google Service Workflow"' "gmail message should notify via stub"
 
 if ! rg -n "auth add c@example.com --remote --step 1" "$stub_log" >/dev/null; then
   fail "stub log missing remote step1 invocation"
