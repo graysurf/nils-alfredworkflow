@@ -509,6 +509,58 @@ mod tests {
     }
 
     #[test]
+    fn script_filter_github_mode_sets_gitlab_primary_item_icon() {
+        let temp = tempdir().expect("create temp dir");
+        let root = temp.path().join("projects");
+        let repo = root.join("alpha");
+        init_repo(&repo);
+
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args([
+                "remote",
+                "add",
+                "origin",
+                "git@gitlab.gamania.com:gamania/livekit-agents.git",
+            ])
+            .status()
+            .expect("set git remote");
+        assert!(status.success(), "git remote add should succeed");
+
+        let config = RuntimeConfig {
+            project_roots: vec![root],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 10,
+        };
+
+        let output = run_with_config(
+            Cli {
+                command: Commands::ScriptFilter {
+                    query: String::new(),
+                    mode: ScriptFilterModeArg::Github,
+                    output: OutputModeArg::AlfredJson,
+                },
+            },
+            &config,
+        )
+        .expect("script-filter should succeed");
+
+        let json: serde_json::Value =
+            serde_json::from_str(&output).expect("script-filter output should be valid JSON");
+        let icon_path = json
+            .get("items")
+            .and_then(|items| items.get(0))
+            .and_then(|item| item.get("icon"))
+            .and_then(|icon| icon.get("path"))
+            .and_then(|path| path.as_str())
+            .expect("github mode should include primary icon path");
+
+        assert_eq!(icon_path, "assets/icon-gitlab.png");
+    }
+
+    #[test]
     fn script_filter_default_mode_keeps_alfred_json_contract() {
         let temp = tempdir().expect("create temp dir");
         let root = temp.path().join("projects");

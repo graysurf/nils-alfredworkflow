@@ -15,6 +15,7 @@ web page (GitHub, GitLab, Gitea, Bitbucket, …) from Alfred.
 - Open selected project in your editor with `Enter`.
 - Open selected project's remote URL with `github <query>` or `Shift+Enter`. Works with GitHub, GitLab (including
   self-hosted and subgroups), Gitea, Bitbucket, Codeberg, Gogs — any host whose web URL mirrors the clone URL path.
+- Show GitLab row icons for projects whose `origin` host is a GitLab host.
 
 ## Configuration
 

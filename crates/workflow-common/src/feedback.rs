@@ -4,15 +4,33 @@ use alfred_core::{Feedback, Item, ItemIcon, ItemModifier};
 
 use crate::config::RuntimeConfig;
 use crate::discovery::{discover_projects, filter_projects};
-use crate::git::last_commit_summary;
+use crate::git::{last_commit_summary, remote_host_for_project};
 use crate::usage_log::{UsageLog, parse_usage_timestamp};
 
 const NO_PROJECTS_TITLE: &str = "No Git projects found";
 const NO_PROJECTS_SUBTITLE: &str = "No matching or initialized Git repos found";
 const NO_COMMIT_TEXT: &str = "No recent commits";
 const NO_USAGE_TEXT: &str = "N/A";
-const SHIFT_SUBTITLE: &str = "Open Project on GitHub";
-const SHIFT_ICON_PATH: &str = "assets/icon-github.png";
+const GITHUB_SHIFT_SUBTITLE: &str = "Open Project on GitHub";
+const GITHUB_ICON_PATH: &str = "assets/icon-github.png";
+const GITLAB_SHIFT_SUBTITLE: &str = "Open Project on GitLab";
+const GITLAB_ICON_PATH: &str = "assets/icon-gitlab.png";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RemotePresentation {
+    shift_subtitle: &'static str,
+    icon_path: &'static str,
+}
+
+const GITHUB_PRESENTATION: RemotePresentation = RemotePresentation {
+    shift_subtitle: GITHUB_SHIFT_SUBTITLE,
+    icon_path: GITHUB_ICON_PATH,
+};
+
+const GITLAB_PRESENTATION: RemotePresentation = RemotePresentation {
+    shift_subtitle: GITLAB_SHIFT_SUBTITLE,
+    icon_path: GITLAB_ICON_PATH,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScriptFilterMode {
@@ -47,6 +65,7 @@ pub fn build_script_filter_feedback_with_mode(
             let subtitle = subtitle_format(commit.as_deref(), last_used);
             let sort_key = parse_usage_timestamp(last_used);
             let path = project.path.to_string_lossy().to_string();
+            let remote_presentation = remote_presentation_for_project(&project.path);
 
             let mut item = Item::new(&project.name)
                 .with_arg(path.clone())
@@ -57,13 +76,13 @@ pub fn build_script_filter_feedback_with_mode(
                     ItemModifier::new()
                         .with_arg(path.clone())
                         .with_valid(true)
-                        .with_icon(ItemIcon::new(SHIFT_ICON_PATH))
-                        .with_subtitle(SHIFT_SUBTITLE),
+                        .with_icon(ItemIcon::new(remote_presentation.icon_path))
+                        .with_subtitle(remote_presentation.shift_subtitle),
                 )
                 .with_variable("project_path", path);
 
             if mode == ScriptFilterMode::Github {
-                item = item.with_icon(ItemIcon::new(SHIFT_ICON_PATH));
+                item = item.with_icon(ItemIcon::new(remote_presentation.icon_path));
             }
 
             (sort_key, project.name, item)
@@ -89,6 +108,18 @@ pub fn build_script_filter_feedback_with_mode(
         .collect();
 
     Feedback::new(items)
+}
+
+fn remote_presentation_for_project(project_path: &Path) -> RemotePresentation {
+    match remote_host_for_project(project_path) {
+        Some(host) if is_gitlab_host(&host) => GITLAB_PRESENTATION,
+        _ => GITHUB_PRESENTATION,
+    }
+}
+
+fn is_gitlab_host(host: &str) -> bool {
+    host.split('.')
+        .any(|segment| segment.eq_ignore_ascii_case("gitlab"))
 }
 
 pub fn subtitle_format(commit_summary: Option<&str>, usage_timestamp: Option<&str>) -> String {
@@ -291,8 +322,46 @@ mod tests {
             .expect("shift modifier icon should exist");
 
         assert_eq!(
-            icon.path, SHIFT_ICON_PATH,
+            icon.path, GITHUB_ICON_PATH,
             "shift modifier should point to GitHub icon asset"
+        );
+    }
+
+    #[test]
+    fn shift_modifier_uses_gitlab_icon_for_gitlab_remote() {
+        let temp = tempdir().expect("create temp dir");
+        let roots = temp.path().join("roots");
+        let repo = roots.join("alpha");
+        init_repo(&repo);
+        set_origin(&repo, "git@gitlab.gamania.com:gamania/livekit-agents.git");
+
+        let config = RuntimeConfig {
+            project_roots: vec![roots],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 10,
+        };
+
+        let feedback = build_script_filter_feedback("", &config);
+        let first = feedback.items.first().expect("at least one project item");
+        let shift = first
+            .mods
+            .as_ref()
+            .and_then(|mods| mods.get("shift"))
+            .expect("shift modifier should exist");
+        let icon = shift
+            .icon
+            .as_ref()
+            .expect("shift modifier icon should exist");
+
+        assert_eq!(
+            icon.path, "assets/icon-gitlab.png",
+            "shift modifier should point to GitLab icon asset"
+        );
+        assert_eq!(
+            shift.subtitle.as_deref(),
+            Some("Open Project on GitLab"),
+            "shift modifier should name the GitLab target"
         );
     }
 
@@ -316,8 +385,34 @@ mod tests {
         let icon = first.icon.as_ref().expect("primary item icon should exist");
 
         assert_eq!(
-            icon.path, SHIFT_ICON_PATH,
+            icon.path, GITHUB_ICON_PATH,
             "github mode should display GitHub icon on primary item"
+        );
+    }
+
+    #[test]
+    fn github_mode_sets_gitlab_primary_item_icon_for_gitlab_remote() {
+        let temp = tempdir().expect("create temp dir");
+        let roots = temp.path().join("roots");
+        let repo = roots.join("alpha");
+        init_repo(&repo);
+        set_origin(&repo, "git@gitlab.gamania.com:gamania/livekit-agents.git");
+
+        let config = RuntimeConfig {
+            project_roots: vec![roots],
+            usage_file: temp.path().join("usage.log"),
+            vscode_path: "code".to_string(),
+            max_results: 10,
+        };
+
+        let feedback =
+            build_script_filter_feedback_with_mode("", &config, ScriptFilterMode::Github);
+        let first = feedback.items.first().expect("at least one project item");
+        let icon = first.icon.as_ref().expect("primary item icon should exist");
+
+        assert_eq!(
+            icon.path, "assets/icon-gitlab.png",
+            "github mode should display GitLab icon for GitLab remotes"
         );
     }
 
@@ -330,6 +425,16 @@ mod tests {
             .status()
             .expect("run git init");
         assert!(status.success(), "git init should succeed");
+    }
+
+    fn set_origin(path: &Path, remote: &str) {
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(path)
+            .args(["remote", "add", "origin", remote])
+            .status()
+            .expect("set git remote");
+        assert!(status.success(), "git remote add should succeed");
     }
 
     #[test]

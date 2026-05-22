@@ -27,6 +27,21 @@ pub fn last_commit_summary(project_path: &Path) -> Option<String> {
 }
 
 pub fn web_url_for_project(project_path: &Path) -> Result<String, WorkflowError> {
+    let remote_url = origin_remote_url(project_path)?;
+    normalize_remote(&remote_url)
+}
+
+pub fn remote_host_for_project(project_path: &Path) -> Option<String> {
+    origin_remote_url(project_path)
+        .ok()
+        .and_then(|remote_url| remote_host_from_url(&remote_url))
+}
+
+pub fn remote_host_from_url(remote_url: &str) -> Option<String> {
+    parse_remote_url(remote_url).map(|parsed| parsed.host)
+}
+
+fn origin_remote_url(project_path: &Path) -> Result<String, WorkflowError> {
     if !project_path.exists() {
         return Err(WorkflowError::MissingPath(project_path.to_path_buf()));
     }
@@ -55,7 +70,7 @@ pub fn web_url_for_project(project_path: &Path) -> Result<String, WorkflowError>
         return Err(WorkflowError::MissingOrigin(project_path.to_path_buf()));
     }
 
-    normalize_remote(&remote_url)
+    Ok(remote_url)
 }
 
 /// Normalize a git remote URL to its canonical web URL.

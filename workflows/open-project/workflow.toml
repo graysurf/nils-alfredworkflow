@@ -1,13 +1,14 @@
 id = "open-project"
 name = "Open Project"
 bundle_id = "com.sympoies.open-project"
-version = "1.2.8"
+version = "1.2.9"
 script_filter = "script_filter.sh"
 action = "action_open.sh"
 rust_binary = "workflow-cli"
 assets = [
   "src/assets/icon.png",
   "src/assets/icon-github.png",
+  "src/assets/icon-gitlab.png",
   "src/8F3399E3-951A-4DC0-BC7D-CFA83C1E1F76.png",
 ]
 

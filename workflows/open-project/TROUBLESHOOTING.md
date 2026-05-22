@@ -78,7 +78,8 @@ Project source location (so packaging keeps it):
 - For open-project GitHub mode, this is handled by:
   - `workflows/open-project/scripts/script_filter_github.sh`
   - `workflow-cli script-filter --mode github`
-  - feedback item icon path: `assets/icon-github.png`
+  - feedback item icon path: `assets/icon-github.png` or `assets/icon-gitlab.png`, based on the project's `origin`
+    host
 
 Quick check:
 

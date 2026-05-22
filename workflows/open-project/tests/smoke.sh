@@ -45,9 +45,13 @@ cargo build -p nils-workflow-cli >/dev/null
 
 project_root="$tmp_dir/projects"
 repo_path="$project_root/alpha-repo"
+gitlab_repo_path="$project_root/gitlab-repo"
 usage_file="$tmp_dir/usage.log"
 mkdir -p "$project_root"
 git init -q "$repo_path"
+git -C "$repo_path" remote add origin git@github.com:owner/alpha-repo.git
+git init -q "$gitlab_repo_path"
+git -C "$gitlab_repo_path" remote add origin git@gitlab.gamania.com:gamania/gitlab-repo.git
 printf '%s | %s\n' "$repo_path" "2025-01-02 03:04:05" >"$usage_file"
 
 script_filter_output="$({
@@ -61,6 +65,16 @@ echo "$script_filter_output" | jq -e '.items | length > 0' >/dev/null
 echo "$script_filter_output" | jq -e '.items[0].title == "alpha-repo"' >/dev/null
 echo "$script_filter_output" | jq -e '.items[0].arg == $path' --arg path "$repo_path" >/dev/null
 echo "$script_filter_output" | jq -e '.items[0].mods.shift.icon.path == "assets/icon-github.png"' >/dev/null
+
+gitlab_script_filter_output="$({
+  PROJECT_DIRS="$project_root" \
+    USAGE_FILE="$usage_file" \
+    WORKFLOW_CLI_BIN="$repo_root/target/debug/workflow-cli" \
+    "$workflow_dir/scripts/script_filter.sh" "gitlab"
+})"
+echo "$gitlab_script_filter_output" | jq -e '.items[0].title == "gitlab-repo"' >/dev/null
+echo "$gitlab_script_filter_output" | jq -e '.items[0].mods.shift.icon.path == "assets/icon-gitlab.png"' >/dev/null
+echo "$gitlab_script_filter_output" | jq -e '.items[0].mods.shift.subtitle == "Open Project on GitLab"' >/dev/null
 
 resolver_home="$tmp_dir/home-resolver"
 mkdir -p "$resolver_home/.local/bin"
@@ -81,6 +95,14 @@ github_filter_output="$({
     "$workflow_dir/scripts/script_filter_github.sh" ""
 })"
 echo "$github_filter_output" | jq -e '.items[0].icon.path == "assets/icon-github.png"' >/dev/null
+
+gitlab_github_filter_output="$({
+  PROJECT_DIRS="$project_root" \
+    USAGE_FILE="$usage_file" \
+    WORKFLOW_CLI_BIN="$repo_root/target/debug/workflow-cli" \
+    "$workflow_dir/scripts/script_filter_github.sh" "gitlab"
+})"
+echo "$gitlab_github_filter_output" | jq -e '.items[0].icon.path == "assets/icon-gitlab.png"' >/dev/null
 
 env VSCODE_PATH=/usr/bin/true "$workflow_dir/scripts/action_open.sh" "$repo_path" >/dev/null
 vscode_home="$tmp_dir/home-vscode"
@@ -116,6 +138,10 @@ if [[ ! -f "$repo_root/build/workflows/open-project/pkg/8F3399E3-951A-4DC0-BC7D-
 fi
 if [[ ! -f "$repo_root/build/workflows/open-project/pkg/assets/icon-github.png" ]]; then
   echo "packaged GitHub icon not found: $repo_root/build/workflows/open-project/pkg/assets/icon-github.png" >&2
+  exit 1
+fi
+if [[ ! -f "$repo_root/build/workflows/open-project/pkg/assets/icon-gitlab.png" ]]; then
+  echo "packaged GitLab icon not found: $repo_root/build/workflows/open-project/pkg/assets/icon-gitlab.png" >&2
   exit 1
 fi
 
