@@ -20,7 +20,11 @@ for required in \
   TROUBLESHOOTING.md \
   src/info.plist.template \
   src/assets/icon.png \
+  src/assets/icon-github.png \
+  src/assets/icon-gitlab.png \
   scripts/script_filter.sh \
+  scripts/script_filter_github.sh \
+  scripts/script_filter_gitlab.sh \
   scripts/action_open.sh \
   tests/smoke.sh; do
   assert_file "$workflow_dir/$required"
@@ -28,6 +32,8 @@ done
 
 for executable in \
   scripts/script_filter.sh \
+  scripts/script_filter_github.sh \
+  scripts/script_filter_gitlab.sh \
   scripts/action_open.sh \
   tests/smoke.sh; do
   assert_exec "$workflow_dir/$executable"
@@ -39,6 +45,8 @@ require_bin rg
 manifest="$workflow_dir/workflow.toml"
 plist_template="$workflow_dir/src/info.plist.template"
 script_filter="$workflow_dir/scripts/script_filter.sh"
+script_filter_github="$workflow_dir/scripts/script_filter_github.sh"
+script_filter_gitlab="$workflow_dir/scripts/script_filter_gitlab.sh"
 action_open="$workflow_dir/scripts/action_open.sh"
 
 [[ "$(toml_string "$manifest" id)" == "forge-inbox" ]] || fail "workflow id mismatch"
@@ -53,14 +61,29 @@ fi
 if ! rg -n '^FORGE_INBOX_GITLAB_HOST[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
   fail "FORGE_INBOX_GITLAB_HOST default must be empty"
 fi
+if ! rg -n '^FORGE_INBOX_SHOW_CONFIG_WARNINGS[[:space:]]*=[[:space:]]*"false"' "$manifest" >/dev/null; then
+  fail "FORGE_INBOX_SHOW_CONFIG_WARNINGS default must be false"
+fi
 if ! rg -n '<key>readme</key>' "$plist_template" >/dev/null; then
   fail "info.plist.template must include a readme key for package smoke"
 fi
 if ! rg -n '<string>fi</string>' "$plist_template" >/dev/null; then
   fail "info.plist.template must wire the fi keyword"
 fi
+if ! rg -n '<string>fih</string>' "$plist_template" >/dev/null; then
+  fail "info.plist.template must wire the fih keyword"
+fi
+if ! rg -n '<string>fil</string>' "$plist_template" >/dev/null; then
+  fail "info.plist.template must wire the fil keyword"
+fi
 if ! rg -n '<string>\./scripts/script_filter\.sh</string>' "$plist_template" >/dev/null; then
   fail "info.plist.template must wire the Script Filter script"
+fi
+if ! rg -n '<string>\./scripts/script_filter_github\.sh</string>' "$plist_template" >/dev/null; then
+  fail "info.plist.template must wire the GitHub Script Filter script"
+fi
+if ! rg -n '<string>\./scripts/script_filter_gitlab\.sh</string>' "$plist_template" >/dev/null; then
+  fail "info.plist.template must wire the GitLab Script Filter script"
 fi
 if ! rg -n '<string>\./scripts/action_open\.sh</string>' "$plist_template" >/dev/null; then
   fail "info.plist.template must wire the action script"
@@ -205,16 +228,21 @@ esac
 EOS
 chmod +x "$forge_stub"
 
-run_filter() {
-  local query="$1"
+run_filter_with_script() {
+  local filter_script="$1"
+  local query="$2"
   local host="gitlab.gamania.com"
   local mode="ok"
+  local show_config_warnings="false"
 
-  if [[ $# -ge 2 ]]; then
-    host="$2"
-  fi
   if [[ $# -ge 3 ]]; then
-    mode="$3"
+    host="$3"
+  fi
+  if [[ $# -ge 4 ]]; then
+    mode="$4"
+  fi
+  if [[ $# -ge 5 ]]; then
+    show_config_warnings="$5"
   fi
 
   : >"$forge_log"
@@ -222,7 +250,12 @@ run_filter() {
     FORGE_STUB_MODE="$mode" \
     FORGE_CLI_BIN="$forge_stub" \
     FORGE_INBOX_GITLAB_HOST="$host" \
-    "$script_filter" "$query"
+    FORGE_INBOX_SHOW_CONFIG_WARNINGS="$show_config_warnings" \
+    "$filter_script" "$query"
+}
+
+run_filter() {
+  run_filter_with_script "$script_filter" "$@"
 }
 
 assert_valid_count() {
@@ -266,6 +299,9 @@ assert_log_not_contains() {
 json="$(run_filter "gh pr")"
 assert_valid_count "$json" 1
 assert_has_source "$json" "github_search_prs"
+assert_jq_json "$json" '.items[0].title == "#10 Review forge inbox PR"' "repo must not be duplicated in title"
+assert_jq_json "$json" '.items[0].subtitle | startswith("sympoies/nils-cli | GitHub PR | review")' "repo must be shown in subtitle"
+assert_jq_json "$json" '.items[0].icon.path == "assets/icon-github.png"' "GitHub row icon mismatch"
 assert_log_contains "--provider github"
 assert_log_not_contains "--kind pr"
 
@@ -282,6 +318,7 @@ json="$(run_filter "glab pr")"
 assert_valid_count "$json" 2
 assert_has_source "$json" "gitlab_merge_requests"
 assert_has_source "$json" "gitlab_todos"
+assert_jq_json "$json" '[.items[] | select(.valid == true) | .icon.path] | unique == ["assets/icon-gitlab.png"]' "GitLab row icon mismatch"
 assert_jq_json "$json" '[.items[] | select(.valid == true) | .arg | fromjson | .url] | index("https://gitlab.gamania.com/group/app/-/merge_requests/9") != null' "MR todo URL missing from PR mode"
 assert_not_has_url_fragment "$json" "/-/issues/8"
 assert_not_has_url_fragment "$json" "/-/commit/abc123"
@@ -326,7 +363,12 @@ assert_has_source "$json" "github_search_issues"
 
 json="$(run_filter "all all" "")"
 assert_valid_count "$json" 2
-assert_jq_json "$json" '.items[0].title == "Set FORGE_INBOX_GITLAB_HOST"' "missing mixed-mode host warning"
+assert_jq_json "$json" '[.items[].title] | index("Set FORGE_INBOX_GITLAB_HOST") == null' "mixed-mode host warning should be hidden by default"
+assert_log_contains "--provider github"
+
+json="$(run_filter "all all" "" "ok" "true")"
+assert_valid_count "$json" 2
+assert_jq_json "$json" '.items[0].title == "Set FORGE_INBOX_GITLAB_HOST"' "missing opt-in mixed-mode host warning"
 assert_log_contains "--provider github"
 
 json="$(run_filter "glab issue" "")"
@@ -355,11 +397,28 @@ assert_jq_json "$json" '.items[0].title == "forge-cli returned invalid JSON"' "m
 json="$(run_filter "gh pr" "gitlab.gamania.com" "bad-envelope")"
 assert_jq_json "$json" '.items[0].title == "forge-cli inbox failed" and (.items[0].subtitle | contains("auth failed"))' "unsuccessful envelope row mismatch"
 
+json="$(run_filter_with_script "$script_filter_github" "glab issue")"
+assert_valid_count "$json" 1
+assert_has_source "$json" "github_search_issues"
+assert_log_contains "--provider github"
+assert_log_not_contains "--provider gitlab"
+
+json="$(run_filter_with_script "$script_filter_gitlab" "gh pr")"
+assert_valid_count "$json" 2
+assert_has_source "$json" "gitlab_merge_requests"
+assert_has_source "$json" "gitlab_todos"
+assert_log_contains "--provider gitlab"
+assert_log_contains "--gitlab-host gitlab.gamania.com"
+assert_log_not_contains "--provider github"
+
 json="$(FORGE_CLI_BIN="$tmp_dir/missing-forge-cli" "$script_filter" "gh pr" 2>/dev/null)"
 assert_jq_json "$json" '.items[0].title == "forge-cli binary not found"' "missing binary row mismatch"
 
 if rg -n 'command -v[[:space:]]+(gh|glab)|exec[[:space:]]+(gh|glab)|(^|[;&|])[[:space:]]*(gh|glab)[[:space:]]+(api|auth|issue|mr|pr|repo|search|status)' \
-  "$workflow_dir/scripts/script_filter.sh" "$workflow_dir/scripts/action_open.sh" >/dev/null; then
+  "$workflow_dir/scripts/script_filter.sh" \
+  "$workflow_dir/scripts/script_filter_github.sh" \
+  "$workflow_dir/scripts/script_filter_gitlab.sh" \
+  "$workflow_dir/scripts/action_open.sh" >/dev/null; then
   fail "workflow scripts must not call gh or glab directly"
 fi
 

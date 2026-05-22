@@ -189,6 +189,23 @@ resolve_limit() {
   printf '30\n'
 }
 
+resolve_bool() {
+  local raw
+  raw="$(to_lower "$(trim "${1-}")")"
+
+  case "$raw" in
+  1 | true | yes | on)
+    printf '1\n'
+    ;;
+  "" | 0 | false | no | off)
+    printf '0\n'
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+}
+
 resolve_forge_cli() {
   local configured
   configured="$(trim "${FORGE_CLI_BIN:-}")"
@@ -292,7 +309,17 @@ def reasons_label:
     end
   | clean;
 
-def display_title:
+def item_title:
+  (.number // .iid // "") as $number
+  | (.title // "(untitled)") as $title
+  | ($number | text_value) as $number_text
+  | ($title | text_value) as $title_text
+  | if $number_text != "" then "#\($number_text) \($title_text)"
+    else $title_text
+    end
+  | clean;
+
+def reference_title:
   (.repo // .repository // "") as $repo
   | (.number // .iid // "") as $number
   | (.title // "(untitled)") as $title
@@ -301,18 +328,31 @@ def display_title:
   | ($title | text_value) as $title_text
   | if $repo_text != "" and $number_text != "" then "\($repo_text)#\($number_text) \($title_text)"
     elif $repo_text != "" then "\($repo_text) \($title_text)"
+    elif $number_text != "" then "#\($number_text) \($title_text)"
     else $title_text
     end
   | clean;
 
 def item_subtitle:
+  (.repo // .repository // "" | text_value) as $repo_text
+  |
   [
+    ($repo_text | if . == "" then empty else . end),
     type_label,
     (reasons_label | if . == "" then empty else . end),
     ((.updated_at // .updated // .created_at // "") | text_value | if . == "" then empty else "updated " + . end),
     ((.author // .assignee // "") | text_value | if . == "" then empty else . end)
   ]
   | join(" | ");
+
+def provider_icon_fields:
+  (.provider // "" | ascii_downcase) as $provider
+  | if $provider == "github" then
+      {icon: {path: "assets/icon-github.png"}}
+    elif $provider == "gitlab" then
+      {icon: {path: "assets/icon-gitlab.png"}}
+    else {}
+    end;
 
 def action_token($action):
   {
@@ -325,7 +365,7 @@ def action_token($action):
     title: (.title // ""),
     source: (.source // "")
   }
-  + if $action == "copy-md" then {markdown: ("[" + display_title + "](" + (.url // "") + ")")} else {} end
+  + if $action == "copy-md" then {markdown: ("[" + reference_title + "](" + (.url // "") + ")")} else {} end
   | tojson;
 
 def searchable:
@@ -358,8 +398,8 @@ def warning_row($title; $subtitle):
 
 def item_row:
   (.url // "") as $url
-  | {
-      title: display_title,
+  | ({
+      title: item_title,
       subtitle: item_subtitle,
       arg: action_token("open"),
       valid: ($url != ""),
@@ -375,7 +415,7 @@ def item_row:
           subtitle: "Copy Markdown reference"
         }
       }
-    };
+    } + provider_icon_fields);
 
 ($filterText | ascii_downcase) as $needle
 | [
@@ -418,6 +458,7 @@ parse_query "$query"
 
 default_provider_raw="${FORGE_INBOX_PROVIDER_MODE:-all}"
 default_item_raw="${FORGE_INBOX_ITEM_MODE:-all}"
+fixed_provider_raw="${FORGE_INBOX_FIXED_PROVIDER_MODE:-}"
 
 default_provider_mode=""
 if ! default_provider_mode="$(normalize_provider_mode "$default_provider_raw")"; then
@@ -431,12 +472,26 @@ if ! default_item_mode="$(normalize_item_mode "$default_item_raw")"; then
   exit 0
 fi
 
-provider_mode="${parsed_provider_mode:-$default_provider_mode}"
+fixed_provider_mode=""
+if [[ -n "$(trim "$fixed_provider_raw")" ]]; then
+  if ! fixed_provider_mode="$(normalize_provider_mode "$fixed_provider_raw")"; then
+    emit_item "Invalid FORGE_INBOX_FIXED_PROVIDER_MODE" "Use all, gh, or glab."
+    exit 0
+  fi
+fi
+
+provider_mode="${fixed_provider_mode:-${parsed_provider_mode:-$default_provider_mode}}"
 item_mode="${parsed_item_mode:-$default_item_mode}"
 filter_text="$parsed_filter"
 limit="$(resolve_limit)"
 gitlab_host="$(trim "${FORGE_INBOX_GITLAB_HOST:-}")"
 configured_warning=""
+show_config_warnings=""
+
+if ! show_config_warnings="$(resolve_bool "${FORGE_INBOX_SHOW_CONFIG_WARNINGS:-false}")"; then
+  emit_item "Invalid FORGE_INBOX_SHOW_CONFIG_WARNINGS" "Use true or false."
+  exit 0
+fi
 
 declare -a argv=()
 
@@ -463,7 +518,9 @@ all)
     argv=("$forge_cli" "--format" "json" "inbox" "list" "--gitlab-host" "$gitlab_host" "--limit" "$limit")
   else
     argv=("$forge_cli" "--provider" "github" "--format" "json" "inbox" "list" "--limit" "$limit")
-    configured_warning="Mixed mode needs FORGE_INBOX_GITLAB_HOST for GitLab; showing GitHub-only results."
+    if [[ "$show_config_warnings" -eq 1 ]]; then
+      configured_warning="Mixed mode needs FORGE_INBOX_GITLAB_HOST for GitLab; showing GitHub-only results."
+    fi
   fi
   ;;
 *)

@@ -30,6 +30,7 @@ rg -n "workflow_smoke_helpers" workflows/forge-inbox/tests/smoke.sh
 | --- | --- | --- |
 | `forge-cli binary not found` | `forge-cli` is not on `PATH` and `FORGE_CLI_BIN` is empty or not executable. | Install `forge-cli`, fix `PATH`, or set `FORGE_CLI_BIN` to an executable path. |
 | `Set FORGE_INBOX_GITLAB_HOST` | GitLab mode is selected without an explicit host. | Set `FORGE_INBOX_GITLAB_HOST` to the target GitLab host. |
+| GitLab host warning row is hidden | Mixed mode fallback warning rows are disabled by default. | Set `FORGE_INBOX_SHOW_CONFIG_WARNINGS=true` to show non-blocking config warnings. |
 | `forge-cli inbox failed` | Provider auth, network, host, or CLI runtime failure. | Run the same `forge-cli inbox list` command in Terminal and fix provider auth or host config first. |
 | `forge-cli returned invalid JSON` | The configured binary is not the expected runtime or emitted non-JSON output. | Check `FORGE_CLI_BIN`, update `forge-cli`, or remove the override to use `PATH`. |
 | `jq is required` | The Script Filter cannot parse the CLI JSON envelope. | Install `jq` on the machine that runs Alfred. |
@@ -50,7 +51,8 @@ bash scripts/ci/markdownlint-audit.sh --strict
 1. Re-install a previous known-good package from `dist/forge-inbox/` if one
    exists.
 2. Clear or reset `FORGE_CLI_BIN`, `FORGE_INBOX_PROVIDER_MODE`,
-   `FORGE_INBOX_ITEM_MODE`, `FORGE_INBOX_GITLAB_HOST`, and
-   `FORGE_INBOX_LIMIT` in Alfred workflow variables.
+   `FORGE_INBOX_ITEM_MODE`, `FORGE_INBOX_GITLAB_HOST`,
+   `FORGE_INBOX_SHOW_CONFIG_WARNINGS`, and `FORGE_INBOX_LIMIT` in Alfred
+   workflow variables.
 3. If a source regression remains, revert only `workflows/forge-inbox/` on a
    branch and rerun the validation commands above.
