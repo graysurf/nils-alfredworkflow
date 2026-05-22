@@ -75,8 +75,9 @@ assignments, comments, or review state.
 
 Mixed mode with an empty `FORGE_INBOX_GITLAB_HOST` falls back to GitHub-only
 results. Set `FORGE_INBOX_SHOW_CONFIG_WARNINGS=true` to show a GitLab host
-warning row for that fallback. GitLab-only mode with an empty host always
-renders a configuration row and does not invoke `forge-cli`.
+warning row for that fallback. GitLab-only mode with an empty host does not
+invoke `forge-cli`; with `FORGE_INBOX_SHOW_CONFIG_WARNINGS=false` it returns no
+rows, and with `true` it renders the same GitLab host configuration row.
 
 ## Runtime Contract
 

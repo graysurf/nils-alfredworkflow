@@ -517,7 +517,11 @@ fi
 declare -a argv=()
 
 if [[ "$provider_mode" == "glab" && -z "$gitlab_host" ]]; then
-  emit_item "Set FORGE_INBOX_GITLAB_HOST" "GitLab-only mode requires an explicit GitLab host." "assets/icon-gitlab.png"
+  if [[ "$show_config_warnings" == "1" ]]; then
+    emit_item "Set FORGE_INBOX_GITLAB_HOST" "GitLab-only mode requires an explicit GitLab host." "assets/icon-gitlab.png"
+  else
+    printf '{"items":[]}\n'
+  fi
   exit 0
 fi
 

@@ -383,10 +383,17 @@ assert_log_contains "--provider github"
 
 json="$(run_filter "glab issue" "")"
 assert_valid_count "$json" 0
+assert_jq_json "$json" '.items == []' "gitlab-only missing-host mode should hide config row by default"
+if [[ -s "$forge_log" ]]; then
+  fail "gitlab-only missing-host mode must not invoke forge-cli"
+fi
+
+json="$(run_filter "glab issue" "" "ok" "true")"
+assert_valid_count "$json" 0
 assert_jq_json "$json" '.items[0].title == "Set FORGE_INBOX_GITLAB_HOST"' "missing gitlab-only host config row"
 assert_jq_json "$json" '.items[0].icon.path == "assets/icon-gitlab.png"' "gitlab-only host config row icon mismatch"
 if [[ -s "$forge_log" ]]; then
-  fail "gitlab-only missing-host mode must not invoke forge-cli"
+  fail "gitlab-only missing-host warning mode must not invoke forge-cli"
 fi
 
 json="$(run_filter "glab all no-match")"

@@ -113,15 +113,17 @@ test_dist_latest_artifact_resolves_latest_path() {
   local fixture_root="$test_root/dist-fixture"
   mkdir -p \
     "$fixture_root/dist/weather/1.0.0" \
-    "$fixture_root/dist/weather/1.1.0"
+    "$fixture_root/dist/weather/1.1.0" \
+    "$fixture_root/dist/weather/1.2.10"
 
   touch "$fixture_root/dist/weather/1.0.0/Weather Forecast.alfredworkflow"
   touch "$fixture_root/dist/weather/1.1.0/Weather Forecast.alfredworkflow"
+  touch "$fixture_root/dist/weather/1.2.10/Weather Forecast.alfredworkflow"
 
   local resolved
   resolved="$(wfc_dist_latest_artifact "$fixture_root" weather)"
   assert_eq \
-    "$fixture_root/dist/weather/1.1.0/Weather Forecast.alfredworkflow" \
+    "$(cd "$fixture_root" && pwd)/dist/weather/1.2.10/Weather Forecast.alfredworkflow" \
     "$resolved" \
     "latest dist artifact path"
 }

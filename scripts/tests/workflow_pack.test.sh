@@ -458,6 +458,28 @@ test_all_install_can_reset_customizations() {
   assert_eq "alpha" "$(read_keyword_value "$installed_alpha/info.plist")" "all reset install restores packaged keyword"
 }
 
+test_dist_latest_artifact_uses_version_order() {
+  local fixture_root="$test_root/dist-latest"
+  local fixture_repo="$fixture_root/repo"
+  local actual=""
+
+  mkdir -p \
+    "$fixture_repo/dist/alpha/1.2.9" \
+    "$fixture_repo/dist/alpha/1.2.10"
+  copy_pack_scripts "$fixture_repo"
+  : >"$fixture_repo/dist/alpha/1.2.9/Alpha Workflow.alfredworkflow"
+  : >"$fixture_repo/dist/alpha/1.2.10/Alpha Workflow.alfredworkflow"
+
+  actual="$(bash -c 'source "$1"; wfc_dist_latest_artifact "$2" alpha' _ \
+    "$fixture_repo/scripts/lib/workflow_catalog.sh" \
+    "$fixture_repo")"
+
+  assert_eq \
+    "$(cd "$fixture_repo" && pwd)/dist/alpha/1.2.10/Alpha Workflow.alfredworkflow" \
+    "$actual" \
+    "latest artifact selection should use version-aware ordering"
+}
+
 main() {
   make_fake_tools
   test_single_ui_install_uses_open
@@ -465,6 +487,7 @@ main() {
   test_single_background_install_can_reset_customizations
   test_all_install_forces_background_mode
   test_all_install_can_reset_customizations
+  test_dist_latest_artifact_uses_version_order
   printf 'ok: workflow_pack tests passed\n'
 }
 

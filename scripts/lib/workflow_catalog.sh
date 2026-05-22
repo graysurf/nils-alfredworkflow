@@ -72,5 +72,20 @@ wfc_dist_latest_artifact() {
 
   [[ -d "$workflow_dist" ]] || return 1
 
-  find "$workflow_dist" -type f -name '*.alfredworkflow' | sort | tail -n 1
+  find "$workflow_dist" -type f -name '*.alfredworkflow' -print0 |
+    python3 -c '
+import re
+import sys
+from pathlib import Path
+
+paths = [Path(p.decode()) for p in sys.stdin.buffer.read().split(b"\0") if p]
+if not paths:
+    raise SystemExit(1)
+
+def version_key(path):
+    version = path.parent.name
+    return tuple(int(part) if part.isdigit() else part for part in re.split(r"([0-9]+)", version))
+
+print(max(paths, key=lambda path: (version_key(path), str(path))))
+'
 }
