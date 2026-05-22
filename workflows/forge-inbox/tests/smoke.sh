@@ -37,6 +37,7 @@ require_bin jq
 require_bin rg
 
 manifest="$workflow_dir/workflow.toml"
+plist_template="$workflow_dir/src/info.plist.template"
 script_filter="$workflow_dir/scripts/script_filter.sh"
 action_open="$workflow_dir/scripts/action_open.sh"
 
@@ -51,6 +52,18 @@ if ! rg -n '^FORGE_CLI_BIN[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; t
 fi
 if ! rg -n '^FORGE_INBOX_GITLAB_HOST[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
   fail "FORGE_INBOX_GITLAB_HOST default must be empty"
+fi
+if ! rg -n '<key>readme</key>' "$plist_template" >/dev/null; then
+  fail "info.plist.template must include a readme key for package smoke"
+fi
+if ! rg -n '<string>fi</string>' "$plist_template" >/dev/null; then
+  fail "info.plist.template must wire the fi keyword"
+fi
+if ! rg -n '<string>\./scripts/script_filter\.sh</string>' "$plist_template" >/dev/null; then
+  fail "info.plist.template must wire the Script Filter script"
+fi
+if ! rg -n '<string>\./scripts/action_open\.sh</string>' "$plist_template" >/dev/null; then
+  fail "info.plist.template must wire the action script"
 fi
 
 tmp_dir="$(mktemp -d)"

@@ -9,8 +9,8 @@
 - Execution window: whole issue
 - Current task: none
 - Next task: none
-- Last updated: 2026-05-22 22:35 Asia/Taipei
-- Branch/commit/PR: `feat/forge-inbox-workflow`; tracking issue #164; PR pending
+- Last updated: 2026-05-22 22:51 Asia/Taipei
+- Branch/commit/PR: `feat/forge-inbox-workflow`; tracking issue #164; PR #165
 
 ## Task Ledger
 
@@ -38,9 +38,16 @@
 | `FORGE_INBOX_GITLAB_HOST=gitlab.gamania.com bash workflows/forge-inbox/scripts/script_filter.sh "all all"` | pass | live Script Filter smoke | rendered valid Alfred JSON with 5 GitHub issue rows |
 | `FORGE_INBOX_GITLAB_HOST=gitlab.gamania.com bash workflows/forge-inbox/scripts/script_filter.sh "gh pr"` | pass | live Script Filter smoke | rendered valid empty Alfred JSON |
 | `FORGE_INBOX_GITLAB_HOST=gitlab.gamania.com bash workflows/forge-inbox/scripts/script_filter.sh "glab issue"` | pass | live Script Filter smoke | rendered valid empty Alfred JSON |
+| `scripts/workflow-pack.sh --id forge-inbox` | pass | package smoke repair | passed after adding full plist wiring and readme key |
+| `bash scripts/ci/ci-run-gates.sh package-smoke --skip-arch-check` | pass | CI package smoke parity | passed after CI repair |
 
 ## Runtime Findings
 
+- `fixed-now`: GitHub `validate` failed in package smoke because the initial
+  `info.plist.template` lacked `<key>readme</key>` and normal Alfred object
+  wiring. Replaced it with a two-node Script Filter -> action plist, added
+  smoke assertions for plist readme/keyword/script wiring, and reran package
+  smoke successfully.
 - `no-action`: mandatory delivery specialist review used testing,
   maintainability, api-contract, performance, security, and red-team lenses;
   no concrete findings were identified.
