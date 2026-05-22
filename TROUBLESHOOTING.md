@@ -49,6 +49,7 @@ quick routes worth surfacing. For the canonical list of every runbook, see
 
 - `workflows/bangumi-search/TROUBLESHOOTING.md`
 - `workflows/bilibili-search/TROUBLESHOOTING.md`
+- `workflows/forge-inbox/TROUBLESHOOTING.md`
 - `workflows/google-search/TROUBLESHOOTING.md`
 - `workflows/google-service/TROUBLESHOOTING.md`
 - `workflows/wiki-search/TROUBLESHOOTING.md`

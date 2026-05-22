@@ -346,6 +346,7 @@ non-removed workflow directory.
 - `workflows/cambridge-dict/TROUBLESHOOTING.md`
 - `workflows/codex-cli/TROUBLESHOOTING.md`
 - `workflows/epoch-converter/TROUBLESHOOTING.md`
+- `workflows/forge-inbox/TROUBLESHOOTING.md`
 - `workflows/google-search/TROUBLESHOOTING.md`
 - `workflows/google-service/TROUBLESHOOTING.md`
 - `workflows/imdb-search/TROUBLESHOOTING.md`

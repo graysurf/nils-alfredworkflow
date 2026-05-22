@@ -35,6 +35,16 @@ load_helper_or_exit "script_filter_query_policy.sh"
 emit_item() {
   local title="$1"
   local subtitle="${2:-}"
+  local icon_path="${3:-}"
+
+  if [[ -n "$icon_path" ]]; then
+    printf '{"items":[{"title":"%s","subtitle":"%s","valid":false,"icon":{"path":"%s"}}]}\n' \
+      "$(sfej_json_escape "$title")" \
+      "$(sfej_json_escape "$subtitle")" \
+      "$(sfej_json_escape "$icon_path")"
+    return
+  fi
+
   sfej_emit_error_item_json "$title" "$subtitle"
 }
 
@@ -237,11 +247,13 @@ render_forge_payload() {
   local item_mode="$2"
   local filter_text="$3"
   local configured_warning="$4"
+  local provider_mode="$5"
 
   jq -c \
     --arg itemMode "$item_mode" \
     --arg filterText "$filter_text" \
     --arg configuredWarning "$configured_warning" \
+    --arg providerMode "$provider_mode" \
     '
 def clean:
   tostring
@@ -345,14 +357,23 @@ def item_subtitle:
   ]
   | join(" | ");
 
-def provider_icon_fields:
-  (.provider // "" | ascii_downcase) as $provider
+def icon_fields_for_provider($provider):
+  ($provider | ascii_downcase) as $provider
   | if $provider == "github" then
       {icon: {path: "assets/icon-github.png"}}
     elif $provider == "gitlab" then
       {icon: {path: "assets/icon-gitlab.png"}}
     else {}
     end;
+
+def provider_icon_fields:
+  icon_fields_for_provider(.provider // "");
+
+def mode_icon_fields:
+  if $providerMode == "gh" then icon_fields_for_provider("github")
+  elif $providerMode == "glab" then icon_fields_for_provider("gitlab")
+  else {}
+  end;
 
 def action_token($action):
   {
@@ -420,13 +441,13 @@ def item_row:
 ($filterText | ascii_downcase) as $needle
 | [
     if $configuredWarning != "" then
-      warning_row("Set FORGE_INBOX_GITLAB_HOST"; $configuredWarning)
+      warning_row("Set FORGE_INBOX_GITLAB_HOST"; $configuredWarning) + icon_fields_for_provider("gitlab")
     else empty end
   ] as $configured_warning_rows
 | [
     (.data.providers // [])[]?
     | select(.ok == false)
-    | warning_row((provider_warning_label + " query failed"); ((.error.message // .error // "Provider query failed") | warning_text))
+    | warning_row((provider_warning_label + " query failed"); ((.error.message // .error // "Provider query failed") | warning_text)) + provider_icon_fields
   ] as $provider_warning_rows
 | [
     ((.warnings // .data.warnings // [])[]?)
@@ -441,7 +462,7 @@ def item_row:
   ] as $item_rows
 | ($configured_warning_rows + $provider_warning_rows + $top_warning_rows + $item_rows) as $rows
 | if ($rows | length) == 0 then
-    {items: [warning_row("No inbox items"; "Try a broader provider, item, or text filter.")]}
+    {items: [warning_row("No inbox items"; "Try a broader provider, item, or text filter.") + mode_icon_fields]}
   else
     {items: $rows}
   end
@@ -496,7 +517,7 @@ fi
 declare -a argv=()
 
 if [[ "$provider_mode" == "glab" && -z "$gitlab_host" ]]; then
-  emit_item "Set FORGE_INBOX_GITLAB_HOST" "GitLab-only mode requires an explicit GitLab host."
+  emit_item "Set FORGE_INBOX_GITLAB_HOST" "GitLab-only mode requires an explicit GitLab host." "assets/icon-gitlab.png"
   exit 0
 fi
 
@@ -564,6 +585,6 @@ if ! jq -e '.ok == true and (.data.items | type == "array")' >/dev/null 2>&1 <<<
   exit 0
 fi
 
-if ! render_forge_payload "$payload" "$item_mode" "$filter_text" "$configured_warning"; then
+if ! render_forge_payload "$payload" "$item_mode" "$filter_text" "$configured_warning" "$provider_mode"; then
   emit_item "forge-cli output parse failed" "The inbox JSON envelope could not be rendered for Alfred."
 fi

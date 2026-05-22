@@ -89,6 +89,15 @@ if ! rg -n '<string>\./scripts/action_open\.sh</string>' "$plist_template" >/dev
   fail "info.plist.template must wire the action script"
 fi
 
+plist_json="$(plist_to_json "$plist_template")"
+assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.trigger.hotkey")] | length == 3' "plist must expose three unassigned hotkey triggers"
+assert_jq_json "$plist_json" '.objects[] | select(.uid == "8C47B10E-5967-45D5-9642-0C812662F7FA") | .config.hotkey == 0 and .config.hotmod == 0' "fi hotkey must default to empty"
+assert_jq_json "$plist_json" '.objects[] | select(.uid == "DE9FE8C7-C965-40C9-8482-43F9CF270223") | .config.hotkey == 0 and .config.hotmod == 0' "fih hotkey must default to empty"
+assert_jq_json "$plist_json" '.objects[] | select(.uid == "B42156AB-CDF6-4EF5-93AC-5C99CEFB30FE") | .config.hotkey == 0 and .config.hotmod == 0' "fil hotkey must default to empty"
+assert_jq_json "$plist_json" '.connections["8C47B10E-5967-45D5-9642-0C812662F7FA"] | any(.destinationuid == "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10" and .modifiers == 0)' "fi hotkey must target fi script filter"
+assert_jq_json "$plist_json" '.connections["DE9FE8C7-C965-40C9-8482-43F9CF270223"] | any(.destinationuid == "973A6C25-1D02-4A0D-9B6C-F904D31CE5A1" and .modifiers == 0)' "fih hotkey must target fih script filter"
+assert_jq_json "$plist_json" '.connections["B42156AB-CDF6-4EF5-93AC-5C99CEFB30FE"] | any(.destinationuid == "8F8B6D19-A047-4CDE-B750-09D6B479DBF1" and .modifiers == 0)' "fil hotkey must target fil script filter"
+
 tmp_dir="$(mktemp -d)"
 cleanup() {
   rm -rf "$tmp_dir"
@@ -369,20 +378,28 @@ assert_log_contains "--provider github"
 json="$(run_filter "all all" "" "ok" "true")"
 assert_valid_count "$json" 2
 assert_jq_json "$json" '.items[0].title == "Set FORGE_INBOX_GITLAB_HOST"' "missing opt-in mixed-mode host warning"
+assert_jq_json "$json" '.items[0].icon.path == "assets/icon-gitlab.png"' "mixed-mode GitLab host warning icon mismatch"
 assert_log_contains "--provider github"
 
 json="$(run_filter "glab issue" "")"
 assert_valid_count "$json" 0
 assert_jq_json "$json" '.items[0].title == "Set FORGE_INBOX_GITLAB_HOST"' "missing gitlab-only host config row"
+assert_jq_json "$json" '.items[0].icon.path == "assets/icon-gitlab.png"' "gitlab-only host config row icon mismatch"
 if [[ -s "$forge_log" ]]; then
   fail "gitlab-only missing-host mode must not invoke forge-cli"
 fi
+
+json="$(run_filter "glab all no-match")"
+assert_valid_count "$json" 0
+assert_jq_json "$json" '.items[0].title == "No inbox items"' "missing gitlab empty-result row"
+assert_jq_json "$json" '.items[0].icon.path == "assets/icon-gitlab.png"' "gitlab empty-result row icon mismatch"
 
 json="$(run_filter "all all" "gitlab.gamania.com" "provider-warning")"
 assert_valid_count "$json" 1
 assert_jq_json "$json" '[.items[] | select(.valid == false) | .title] | index("GitLab query failed") != null' "provider warning row missing"
 assert_jq_json "$json" '[.items[] | select(.valid == false) | .subtitle] | any(contains("GitLab token expired"))' "provider warning message missing"
 assert_jq_json "$json" '[.items[] | select(.valid == false) | .subtitle] | any(contains("supplemental warning"))' "top-level warning row missing"
+assert_jq_json "$json" '.items[] | select(.title == "GitLab query failed") | .icon.path == "assets/icon-gitlab.png"' "provider warning icon mismatch"
 
 json="$(run_filter "all all" "gitlab.gamania.com" "top-warning")"
 assert_valid_count "$json" 0

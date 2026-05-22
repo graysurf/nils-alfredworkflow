@@ -8,6 +8,45 @@
   <string>Productivity</string>
   <key>connections</key>
   <dict>
+    <key>8C47B10E-5967-45D5-9642-0C812662F7FA</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>DE9FE8C7-C965-40C9-8482-43F9CF270223</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>973A6C25-1D02-4A0D-9B6C-F904D31CE5A1</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>B42156AB-CDF6-4EF5-93AC-5C99CEFB30FE</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>8F8B6D19-A047-4CDE-B750-09D6B479DBF1</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
     <key>8F8B6D19-A047-4CDE-B750-09D6B479DBF1</key>
     <array>
       <dict>
@@ -110,6 +149,35 @@
     <dict>
       <key>config</key>
       <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>8C47B10E-5967-45D5-9642-0C812662F7FA</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
         <key>alfredfiltersresults</key>
         <false/>
         <key>alfredfiltersresultsmatchmode</key>
@@ -155,6 +223,35 @@
       <string>973A6C25-1D02-4A0D-9B6C-F904D31CE5A1</string>
       <key>version</key>
       <integer>3</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>DE9FE8C7-C965-40C9-8482-43F9CF270223</string>
+      <key>version</key>
+      <integer>2</integer>
     </dict>
     <dict>
       <key>config</key>
@@ -208,6 +305,35 @@
     <dict>
       <key>config</key>
       <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>B42156AB-CDF6-4EF5-93AC-5C99CEFB30FE</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
         <key>concurrently</key>
         <false/>
         <key>escaping</key>
@@ -233,6 +359,13 @@
   <string>Use keyword fi, fih, or fil with optional item and text filters to show forge-cli inbox items.</string>
   <key>uidata</key>
   <dict>
+    <key>8C47B10E-5967-45D5-9642-0C812662F7FA</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>180</integer>
+    </dict>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>
     <dict>
       <key>xpos</key>
@@ -240,10 +373,24 @@
       <key>ypos</key>
       <integer>180</integer>
     </dict>
+    <key>DE9FE8C7-C965-40C9-8482-43F9CF270223</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>300</integer>
+    </dict>
     <key>8F8B6D19-A047-4CDE-B750-09D6B479DBF1</key>
     <dict>
       <key>xpos</key>
       <integer>230</integer>
+      <key>ypos</key>
+      <integer>420</integer>
+    </dict>
+    <key>B42156AB-CDF6-4EF5-93AC-5C99CEFB30FE</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
       <key>ypos</key>
       <integer>420</integer>
     </dict>

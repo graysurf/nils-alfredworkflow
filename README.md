@@ -36,6 +36,7 @@ Alfred workflows for macOS users.
 | [Multi Timezone](workflows/multi-timezone/README.md) | `tz`, `timezone` | Show current time across one or more IANA timezones and copy selected output. | Optional: `MULTI_TZ_ZONES`, `MULTI_TZ_LOCAL_OVERRIDE` |
 | [Randomer](workflows/randomer/README.md) | `rr`, `rrv`, `random` | Generate random values by format and copy results. | None |
 | [Codex CLI](workflows/codex-cli/README.md) | `cx`, `codex` | Run Codex auth (`login`, `use`, `save`) and diagnostics (`diag rate-limits`) commands from Alfred. | Optional: `CODEX_AUTH_FILE`, `CODEX_API_KEY`, `CODEX_SECRET_DIR` |
+| [Forge Inbox](workflows/forge-inbox/README.md) | `fi`, `fih`, `fil` | Show GitHub/GitLab PR, MR, issue, and todo inbox rows from `forge-cli inbox`; `fih` is GitHub-only and `fil` is GitLab-only. | Required: `forge-cli` on `PATH` or `FORGE_CLI_BIN`; Optional: `FORGE_INBOX_GITLAB_HOST`, `FORGE_INBOX_PROVIDER_MODE`, `FORGE_INBOX_ITEM_MODE`, `FORGE_INBOX_SHOW_CONFIG_WARNINGS`, `FORGE_INBOX_LIMIT` |
 
 ## macOS Gatekeeper standalone script
 
