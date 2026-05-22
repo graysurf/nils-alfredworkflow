@@ -70,11 +70,13 @@ assignments, comments, or review state.
 | `FORGE_INBOX_PROVIDER_MODE` | No | `all` | Default provider mode: `all`, `gh`, or `glab`. |
 | `FORGE_INBOX_ITEM_MODE` | No | `all` | Default item mode: `all`, `pr`, or `issue`. |
 | `FORGE_INBOX_GITLAB_HOST` | For GitLab modes | empty | GitLab host passed as `--gitlab-host`. |
+| `FORGE_INBOX_SHOW_CONFIG_WARNINGS` | No | `false` | Show non-blocking config warning rows. |
 | `FORGE_INBOX_LIMIT` | No | `30` | Row limit requested from `forge-cli`, clamped to `1..100`. |
 
 Mixed mode with an empty `FORGE_INBOX_GITLAB_HOST` falls back to GitHub-only
-results and renders a GitLab host warning row. GitLab-only mode with an empty
-host renders a configuration row and does not invoke `forge-cli`.
+results. Set `FORGE_INBOX_SHOW_CONFIG_WARNINGS=true` to show a GitLab host
+warning row for that fallback. GitLab-only mode with an empty host always
+renders a configuration row and does not invoke `forge-cli`.
 
 ## Runtime Contract
 
@@ -85,6 +87,12 @@ forge-cli --provider github --format json inbox list --limit <limit>
 forge-cli --provider gitlab --format json inbox list --gitlab-host <host> --limit <limit>
 forge-cli --format json inbox list --gitlab-host <host> --limit <limit>
 ```
+
+Alfred keywords:
+
+- `fi`: default provider mode from `FORGE_INBOX_PROVIDER_MODE`.
+- `fih`: GitHub-only inbox.
+- `fil`: GitLab-only inbox.
 
 PR / issue selection is a display-layer filter. The workflow never maps `pr` or
 `issue` mode to `forge-cli --kind`, because `--kind` is a reason filter in the

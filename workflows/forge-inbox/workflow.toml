@@ -15,6 +15,9 @@ FORGE_INBOX_PROVIDER_MODE = "all"
 FORGE_INBOX_ITEM_MODE = "all"
 # GitLab host passed to forge-cli inbox. Keep empty for portable packages.
 FORGE_INBOX_GITLAB_HOST = ""
+# Show non-blocking configuration warning rows, such as mixed-mode GitLab host
+# fallback notices.
+FORGE_INBOX_SHOW_CONFIG_WARNINGS = "false"
 # Maximum rows requested from forge-cli, clamped to 1..100.
 FORGE_INBOX_LIMIT = "30"
 
