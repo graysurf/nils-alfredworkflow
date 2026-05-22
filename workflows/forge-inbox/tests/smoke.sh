@@ -1,0 +1,375 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+workflow_dir="$(cd "$script_dir/.." && pwd)"
+repo_root="$(cd "$workflow_dir/../.." && pwd)"
+smoke_helper="$repo_root/scripts/lib/workflow_smoke_helpers.sh"
+
+if [[ ! -f "$smoke_helper" ]]; then
+  echo "missing required helper: $smoke_helper" >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+source "$smoke_helper"
+
+for required in \
+  workflow.toml \
+  README.md \
+  TROUBLESHOOTING.md \
+  src/info.plist.template \
+  src/assets/icon.png \
+  scripts/script_filter.sh \
+  scripts/action_open.sh \
+  tests/smoke.sh; do
+  assert_file "$workflow_dir/$required"
+done
+
+for executable in \
+  scripts/script_filter.sh \
+  scripts/action_open.sh \
+  tests/smoke.sh; do
+  assert_exec "$workflow_dir/$executable"
+done
+
+require_bin jq
+require_bin rg
+
+manifest="$workflow_dir/workflow.toml"
+script_filter="$workflow_dir/scripts/script_filter.sh"
+action_open="$workflow_dir/scripts/action_open.sh"
+
+[[ "$(toml_string "$manifest" id)" == "forge-inbox" ]] || fail "workflow id mismatch"
+[[ "$(toml_string "$manifest" script_filter)" == "script_filter.sh" ]] || fail "script_filter mismatch"
+[[ "$(toml_string "$manifest" action)" == "action_open.sh" ]] || fail "action mismatch"
+if rg -n '^rust_binary[[:space:]]*=' "$manifest" >/dev/null; then
+  fail "rust_binary must be omitted for external forge-cli runtime"
+fi
+if ! rg -n '^FORGE_CLI_BIN[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
+  fail "FORGE_CLI_BIN default must be empty"
+fi
+if ! rg -n '^FORGE_INBOX_GITLAB_HOST[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
+  fail "FORGE_INBOX_GITLAB_HOST default must be empty"
+fi
+
+tmp_dir="$(mktemp -d)"
+cleanup() {
+  rm -rf "$tmp_dir"
+}
+trap cleanup EXIT
+
+mkdir -p "$tmp_dir/bin" "$tmp_dir/stubs"
+forge_stub="$tmp_dir/stubs/forge-cli"
+forge_log="$tmp_dir/forge-cli.args"
+
+cat >"$forge_stub" <<'EOS'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -n "${FORGE_STUB_LOG:-}" ]]; then
+  printf '%s\n' "$*" >>"$FORGE_STUB_LOG"
+fi
+
+case "${FORGE_STUB_MODE:-ok}" in
+nonzero)
+  echo "simulated forge failure" >&2
+  exit 7
+  ;;
+malformed)
+  echo "{not-json"
+  exit 0
+  ;;
+bad-envelope)
+  echo '{"ok":false,"error":{"message":"auth failed"}}'
+  exit 0
+  ;;
+provider-warning)
+  cat <<'JSON'
+{
+  "ok": true,
+  "data": {
+    "providers": [
+      {"provider":"github","ok":true},
+      {"provider":"gitlab","ok":false,"error":{"message":"GitLab token expired"}}
+    ],
+    "items": [
+      {"provider":"github","host":"github.com","source":"github_search_prs","repo":"sympoies/nils-cli","number":10,"title":"Review forge inbox PR","url":"https://github.com/sympoies/nils-cli/pull/10","author":"ada","reasons":["review"],"updated_at":"2026-05-22T10:00:00Z"}
+    ]
+  },
+  "warnings": ["supplemental warning"]
+}
+JSON
+  exit 0
+  ;;
+top-warning)
+  cat <<'JSON'
+{"ok":true,"data":{"providers":[{"provider":"github","ok":true}],"items":[]},"warnings":[{"message":"rate limit near ceiling"}]}
+JSON
+  exit 0
+  ;;
+esac
+
+provider="all"
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+  --provider)
+    provider="${2:-}"
+    shift 2
+    ;;
+  --gitlab-host)
+    shift 2
+    ;;
+  --kind)
+    echo "unexpected --kind in forge-cli argv" >&2
+    exit 9
+    ;;
+  *)
+    shift
+    ;;
+  esac
+done
+
+case "$provider" in
+github)
+  cat <<'JSON'
+{
+  "ok": true,
+  "data": {
+    "providers": [{"provider":"github","ok":true}],
+    "items": [
+      {"provider":"github","host":"github.com","source":"github_search_prs","repo":"sympoies/nils-cli","number":10,"title":"Review forge inbox PR","url":"https://github.com/sympoies/nils-cli/pull/10","author":"ada","reasons":["review"],"updated_at":"2026-05-22T10:00:00Z"},
+      {"provider":"github","host":"github.com","source":"github_search_issues","repo":"sympoies/nils-cli","number":11,"title":"Fix forge inbox issue","url":"https://github.com/sympoies/nils-cli/issues/11","author":"lin","reasons":["assigned"],"updated_at":"2026-05-22T10:05:00Z"}
+    ]
+  }
+}
+JSON
+  ;;
+gitlab)
+  cat <<'JSON'
+{
+  "ok": true,
+  "data": {
+    "providers": [{"provider":"gitlab","host":"gitlab.gamania.com","ok":true}],
+    "items": [
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_merge_requests","repo":"group/app","number":7,"title":"Ship forge inbox MR","url":"https://gitlab.gamania.com/group/app/-/merge_requests/7","author":"mei","reasons":["review"],"updated_at":"2026-05-22T10:10:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_issues","repo":"group/app","number":8,"title":"Investigate forge inbox issue","url":"https://gitlab.gamania.com/group/app/-/issues/8","author":"kai","reasons":["assigned"],"updated_at":"2026-05-22T10:15:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_todos","repo":"group/app","number":9,"title":"Review MR todo","url":"https://gitlab.gamania.com/group/app/-/merge_requests/9","author":"mei","reasons":["todo"],"updated_at":"2026-05-22T10:20:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_todos","repo":"group/app","number":8,"title":"Resolve issue todo","url":"https://gitlab.gamania.com/group/app/-/issues/8","author":"kai","reasons":["todo"],"updated_at":"2026-05-22T10:25:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_todos","repo":"group/app","number":"","title":"Read commit todo","url":"https://gitlab.gamania.com/group/app/-/commit/abc123","author":"ren","reasons":["todo"],"updated_at":"2026-05-22T10:30:00Z"}
+    ]
+  }
+}
+JSON
+  ;;
+all)
+  cat <<'JSON'
+{
+  "ok": true,
+  "data": {
+    "providers": [
+      {"provider":"github","host":"github.com","ok":true},
+      {"provider":"gitlab","host":"gitlab.gamania.com","ok":true}
+    ],
+    "items": [
+      {"provider":"github","host":"github.com","source":"github_search_prs","repo":"sympoies/nils-cli","number":10,"title":"Review forge inbox PR","url":"https://github.com/sympoies/nils-cli/pull/10","author":"ada","reasons":["review"],"updated_at":"2026-05-22T10:00:00Z"},
+      {"provider":"github","host":"github.com","source":"github_search_issues","repo":"sympoies/nils-cli","number":11,"title":"Fix forge inbox issue","url":"https://github.com/sympoies/nils-cli/issues/11","author":"lin","reasons":["assigned"],"updated_at":"2026-05-22T10:05:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_merge_requests","repo":"group/app","number":7,"title":"Ship forge inbox MR","url":"https://gitlab.gamania.com/group/app/-/merge_requests/7","author":"mei","reasons":["review"],"updated_at":"2026-05-22T10:10:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_issues","repo":"group/app","number":8,"title":"Investigate forge inbox issue","url":"https://gitlab.gamania.com/group/app/-/issues/8","author":"kai","reasons":["assigned"],"updated_at":"2026-05-22T10:15:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_todos","repo":"group/app","number":9,"title":"Review MR todo","url":"https://gitlab.gamania.com/group/app/-/merge_requests/9","author":"mei","reasons":["todo"],"updated_at":"2026-05-22T10:20:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_todos","repo":"group/app","number":8,"title":"Resolve issue todo","url":"https://gitlab.gamania.com/group/app/-/issues/8","author":"kai","reasons":["todo"],"updated_at":"2026-05-22T10:25:00Z"},
+      {"provider":"gitlab","host":"gitlab.gamania.com","source":"gitlab_todos","repo":"group/app","number":"","title":"Read commit todo","url":"https://gitlab.gamania.com/group/app/-/commit/abc123","author":"ren","reasons":["todo"],"updated_at":"2026-05-22T10:30:00Z"}
+    ]
+  }
+}
+JSON
+  ;;
+*)
+  echo "unexpected provider: $provider" >&2
+  exit 9
+  ;;
+esac
+EOS
+chmod +x "$forge_stub"
+
+run_filter() {
+  local query="$1"
+  local host="gitlab.gamania.com"
+  local mode="ok"
+
+  if [[ $# -ge 2 ]]; then
+    host="$2"
+  fi
+  if [[ $# -ge 3 ]]; then
+    mode="$3"
+  fi
+
+  : >"$forge_log"
+  FORGE_STUB_LOG="$forge_log" \
+    FORGE_STUB_MODE="$mode" \
+    FORGE_CLI_BIN="$forge_stub" \
+    FORGE_INBOX_GITLAB_HOST="$host" \
+    "$script_filter" "$query"
+}
+
+assert_valid_count() {
+  local payload="$1"
+  local expected="$2"
+  assert_jq_json "$payload" "([.items[] | select(.valid == true)] | length) == $expected" "valid row count mismatch"
+}
+
+assert_has_source() {
+  local payload="$1"
+  local source="$2"
+  if ! jq -e --arg source "$source" \
+    '[.items[] | select(.valid == true) | .arg | fromjson | .source] | index($source) != null' \
+    >/dev/null <<<"$payload"; then
+    fail "missing source $source"
+  fi
+}
+
+assert_not_has_url_fragment() {
+  local payload="$1"
+  local fragment="$2"
+  if ! jq -e --arg fragment "$fragment" \
+    '[.items[] | select(.valid == true) | .arg | fromjson | .url] | map(contains($fragment)) | any | not' \
+    >/dev/null <<<"$payload"; then
+    fail "unexpected URL fragment $fragment"
+  fi
+}
+
+assert_log_contains() {
+  local pattern="$1"
+  rg -n --fixed-strings -- "$pattern" "$forge_log" >/dev/null || fail "missing forge argv fragment: $pattern"
+}
+
+assert_log_not_contains() {
+  local pattern="$1"
+  if rg -n --fixed-strings -- "$pattern" "$forge_log" >/dev/null; then
+    fail "unexpected forge argv fragment: $pattern"
+  fi
+}
+
+json="$(run_filter "gh pr")"
+assert_valid_count "$json" 1
+assert_has_source "$json" "github_search_prs"
+assert_log_contains "--provider github"
+assert_log_not_contains "--kind pr"
+
+json="$(run_filter "gh issue")"
+assert_valid_count "$json" 1
+assert_has_source "$json" "github_search_issues"
+
+json="$(run_filter "gh all")"
+assert_valid_count "$json" 2
+assert_has_source "$json" "github_search_prs"
+assert_has_source "$json" "github_search_issues"
+
+json="$(run_filter "glab pr")"
+assert_valid_count "$json" 2
+assert_has_source "$json" "gitlab_merge_requests"
+assert_has_source "$json" "gitlab_todos"
+assert_jq_json "$json" '[.items[] | select(.valid == true) | .arg | fromjson | .url] | index("https://gitlab.gamania.com/group/app/-/merge_requests/9") != null' "MR todo URL missing from PR mode"
+assert_not_has_url_fragment "$json" "/-/issues/8"
+assert_not_has_url_fragment "$json" "/-/commit/abc123"
+assert_log_contains "--provider gitlab"
+assert_log_contains "--gitlab-host gitlab.gamania.com"
+assert_log_not_contains "--kind pr"
+
+json="$(run_filter "glab issue")"
+assert_valid_count "$json" 2
+assert_has_source "$json" "gitlab_issues"
+assert_jq_json "$json" '[.items[] | select(.valid == true) | .arg | fromjson | .url] | index("https://gitlab.gamania.com/group/app/-/issues/8") != null' "issue todo URL missing from issue mode"
+assert_not_has_url_fragment "$json" "/-/merge_requests/9"
+assert_not_has_url_fragment "$json" "/-/commit/abc123"
+
+json="$(run_filter "glab all")"
+assert_valid_count "$json" 5
+assert_jq_json "$json" '[.items[] | select(.valid == true) | .arg | fromjson | .url] | index("https://gitlab.gamania.com/group/app/-/commit/abc123") != null' "commit todo URL missing from all mode"
+
+json="$(run_filter "all pr")"
+assert_valid_count "$json" 3
+assert_has_source "$json" "github_search_prs"
+assert_has_source "$json" "gitlab_merge_requests"
+assert_log_not_contains "--provider"
+assert_log_contains "--gitlab-host gitlab.gamania.com"
+
+json="$(run_filter "all issue")"
+assert_valid_count "$json" 3
+assert_has_source "$json" "github_search_issues"
+assert_has_source "$json" "gitlab_issues"
+
+json="$(run_filter "all all")"
+assert_valid_count "$json" 7
+assert_jq_json "$json" '[.items[] | select(.valid == true) | .arg | fromjson | .url] | index("https://gitlab.gamania.com/group/app/-/commit/abc123") != null' "all mode should keep unclassified todo URL"
+
+json="$(run_filter "pr review")"
+assert_valid_count "$json" 3
+
+json="$(run_filter "all all nils-cli")"
+assert_valid_count "$json" 2
+assert_has_source "$json" "github_search_prs"
+assert_has_source "$json" "github_search_issues"
+
+json="$(run_filter "all all" "")"
+assert_valid_count "$json" 2
+assert_jq_json "$json" '.items[0].title == "Set FORGE_INBOX_GITLAB_HOST"' "missing mixed-mode host warning"
+assert_log_contains "--provider github"
+
+json="$(run_filter "glab issue" "")"
+assert_valid_count "$json" 0
+assert_jq_json "$json" '.items[0].title == "Set FORGE_INBOX_GITLAB_HOST"' "missing gitlab-only host config row"
+if [[ -s "$forge_log" ]]; then
+  fail "gitlab-only missing-host mode must not invoke forge-cli"
+fi
+
+json="$(run_filter "all all" "gitlab.gamania.com" "provider-warning")"
+assert_valid_count "$json" 1
+assert_jq_json "$json" '[.items[] | select(.valid == false) | .title] | index("GitLab query failed") != null' "provider warning row missing"
+assert_jq_json "$json" '[.items[] | select(.valid == false) | .subtitle] | any(contains("GitLab token expired"))' "provider warning message missing"
+assert_jq_json "$json" '[.items[] | select(.valid == false) | .subtitle] | any(contains("supplemental warning"))' "top-level warning row missing"
+
+json="$(run_filter "all all" "gitlab.gamania.com" "top-warning")"
+assert_valid_count "$json" 0
+assert_jq_json "$json" '[.items[] | select(.valid == false) | .subtitle] | any(contains("rate limit near ceiling"))' "structured warning row missing"
+
+json="$(run_filter "gh pr" "gitlab.gamania.com" "nonzero")"
+assert_jq_json "$json" '.items[0].title == "forge-cli inbox failed"' "nonzero CLI failure row mismatch"
+
+json="$(run_filter "gh pr" "gitlab.gamania.com" "malformed")"
+assert_jq_json "$json" '.items[0].title == "forge-cli returned invalid JSON"' "malformed JSON row mismatch"
+
+json="$(run_filter "gh pr" "gitlab.gamania.com" "bad-envelope")"
+assert_jq_json "$json" '.items[0].title == "forge-cli inbox failed" and (.items[0].subtitle | contains("auth failed"))' "unsuccessful envelope row mismatch"
+
+json="$(FORGE_CLI_BIN="$tmp_dir/missing-forge-cli" "$script_filter" "gh pr" 2>/dev/null)"
+assert_jq_json "$json" '.items[0].title == "forge-cli binary not found"' "missing binary row mismatch"
+
+if rg -n 'command -v[[:space:]]+(gh|glab)|exec[[:space:]]+(gh|glab)|(^|[;&|])[[:space:]]*(gh|glab)[[:space:]]+(api|auth|issue|mr|pr|repo|search|status)' \
+  "$workflow_dir/scripts/script_filter.sh" "$workflow_dir/scripts/action_open.sh" >/dev/null; then
+  fail "workflow scripts must not call gh or glab directly"
+fi
+
+workflow_smoke_write_open_stub "$tmp_dir/bin/open"
+workflow_smoke_write_pbcopy_stub "$tmp_dir/bin/pbcopy"
+export OPEN_STUB_OUT="$tmp_dir/open.out"
+export PBCOPY_STUB_OUT="$tmp_dir/pbcopy.out"
+
+open_token="$(jq -nc --arg url "https://example.com/repo/pull/1" '{action:"open",url:$url}')"
+PATH="$tmp_dir/bin:$PATH" "$action_open" "$open_token"
+[[ "$(cat "$OPEN_STUB_OUT")" == "https://example.com/repo/pull/1" ]] || fail "open action URL mismatch"
+
+copy_url_token="$(jq -nc --arg url "https://example.com/repo/issues/2" '{action:"copy-url",url:$url}')"
+PATH="$tmp_dir/bin:$PATH" "$action_open" "$copy_url_token"
+[[ "$(cat "$PBCOPY_STUB_OUT")" == "https://example.com/repo/issues/2" ]] || fail "copy-url action mismatch"
+
+copy_md_token="$(jq -nc \
+  --arg url "https://example.com/repo/issues/3" \
+  --arg title $'Line\nTitle' \
+  '{action:"copy-md",url:$url,repo:"group/app",number:3,title:$title}')"
+PATH="$tmp_dir/bin:$PATH" "$action_open" "$copy_md_token"
+[[ "$(cat "$PBCOPY_STUB_OUT")" == "[group/app#3 Line Title](https://example.com/repo/issues/3)" ]] || fail "copy-md action mismatch"
+
+workflow_smoke_assert_action_requires_arg "$action_open" 2
+
+echo "ok: forge-inbox smoke test passed"
