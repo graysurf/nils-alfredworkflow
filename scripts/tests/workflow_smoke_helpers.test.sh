@@ -49,6 +49,32 @@ test_open_stub_writer() {
   assert_eq "https://example.com" "$(cat "$output_path")" "open stub should forward argv"
 }
 
+test_xdg_open_stub_writer() {
+  local stub_path="$tmp_dir/bin/xdg-open"
+  local output_path="$tmp_dir/xdg-open.out"
+  workflow_smoke_write_xdg_open_stub "$stub_path"
+
+  XDG_OPEN_STUB_OUT="$output_path" "$stub_path" "https://example.com/fallback"
+  assert_eq "https://example.com/fallback" "$(cat "$output_path")" "xdg-open stub should forward argv"
+}
+
+test_osascript_stub_writer() {
+  local stub_path="$tmp_dir/bin/osascript"
+  local output_path="$tmp_dir/osascript.out"
+  workflow_smoke_write_osascript_stub "$stub_path"
+
+  OSASCRIPT_STUB_OUT="$output_path" "$stub_path" -e 'tell application "Alfred 5" to search "gsm unread"'
+  assert_file_contains "$output_path" 'tell application "Alfred 5" to search "gsm unread"' "osascript stub should log argv"
+
+  : >"$output_path"
+  OSASCRIPT_STUB_OUT="$output_path" "$stub_path" <<'EOF'
+tell application "System Events"
+  display dialog "Confirm?"
+end tell
+EOF
+  assert_file_contains "$output_path" 'display dialog "Confirm?"' "osascript stub should log stdin"
+}
+
 test_pbcopy_stub_writer() {
   local stub_path="$tmp_dir/bin/pbcopy"
   local output_path="$tmp_dir/pbcopy.out"
@@ -120,6 +146,8 @@ test_wait_for_file_contains_timeout() {
 }
 
 test_open_stub_writer
+test_xdg_open_stub_writer
+test_osascript_stub_writer
 test_pbcopy_stub_writer
 test_artifact_backup_and_restore
 test_artifact_restore_missing_backup_removes_target
