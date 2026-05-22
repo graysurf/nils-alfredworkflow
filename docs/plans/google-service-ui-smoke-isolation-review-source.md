@@ -96,8 +96,8 @@ touch the developer's real Alfred, browser, notifications, and clipboard.
 
 ## Execution
 
-- Recommended plan: docs/plans/google-service-ui-smoke-isolation/google-service-ui-smoke-isolation-plan.md
-- Recommended execution state: docs/plans/google-service-ui-smoke-isolation/google-service-ui-smoke-isolation-execution-state.md
+- Recommended plan: docs/plans/google-service-ui-smoke-isolation-plan.md
+- Recommended execution state: issue-hosted execution state on GitHub issue #162
 - Next-task source: fix the smoke harness only; do not remove runtime Alfred/Gmail open behavior.
 
 ## Validation gate

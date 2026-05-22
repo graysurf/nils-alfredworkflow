@@ -10,7 +10,7 @@ narrows the implementation to test harness isolation and validation.
 
 ## Read First
 
-- Primary source: docs/plans/google-service-ui-smoke-isolation/google-service-ui-smoke-isolation-review-source.md
+- Primary source: docs/plans/google-service-ui-smoke-isolation-review-source.md
 - Source type: review-to-improvement-doc
 - Open questions carried into execution: none
 
