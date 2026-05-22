@@ -1,0 +1,23 @@
+id = "forge-inbox"
+name = "Forge Inbox"
+bundle_id = "com.sympoies.forge-inbox"
+version = "1.2.8"
+script_filter = "script_filter.sh"
+action = "action_open.sh"
+assets = ["src/assets/icon.png"]
+
+[env]
+# Optional absolute path override for the external forge-cli runtime.
+FORGE_CLI_BIN = ""
+# Default provider mode: all, gh, or glab.
+FORGE_INBOX_PROVIDER_MODE = "all"
+# Default item mode: all, pr, or issue.
+FORGE_INBOX_ITEM_MODE = "all"
+# GitLab host passed to forge-cli inbox. Keep empty for portable packages.
+FORGE_INBOX_GITLAB_HOST = ""
+# Maximum rows requested from forge-cli, clamped to 1..100.
+FORGE_INBOX_LIMIT = "30"
+
+[alfred]
+min_alfred = "5"
+min_macos = "13.0"
