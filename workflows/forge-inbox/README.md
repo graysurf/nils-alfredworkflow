@@ -6,6 +6,10 @@ The workflow is intentionally provider-neutral at the Alfred layer: it calls the
 external `forge-cli` runtime, parses its JSON envelope, filters rows locally,
 and opens or copies item URLs.
 
+## Screenshot
+
+![Forge Inbox workflow screenshot](./screenshot.png)
+
 ## Features
 
 - Provider modes: GitHub only, GitLab only, or mixed GitHub + GitLab.
