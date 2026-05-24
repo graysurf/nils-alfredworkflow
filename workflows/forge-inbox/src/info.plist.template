@@ -499,6 +499,195 @@
       <key>config</key>
       <dict>
         <key>default</key>
+        <string></string>
+        <key>placeholder</key>
+        <string>off, optional, or required</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional GitLab VPN policy passed to forge-cli inbox.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_GITLAB_VPN</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_GITLAB_VPN</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string></string>
+        <key>placeholder</key>
+        <string>tcp:&lt;host&gt;:443</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional GitLab readiness check passed to forge-cli inbox.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_GITLAB_VPN_CHECK</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_GITLAB_VPN_CHECK</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string></string>
+        <key>placeholder</key>
+        <string>5s</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional GitLab readiness timeout passed to forge-cli inbox.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string></string>
+        <key>placeholder</key>
+        <string>optional local path</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional local OpenVPN profile path. Keep empty in portable packages.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_GITLAB_OPENVPN_PROFILE</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_GITLAB_OPENVPN_PROFILE</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string></string>
+        <key>placeholder</key>
+        <string>20s</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional per-provider timeout for GitLab inbox calls.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_PROVIDER_TIMEOUT</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_PROVIDER_TIMEOUT</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string>false</string>
+        <key>placeholder</key>
+        <string>true or false</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Pass --strict-providers when true.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_STRICT_PROVIDERS</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_STRICT_PROVIDERS</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string>false</string>
+        <key>placeholder</key>
+        <string>true or false</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Pass --cache-fallback when true.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_CACHE_FALLBACK</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_CACHE_FALLBACK</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string></string>
+        <key>placeholder</key>
+        <string>30m</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional maximum age for cached fallback items.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_CACHE_MAX_AGE</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_CACHE_MAX_AGE</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
+        <string>false</string>
+        <key>placeholder</key>
+        <string>true or false</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Pass --no-cache when true.</string>
+      <key>label</key>
+      <string>FORGE_INBOX_NO_CACHE</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>FORGE_INBOX_NO_CACHE</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
         <string>false</string>
         <key>placeholder</key>
         <string>true or false</string>

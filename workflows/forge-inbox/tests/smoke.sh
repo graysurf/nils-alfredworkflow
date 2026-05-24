@@ -71,6 +71,9 @@ for empty_env in \
   if ! rg -n "^${empty_env}[[:space:]]*=[[:space:]]*\"\"" "$manifest" >/dev/null; then
     fail "$empty_env default must be empty"
   fi
+  if ! rg -n "<string>${empty_env}</string>" "$plist_template" >/dev/null; then
+    fail "$empty_env must be exposed in info.plist.template"
+  fi
 done
 for false_env in \
   FORGE_INBOX_STRICT_PROVIDERS \
@@ -78,6 +81,9 @@ for false_env in \
   FORGE_INBOX_NO_CACHE; do
   if ! rg -n "^${false_env}[[:space:]]*=[[:space:]]*\"false\"" "$manifest" >/dev/null; then
     fail "$false_env default must be false"
+  fi
+  if ! rg -n "<string>${false_env}</string>" "$plist_template" >/dev/null; then
+    fail "$false_env must be exposed in info.plist.template"
   fi
 done
 if ! rg -n '^FORGE_INBOX_SHOW_CONFIG_WARNINGS[[:space:]]*=[[:space:]]*"false"' "$manifest" >/dev/null; then
