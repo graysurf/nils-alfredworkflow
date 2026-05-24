@@ -74,6 +74,15 @@ assignments, comments, or review state.
 | `FORGE_INBOX_PROVIDER_MODE` | No | `all` | Default provider mode: `all`, `gh`, or `glab`. |
 | `FORGE_INBOX_ITEM_MODE` | No | `all` | Default item mode: `all`, `pr`, or `issue`. |
 | `FORGE_INBOX_GITLAB_HOST` | For GitLab modes | empty | GitLab host passed as `--gitlab-host`. |
+| `FORGE_INBOX_GITLAB_VPN` | No | empty | Optional GitLab VPN policy passed as `--gitlab-vpn` (`off`, `optional`, `required`). |
+| `FORGE_INBOX_GITLAB_VPN_CHECK` | No | empty | Optional readiness check passed as `--gitlab-vpn-check`, for example `tcp:<host>:443`. |
+| `FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT` | No | empty | Optional readiness timeout passed as `--gitlab-vpn-check-timeout`, for example `5s`. |
+| `FORGE_INBOX_GITLAB_OPENVPN_PROFILE` | No | empty | Optional local OpenVPN profile path passed to `forge-cli`; keep empty in portable packages. |
+| `FORGE_INBOX_PROVIDER_TIMEOUT` | No | empty | Optional GitLab backend timeout passed as `--provider-timeout`, for example `20s`. |
+| `FORGE_INBOX_STRICT_PROVIDERS` | No | `false` | Pass `--strict-providers` when true. |
+| `FORGE_INBOX_CACHE_FALLBACK` | No | `false` | Pass `--cache-fallback` when true. |
+| `FORGE_INBOX_CACHE_MAX_AGE` | No | empty | Optional cached fallback max age passed as `--cache-max-age`, for example `30m`. |
+| `FORGE_INBOX_NO_CACHE` | No | `false` | Pass `--no-cache` when true. |
 | `FORGE_INBOX_SHOW_CONFIG_WARNINGS` | No | `false` | Show non-blocking config warning rows. |
 | `FORGE_INBOX_LIMIT` | No | `30` | Row limit requested from `forge-cli`, clamped to `1..100`. |
 
@@ -92,6 +101,11 @@ forge-cli --provider github --format json inbox list --limit <limit>
 forge-cli --provider gitlab --format json inbox list --gitlab-host <host> --limit <limit>
 forge-cli --format json inbox list --gitlab-host <host> --limit <limit>
 ```
+
+When the GitLab VPN, timeout, strict-provider, or cache variables are set, the
+workflow appends the matching `forge-cli inbox list` flags to GitLab-capable
+command shapes. Empty values are omitted so portable packages keep the default
+`forge-cli` behavior.
 
 Alfred keywords:
 

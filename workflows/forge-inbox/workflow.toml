@@ -15,6 +15,24 @@ FORGE_INBOX_PROVIDER_MODE = "all"
 FORGE_INBOX_ITEM_MODE = "all"
 # GitLab host passed to forge-cli inbox. Keep empty for portable packages.
 FORGE_INBOX_GITLAB_HOST = ""
+# GitLab VPN readiness policy passed to forge-cli inbox: off, optional, or required.
+FORGE_INBOX_GITLAB_VPN = ""
+# GitLab VPN readiness check: tcp:<host>:<port>, cmd:<program>, or openvpn.
+FORGE_INBOX_GITLAB_VPN_CHECK = ""
+# GitLab VPN readiness check timeout, for example 5s.
+FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT = ""
+# Optional local OpenVPN profile path for forge-cli diagnostics. Keep empty in packages.
+FORGE_INBOX_GITLAB_OPENVPN_PROFILE = ""
+# Per-backend-call timeout for GitLab inbox calls, for example 20s.
+FORGE_INBOX_PROVIDER_TIMEOUT = ""
+# Fail when any selected provider fails.
+FORGE_INBOX_STRICT_PROVIDERS = "false"
+# Show recent cached items when a selected provider is unavailable or times out.
+FORGE_INBOX_CACHE_FALLBACK = "false"
+# Maximum age for opt-in cached fallback items, for example 30m.
+FORGE_INBOX_CACHE_MAX_AGE = ""
+# Disable inbox cache reads and writes.
+FORGE_INBOX_NO_CACHE = "false"
 # Show non-blocking configuration warning rows, such as mixed-mode GitLab host
 # fallback notices.
 FORGE_INBOX_SHOW_CONFIG_WARNINGS = "false"

@@ -61,6 +61,25 @@ fi
 if ! rg -n '^FORGE_INBOX_GITLAB_HOST[[:space:]]*=[[:space:]]*""' "$manifest" >/dev/null; then
   fail "FORGE_INBOX_GITLAB_HOST default must be empty"
 fi
+for empty_env in \
+  FORGE_INBOX_GITLAB_VPN \
+  FORGE_INBOX_GITLAB_VPN_CHECK \
+  FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT \
+  FORGE_INBOX_GITLAB_OPENVPN_PROFILE \
+  FORGE_INBOX_PROVIDER_TIMEOUT \
+  FORGE_INBOX_CACHE_MAX_AGE; do
+  if ! rg -n "^${empty_env}[[:space:]]*=[[:space:]]*\"\"" "$manifest" >/dev/null; then
+    fail "$empty_env default must be empty"
+  fi
+done
+for false_env in \
+  FORGE_INBOX_STRICT_PROVIDERS \
+  FORGE_INBOX_CACHE_FALLBACK \
+  FORGE_INBOX_NO_CACHE; do
+  if ! rg -n "^${false_env}[[:space:]]*=[[:space:]]*\"false\"" "$manifest" >/dev/null; then
+    fail "$false_env default must be false"
+  fi
+done
 if ! rg -n '^FORGE_INBOX_SHOW_CONFIG_WARNINGS[[:space:]]*=[[:space:]]*"false"' "$manifest" >/dev/null; then
   fail "FORGE_INBOX_SHOW_CONFIG_WARNINGS default must be false"
 fi
@@ -259,6 +278,25 @@ run_filter_with_script() {
     FORGE_STUB_MODE="$mode" \
     FORGE_CLI_BIN="$forge_stub" \
     FORGE_INBOX_GITLAB_HOST="$host" \
+    FORGE_INBOX_GITLAB_VPN="${FORGE_INBOX_GITLAB_VPN:-}" \
+    FORGE_INBOX_GITLAB_VPN_CHECK="${FORGE_INBOX_GITLAB_VPN_CHECK:-}" \
+    FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT="${FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT:-}" \
+    FORGE_INBOX_GITLAB_OPENVPN_PROFILE="${FORGE_INBOX_GITLAB_OPENVPN_PROFILE:-}" \
+    FORGE_INBOX_PROVIDER_TIMEOUT="${FORGE_INBOX_PROVIDER_TIMEOUT:-}" \
+    FORGE_INBOX_STRICT_PROVIDERS="${FORGE_INBOX_STRICT_PROVIDERS:-}" \
+    FORGE_INBOX_CACHE_FALLBACK="${FORGE_INBOX_CACHE_FALLBACK:-}" \
+    FORGE_INBOX_CACHE_MAX_AGE="${FORGE_INBOX_CACHE_MAX_AGE:-}" \
+    FORGE_INBOX_NO_CACHE="${FORGE_INBOX_NO_CACHE:-}" \
+    FORGE_CLI_INBOX_GITLAB_HOST="" \
+    FORGE_CLI_INBOX_GITLAB_VPN="" \
+    FORGE_CLI_INBOX_GITLAB_VPN_CHECK="" \
+    FORGE_CLI_INBOX_GITLAB_VPN_CHECK_TIMEOUT="" \
+    FORGE_CLI_INBOX_GITLAB_OPENVPN_PROFILE="" \
+    FORGE_CLI_INBOX_PROVIDER_TIMEOUT="" \
+    FORGE_CLI_INBOX_STRICT_PROVIDERS="" \
+    FORGE_CLI_INBOX_CACHE_FALLBACK="" \
+    FORGE_CLI_INBOX_CACHE_MAX_AGE="" \
+    FORGE_CLI_INBOX_NO_CACHE="" \
     FORGE_INBOX_SHOW_CONFIG_WARNINGS="$show_config_warnings" \
     "$filter_script" "$query"
 }
@@ -345,6 +383,40 @@ assert_not_has_url_fragment "$json" "/-/commit/abc123"
 json="$(run_filter "glab all")"
 assert_valid_count "$json" 5
 assert_jq_json "$json" '[.items[] | select(.valid == true) | .arg | fromjson | .url] | index("https://gitlab.gamania.com/group/app/-/commit/abc123") != null' "commit todo URL missing from all mode"
+
+json="$(
+  FORGE_INBOX_GITLAB_VPN=required \
+    FORGE_INBOX_GITLAB_VPN_CHECK=tcp:gitlab.gamania.com:443 \
+    FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT=5s \
+    FORGE_INBOX_PROVIDER_TIMEOUT=20s \
+    FORGE_INBOX_STRICT_PROVIDERS=true \
+    FORGE_INBOX_CACHE_FALLBACK=true \
+    FORGE_INBOX_CACHE_MAX_AGE=30m \
+    run_filter "glab all"
+)"
+assert_valid_count "$json" 5
+assert_log_contains "--gitlab-vpn required"
+assert_log_contains "--gitlab-vpn-check tcp:gitlab.gamania.com:443"
+assert_log_contains "--gitlab-vpn-check-timeout 5s"
+assert_log_contains "--provider-timeout 20s"
+assert_log_contains "--strict-providers"
+assert_log_contains "--cache-fallback"
+assert_log_contains "--cache-max-age 30m"
+
+json="$(
+  FORGE_INBOX_GITLAB_VPN=required \
+    FORGE_INBOX_GITLAB_VPN_CHECK=tcp:gitlab.gamania.com:443 \
+    run_filter "gh all"
+)"
+assert_valid_count "$json" 2
+assert_log_not_contains "--gitlab-vpn"
+assert_log_not_contains "--gitlab-vpn-check"
+
+json="$(
+  FORGE_INBOX_CACHE_FALLBACK=maybe \
+    run_filter "glab all"
+)"
+assert_jq_json "$json" '.items[0].title == "Invalid FORGE_INBOX_CACHE_FALLBACK"' "invalid cache bool row mismatch"
 
 json="$(run_filter "all pr")"
 assert_valid_count "$json" 3

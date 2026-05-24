@@ -216,6 +216,59 @@ resolve_bool() {
   esac
 }
 
+resolve_setting() {
+  local primary="$1"
+  local fallback="$2"
+  local value
+
+  value="$(trim "$primary")"
+  if [[ -n "$value" ]]; then
+    printf '%s\n' "$value"
+    return 0
+  fi
+
+  trim "$fallback"
+}
+
+append_value_flag() {
+  local flag="$1"
+  local value="$2"
+
+  value="$(trim "$value")"
+  if [[ -n "$value" ]]; then
+    argv+=("$flag" "$value")
+  fi
+}
+
+append_path_flag() {
+  local flag="$1"
+  local value="$2"
+
+  value="$(trim "$value")"
+  if [[ -n "$value" ]]; then
+    argv+=("$flag" "$(expand_home_path "$value")")
+  fi
+}
+
+append_bool_flag() {
+  local env_name="$1"
+  local flag="$2"
+  local value="$3"
+  local normalized=""
+
+  value="$(trim "$value")"
+  if [[ -z "$value" ]]; then
+    return 0
+  fi
+  if ! normalized="$(resolve_bool "$value")"; then
+    emit_item "Invalid $env_name" "Use true or false."
+    exit 0
+  fi
+  if [[ "$normalized" == "1" ]]; then
+    argv+=("$flag")
+  fi
+}
+
 resolve_forge_cli() {
   local configured
   configured="$(trim "${FORGE_CLI_BIN:-}")"
@@ -505,7 +558,16 @@ provider_mode="${fixed_provider_mode:-${parsed_provider_mode:-$default_provider_
 item_mode="${parsed_item_mode:-$default_item_mode}"
 filter_text="$parsed_filter"
 limit="$(resolve_limit)"
-gitlab_host="$(trim "${FORGE_INBOX_GITLAB_HOST:-}")"
+gitlab_host="$(resolve_setting "${FORGE_INBOX_GITLAB_HOST:-}" "${FORGE_CLI_INBOX_GITLAB_HOST:-}")"
+gitlab_vpn="$(resolve_setting "${FORGE_INBOX_GITLAB_VPN:-}" "${FORGE_CLI_INBOX_GITLAB_VPN:-}")"
+gitlab_vpn_check="$(resolve_setting "${FORGE_INBOX_GITLAB_VPN_CHECK:-}" "${FORGE_CLI_INBOX_GITLAB_VPN_CHECK:-}")"
+gitlab_vpn_check_timeout="$(resolve_setting "${FORGE_INBOX_GITLAB_VPN_CHECK_TIMEOUT:-}" "${FORGE_CLI_INBOX_GITLAB_VPN_CHECK_TIMEOUT:-}")"
+gitlab_openvpn_profile="$(trim "${FORGE_INBOX_GITLAB_OPENVPN_PROFILE:-}")"
+provider_timeout="$(resolve_setting "${FORGE_INBOX_PROVIDER_TIMEOUT:-}" "${FORGE_CLI_INBOX_PROVIDER_TIMEOUT:-}")"
+strict_providers="$(resolve_setting "${FORGE_INBOX_STRICT_PROVIDERS:-}" "${FORGE_CLI_INBOX_STRICT_PROVIDERS:-}")"
+cache_fallback="$(resolve_setting "${FORGE_INBOX_CACHE_FALLBACK:-}" "${FORGE_CLI_INBOX_CACHE_FALLBACK:-}")"
+cache_max_age="$(resolve_setting "${FORGE_INBOX_CACHE_MAX_AGE:-}" "${FORGE_CLI_INBOX_CACHE_MAX_AGE:-}")"
+no_cache="$(resolve_setting "${FORGE_INBOX_NO_CACHE:-}" "${FORGE_CLI_INBOX_NO_CACHE:-}")"
 configured_warning=""
 show_config_warnings=""
 
@@ -515,6 +577,7 @@ if ! show_config_warnings="$(resolve_bool "${FORGE_INBOX_SHOW_CONFIG_WARNINGS:-f
 fi
 
 declare -a argv=()
+uses_gitlab=0
 
 if [[ "$provider_mode" == "glab" && -z "$gitlab_host" ]]; then
   if [[ "$show_config_warnings" == "1" ]]; then
@@ -536,10 +599,12 @@ gh)
   argv=("$forge_cli" "--provider" "github" "--format" "json" "inbox" "list" "--limit" "$limit")
   ;;
 glab)
+  uses_gitlab=1
   argv=("$forge_cli" "--provider" "gitlab" "--format" "json" "inbox" "list" "--gitlab-host" "$gitlab_host" "--limit" "$limit")
   ;;
 all)
   if [[ -n "$gitlab_host" ]]; then
+    uses_gitlab=1
     argv=("$forge_cli" "--format" "json" "inbox" "list" "--gitlab-host" "$gitlab_host" "--limit" "$limit")
   else
     argv=("$forge_cli" "--provider" "github" "--format" "json" "inbox" "list" "--limit" "$limit")
@@ -553,6 +618,18 @@ all)
   exit 0
   ;;
 esac
+
+if [[ "$uses_gitlab" == "1" ]]; then
+  append_value_flag "--gitlab-vpn" "$gitlab_vpn"
+  append_value_flag "--gitlab-vpn-check" "$gitlab_vpn_check"
+  append_value_flag "--gitlab-vpn-check-timeout" "$gitlab_vpn_check_timeout"
+  append_path_flag "--gitlab-openvpn-profile" "$gitlab_openvpn_profile"
+  append_value_flag "--provider-timeout" "$provider_timeout"
+  append_bool_flag "FORGE_INBOX_STRICT_PROVIDERS" "--strict-providers" "$strict_providers"
+  append_bool_flag "FORGE_INBOX_CACHE_FALLBACK" "--cache-fallback" "$cache_fallback"
+  append_value_flag "--cache-max-age" "$cache_max_age"
+  append_bool_flag "FORGE_INBOX_NO_CACHE" "--no-cache" "$no_cache"
+fi
 
 if ! command -v jq >/dev/null 2>&1; then
   emit_item "jq is required" "Install jq so the workflow can parse forge-cli JSON output."
