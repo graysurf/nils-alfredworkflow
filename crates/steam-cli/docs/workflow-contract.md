@@ -44,6 +44,12 @@ Cross-references:
 - Row count is bounded by `STEAM_SPECIALS_MAX_RESULTS` (default `30`).
 - Reuses the same Alfred row contract, sorting, and strike-through pricing as
   search result rows; region-switch rows are not emitted for specials.
+- Cover art: each specials row carries the `small_capsule_image` URL. When
+  `STEAM_SHOW_COVERS` is enabled and a cache dir is available, the CLI downloads
+  the covers in parallel into `<cache>/steam-covers/<app_id>.jpg` (best-effort,
+  bounded workers, per-request timeout, 24h freshness) and emits the cached
+  local path as the Alfred row `icon`. Alfred icons must be local files, so
+  uncached rows simply render without an icon until the next run.
 
 ## Runtime Config Contract
 
@@ -67,6 +73,12 @@ Cross-references:
   - Optional integer, default `30`.
   - Bounds the `specials` discount ranking; independent of `STEAM_MAX_RESULTS`.
   - Effective value clamped to `1..50`. Non-integer values are config errors.
+- `STEAM_SHOW_COVERS`:
+  - Optional bool-like switch for downloading/showing specials cover art.
+  - Default `true`. Accepted values: `1/0`, `true/false`, `yes/no`, `on/off`.
+- `STEAM_COVER_CACHE_DIR`:
+  - Optional cover cache directory; falls back to `ALFRED_WORKFLOW_CACHE`.
+  - When neither is set, covers are skipped (rows render without icons).
 - `STEAM_LANGUAGE`:
   - Optional, default empty (unset).
   - Normalized to lowercase.

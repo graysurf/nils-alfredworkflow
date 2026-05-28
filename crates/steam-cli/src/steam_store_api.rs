@@ -1,4 +1,7 @@
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::{Duration, SystemTime};
 
 use base64::Engine as _;
 use prost::Message;
@@ -18,6 +21,11 @@ const FEATURED_CATEGORIES_ENDPOINT_ENV: &str = "STEAM_FEATURED_CATEGORIES_ENDPOI
 const SEARCH_ORIGIN: &str = "https://store.steampowered.com";
 const USER_AGENT: &str = "nils-alfredworkflow-steam-search/0.1.0";
 
+const COVER_CACHE_SUBDIR: &str = "steam-covers";
+const COVER_CACHE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+const COVER_REQUEST_TIMEOUT: Duration = Duration::from_secs(4);
+const COVER_MAX_WORKERS: usize = 8;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SteamSearchResult {
     pub app_id: u32,
@@ -25,6 +33,8 @@ pub struct SteamSearchResult {
     pub price: Option<SteamPrice>,
     pub item_type: SteamItemType,
     pub platforms: SteamPlatforms,
+    /// Remote cover-art URL (currently populated for specials only).
+    pub image_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -158,7 +168,115 @@ pub fn fetch_specials(
 
     let mut results = parse_featured_categories_response(status_code, &body)?;
     results.truncate(usize::from(config.specials_max_results));
+
+    if let Some(base) = config
+        .cover_cache_dir
+        .as_deref()
+        .filter(|dir| config.show_covers && !dir.is_empty())
+    {
+        cache_specials_covers(&results, base);
+    }
+
     Ok(results)
+}
+
+/// Cover art cache directory for a given Alfred workflow cache base.
+pub fn specials_cover_dir(base: &str) -> PathBuf {
+    Path::new(base).join(COVER_CACHE_SUBDIR)
+}
+
+/// Download missing/stale specials covers into the local cache in parallel.
+///
+/// Best-effort: any failed download simply leaves that row without a cached
+/// cover, so the rendered feedback degrades to no icon rather than erroring.
+fn cache_specials_covers(results: &[SteamSearchResult], base_cache_dir: &str) {
+    let dir = specials_cover_dir(base_cache_dir);
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+
+    let jobs: Vec<(String, PathBuf)> = results
+        .iter()
+        .filter_map(|result| {
+            let url = result.image_url.as_deref().filter(|url| !url.is_empty())?;
+            let path = cover_cache_path(&dir, result.app_id);
+            if is_cover_fresh(&path) {
+                return None;
+            }
+            Some((url.to_string(), path))
+        })
+        .collect();
+
+    if jobs.is_empty() {
+        return;
+    }
+
+    let Ok(client) = reqwest::blocking::Client::builder()
+        .user_agent(USER_AGENT)
+        .timeout(COVER_REQUEST_TIMEOUT)
+        .build()
+    else {
+        return;
+    };
+
+    let worker_count = jobs.len().min(COVER_MAX_WORKERS);
+    let next = AtomicUsize::new(0);
+
+    std::thread::scope(|scope| {
+        for _ in 0..worker_count {
+            scope.spawn(|| {
+                loop {
+                    let index = next.fetch_add(1, Ordering::Relaxed);
+                    let Some((url, path)) = jobs.get(index) else {
+                        break;
+                    };
+                    download_cover(&client, url, path);
+                }
+            });
+        }
+    });
+}
+
+fn cover_cache_path(dir: &Path, app_id: u32) -> PathBuf {
+    dir.join(format!("{app_id}.jpg"))
+}
+
+fn is_cover_fresh(path: &Path) -> bool {
+    let Ok(metadata) = std::fs::metadata(path) else {
+        return false;
+    };
+    if metadata.len() == 0 {
+        return false;
+    }
+    let Ok(modified) = metadata.modified() else {
+        return false;
+    };
+    match SystemTime::now().duration_since(modified) {
+        Ok(age) => age < COVER_CACHE_TTL,
+        // A modification time in the future is unexpected; treat as fresh.
+        Err(_) => true,
+    }
+}
+
+fn download_cover(client: &reqwest::blocking::Client, url: &str, path: &Path) {
+    let Ok(response) = client.get(url).send() else {
+        return;
+    };
+    if !response.status().is_success() {
+        return;
+    }
+    let Ok(bytes) = response.bytes() else {
+        return;
+    };
+    if bytes.is_empty() {
+        return;
+    }
+
+    // Write to a temp sibling then rename so feedback never sees a partial file.
+    let temp_path = path.with_extension("jpg.part");
+    if std::fs::write(&temp_path, &bytes).is_ok() {
+        let _ = std::fs::rename(&temp_path, path);
+    }
 }
 
 pub fn build_query_params(config: &RuntimeConfig, query: &str) -> Vec<(String, String)> {
@@ -341,6 +459,7 @@ fn parse_search_suggestions_response(
                 price,
                 item_type,
                 platforms,
+                image_url: None,
             })
         })
         .collect();
@@ -415,6 +534,7 @@ fn parse_store_search_response(
                 price,
                 item_type,
                 platforms,
+                image_url: None,
             })
         })
         .collect();
@@ -512,12 +632,18 @@ fn featured_item_to_discounted_result(item: FeaturedItem) -> Option<SteamSearchR
     };
     let item_type = SteamItemType::from_featured_type(item.item_type_code);
 
+    let image_url = item
+        .small_capsule_image
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
     Some(SteamSearchResult {
         app_id,
         name,
         price,
         item_type,
         platforms,
+        image_url,
     })
 }
 
@@ -779,6 +905,8 @@ struct FeaturedItem {
     mac_available: bool,
     #[serde(default)]
     linux_available: bool,
+    #[serde(default)]
+    small_capsule_image: Option<String>,
 }
 
 #[cfg(test)]
@@ -794,6 +922,8 @@ mod tests {
             specials_max_results: 30,
             language: language.to_string(),
             search_api: SteamSearchApi::SearchSuggestions,
+            show_covers: false,
+            cover_cache_dir: None,
         }
     }
 
@@ -1129,6 +1259,7 @@ mod tests {
                         "original_price": 498000,
                         "final_price": 124500,
                         "currency": "JPY",
+                        "small_capsule_image": "https://cdn.example/apps/1118520/capsule_184x69.jpg?t=1",
                         "windows_available": true,
                         "mac_available": true,
                         "linux_available": false
@@ -1146,6 +1277,10 @@ mod tests {
         assert!(results[0].platforms.windows);
         assert!(results[0].platforms.mac);
         assert!(!results[0].platforms.linux);
+        assert_eq!(
+            results[0].image_url.as_deref(),
+            Some("https://cdn.example/apps/1118520/capsule_184x69.jpg?t=1")
+        );
 
         let price = results[0].price.as_ref().expect("price should exist");
         assert_eq!(price.final_price_cents, Some(124500));

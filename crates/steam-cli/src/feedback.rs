@@ -1,4 +1,6 @@
-use alfred_core::{Feedback, Item};
+use std::path::Path;
+
+use alfred_core::{Feedback, Item, ItemIcon};
 
 use crate::steam_store_api::{SteamItemType, SteamPrice, SteamSearchResult};
 
@@ -52,6 +54,7 @@ pub fn search_results_to_feedback(
 pub fn specials_to_feedback(
     region: &str,
     language: &str,
+    cover_dir: Option<&Path>,
     results: &[SteamSearchResult],
 ) -> Feedback {
     if results.is_empty() {
@@ -62,7 +65,27 @@ pub fn specials_to_feedback(
         ]);
     }
 
-    search_results_to_feedback(region, "", &[], false, language, results)
+    let mut ordered: Vec<&SteamSearchResult> = results.iter().collect();
+    ordered.sort_by(|a, b| {
+        let a_discount = a.price.as_ref().and_then(|price| price.discount_percent);
+        let b_discount = b.price.as_ref().and_then(|price| price.discount_percent);
+        b_discount.unwrap_or(0).cmp(&a_discount.unwrap_or(0))
+    });
+
+    let items = ordered
+        .into_iter()
+        .map(|result| {
+            let item = result_to_item(region, language, result);
+            match cover_dir.map(|dir| dir.join(format!("{}.jpg", result.app_id))) {
+                Some(path) if path.is_file() => {
+                    item.with_icon(ItemIcon::new(path.to_string_lossy().into_owned()))
+                }
+                _ => item,
+            }
+        })
+        .collect();
+
+    Feedback::new(items)
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -243,6 +266,7 @@ mod tests {
             price,
             item_type,
             platforms: SteamPlatforms::default(),
+            image_url: None,
         }
     }
 
@@ -509,6 +533,7 @@ mod tests {
             }),
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
+            image_url: None,
         };
         let light_discount = SteamSearchResult {
             app_id: 2,
@@ -522,6 +547,7 @@ mod tests {
             }),
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
+            image_url: None,
         };
         let heavy_discount = SteamSearchResult {
             app_id: 3,
@@ -535,6 +561,7 @@ mod tests {
             }),
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
+            image_url: None,
         };
 
         let feedback = search_results_to_feedback(
@@ -557,7 +584,7 @@ mod tests {
 
     #[test]
     fn feedback_specials_empty_emits_dedicated_no_specials_row() {
-        let feedback = specials_to_feedback("tw", "english", &[]);
+        let feedback = specials_to_feedback("tw", "english", None, &[]);
         assert_eq!(feedback.items.len(), 1);
         assert_eq!(feedback.items[0].title, NO_SPECIALS_TITLE);
         assert_eq!(
@@ -581,6 +608,7 @@ mod tests {
             }),
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
+            image_url: None,
         };
         let heavy = SteamSearchResult {
             app_id: 2,
@@ -594,14 +622,73 @@ mod tests {
             }),
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
+            image_url: None,
         };
 
-        let feedback = specials_to_feedback("tw", "english", &[light, heavy]);
+        let feedback = specials_to_feedback("tw", "english", None, &[light, heavy]);
 
         assert_eq!(feedback.items.len(), 2);
         assert_eq!(feedback.items[0].title, "Heavy");
         assert_eq!(feedback.items[1].title, "Light");
         assert!(feedback.items[0].arg.is_some());
+    }
+
+    #[test]
+    fn feedback_specials_attaches_icon_only_when_cover_file_exists() {
+        let cover_dir = std::env::temp_dir().join("nils-steam-cover-feedback-test");
+        let _ = std::fs::remove_dir_all(&cover_dir);
+        std::fs::create_dir_all(&cover_dir).expect("temp cover dir should be creatable");
+
+        let with_cover = SteamSearchResult {
+            app_id: 111,
+            name: "Has Cover".to_string(),
+            price: Some(SteamPrice {
+                final_price_cents: Some(500),
+                final_formatted: Some("NT$ 5".to_string()),
+                original_price_cents: Some(1000),
+                original_formatted: Some("NT$ 10".to_string()),
+                discount_percent: Some(50),
+            }),
+            item_type: SteamItemType::Game,
+            platforms: SteamPlatforms::default(),
+            image_url: Some("https://cdn.example/111.jpg".to_string()),
+        };
+        let without_cover = SteamSearchResult {
+            app_id: 222,
+            name: "No Cover".to_string(),
+            price: Some(SteamPrice {
+                final_price_cents: Some(500),
+                final_formatted: Some("NT$ 5".to_string()),
+                original_price_cents: Some(2000),
+                original_formatted: Some("NT$ 20".to_string()),
+                discount_percent: Some(75),
+            }),
+            item_type: SteamItemType::Game,
+            platforms: SteamPlatforms::default(),
+            image_url: Some("https://cdn.example/222.jpg".to_string()),
+        };
+
+        let cover_file = cover_dir.join("111.jpg");
+        std::fs::write(&cover_file, b"fake-jpeg").expect("cover file should be writable");
+
+        let feedback = specials_to_feedback(
+            "tw",
+            "english",
+            Some(cover_dir.as_path()),
+            &[with_cover, without_cover],
+        );
+
+        // 222 has higher discount, so it sorts first but has no cached cover.
+        assert_eq!(feedback.items[0].title, "No Cover");
+        assert!(feedback.items[0].icon.is_none());
+        assert_eq!(feedback.items[1].title, "Has Cover");
+        let icon = feedback.items[1]
+            .icon
+            .as_ref()
+            .expect("cached cover should produce an icon");
+        assert_eq!(icon.path, cover_file.to_string_lossy());
+
+        let _ = std::fs::remove_dir_all(&cover_dir);
     }
 
     #[test]
@@ -616,6 +703,7 @@ mod tests {
             }),
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
+            image_url: None,
         };
         let inputs = [make(1, "Alpha"), make(2, "Bravo"), make(3, "Charlie")];
 

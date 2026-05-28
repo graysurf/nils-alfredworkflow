@@ -12,6 +12,9 @@ Search Steam Store games from Alfred and open selected app pages in your browser
 - Leave the query empty (`st` alone) to browse the current Steam specials, ranked by
   discount (highest first). Merges discounted titles across the featured sections and
   shows up to `STEAM_SPECIALS_MAX_RESULTS` rows (default `30`).
+- Specials rows show cover art (small capsule), cached locally under
+  `ALFRED_WORKFLOW_CACHE/steam-covers`. Covers appear once cached (first run downloads
+  them); disable with `STEAM_SHOW_COVERS=0`.
 - Result subtitles surface the discount when present:
   `NT$ 50.00 (N̶T̶$̶ 1̶5̶2̶.̶0̶0̶, -67%) | Game`.
   Original price is rendered with Unicode strikethrough overlay; no-discount rows keep
@@ -51,6 +54,8 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Parameter | Description |
 | --- | --- |
 | `STEAM_CLI_BIN` | Optional override path for `steam-cli` (useful for local debugging). |
+| `STEAM_SHOW_COVERS` | Show cover art on specials rows (`1/0`, default `1`). Covers are cached under `ALFRED_WORKFLOW_CACHE/steam-covers`. |
+| `STEAM_COVER_CACHE_DIR` | Optional override for the cover cache directory (defaults to `ALFRED_WORKFLOW_CACHE`). |
 | `STEAM_REQUERY_COMMAND` | Optional override command used by `action_open.sh` to trigger Alfred requery (test/debug helper). |
 | `STEAM_QUERY_CACHE_TTL_SECONDS` | Optional same-query cache TTL (seconds). Default `0` (disabled). |
 | `STEAM_QUERY_COALESCE_SETTLE_SECONDS` | Optional coalesce settle window (seconds). Default `0` so pasted/final queries do not wait twice. |

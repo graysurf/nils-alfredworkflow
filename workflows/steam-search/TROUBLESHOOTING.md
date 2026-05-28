@@ -26,6 +26,7 @@ Reference: [ALFRED_WORKFLOW_DEVELOPMENT.md](../../ALFRED_WORKFLOW_DEVELOPMENT.md
 | `Keep typing (2+ chars)` | Query is shorter than minimum length (`<2`). | Continue typing until at least 2 characters. |
 | `Steam API unavailable` | Network/DNS/TLS issue, timeout, malformed upstream response, or upstream `5xx`. | Check local network/DNS, retry later, and verify Steam Store availability. |
 | `No games found` | Query is too narrow for current region. | Use broader keywords. If needed, enable `STEAM_SHOW_REGION_OPTIONS=1` then press a `Search in <REGION> region` row to requery in another region. |
+| Specials rows have no cover art on first use | Covers download on first run and cache under `ALFRED_WORKFLOW_CACHE/steam-covers`; the icon appears on subsequent runs. | Re-run the empty query, or set `STEAM_SHOW_COVERS=0` to disable covers entirely. |
 | `"steam-cli" Not Opened` / `Apple could not verify ...` | Downloaded/packaged `steam-cli` has `com.apple.quarantine`; Gatekeeper blocks execution. | Run `./workflow-clear-quarantine-standalone.sh --id steam-search`, then retry Alfred query. |
 
 ## Validation

@@ -49,6 +49,12 @@
   `1..50`), independent of the search `STEAM_MAX_RESULTS` knob.
 - Submitting an empty query clears any region override and uses the configured
   `STEAM_REGION`.
+- Cover art: specials rows show the `small_capsule_image` as the Alfred row
+  icon. Because Alfred icons must be local files, the CLI caches covers under
+  `<ALFRED_WORKFLOW_CACHE>/steam-covers/<app_id>.jpg` (parallel, best-effort,
+  24h freshness) and emits the local path. Caching official CDN assets that the
+  API already references is not scraping. Covers can be disabled with
+  `STEAM_SHOW_COVERS=0`; uncached rows render without an icon.
 
 ## Fallback And Error Strategy
 

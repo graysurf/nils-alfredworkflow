@@ -10,6 +10,12 @@ const MAX_RESULTS_ENV: &str = "STEAM_MAX_RESULTS";
 const SPECIALS_MAX_RESULTS_ENV: &str = "STEAM_SPECIALS_MAX_RESULTS";
 const LANGUAGE_ENV: &str = "STEAM_LANGUAGE";
 const SEARCH_API_ENV: &str = "STEAM_SEARCH_API";
+const SHOW_COVERS_ENV: &str = "STEAM_SHOW_COVERS";
+const COVER_CACHE_DIR_ENV: &str = "STEAM_COVER_CACHE_DIR";
+// Alfred exports the workflow cache path as lowercase `alfred_workflow_cache`;
+// the uppercase form is this repo's shell convention. Accept both.
+const ALFRED_WORKFLOW_CACHE_ENV_LOWER: &str = "alfred_workflow_cache";
+const ALFRED_WORKFLOW_CACHE_ENV: &str = "ALFRED_WORKFLOW_CACHE";
 
 const MIN_RESULTS: i32 = 1;
 const MAX_RESULTS: i32 = 50;
@@ -18,6 +24,7 @@ pub const DEFAULT_SPECIALS_MAX_RESULTS: u8 = 30;
 pub const DEFAULT_REGION: &str = "us";
 pub const DEFAULT_LANGUAGE: &str = "";
 pub const DEFAULT_SHOW_REGION_OPTIONS: bool = false;
+pub const DEFAULT_SHOW_COVERS: bool = true;
 pub const DEFAULT_SEARCH_API: SteamSearchApi = SteamSearchApi::SearchSuggestions;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,6 +42,8 @@ pub struct RuntimeConfig {
     pub specials_max_results: u8,
     pub language: String,
     pub search_api: SteamSearchApi,
+    pub show_covers: bool,
+    pub cover_cache_dir: Option<String>,
 }
 
 impl RuntimeConfig {
@@ -63,6 +72,8 @@ impl RuntimeConfig {
             parse_specials_max_results(env_map.get(SPECIALS_MAX_RESULTS_ENV).map(String::as_str))?;
         let language = parse_language(env_map.get(LANGUAGE_ENV).map(String::as_str))?;
         let search_api = parse_search_api(env_map.get(SEARCH_API_ENV).map(String::as_str))?;
+        let show_covers = parse_show_covers(env_map.get(SHOW_COVERS_ENV).map(String::as_str))?;
+        let cover_cache_dir = resolve_cover_cache_dir(&env_map);
 
         Ok(Self {
             region,
@@ -72,6 +83,8 @@ impl RuntimeConfig {
             specials_max_results,
             language,
             search_api,
+            show_covers,
+            cover_cache_dir,
         })
     }
 }
@@ -157,6 +170,30 @@ fn parse_show_region_options(raw: Option<&str>) -> Result<bool, ConfigError> {
     parse_bool(value).ok_or_else(|| ConfigError::InvalidShowRegionOptions(value.to_string()))
 }
 
+fn parse_show_covers(raw: Option<&str>) -> Result<bool, ConfigError> {
+    let Some(value) = raw.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(DEFAULT_SHOW_COVERS);
+    };
+
+    parse_bool(value).ok_or_else(|| ConfigError::InvalidShowCovers(value.to_string()))
+}
+
+fn resolve_cover_cache_dir(env_map: &HashMap<String, String>) -> Option<String> {
+    [
+        COVER_CACHE_DIR_ENV,
+        ALFRED_WORKFLOW_CACHE_ENV_LOWER,
+        ALFRED_WORKFLOW_CACHE_ENV,
+    ]
+    .into_iter()
+    .find_map(|key| {
+        env_map
+            .get(key)
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned)
+    })
+}
+
 fn parse_language(raw: Option<&str>) -> Result<String, ConfigError> {
     let Some(value) = raw.map(str::trim).filter(|value| !value.is_empty()) else {
         return Ok(DEFAULT_LANGUAGE.to_string());
@@ -213,6 +250,8 @@ pub enum ConfigError {
         "invalid STEAM_SHOW_REGION_OPTIONS: {0} (expected one of: true/false, yes/no, on/off, 1/0)"
     )]
     InvalidShowRegionOptions(String),
+    #[error("invalid STEAM_SHOW_COVERS: {0} (expected one of: true/false, yes/no, on/off, 1/0)")]
+    InvalidShowCovers(String),
     #[error("invalid STEAM_MAX_RESULTS: {0}")]
     InvalidMaxResults(String),
     #[error("invalid STEAM_SPECIALS_MAX_RESULTS: {0}")]
@@ -237,6 +276,8 @@ mod tests {
         assert_eq!(config.show_region_options, DEFAULT_SHOW_REGION_OPTIONS);
         assert_eq!(config.max_results, DEFAULT_MAX_RESULTS);
         assert_eq!(config.specials_max_results, DEFAULT_SPECIALS_MAX_RESULTS);
+        assert_eq!(config.show_covers, DEFAULT_SHOW_COVERS);
+        assert_eq!(config.cover_cache_dir, None);
         assert_eq!(config.language, DEFAULT_LANGUAGE);
         assert_eq!(config.search_api, DEFAULT_SEARCH_API);
     }
@@ -324,6 +365,47 @@ mod tests {
             err,
             ConfigError::InvalidSpecialsMaxResults("lots".to_string())
         );
+    }
+
+    #[test]
+    fn config_resolves_cover_cache_dir_and_show_covers() {
+        let explicit_override = RuntimeConfig::from_pairs(vec![
+            (COVER_CACHE_DIR_ENV, "/tmp/explicit"),
+            (ALFRED_WORKFLOW_CACHE_ENV, "/tmp/alfred"),
+        ])
+        .expect("cover cache dir should resolve");
+        assert_eq!(
+            explicit_override.cover_cache_dir.as_deref(),
+            Some("/tmp/explicit")
+        );
+
+        let alfred_fallback =
+            RuntimeConfig::from_pairs(vec![(ALFRED_WORKFLOW_CACHE_ENV, "/tmp/alfred")])
+                .expect("alfred cache fallback should resolve");
+        assert_eq!(
+            alfred_fallback.cover_cache_dir.as_deref(),
+            Some("/tmp/alfred")
+        );
+
+        // Alfred actually exports the lowercase variable; honor it and prefer it
+        // over the uppercase repo-convention form.
+        let lowercase = RuntimeConfig::from_pairs(vec![
+            (ALFRED_WORKFLOW_CACHE_ENV_LOWER, "/tmp/alfred-lower"),
+            (ALFRED_WORKFLOW_CACHE_ENV, "/tmp/alfred-upper"),
+        ])
+        .expect("lowercase alfred cache should resolve");
+        assert_eq!(
+            lowercase.cover_cache_dir.as_deref(),
+            Some("/tmp/alfred-lower")
+        );
+
+        let disabled = RuntimeConfig::from_pairs(vec![(SHOW_COVERS_ENV, "off")])
+            .expect("show covers off should parse");
+        assert!(!disabled.show_covers);
+
+        let err = RuntimeConfig::from_pairs(vec![(SHOW_COVERS_ENV, "maybe")])
+            .expect_err("invalid show covers should fail");
+        assert_eq!(err, ConfigError::InvalidShowCovers("maybe".to_string()));
     }
 
     #[test]

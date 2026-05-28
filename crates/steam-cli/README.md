@@ -18,6 +18,8 @@ CLI backend for the `steam-search` workflow.
 - Optional: `STEAM_SPECIALS_MAX_RESULTS` (default: `30`, clamped to `1..50`; rows for the `specials` discount ranking)
 - Optional: `STEAM_LANGUAGE` (default: unset/empty; used as Steam search locale language)
 - Optional: `STEAM_SEARCH_API` (default: `search-suggestions`; allowed: `search-suggestions`, `storesearch`)
+- Optional: `STEAM_SHOW_COVERS` (default: `true`; set falsey to skip specials cover download/icons)
+- Optional: `STEAM_COVER_CACHE_DIR` (cover cache dir; defaults to `ALFRED_WORKFLOW_CACHE`)
 - Optional test override for `search-suggestions`: `STEAM_SEARCH_SUGGESTIONS_ENDPOINT`
 - Optional test override for `storesearch`: `STEAM_STORE_SEARCH_ENDPOINT`
 - Optional test override for `specials`: `STEAM_FEATURED_CATEGORIES_ENDPOINT`

@@ -198,8 +198,16 @@ where
             let config = load_config().map_err(AppError::from_config)?;
             let results = fetch_specials(&config).map_err(AppError::from_steam_api)?;
 
-            let payload =
-                feedback::specials_to_feedback(&config.region, &config.language, &results);
+            let cover_dir = config
+                .cover_cache_dir
+                .as_deref()
+                .map(steam_store_api::specials_cover_dir);
+            let payload = feedback::specials_to_feedback(
+                &config.region,
+                &config.language,
+                cover_dir.as_deref(),
+                &results,
+            );
             render_feedback(output.into(), "specials", payload)
         }
     }
@@ -249,6 +257,8 @@ mod tests {
             specials_max_results: 30,
             language: "english".to_string(),
             search_api: SteamSearchApi::SearchSuggestions,
+            show_covers: false,
+            cover_cache_dir: None,
         }
     }
 
@@ -261,6 +271,8 @@ mod tests {
             specials_max_results: 30,
             language: String::new(),
             search_api: SteamSearchApi::SearchSuggestions,
+            show_covers: false,
+            cover_cache_dir: None,
         }
     }
 
@@ -286,6 +298,7 @@ mod tests {
                         mac: false,
                         linux: true,
                     },
+                    image_url: None,
                 }])
             },
             |_| panic!("specials must not be called for the search command"),
@@ -334,6 +347,7 @@ mod tests {
                         mac: false,
                         linux: true,
                     },
+                    image_url: None,
                 }])
             },
             |_| panic!("specials must not be called for the search command"),
@@ -465,6 +479,7 @@ mod tests {
                         }),
                         item_type: SteamItemType::Game,
                         platforms: SteamPlatforms::default(),
+                        image_url: None,
                     },
                     SteamSearchResult {
                         app_id: 2,
@@ -478,6 +493,7 @@ mod tests {
                         }),
                         item_type: SteamItemType::Game,
                         platforms: SteamPlatforms::default(),
+                        image_url: None,
                     },
                 ])
             },
