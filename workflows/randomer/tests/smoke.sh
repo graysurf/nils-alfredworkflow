@@ -223,6 +223,7 @@ plist_to_json "$packaged_plist" >"$packaged_json_file"
 
 assert_jq_file "$packaged_json_file" '.objects | length >= 4' "packaged plist missing object graph"
 assert_jq_file "$packaged_json_file" '.connections | length >= 3' "packaged plist missing connections"
+assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.trigger.hotkey")] | length == 3' "packaged plist must include exactly three hotkey triggers"
 
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$PRIMARY_UID\") | .config.scriptfile == \"./scripts/script_filter.sh\"" "primary script filter scriptfile mismatch"
 assert_jq_file "$packaged_json_file" ".objects[] | select(.uid==\"$PRIMARY_UID\") | .config.scriptargtype == 1" "primary script filter must pass query via argv"

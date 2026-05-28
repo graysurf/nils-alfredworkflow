@@ -177,6 +177,24 @@ The four canonical sections are the contract. Two narrow exceptions are explicit
   - queue-delay fields for `object_uids`
   - shared foundation wiring (`workflow_helper_loader`, search/CLI driver markers) for designated workflows
 
+### Customizable hotkey trigger standard
+
+- **Every Script Filter** in a workflow must have its own dedicated unassigned
+  ("empty") hotkey trigger wired to it, so users can bind a shortcut to any
+  entry point in Alfred's *Configure Workflow* UI without editing the workflow
+  graph. A workflow ships at least as many hotkey triggers as Script Filters.
+- This is a required principle for all new workflows and features, not just a
+  one-time backfill.
+- Contract for each hotkey trigger object:
+  - `type = alfred.workflow.trigger.hotkey`, object `version = 2`.
+  - Ship unassigned: `config.hotkey = 0` and `config.hotmod = 0`.
+  - Add a `connections` entry routing the hotkey object's uid to the Script
+    Filter uid it triggers (one hotkey per Script Filter).
+  - Place it left of its Script Filter in `uidata` (for example `xpos = 70`,
+    `ypos` matching the target Script Filter).
+- Validation/enforcement command (also part of `scripts/workflow-lint.sh`):
+  - `bash scripts/workflow-hotkey-policy.sh --check`
+
 ### Shared Script Filter helper libraries (`scripts/lib`)
 
 - Shared Script Filter runtime helpers are:

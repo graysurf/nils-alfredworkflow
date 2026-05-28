@@ -8,6 +8,45 @@
   <string>Tools</string>
   <key>connections</key>
   <dict>
+    <key>90CF197B-598B-4F39-9705-EFCDEBBD1616</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>C2F5E113-7D3B-49CC-8F95-5E8B0A9BB5C1</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>CEA96C83-79D9-46AD-BB03-AAABB7DC6738</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>A5F5D9EC-6344-47B3-9A0A-5F7DFB0D5132</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>2DE17CB8-7FFE-4758-B3BB-68499D63C72E</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>
     <array>
       <dict>
@@ -68,6 +107,93 @@
   <string>{{name}}</string>
   <key>objects</key>
   <array>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>90CF197B-598B-4F39-9705-EFCDEBBD1616</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>CEA96C83-79D9-46AD-BB03-AAABB7DC6738</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>2DE17CB8-7FFE-4758-B3BB-68499D63C72E</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
     <dict>
       <key>config</key>
       <dict>
@@ -254,6 +380,27 @@ Behavior:
 - Enter on expanded values copies selected value.</string>
   <key>uidata</key>
   <dict>
+    <key>90CF197B-598B-4F39-9705-EFCDEBBD1616</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>320</integer>
+    </dict>
+    <key>CEA96C83-79D9-46AD-BB03-AAABB7DC6738</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>250</integer>
+    </dict>
+    <key>2DE17CB8-7FFE-4758-B3BB-68499D63C72E</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>180</integer>
+    </dict>
     <key>70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10</key>
     <dict>
       <key>xpos</key>

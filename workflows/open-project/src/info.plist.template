@@ -8,6 +8,19 @@
 	<string>Tools</string>
 	<key>connections</key>
 	<dict>
+		<key>4E938A43-BF5F-41C2-A88E-6CB7E87ADB86</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>6F5EB7A5-CDCD-4FDD-A04B-5FACC38B2F94</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
 		<key>05AA5EAC-4638-4A25-B975-FE35FBEA8FA0</key>
 		<array>
 			<dict>
@@ -130,6 +143,35 @@
 	<string>{{name}}</string>
 	<key>objects</key>
 	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>action</key>
+				<integer>0</integer>
+				<key>argument</key>
+				<integer>0</integer>
+				<key>focusedappvariable</key>
+				<false/>
+				<key>focusedappvariablename</key>
+				<string></string>
+				<key>hotkey</key>
+				<integer>0</integer>
+				<key>hotmod</key>
+				<integer>0</integer>
+				<key>leftcursor</key>
+				<false/>
+				<key>modsmode</key>
+				<integer>0</integer>
+				<key>relatedAppsMode</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.hotkey</string>
+			<key>uid</key>
+			<string>4E938A43-BF5F-41C2-A88E-6CB7E87ADB86</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
 		<dict>
 			<key>config</key>
 			<dict>
@@ -448,6 +490,13 @@ Keywords:
 - github</string>
 	<key>uidata</key>
 	<dict>
+		<key>4E938A43-BF5F-41C2-A88E-6CB7E87ADB86</key>
+		<dict>
+			<key>xpos</key>
+			<integer>70</integer>
+			<key>ypos</key>
+			<integer>175</integer>
+		</dict>
 		<key>05AA5EAC-4638-4A25-B975-FE35FBEA8FA0</key>
 		<dict>
 			<key>xpos</key>

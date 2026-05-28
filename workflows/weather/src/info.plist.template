@@ -8,6 +8,32 @@
   <string>Productivity</string>
   <key>connections</key>
   <dict>
+    <key>D013FBDC-C30E-4873-81A1-58C350C3767D</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>8A72E2AF-189E-4A13-9A0E-B30FEAF37F9A</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
+    <key>38F51F06-C3F2-4AC6-AE60-D85438501333</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>B1A11A4C-5F5D-4E8D-8E68-2AD5A95E95E1</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
     <key>B1A11A4C-5F5D-4E8D-8E68-2AD5A95E95E1</key>
     <array>
       <dict>
@@ -45,6 +71,64 @@
   <string>{{name}}</string>
   <key>objects</key>
   <array>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>D013FBDC-C30E-4873-81A1-58C350C3767D</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>38F51F06-C3F2-4AC6-AE60-D85438501333</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
     <dict>
       <key>config</key>
       <dict>
@@ -171,6 +255,20 @@
   <string>Keywords:\n- wt or weather (today forecast)\n- ww (pick city then 7-day forecast)\n\nType a city name or lat,lon (for example 25.03,121.56).</string>
   <key>uidata</key>
   <dict>
+    <key>D013FBDC-C30E-4873-81A1-58C350C3767D</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>270</integer>
+    </dict>
+    <key>38F51F06-C3F2-4AC6-AE60-D85438501333</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>130</integer>
+    </dict>
     <key>B1A11A4C-5F5D-4E8D-8E68-2AD5A95E95E1</key>
     <dict>
       <key>xpos</key>

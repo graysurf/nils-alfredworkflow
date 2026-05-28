@@ -61,6 +61,7 @@ cargo clippy --workspace --all-targets -- \
 bash "$repo_root/scripts/ci/markdownlint-audit.sh" --strict
 bash "$repo_root/scripts/workflow-shared-foundation-audit.sh" --check
 bash "$repo_root/scripts/workflow-cli-resolver-audit.sh" --check
+bash "$repo_root/scripts/workflow-hotkey-policy.sh" --check
 bash "$repo_root/scripts/ci/third-party-artifacts-audit.sh" --strict
 bash "$repo_root/scripts/ci/ci-workflow-audit.sh" --check
 

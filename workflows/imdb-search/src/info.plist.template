@@ -8,6 +8,19 @@
   <string>Internet</string>
   <key>connections</key>
   <dict>
+    <key>B0B057D3-6113-4A28-8225-2E75C5C3A2DA</key>
+    <array>
+      <dict>
+        <key>destinationuid</key>
+        <string>2CE3199F-2A1C-4B4B-8D9D-361EF4D947B6</string>
+        <key>modifiers</key>
+        <integer>0</integer>
+        <key>modifiersubtext</key>
+        <string></string>
+        <key>vitoclose</key>
+        <false/>
+      </dict>
+    </array>
     <key>2CE3199F-2A1C-4B4B-8D9D-361EF4D947B6</key>
     <array>
       <dict>
@@ -32,6 +45,35 @@
   <string>{{name}}</string>
   <key>objects</key>
   <array>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>action</key>
+        <integer>0</integer>
+        <key>argument</key>
+        <integer>0</integer>
+        <key>focusedappvariable</key>
+        <false/>
+        <key>focusedappvariablename</key>
+        <string></string>
+        <key>hotkey</key>
+        <integer>0</integer>
+        <key>hotmod</key>
+        <integer>0</integer>
+        <key>leftcursor</key>
+        <false/>
+        <key>modsmode</key>
+        <integer>0</integer>
+        <key>relatedAppsMode</key>
+        <integer>0</integer>
+      </dict>
+      <key>type</key>
+      <string>alfred.workflow.trigger.hotkey</string>
+      <key>uid</key>
+      <string>B0B057D3-6113-4A28-8225-2E75C5C3A2DA</string>
+      <key>version</key>
+      <integer>2</integer>
+    </dict>
     <dict>
       <key>config</key>
       <dict>
@@ -109,6 +151,13 @@
   <string>Use im (or imdb) to get IMDb suggestions and press Enter to open the selected result.</string>
   <key>uidata</key>
   <dict>
+    <key>B0B057D3-6113-4A28-8225-2E75C5C3A2DA</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>180</integer>
+    </dict>
     <key>2CE3199F-2A1C-4B4B-8D9D-361EF4D947B6</key>
     <dict>
       <key>xpos</key>
