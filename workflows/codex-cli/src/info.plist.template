@@ -879,6 +879,55 @@
   <string>Use keywords cx or codex / cxa / cxau / cxac / cxd / cxs / cxr / cxda to run codex-cli auth and diagnostics commands from Alfred.</string>
   <key>uidata</key>
   <dict>
+    <key>96D807C3-A0A2-4E43-8DE2-7A515FC23132</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>180</integer>
+    </dict>
+    <key>C74452A1-D2CC-4093-9AF4-2769E77AE74D</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>880</integer>
+    </dict>
+    <key>8A07BC8A-8318-46F4-A930-1B829BFA6FC5</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>40</integer>
+    </dict>
+    <key>BC457C7F-1E7D-4DA5-80E9-E6CD20818417</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>320</integer>
+    </dict>
+    <key>9CF9F732-9AD0-439C-B815-BB0C2BA1ED83</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>600</integer>
+    </dict>
+    <key>9293C7E8-4430-486A-AF65-9D9055786172</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>460</integer>
+    </dict>
+    <key>F0B3FDB2-C66A-453B-9786-67603135EF9C</key>
+    <dict>
+      <key>xpos</key>
+      <integer>70</integer>
+      <key>ypos</key>
+      <integer>530</integer>
+    </dict>
     <key>1B2C2CF8-9C9E-4E5E-AE2D-6F911B3A9D63</key>
     <dict>
       <key>xpos</key>
