@@ -12,15 +12,15 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `d9a4333e5de654d5d915f06af963ffc3812ee9f2a66bc081c760b1f9e02d0aa5`
+- Data source fingerprint (SHA256): `b3d41b009175e1f403958b4ea4653659a94361898c9bb1d837cbf60ea78ac25a`
 - Runtime metadata fingerprint (SHA256): `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `e42af3a510709d3607d9af77d8e45f98f13f0bfab0d5e088e43830a63566c1a1` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
-| Node lockfile | `package-lock.json` | `7dcec6f1784dce2298eeec29d22dd836b6651deb06571cc3704c97b3a864845e` | `jq package-lock extraction` |
+| Cargo lockfile | `Cargo.lock` | `93e602dfa193f800a9c585eb4578d4cf66bbf535f0a8db71bb43b82749e5cf58` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Node lockfile | `package-lock.json` | `d8941f674a12cbe979fc656bf6b40b42320b66e4cf62cb0edcc762574dceeaec` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `65863452d659031214590bf2d8e8ee4b1a21d70c546647d30d373053ea7ad036` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.7.3> | `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20` | `curl crates.io API plus jq normalized fields` |
 
