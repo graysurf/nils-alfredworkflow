@@ -3,7 +3,7 @@
 This file documents third-party notice-file discovery for Rust crates used by this workspace.
 
 - Data source: `cargo metadata --format-version 1 --locked --filter-platform` union for supported macOS/Linux targets
-- Cargo.lock SHA256: `bbf23c8ca8af731b83ee379d4e3a80f7208404b5985513f165f35aa5ecc79e10`
+- Cargo.lock SHA256: `e42af3a510709d3607d9af77d8e45f98f13f0bfab0d5e088e43830a63566c1a1`
 - Third-party crates (`source != null`): 457
 
 ## Notice Extraction Policy
@@ -571,7 +571,7 @@ This file documents third-party notice-file discovery for Rust crates used by th
   - `LICENSE-APACHE`
   - `LICENSE-MIT`
 
-### clap_complete 4.6.2
+### clap_complete 4.6.3
 
 - License: `MIT OR Apache-2.0`
 - Source: `crates.io`
@@ -1985,14 +1985,14 @@ This file documents third-party notice-file discovery for Rust crates used by th
 - License file references:
   - `LICENSE`
 
-### nils-common 0.7.3
+### nils-common 0.8.3
 
 - License: `MIT`
 - Source: `crates.io`
 - Notice files: No explicit NOTICE file discovered.
 - License file reference: none declared
 
-### nils-memo-cli 0.7.3
+### nils-memo-cli 0.8.3
 
 - License: `MIT`
 - Source: `crates.io`
@@ -2140,7 +2140,7 @@ This file documents third-party notice-file discovery for Rust crates used by th
 - License file references:
   - `LICENSE.md`
 
-### openssl 0.10.79
+### openssl 0.10.80
 
 - License: `Apache-2.0`
 - Source: `crates.io`
@@ -2176,7 +2176,7 @@ This file documents third-party notice-file discovery for Rust crates used by th
   - `LICENSE-APACHE`
   - `LICENSE-MIT`
 
-### openssl-sys 0.9.115
+### openssl-sys 0.9.116
 
 - License: `MIT`
 - Source: `crates.io`
@@ -2931,7 +2931,7 @@ This file documents third-party notice-file discovery for Rust crates used by th
   - `LICENSE-APACHE`
   - `LICENSE-MIT`
 
-### serde_json 1.0.149
+### serde_json 1.0.150
 
 - License: `MIT OR Apache-2.0`
 - Source: `crates.io`

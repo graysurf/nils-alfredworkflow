@@ -12,14 +12,14 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `ce6fd98c19d7cb87d133635f8db4ac68e1ed92ab47902e0356947a980fdd95d0`
+- Data source fingerprint (SHA256): `d9a4333e5de654d5d915f06af963ffc3812ee9f2a66bc081c760b1f9e02d0aa5`
 - Runtime metadata fingerprint (SHA256): `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `bbf23c8ca8af731b83ee379d4e3a80f7208404b5985513f165f35aa5ecc79e10` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `e42af3a510709d3607d9af77d8e45f98f13f0bfab0d5e088e43830a63566c1a1` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `7dcec6f1784dce2298eeec29d22dd836b6651deb06571cc3704c97b3a864845e` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `65863452d659031214590bf2d8e8ee4b1a21d70c546647d30d373053ea7ad036` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.7.3> | `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20` | `curl crates.io API plus jq normalized fields` |
@@ -124,7 +124,7 @@ Do not edit manually.
 | clang-sys | 1.8.1 | Apache-2.0 | <https://github.com/KyleMayes/clang-sys> |
 | clap | 4.6.1 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_builder | 4.6.0 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
-| clap_complete | 4.6.2 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
+| clap_complete | 4.6.3 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_derive | 4.6.1 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_lex | 1.1.0 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | colorchoice | 1.0.5 | MIT OR Apache-2.0 | <https://github.com/rust-cli/anstyle.git> |
@@ -287,8 +287,8 @@ Do not edit manually.
 | minimal-lexical | 0.2.1 | MIT/Apache-2.0 | <https://github.com/Alexhuszagh/minimal-lexical> |
 | mio | 1.2.0 | MIT | <https://github.com/tokio-rs/mio> |
 | murmurhash32 | 0.3.1 | MIT | <https://github.com/quickwit-inc/murmurhash32> |
-| nils-common | 0.7.3 | MIT | <https://github.com/sympoies/nils-cli> |
-| nils-memo-cli | 0.7.3 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-common | 0.8.3 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-memo-cli | 0.8.3 | MIT | <https://github.com/sympoies/nils-cli> |
 | nom | 7.1.3 | MIT | <https://github.com/Geal/nom> |
 | nu-ansi-term | 0.50.3 | MIT | <https://github.com/nushell/nu-ansi-term> |
 | num | 0.4.3 | MIT OR Apache-2.0 | <https://github.com/rust-num/num> |
@@ -305,11 +305,11 @@ Do not edit manually.
 | oneshot | 0.1.13 | MIT OR Apache-2.0 | <https://github.com/faern/oneshot> |
 | opaque-debug | 0.3.1 | MIT OR Apache-2.0 | <https://github.com/RustCrypto/utils> |
 | open | 5.3.5 | MIT | <https://github.com/Byron/open-rs> |
-| openssl | 0.10.79 | Apache-2.0 | <https://github.com/rust-openssl/rust-openssl> |
+| openssl | 0.10.80 | Apache-2.0 | <https://github.com/rust-openssl/rust-openssl> |
 | openssl-macros | 0.1.1 | MIT/Apache-2.0 | - |
 | openssl-probe | 0.2.1 | MIT OR Apache-2.0 | <https://github.com/rustls/openssl-probe> |
 | openssl-src | 300.6.0+3.6.2 | MIT/Apache-2.0 | <https://github.com/alexcrichton/openssl-src-rs> |
-| openssl-sys | 0.9.115 | MIT | <https://github.com/rust-openssl/rust-openssl> |
+| openssl-sys | 0.9.116 | MIT | <https://github.com/rust-openssl/rust-openssl> |
 | option-ext | 0.2.0 | MPL-2.0 | <https://github.com/soc/option-ext.git> |
 | ordered-float | 5.3.0 | MIT | <https://github.com/reem/rust-ordered-float> |
 | ordered-stream | 0.2.0 | MIT OR Apache-2.0 | <https://github.com/danieldg/ordered-stream> |
@@ -395,7 +395,7 @@ Do not edit manually.
 | serde | 1.0.228 | MIT OR Apache-2.0 | <https://github.com/serde-rs/serde> |
 | serde_core | 1.0.228 | MIT OR Apache-2.0 | <https://github.com/serde-rs/serde> |
 | serde_derive | 1.0.228 | MIT OR Apache-2.0 | <https://github.com/serde-rs/serde> |
-| serde_json | 1.0.149 | MIT OR Apache-2.0 | <https://github.com/serde-rs/json> |
+| serde_json | 1.0.150 | MIT OR Apache-2.0 | <https://github.com/serde-rs/json> |
 | serde_repr | 0.1.20 | MIT OR Apache-2.0 | <https://github.com/dtolnay/serde-repr> |
 | serde_urlencoded | 0.7.1 | MIT/Apache-2.0 | <https://github.com/nox/serde_urlencoded> |
 | serde_with | 3.19.0 | MIT OR Apache-2.0 | <https://github.com/jonasbb/serde_with/> |
