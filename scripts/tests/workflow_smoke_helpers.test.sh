@@ -119,6 +119,44 @@ EOF
   "$action_path" "ok"
 }
 
+test_packaged_plist_assertion_helpers() {
+  local json_path="$tmp_dir/packaged-plist.json"
+  cat >"$json_path" <<'EOF'
+{
+  "objects": [
+    {
+      "uid": "SCRIPT_FILTER",
+      "type": "alfred.workflow.input.scriptfilter",
+      "config": {
+        "type": 8,
+        "scriptfile": "./scripts/script_filter.sh",
+        "scriptargtype": 1,
+        "alfredfiltersresults": false,
+        "queuedelaycustom": 1,
+        "queuedelaymode": 0,
+        "queuedelayimmediatelyinitially": false
+      }
+    },
+    {
+      "uid": "ACTION",
+      "type": "alfred.workflow.action.script",
+      "config": {
+        "type": 8,
+        "scriptfile": "./scripts/action_open.sh"
+      }
+    }
+  ]
+}
+EOF
+
+  workflow_smoke_assert_standard_script_filter \
+    "$json_path" \
+    "SCRIPT_FILTER" \
+    "./scripts/script_filter.sh" \
+    "fixture script filter"
+  workflow_smoke_assert_external_action "$json_path" "ACTION" "./scripts/action_open.sh" "fixture action"
+}
+
 test_wait_for_file_contains_helper() {
   local log_path="$tmp_dir/wait.log"
   : >"$log_path"
@@ -152,6 +190,7 @@ test_pbcopy_stub_writer
 test_artifact_backup_and_restore
 test_artifact_restore_missing_backup_removes_target
 test_action_requires_arg_helper
+test_packaged_plist_assertion_helpers
 test_wait_for_file_contains_helper
 test_wait_for_file_contains_timeout
 

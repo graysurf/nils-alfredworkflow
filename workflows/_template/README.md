@@ -39,6 +39,8 @@ Update these fields before packaging a new workflow:
 - Preserve shared-vs-local extraction boundary during customization:
   - keep helper wiring and guard mechanics shared;
   - keep domain/provider semantics local to the workflow script.
+- For packaged plist smoke coverage, prefer `workflow_smoke_assert_standard_script_filter` and related helpers over
+  workflow-local copies of common Script Filter wiring assertions.
 - Keep bundled runtime resolution on shared policy:
   - source `workflow_cli_resolver.sh`;
   - resolve package/release/debug binaries through `wfcr_resolve_binary`.

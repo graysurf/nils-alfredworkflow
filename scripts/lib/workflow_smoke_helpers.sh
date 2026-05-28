@@ -76,6 +76,100 @@ assert_jq_json() {
   fi
 }
 
+workflow_smoke_assert_external_script_filter() {
+  local json_file="$1"
+  local uid="$2"
+  local scriptfile="$3"
+  local label="${4:-script filter}"
+
+  if ! jq -e --arg uid "$uid" \
+    '.objects[] | select(.uid == $uid) | (.type == "alfred.workflow.input.scriptfilter" and .config.type == 8)' \
+    "$json_file" >/dev/null; then
+    fail "$label must be an external script filter"
+  fi
+
+  if ! jq -e --arg uid "$uid" --arg scriptfile "$scriptfile" \
+    '.objects[] | select(.uid == $uid) | .config.scriptfile == $scriptfile' \
+    "$json_file" >/dev/null; then
+    fail "$label scriptfile wiring mismatch"
+  fi
+}
+
+workflow_smoke_assert_script_filter_argv_query() {
+  local json_file="$1"
+  local uid="$2"
+  local label="${3:-script filter}"
+  local expected="${4:-1}"
+
+  if ! jq -e --arg uid "$uid" --argjson expected "$expected" \
+    '.objects[] | select(.uid == $uid) | .config.scriptargtype == $expected' \
+    "$json_file" >/dev/null; then
+    fail "$label must pass query via argv"
+  fi
+}
+
+workflow_smoke_assert_script_filter_local_filtering() {
+  local json_file="$1"
+  local uid="$2"
+  local label="${3:-script filter}"
+  local expected="${4:-false}"
+
+  if ! jq -e --arg uid "$uid" --argjson expected "$expected" \
+    '.objects[] | select(.uid == $uid) | .config.alfredfiltersresults == $expected' \
+    "$json_file" >/dev/null; then
+    fail "$label Alfred local filtering mismatch"
+  fi
+}
+
+workflow_smoke_assert_script_filter_queue_policy() {
+  local json_file="$1"
+  local uid="$2"
+  local label="${3:-script filter}"
+  local delay_custom="${4:-1}"
+  local delay_mode="${5:-0}"
+  local immediate_initially="${6:-false}"
+
+  if ! jq -e \
+    --arg uid "$uid" \
+    --argjson delay_custom "$delay_custom" \
+    --argjson delay_mode "$delay_mode" \
+    --argjson immediate_initially "$immediate_initially" \
+    '.objects[] | select(.uid == $uid) | (
+      .config.queuedelaycustom == $delay_custom
+      and .config.queuedelaymode == $delay_mode
+      and .config.queuedelayimmediatelyinitially == $immediate_initially
+    )' \
+    "$json_file" >/dev/null; then
+    fail "$label queue delay policy mismatch"
+  fi
+}
+
+workflow_smoke_assert_standard_script_filter() {
+  local json_file="$1"
+  local uid="$2"
+  local scriptfile="$3"
+  local label="${4:-script filter}"
+  local alfred_filters_results="${5:-false}"
+
+  workflow_smoke_assert_external_script_filter "$json_file" "$uid" "$scriptfile" "$label"
+  workflow_smoke_assert_script_filter_argv_query "$json_file" "$uid" "$label"
+  workflow_smoke_assert_script_filter_local_filtering "$json_file" "$uid" "$label" "$alfred_filters_results"
+  workflow_smoke_assert_script_filter_queue_policy "$json_file" "$uid" "$label"
+}
+
+workflow_smoke_assert_external_action() {
+  local json_file="$1"
+  local uid="$2"
+  local scriptfile="$3"
+  local label="${4:-action}"
+
+  if ! jq -e --arg uid "$uid" --arg scriptfile "$scriptfile" \
+    '.objects[] | select(.uid == $uid) | (.config.type == 8 and .config.scriptfile == $scriptfile)' \
+    "$json_file" >/dev/null; then
+    fail "$label external action wiring mismatch"
+  fi
+}
+
 workflow_smoke_assert_action_requires_arg() {
   local action_script="$1"
   local expected_rc="${2:-2}"
