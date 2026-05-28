@@ -9,6 +9,12 @@ Search Steam Store games from Alfred and open selected app pages in your browser
 ## Features
 
 - Trigger Steam search with `st <query>` (alias: `steam`).
+- Result subtitles surface the discount when present:
+  `NT$ 50.00 (N̶T̶$̶ 1̶5̶2̶.̶0̶0̶, -67%) | Game`.
+  Original price is rendered with Unicode strikethrough overlay; no-discount rows keep
+  the legacy `{price} | {type}` format.
+- Result rows are stable-sorted by discount percent (highest first); ties and undiscounted
+  rows keep the Steam relevance order, and rows without a price trail behind.
 - Optional region-switch rows (disabled by default) using the `steam-requery:<region>:<query>` action arg contract.
 - Press `Enter` on a region row to requery the same keywords in the selected region.
 - Open selected Steam app URLs in your default browser.

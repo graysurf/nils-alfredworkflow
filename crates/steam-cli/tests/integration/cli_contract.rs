@@ -73,6 +73,8 @@ fn cli_contract_success_returns_alfred_json_items() {
         prices: vec![SearchSuggestionPriceFixture {
             final_price_cents: Some(0),
             final_formatted: Some("Free".to_string()),
+            original_price_cents: None,
+            original_formatted: None,
         }],
     }]);
 
@@ -142,6 +144,8 @@ fn cli_contract_hides_region_switch_rows_by_default() {
         prices: vec![SearchSuggestionPriceFixture {
             final_price_cents: Some(0),
             final_formatted: Some("Free".to_string()),
+            original_price_cents: None,
+            original_formatted: None,
         }],
     }]);
 
@@ -228,6 +232,89 @@ fn cli_contract_legacy_mode_uses_store_search_api() {
     assert_eq!(
         items[0].get("arg").and_then(Value::as_str),
         Some("https://store.steampowered.com/app/730/?cc=us")
+    );
+
+    server.join();
+}
+
+#[test]
+fn cli_contract_sorts_results_by_discount_and_renders_strikethrough() {
+    let server = MockServer::spawn(
+        MockResponse::json(
+            200,
+            "OK",
+            r#"{
+                "items": [
+                    {
+                        "id": 100,
+                        "name": "Full Price Game",
+                        "type": "app",
+                        "price": {"initial": 159900, "final": 159900, "currency": "TWD"},
+                        "platforms": {"windows": true, "mac": false, "linux": false}
+                    },
+                    {
+                        "id": 200,
+                        "name": "Heavy Discount Pack",
+                        "type": "app",
+                        "price": {"initial": 85000, "final": 34000, "currency": "TWD"},
+                        "platforms": {"windows": true, "mac": false, "linux": false}
+                    },
+                    {
+                        "id": 300,
+                        "name": "Light Discount Pack",
+                        "type": "app",
+                        "price": {"initial": 100000, "final": 75000, "currency": "TWD"},
+                        "platforms": {"windows": true, "mac": false, "linux": false}
+                    }
+                ]
+            }"#,
+        ),
+        "/api/storesearch",
+    );
+
+    let endpoint = format!("{}{}", server.base_url(), "/api/storesearch");
+    let output = run_cli(
+        &["search", "--query", "pack"],
+        &[
+            ("STEAM_SEARCH_API", "storesearch"),
+            ("STEAM_STORE_SEARCH_ENDPOINT", &endpoint),
+            ("STEAM_REGION", "tw"),
+        ],
+    );
+
+    assert_eq!(output.status.code(), Some(0));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: Value = serde_json::from_str(&stdout).expect("stdout should be json");
+    let items = json
+        .get("items")
+        .and_then(Value::as_array)
+        .expect("items should be array");
+
+    assert_eq!(items.len(), 3);
+    assert_eq!(
+        items[0].get("title").and_then(Value::as_str),
+        Some("Heavy Discount Pack")
+    );
+    assert_eq!(
+        items[1].get("title").and_then(Value::as_str),
+        Some("Light Discount Pack")
+    );
+    assert_eq!(
+        items[2].get("title").and_then(Value::as_str),
+        Some("Full Price Game")
+    );
+
+    let heavy_subtitle = items[0]
+        .get("subtitle")
+        .and_then(Value::as_str)
+        .expect("subtitle exists");
+    assert!(
+        heavy_subtitle.contains("-60%"),
+        "expected -60% in subtitle, got {heavy_subtitle}"
+    );
+    assert!(
+        heavy_subtitle.contains('\u{0336}'),
+        "expected strikethrough overlay in subtitle, got {heavy_subtitle}"
     );
 
     server.join();
@@ -376,8 +463,12 @@ struct SearchSuggestionFixture {
 struct SearchSuggestionPriceFixture {
     #[prost(optional, uint32, tag = "5")]
     final_price_cents: Option<u32>,
+    #[prost(optional, uint32, tag = "6")]
+    original_price_cents: Option<u32>,
     #[prost(optional, string, tag = "8")]
     final_formatted: Option<String>,
+    #[prost(optional, string, tag = "9")]
+    original_formatted: Option<String>,
 }
 
 fn encode_suggestions_response(results: Vec<SearchSuggestionFixture>) -> Vec<u8> {

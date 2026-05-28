@@ -113,7 +113,7 @@ Region-switch row:
 }
 ```
 
-Result row:
+Result row (no discount):
 
 ```json
 {
@@ -123,11 +123,31 @@ Result row:
 }
 ```
 
+Result row (discounted, subtitle carries strikethrough on the original price via Unicode `U+0336`):
+
+```json
+{
+  "title": "Hero Siege",
+  "subtitle": "NT$ 50.00 (N̶T̶$̶ 1̶5̶2̶.̶0̶0̶, -67%) | Game",
+  "arg": "https://store.steampowered.com/app/35704/?cc=tw&l=tchinese"
+}
+```
+
 Rules:
 
 - When `STEAM_SHOW_REGION_OPTIONS=true`, current-region row appears first and region-switch rows follow `STEAM_REGION_OPTIONS` order exactly.
 - Current-region subtitle includes language suffix only when `STEAM_LANGUAGE` is configured.
 - When `STEAM_SHOW_REGION_OPTIONS=false` (default), output omits region rows and begins with result/no-result rows.
+- Result rows are stable-sorted by computed `discount_percent` descending; ties and
+  undiscounted results keep the backend's relevance order, with `Price unavailable` rows
+  trailing.
+- Subtitle format is `{final_price} ({original_strikethrough}, -{N}%) | {item_type}`
+  only when both `original_price` and `final_price` are known and `final < original`;
+  otherwise it falls back to the legacy `{final_price} | {item_type}` form.
+- Strikethrough is rendered with Unicode `U+0336` (combining long stroke overlay)
+  inserted after each non-whitespace character of the original price text.
+- Discount percent is computed as `round((original - final) / original * 100)` and
+  rendered as a positive integer with a leading minus sign.
 - Result URLs always include region (`cc`) and include language (`l`) only when configured.
 - Subtitles are single-line, whitespace-normalized, and deterministically truncated to `<= 120`
   chars.

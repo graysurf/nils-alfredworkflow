@@ -1,6 +1,6 @@
 use alfred_core::{Feedback, Item};
 
-use crate::steam_store_api::{SteamItemType, SteamSearchResult};
+use crate::steam_store_api::{SteamItemType, SteamPrice, SteamSearchResult};
 
 const NO_RESULTS_TITLE: &str = "No games found";
 const NO_RESULTS_SUBTITLE: &str = "Try broader keywords or switch STEAM_REGION.";
@@ -12,6 +12,7 @@ const ERROR_TITLE: &str = "Steam search failed";
 const UNKNOWN_PRICE_LABEL: &str = "Price unavailable";
 const FREE_TO_PLAY_LABEL: &str = "Free to play";
 const SUBTITLE_MAX_CHARS: usize = 120;
+const STRIKETHROUGH_OVERLAY: char = '\u{0336}';
 
 pub fn search_results_to_feedback(
     region: &str,
@@ -31,9 +32,16 @@ pub fn search_results_to_feedback(
         return Feedback::new(items);
     }
 
+    let mut ordered: Vec<&SteamSearchResult> = results.iter().collect();
+    ordered.sort_by(|a, b| {
+        let a_discount = a.price.as_ref().and_then(|price| price.discount_percent);
+        let b_discount = b.price.as_ref().and_then(|price| price.discount_percent);
+        b_discount.unwrap_or(0).cmp(&a_discount.unwrap_or(0))
+    });
+
     items.extend(
-        results
-            .iter()
+        ordered
+            .into_iter()
             .map(|result| result_to_item(region, language, result)),
     );
     Feedback::new(items)
@@ -75,26 +83,65 @@ fn canonical_app_url(app_id: u32, region: &str, language: &str) -> String {
 }
 
 fn format_price(result: &SteamSearchResult) -> String {
-    match result.price.as_ref() {
-        Some(price) => {
-            if let Some(formatted) = price.final_formatted.as_deref().map(str::trim)
-                && !formatted.is_empty()
-            {
-                return formatted.to_string();
-            }
+    let Some(price) = result.price.as_ref() else {
+        return UNKNOWN_PRICE_LABEL.to_string();
+    };
 
-            match price.final_price_cents {
-                Some(0) => FREE_TO_PLAY_LABEL.to_string(),
-                Some(value) => {
-                    let major = value / 100;
-                    let minor = value % 100;
-                    format!("${major}.{minor:02}")
-                }
-                None => UNKNOWN_PRICE_LABEL.to_string(),
-            }
-        }
+    let final_text = final_price_text(price);
+
+    let Some(discount_percent) = price.discount_percent else {
+        return final_text;
+    };
+
+    let Some(original_text) = original_price_text(price) else {
+        return final_text;
+    };
+
+    format!(
+        "{final_text} ({struck}, -{discount_percent}%)",
+        struck = strike_through(&original_text),
+    )
+}
+
+fn final_price_text(price: &SteamPrice) -> String {
+    if let Some(formatted) = price.final_formatted.as_deref().map(str::trim)
+        && !formatted.is_empty()
+    {
+        return formatted.to_string();
+    }
+
+    match price.final_price_cents {
+        Some(0) => FREE_TO_PLAY_LABEL.to_string(),
+        Some(value) => fallback_currency(value),
         None => UNKNOWN_PRICE_LABEL.to_string(),
     }
+}
+
+fn original_price_text(price: &SteamPrice) -> Option<String> {
+    if let Some(formatted) = price.original_formatted.as_deref().map(str::trim)
+        && !formatted.is_empty()
+    {
+        return Some(formatted.to_string());
+    }
+
+    price.original_price_cents.map(fallback_currency)
+}
+
+fn fallback_currency(cents: u32) -> String {
+    let major = cents / 100;
+    let minor = cents % 100;
+    format!("${major}.{minor:02}")
+}
+
+fn strike_through(input: &str) -> String {
+    let mut out = String::with_capacity(input.len() * 2);
+    for ch in input.chars() {
+        out.push(ch);
+        if !ch.is_whitespace() {
+            out.push(STRIKETHROUGH_OVERLAY);
+        }
+    }
+    out
 }
 
 fn format_item_type(item_type: SteamItemType) -> &'static str {
@@ -193,6 +240,7 @@ mod tests {
                 Some(SteamPrice {
                     final_price_cents: Some(0),
                     final_formatted: Some("Free".to_string()),
+                    ..SteamPrice::default()
                 }),
                 SteamItemType::Game,
             )],
@@ -262,6 +310,7 @@ mod tests {
                 Some(SteamPrice {
                     final_price_cents: None,
                     final_formatted: Some(long_price.clone()),
+                    ..SteamPrice::default()
                 }),
                 SteamItemType::Soundtrack,
             )],
@@ -282,6 +331,7 @@ mod tests {
                 Some(SteamPrice {
                     final_price_cents: None,
                     final_formatted: Some(long_price),
+                    ..SteamPrice::default()
                 }),
                 SteamItemType::Soundtrack,
             )],
@@ -372,5 +422,140 @@ mod tests {
             canonical_app_url(570, "jp", ""),
             "https://store.steampowered.com/app/570/?cc=jp"
         );
+    }
+
+    #[test]
+    fn feedback_subtitle_renders_discount_with_strikethrough_when_discounted() {
+        let mut result = fixture_result(
+            Some(SteamPrice {
+                final_price_cents: Some(34000),
+                final_formatted: Some("NT$ 340".to_string()),
+                original_price_cents: Some(85000),
+                original_formatted: Some("NT$ 850".to_string()),
+                discount_percent: Some(60),
+            }),
+            SteamItemType::Game,
+        );
+        result.app_id = 12345;
+        result.name = "Discounted Pack".to_string();
+
+        let feedback =
+            search_results_to_feedback("us", "pack", &[], false, "english", &[result.clone()]);
+        let subtitle = feedback.items[0]
+            .subtitle
+            .as_deref()
+            .expect("subtitle exists");
+
+        assert!(
+            subtitle.starts_with("NT$ 340 (N"),
+            "unexpected subtitle: {subtitle}"
+        );
+        assert!(subtitle.contains("-60%"), "missing discount: {subtitle}");
+        assert!(
+            subtitle.contains('\u{0336}'),
+            "expected strikethrough overlay in subtitle: {subtitle}"
+        );
+        assert!(
+            !subtitle.contains("was "),
+            "should not emit `was` literal: {subtitle}"
+        );
+    }
+
+    #[test]
+    fn feedback_subtitle_keeps_legacy_format_when_no_discount() {
+        let result = fixture_result(
+            Some(SteamPrice {
+                final_price_cents: Some(15999),
+                final_formatted: Some("NT$ 1,599".to_string()),
+                ..SteamPrice::default()
+            }),
+            SteamItemType::Game,
+        );
+
+        let feedback = search_results_to_feedback("us", "x", &[], false, "english", &[result]);
+        assert_eq!(
+            feedback.items[0].subtitle.as_deref(),
+            Some("NT$ 1,599 | Game")
+        );
+    }
+
+    #[test]
+    fn feedback_sorts_results_by_discount_percent_descending() {
+        let full_price = SteamSearchResult {
+            app_id: 1,
+            name: "Full Price".to_string(),
+            price: Some(SteamPrice {
+                final_price_cents: Some(15999),
+                final_formatted: Some("NT$ 1,599".to_string()),
+                ..SteamPrice::default()
+            }),
+            item_type: SteamItemType::Game,
+            platforms: SteamPlatforms::default(),
+        };
+        let light_discount = SteamSearchResult {
+            app_id: 2,
+            name: "Light".to_string(),
+            price: Some(SteamPrice {
+                final_price_cents: Some(7500),
+                final_formatted: Some("NT$ 75".to_string()),
+                original_price_cents: Some(10000),
+                original_formatted: Some("NT$ 100".to_string()),
+                discount_percent: Some(25),
+            }),
+            item_type: SteamItemType::Game,
+            platforms: SteamPlatforms::default(),
+        };
+        let heavy_discount = SteamSearchResult {
+            app_id: 3,
+            name: "Heavy".to_string(),
+            price: Some(SteamPrice {
+                final_price_cents: Some(3400),
+                final_formatted: Some("NT$ 340".to_string()),
+                original_price_cents: Some(8500),
+                original_formatted: Some("NT$ 850".to_string()),
+                discount_percent: Some(60),
+            }),
+            item_type: SteamItemType::Game,
+            platforms: SteamPlatforms::default(),
+        };
+
+        let feedback = search_results_to_feedback(
+            "us",
+            "x",
+            &[],
+            false,
+            "english",
+            &[
+                full_price.clone(),
+                light_discount.clone(),
+                heavy_discount.clone(),
+            ],
+        );
+
+        assert_eq!(feedback.items[0].title, "Heavy");
+        assert_eq!(feedback.items[1].title, "Light");
+        assert_eq!(feedback.items[2].title, "Full Price");
+    }
+
+    #[test]
+    fn feedback_sort_is_stable_for_undiscounted_results() {
+        let make = |app_id, name: &str| SteamSearchResult {
+            app_id,
+            name: name.to_string(),
+            price: Some(SteamPrice {
+                final_price_cents: Some(1000),
+                final_formatted: Some("NT$ 10".to_string()),
+                ..SteamPrice::default()
+            }),
+            item_type: SteamItemType::Game,
+            platforms: SteamPlatforms::default(),
+        };
+        let inputs = [make(1, "Alpha"), make(2, "Bravo"), make(3, "Charlie")];
+
+        let feedback = search_results_to_feedback("us", "x", &[], false, "english", &inputs);
+
+        assert_eq!(feedback.items[0].title, "Alpha");
+        assert_eq!(feedback.items[1].title, "Bravo");
+        assert_eq!(feedback.items[2].title, "Charlie");
     }
 }

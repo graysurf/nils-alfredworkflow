@@ -33,10 +33,34 @@ pub enum SteamItemType {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SteamPrice {
     pub final_price_cents: Option<u32>,
     pub final_formatted: Option<String>,
+    pub original_price_cents: Option<u32>,
+    pub original_formatted: Option<String>,
+    pub discount_percent: Option<u32>,
+}
+
+impl SteamPrice {
+    pub fn compute_discount_percent(
+        original_cents: Option<u32>,
+        final_cents: Option<u32>,
+    ) -> Option<u32> {
+        let original = original_cents?;
+        let final_value = final_cents?;
+        if original == 0 || final_value >= original {
+            return None;
+        }
+
+        let saved = original - final_value;
+        let percent = (u64::from(saved) * 100 + u64::from(original) / 2) / u64::from(original);
+        if percent == 0 {
+            None
+        } else {
+            Some(u32::try_from(percent).unwrap_or(u32::MAX))
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -233,14 +257,26 @@ fn parse_search_suggestions_response(
                     .final_formatted
                     .map(|value| value.trim().to_string())
                     .filter(|value| !value.is_empty());
+                let original_formatted = candidate
+                    .original_formatted
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty());
 
                 if candidate.final_price_cents.is_none() && final_formatted.is_none() {
                     return None;
                 }
 
+                let discount_percent = SteamPrice::compute_discount_percent(
+                    candidate.original_price_cents,
+                    candidate.final_price_cents,
+                );
+
                 Some(SteamPrice {
                     final_price_cents: candidate.final_price_cents,
                     final_formatted,
+                    original_price_cents: candidate.original_price_cents,
+                    original_formatted,
+                    discount_percent,
                 })
             });
 
@@ -294,12 +330,27 @@ fn parse_store_search_response(
                 return None;
             }
 
-            let price = item.price.map(|price| SteamPrice {
-                final_price_cents: price.final_price_cents,
-                final_formatted: price
+            let price = item.price.map(|price| {
+                let final_formatted = price
                     .final_formatted
                     .map(|value| value.trim().to_string())
-                    .filter(|value| !value.is_empty()),
+                    .filter(|value| !value.is_empty());
+                let original_formatted = price
+                    .initial_formatted
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty());
+                let discount_percent = SteamPrice::compute_discount_percent(
+                    price.original_price_cents,
+                    price.final_price_cents,
+                );
+
+                SteamPrice {
+                    final_price_cents: price.final_price_cents,
+                    final_formatted,
+                    original_price_cents: price.original_price_cents,
+                    original_formatted,
+                    discount_percent,
+                }
             });
 
             let platforms = SteamPlatforms {
@@ -439,8 +490,12 @@ struct SearchSuggestionResult {
 struct SearchSuggestionPrice {
     #[prost(optional, uint32, tag = "5")]
     final_price_cents: Option<u32>,
+    #[prost(optional, uint32, tag = "6")]
+    original_price_cents: Option<u32>,
     #[prost(optional, string, tag = "8")]
     final_formatted: Option<String>,
+    #[prost(optional, string, tag = "9")]
+    original_formatted: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -467,8 +522,12 @@ struct StoreSearchItem {
 struct StoreSearchPrice {
     #[serde(default, rename = "final")]
     final_price_cents: Option<u32>,
+    #[serde(default, rename = "initial")]
+    original_price_cents: Option<u32>,
     #[serde(default)]
     final_formatted: Option<String>,
+    #[serde(default)]
+    initial_formatted: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -569,6 +628,8 @@ mod tests {
                 prices: vec![SearchSuggestionPrice {
                     final_price_cents: Some(0),
                     final_formatted: Some("Free".to_string()),
+                    original_price_cents: None,
+                    original_formatted: None,
                 }],
             }],
         }
@@ -584,12 +645,39 @@ mod tests {
             Some(SteamPrice {
                 final_price_cents: Some(0),
                 final_formatted: Some("Free".to_string()),
+                ..SteamPrice::default()
             })
         );
         assert_eq!(results[0].item_type, SteamItemType::Game);
         assert!(!results[0].platforms.windows);
         assert!(!results[0].platforms.mac);
         assert!(!results[0].platforms.linux);
+    }
+
+    #[test]
+    fn steam_store_api_parse_search_response_carries_discount_fields() {
+        let body = SearchSuggestionsResponse {
+            results: vec![SearchSuggestionResult {
+                app_id: Some(35704),
+                name: "Hero Siege".to_string(),
+                item_type_code: Some(0),
+                prices: vec![SearchSuggestionPrice {
+                    final_price_cents: Some(5000),
+                    final_formatted: Some("NT$ 50.00".to_string()),
+                    original_price_cents: Some(15200),
+                    original_formatted: Some("NT$ 152.00".to_string()),
+                }],
+            }],
+        }
+        .encode_to_vec();
+
+        let results = parse_search_response(200, body.as_slice()).expect("response should parse");
+
+        let price = results[0].price.as_ref().expect("price should exist");
+        assert_eq!(price.final_price_cents, Some(5000));
+        assert_eq!(price.original_price_cents, Some(15200));
+        assert_eq!(price.original_formatted.as_deref(), Some("NT$ 152.00"));
+        assert_eq!(price.discount_percent, Some(67));
     }
 
     #[test]
@@ -616,12 +704,53 @@ mod tests {
             Some(SteamPrice {
                 final_price_cents: Some(0),
                 final_formatted: Some("Free".to_string()),
+                ..SteamPrice::default()
             })
         );
         assert_eq!(results[0].item_type, SteamItemType::Application);
         assert!(results[0].platforms.windows);
         assert!(!results[0].platforms.mac);
         assert!(results[0].platforms.linux);
+    }
+
+    #[test]
+    fn steam_store_api_parse_store_search_response_carries_discount_fields() {
+        let body = br#"{
+            "items": [
+                {
+                    "id": 1091500,
+                    "name": "Cyberpunk 2077",
+                    "type": "app",
+                    "price": {"initial": 159900, "final": 79900, "currency": "TWD"},
+                    "platforms": {"windows": true, "mac": false, "linux": false}
+                }
+            ]
+        }"#;
+
+        let results = parse_store_search_response(200, body).expect("response should parse");
+        let price = results[0].price.as_ref().expect("price should exist");
+        assert_eq!(price.final_price_cents, Some(79900));
+        assert_eq!(price.original_price_cents, Some(159900));
+        assert_eq!(price.discount_percent, Some(50));
+    }
+
+    #[test]
+    fn steam_store_api_compute_discount_percent_handles_edges() {
+        assert_eq!(
+            SteamPrice::compute_discount_percent(Some(15200), Some(5000)),
+            Some(67),
+        );
+        assert_eq!(
+            SteamPrice::compute_discount_percent(Some(1000), Some(1000)),
+            None,
+        );
+        assert_eq!(
+            SteamPrice::compute_discount_percent(Some(1000), Some(1500)),
+            None,
+        );
+        assert_eq!(SteamPrice::compute_discount_percent(Some(0), Some(0)), None);
+        assert_eq!(SteamPrice::compute_discount_percent(None, Some(500)), None);
+        assert_eq!(SteamPrice::compute_discount_percent(Some(500), None), None);
     }
 
     #[test]

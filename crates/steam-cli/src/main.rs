@@ -253,6 +253,7 @@ mod tests {
                     price: Some(SteamPrice {
                         final_price_cents: Some(0),
                         final_formatted: Some("Free".to_string()),
+                        ..SteamPrice::default()
                     }),
                     item_type: SteamItemType::Game,
                     platforms: SteamPlatforms {
@@ -299,6 +300,7 @@ mod tests {
                     price: Some(SteamPrice {
                         final_price_cents: Some(0),
                         final_formatted: Some("Free".to_string()),
+                        ..SteamPrice::default()
                     }),
                     item_type: SteamItemType::Game,
                     platforms: SteamPlatforms {
