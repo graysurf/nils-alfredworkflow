@@ -28,6 +28,12 @@ enum Commands {
         #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
         output: OutputModeArg,
     },
+    /// List current Steam Store specials (discounted titles) as Alfred feedback JSON.
+    Specials {
+        /// Output mode: workflow-compatible Alfred JSON or service envelope JSON.
+        #[arg(long, value_enum, default_value_t = OutputModeArg::AlfredJson)]
+        output: OutputModeArg,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -50,12 +56,14 @@ impl Cli {
     fn command_name(&self) -> &'static str {
         match &self.command {
             Commands::Search { .. } => "search",
+            Commands::Specials { .. } => "specials",
         }
     }
 
     fn output_mode(&self) -> OutputMode {
         match &self.command {
             Commands::Search { output, .. } => (*output).into(),
+            Commands::Specials { output } => (*output).into(),
         }
     }
 }
@@ -147,17 +155,24 @@ fn main() {
 }
 
 fn run(cli: Cli) -> Result<String, AppError> {
-    run_with(cli, RuntimeConfig::from_env, steam_store_api::search_apps)
+    run_with(
+        cli,
+        RuntimeConfig::from_env,
+        steam_store_api::search_apps,
+        steam_store_api::fetch_specials,
+    )
 }
 
-fn run_with<LoadConfig, SearchApps>(
+fn run_with<LoadConfig, SearchApps, FetchSpecials>(
     cli: Cli,
     load_config: LoadConfig,
     search_apps: SearchApps,
+    fetch_specials: FetchSpecials,
 ) -> Result<String, AppError>
 where
     LoadConfig: Fn() -> Result<RuntimeConfig, ConfigError>,
     SearchApps: Fn(&RuntimeConfig, &str) -> Result<Vec<SteamSearchResult>, SteamStoreApiError>,
+    FetchSpecials: Fn(&RuntimeConfig) -> Result<Vec<SteamSearchResult>, SteamStoreApiError>,
 {
     match cli.command {
         Commands::Search { query, output } => {
@@ -178,6 +193,14 @@ where
                 &results,
             );
             render_feedback(output.into(), "search", payload)
+        }
+        Commands::Specials { output } => {
+            let config = load_config().map_err(AppError::from_config)?;
+            let results = fetch_specials(&config).map_err(AppError::from_steam_api)?;
+
+            let payload =
+                feedback::specials_to_feedback(&config.region, &config.language, &results);
+            render_feedback(output.into(), "specials", payload)
         }
     }
 }
@@ -263,6 +286,7 @@ mod tests {
                     },
                 }])
             },
+            |_| panic!("specials must not be called for the search command"),
         )
         .expect("search should succeed");
 
@@ -310,6 +334,7 @@ mod tests {
                     },
                 }])
             },
+            |_| panic!("specials must not be called for the search command"),
         )
         .expect("search should succeed");
 
@@ -340,6 +365,7 @@ mod tests {
             cli,
             || Ok(fixture_config()),
             |_, _| Ok(Vec::<SteamSearchResult>::new()),
+            |_| panic!("specials must not be called for the search command"),
         )
         .expect("search should succeed");
 
@@ -365,6 +391,7 @@ mod tests {
             |_, _| {
                 panic!("api should not be called when query is empty");
             },
+            |_| panic!("specials must not be called when query is empty"),
         )
         .expect_err("empty query must fail");
 
@@ -382,6 +409,7 @@ mod tests {
             |_, _| {
                 panic!("api should not be called when config is invalid");
             },
+            |_| panic!("specials must not be called when config is invalid"),
         )
         .expect_err("invalid config should fail");
 
@@ -402,6 +430,7 @@ mod tests {
                     message: "upstream unavailable".to_string(),
                 })
             },
+            |_| panic!("specials must not be called for the search command"),
         )
         .expect_err("api failure should fail");
 
@@ -410,6 +439,77 @@ mod tests {
             error.message,
             "steam store api error (503): upstream unavailable"
         );
+    }
+
+    #[test]
+    fn main_specials_command_outputs_sorted_feedback() {
+        let cli = Cli::parse_from(["steam-cli", "specials"]);
+
+        let output = run_with(
+            cli,
+            || Ok(fixture_config()),
+            |_, _| panic!("search must not be called for the specials command"),
+            |_| {
+                Ok(vec![
+                    SteamSearchResult {
+                        app_id: 1,
+                        name: "Light".to_string(),
+                        price: Some(SteamPrice {
+                            final_price_cents: Some(7500),
+                            final_formatted: Some("NT$ 75".to_string()),
+                            original_price_cents: Some(10000),
+                            original_formatted: Some("NT$ 100".to_string()),
+                            discount_percent: Some(25),
+                        }),
+                        item_type: SteamItemType::Game,
+                        platforms: SteamPlatforms::default(),
+                    },
+                    SteamSearchResult {
+                        app_id: 2,
+                        name: "Heavy".to_string(),
+                        price: Some(SteamPrice {
+                            final_price_cents: Some(3400),
+                            final_formatted: Some("NT$ 340".to_string()),
+                            original_price_cents: Some(8500),
+                            original_formatted: Some("NT$ 850".to_string()),
+                            discount_percent: Some(60),
+                        }),
+                        item_type: SteamItemType::Game,
+                        platforms: SteamPlatforms::default(),
+                    },
+                ])
+            },
+        )
+        .expect("specials should succeed");
+
+        let json: Value = serde_json::from_str(&output).expect("output must be JSON");
+        let items = json
+            .get("items")
+            .and_then(Value::as_array)
+            .expect("items should be array");
+
+        assert_eq!(items[0].get("title").and_then(Value::as_str), Some("Heavy"));
+        assert_eq!(items[1].get("title").and_then(Value::as_str), Some("Light"));
+    }
+
+    #[test]
+    fn main_specials_surfaces_api_errors_as_runtime_errors() {
+        let cli = Cli::parse_from(["steam-cli", "specials"]);
+
+        let error = run_with(
+            cli,
+            || Ok(fixture_config()),
+            |_, _| panic!("search must not be called for the specials command"),
+            |_| {
+                Err(SteamStoreApiError::Http {
+                    status: 503,
+                    message: "upstream unavailable".to_string(),
+                })
+            },
+        )
+        .expect_err("api failure should fail");
+
+        assert_eq!(error.kind, ErrorKind::Runtime);
     }
 
     #[test]

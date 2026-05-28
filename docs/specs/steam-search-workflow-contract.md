@@ -11,6 +11,8 @@
 
 - Default search source: `https://api.steampowered.com/IStoreQueryService/SearchSuggestions/v1`.
 - Optional legacy search source: `https://store.steampowered.com/api/storesearch`.
+- Specials (empty-query) source: `https://store.steampowered.com/api/featuredcategories`
+  (`specials.items[]`), an official endpoint (no scraping).
 - Backend selector: `STEAM_SEARCH_API` (`search-suggestions` default, `storesearch` legacy).
 - Request contract:
   - Always preserve query, region/country, language, and max-results semantics across backends.
@@ -28,6 +30,20 @@
 - `STEAM_SHOW_REGION_OPTIONS` controls whether region rows are shown; default is off (`0`).
 - Action requery rows use the `steam-requery:<region>:<query>` argument contract.
 - Region switching persists override state in workflow cache/data and re-runs the current keyword query.
+
+## Empty Query Behavior (Specials)
+
+- When the query is empty, the workflow shows the current Steam Store specials
+  (discounted titles) instead of a guidance row.
+- Specials are fetched via `steam-cli specials`, mapped to the same Alfred row
+  contract as search, and ranked by discount percent descending with
+  strike-through original prices.
+- `featuredcategories` returns integer minor units plus a currency code and no
+  pre-formatted price string; the CLI renders the display price locally.
+- The set is the region-curated specials carousel (a bounded list), not a full
+  discount leaderboard; `STEAM_MAX_RESULTS` truncates it client-side.
+- Submitting an empty query clears any region override and uses the configured
+  `STEAM_REGION`.
 
 ## Fallback And Error Strategy
 

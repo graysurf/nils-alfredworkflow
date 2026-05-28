@@ -127,11 +127,21 @@ set -euo pipefail
 if [[ -n "${STEAM_STUB_LOG:-}" ]]; then
   printf '%s | region=%s\n' "$*" "${STEAM_REGION:-}" >>"$STEAM_STUB_LOG"
 fi
-[[ "${1:-}" == "search" ]] || exit 9
-[[ "${2:-}" == "--query" ]] || exit 9
-query="${3:-}"
-printf '{"items":[{"title":"Steam stub","subtitle":"query=%s","arg":"https://store.steampowered.com/app/620/","valid":true}]}' "$query"
-printf '\n'
+case "${1:-}" in
+search)
+  [[ "${2:-}" == "--query" ]] || exit 9
+  query="${3:-}"
+  printf '{"items":[{"title":"Steam stub","subtitle":"query=%s","arg":"https://store.steampowered.com/app/620/","valid":true}]}' "$query"
+  printf '\n'
+  ;;
+specials)
+  printf '{"items":[{"title":"Steam specials stub","subtitle":"region=%s","arg":"https://store.steampowered.com/app/620/","valid":true}]}' "${STEAM_REGION:-}"
+  printf '\n'
+  ;;
+*)
+  exit 9
+  ;;
+esac
 EOS
 chmod +x "$tmp_dir/stubs/steam-cli-ok"
 
@@ -171,7 +181,7 @@ override_first_line="$(sed -n '1p' "$override_region_log")"
 [[ "$override_first_line" == *"region=us"* ]] || fail "script_filter must consume requery-selected region override"
 
 empty_query_json="$({ STEAM_CLI_BIN="$tmp_dir/stubs/steam-cli-ok" "$workflow_dir/scripts/script_filter.sh" "   "; })"
-assert_jq_json "$empty_query_json" '.items[0].title == "Enter a search query"' "empty query guidance title mismatch"
+assert_jq_json "$empty_query_json" '.items[0].title == "Steam specials stub"' "empty query should display Steam specials"
 [[ ! -f "$tmp_dir/cache/steam-region-override.state" ]] || fail "empty query should clear region override state"
 
 default_region_log="$tmp_dir/steam-default-region.log"

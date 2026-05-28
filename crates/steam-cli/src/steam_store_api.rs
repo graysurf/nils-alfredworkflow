@@ -8,8 +8,11 @@ use crate::config::{RuntimeConfig, SteamSearchApi};
 pub const SEARCH_SUGGESTIONS_ENDPOINT: &str =
     "https://api.steampowered.com/IStoreQueryService/SearchSuggestions/v1";
 pub const STORE_SEARCH_ENDPOINT: &str = "https://store.steampowered.com/api/storesearch";
+pub const FEATURED_CATEGORIES_ENDPOINT: &str =
+    "https://store.steampowered.com/api/featuredcategories";
 const SEARCH_SUGGESTIONS_ENDPOINT_ENV: &str = "STEAM_SEARCH_SUGGESTIONS_ENDPOINT";
 const STORE_SEARCH_ENDPOINT_ENV: &str = "STEAM_STORE_SEARCH_ENDPOINT";
+const FEATURED_CATEGORIES_ENDPOINT_ENV: &str = "STEAM_FEATURED_CATEGORIES_ENDPOINT";
 const SEARCH_ORIGIN: &str = "https://store.steampowered.com";
 const USER_AGENT: &str = "nils-alfredworkflow-steam-search/0.1.0";
 
@@ -82,6 +85,14 @@ impl SteamItemType {
         }
     }
 
+    pub fn from_featured_type(code: Option<u32>) -> Self {
+        match code.unwrap_or(0) {
+            0 => Self::Game,
+            4 => Self::Dlc,
+            _ => Self::Unknown,
+        }
+    }
+
     pub fn from_storesearch_type(raw: &str) -> Self {
         match raw.trim().to_ascii_lowercase().as_str() {
             "app" => Self::Application,
@@ -120,8 +131,44 @@ pub fn search_apps(
     }
 }
 
+pub fn fetch_specials(
+    config: &RuntimeConfig,
+) -> Result<Vec<SteamSearchResult>, SteamStoreApiError> {
+    let client = reqwest::blocking::Client::new();
+    let endpoint = resolve_endpoint(
+        FEATURED_CATEGORIES_ENDPOINT_ENV,
+        FEATURED_CATEGORIES_ENDPOINT,
+    );
+    let params = build_featured_categories_query_params(config);
+
+    let response = client
+        .get(endpoint)
+        .header(reqwest::header::USER_AGENT, USER_AGENT)
+        .query(&params)
+        .send()
+        .map_err(|source| SteamStoreApiError::Transport { source })?;
+
+    let status_code = response.status().as_u16();
+    let body = response
+        .bytes()
+        .map_err(|source| SteamStoreApiError::Transport { source })?
+        .to_vec();
+
+    let mut results = parse_featured_categories_response(status_code, &body)?;
+    results.truncate(usize::from(config.max_results));
+    Ok(results)
+}
+
 pub fn build_query_params(config: &RuntimeConfig, query: &str) -> Vec<(String, String)> {
     build_search_suggestions_query_params(config, query)
+}
+
+fn build_featured_categories_query_params(config: &RuntimeConfig) -> Vec<(String, String)> {
+    let mut params = vec![("cc".to_string(), config.region.clone())];
+    if !config.language.is_empty() {
+        params.push(("l".to_string(), config.language.clone()));
+    }
+    params
 }
 
 pub fn parse_search_response(
@@ -373,6 +420,139 @@ fn parse_store_search_response(
     Ok(results)
 }
 
+pub fn parse_featured_categories_response(
+    status_code: u16,
+    body: &[u8],
+) -> Result<Vec<SteamSearchResult>, SteamStoreApiError> {
+    if !(200..=299).contains(&status_code) {
+        let message = extract_error_message(body).unwrap_or_else(|| format!("HTTP {status_code}"));
+        return Err(SteamStoreApiError::Http {
+            status: status_code,
+            message,
+        });
+    }
+
+    let body_text = std::str::from_utf8(body)
+        .map_err(|source| SteamStoreApiError::InvalidResponse(ResponseDecodeError::Utf8(source)))?;
+    let payload: FeaturedCategoriesResponse = serde_json::from_str(body_text)
+        .map_err(|source| SteamStoreApiError::InvalidResponse(ResponseDecodeError::Json(source)))?;
+
+    let Some(specials) = payload.specials else {
+        return Ok(Vec::new());
+    };
+
+    let results = specials
+        .items
+        .into_iter()
+        .filter_map(|item| {
+            let app_id = item.id?;
+            if app_id == 0 {
+                return None;
+            }
+
+            let name = item.name.trim().to_string();
+            if name.is_empty() {
+                return None;
+            }
+
+            let currency = item.currency.as_deref();
+            let final_formatted = item
+                .final_price
+                .and_then(|cents| format_price(cents, currency));
+            let original_formatted = item
+                .original_price
+                .and_then(|cents| format_price(cents, currency));
+
+            let discount_percent = item
+                .discount_percent
+                .filter(|percent| *percent > 0)
+                .or_else(|| {
+                    SteamPrice::compute_discount_percent(item.original_price, item.final_price)
+                });
+
+            let price = if item.final_price.is_some() || final_formatted.is_some() {
+                Some(SteamPrice {
+                    final_price_cents: item.final_price,
+                    final_formatted,
+                    original_price_cents: item.original_price,
+                    original_formatted,
+                    discount_percent,
+                })
+            } else {
+                None
+            };
+
+            let platforms = SteamPlatforms {
+                windows: item.windows_available,
+                mac: item.mac_available,
+                linux: item.linux_available,
+            };
+            let item_type = SteamItemType::from_featured_type(item.item_type_code);
+
+            Some(SteamSearchResult {
+                app_id,
+                name,
+                price,
+                item_type,
+                platforms,
+            })
+        })
+        .collect();
+
+    Ok(results)
+}
+
+// featuredcategories returns integer minor units (price * 100) plus a currency
+// code, but no pre-formatted price string, so we render one here.
+fn format_price(cents: u32, currency: Option<&str>) -> Option<String> {
+    let code = currency
+        .map(str::trim)
+        .filter(|value| !value.is_empty())?
+        .to_ascii_uppercase();
+
+    let (symbol, decimals) = currency_format_spec(&code);
+    let whole = cents / 100;
+    let grouped = group_thousands(u64::from(whole));
+
+    let amount = if decimals == 0 {
+        grouped
+    } else {
+        format!("{grouped}.{minor:02}", minor = cents % 100)
+    };
+
+    Some(match symbol {
+        Some(symbol) => format!("{symbol}{amount}"),
+        None => format!("{amount} {code}"),
+    })
+}
+
+fn currency_format_spec(code: &str) -> (Option<&'static str>, u32) {
+    match code {
+        "USD" => (Some("$"), 2),
+        "EUR" => (Some("€"), 2),
+        "GBP" => (Some("£"), 2),
+        "JPY" => (Some("¥"), 0),
+        "KRW" => (Some("₩"), 0),
+        "TWD" => (Some("NT$ "), 0),
+        "HKD" => (Some("HK$ "), 2),
+        "CNY" => (Some("¥ "), 2),
+        _ => (None, 2),
+    }
+}
+
+fn group_thousands(value: u64) -> String {
+    let digits = value.to_string();
+    let len = digits.len();
+    let mut out = String::with_capacity(len + len / 3);
+    for (index, ch) in digits.chars().enumerate() {
+        if index > 0 && (len - index).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(ch);
+    }
+    out
+}
+
 fn resolve_endpoint(env_key: &str, default_endpoint: &str) -> String {
     std::env::var(env_key)
         .ok()
@@ -538,6 +718,42 @@ struct StoreSearchPlatformPayload {
     mac: bool,
     #[serde(default)]
     linux: bool,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct FeaturedCategoriesResponse {
+    #[serde(default)]
+    specials: Option<FeaturedSpecialsBlock>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct FeaturedSpecialsBlock {
+    #[serde(default)]
+    items: Vec<FeaturedSpecialsItem>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct FeaturedSpecialsItem {
+    #[serde(default)]
+    id: Option<u32>,
+    #[serde(default)]
+    name: String,
+    #[serde(default, rename = "type")]
+    item_type_code: Option<u32>,
+    #[serde(default)]
+    discount_percent: Option<u32>,
+    #[serde(default)]
+    original_price: Option<u32>,
+    #[serde(default)]
+    final_price: Option<u32>,
+    #[serde(default)]
+    currency: Option<String>,
+    #[serde(default)]
+    windows_available: bool,
+    #[serde(default)]
+    mac_available: bool,
+    #[serde(default)]
+    linux_available: bool,
 }
 
 #[cfg(test)]
@@ -869,5 +1085,92 @@ mod tests {
             parse_search_response(200, b"not-protobuf").expect_err("invalid payload should fail");
 
         assert!(matches!(err, SteamStoreApiError::InvalidResponse(_)));
+    }
+
+    #[test]
+    fn steam_store_api_parse_featured_categories_maps_specials_with_formatted_prices() {
+        let body = br#"{
+            "specials": {
+                "id": 0,
+                "name": "Specials",
+                "items": [
+                    {
+                        "id": 1118520,
+                        "type": 0,
+                        "name": "Paralives",
+                        "discounted": true,
+                        "discount_percent": 75,
+                        "original_price": 498000,
+                        "final_price": 124500,
+                        "currency": "JPY",
+                        "windows_available": true,
+                        "mac_available": true,
+                        "linux_available": false
+                    }
+                ]
+            }
+        }"#;
+
+        let results = parse_featured_categories_response(200, body).expect("response should parse");
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].app_id, 1118520);
+        assert_eq!(results[0].name, "Paralives");
+        assert_eq!(results[0].item_type, SteamItemType::Game);
+        assert!(results[0].platforms.windows);
+        assert!(results[0].platforms.mac);
+        assert!(!results[0].platforms.linux);
+
+        let price = results[0].price.as_ref().expect("price should exist");
+        assert_eq!(price.final_price_cents, Some(124500));
+        assert_eq!(price.original_price_cents, Some(498000));
+        assert_eq!(price.final_formatted.as_deref(), Some("¥1,245"));
+        assert_eq!(price.original_formatted.as_deref(), Some("¥4,980"));
+        assert_eq!(price.discount_percent, Some(75));
+    }
+
+    #[test]
+    fn steam_store_api_parse_featured_categories_skips_partial_items_and_supports_missing_block() {
+        let body = br#"{
+            "specials": {
+                "items": [
+                    {"id": 0, "name": "skip", "final_price": 100, "currency": "USD"},
+                    {"id": 730, "name": "", "final_price": 100, "currency": "USD"},
+                    {"id": 570, "name": "Dota 2", "final_price": 0, "currency": "USD"}
+                ]
+            }
+        }"#;
+        let results = parse_featured_categories_response(200, body).expect("response should parse");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].app_id, 570);
+
+        let empty = parse_featured_categories_response(200, b"{}").expect("missing block parses");
+        assert!(empty.is_empty());
+    }
+
+    #[test]
+    fn steam_store_api_parse_featured_categories_surfaces_http_errors() {
+        let err = parse_featured_categories_response(503, br#"{"message":"down"}"#)
+            .expect_err("non-2xx should fail");
+        match err {
+            SteamStoreApiError::Http { status, message } => {
+                assert_eq!(status, 503);
+                assert_eq!(message, "down");
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn steam_store_api_format_price_renders_known_and_unknown_currencies() {
+        assert_eq!(format_price(3999, Some("USD")).as_deref(), Some("$39.99"));
+        assert_eq!(format_price(59900, Some("TWD")).as_deref(), Some("NT$ 599"));
+        assert_eq!(format_price(498000, Some("JPY")).as_deref(), Some("¥4,980"));
+        assert_eq!(
+            format_price(123456, Some("CHF")).as_deref(),
+            Some("1,234.56 CHF")
+        );
+        assert_eq!(format_price(1000, None), None);
+        assert_eq!(format_price(1000, Some("   ")), None);
     }
 }

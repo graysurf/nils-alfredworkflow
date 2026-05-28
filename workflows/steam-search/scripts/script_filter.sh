@@ -185,12 +185,61 @@ steam_search_fetch_json() {
   return 1
 }
 
+steam_specials_fetch_json() {
+  local err_file="${TMPDIR:-/tmp}/steam-search-specials.err.$$.$RANDOM"
+
+  if [[ -n "${STEAM_SPECIALS_STUB_FILE:-}" && -f "${STEAM_SPECIALS_STUB_FILE}" ]]; then
+    cat "${STEAM_SPECIALS_STUB_FILE}"
+    return 0
+  fi
+
+  local steam_cli
+  if ! steam_cli="$(resolve_steam_cli 2>"$err_file")"; then
+    cat "$err_file" >&2
+    rm -f "$err_file"
+    return 1
+  fi
+
+  local json_output
+  if json_output="$(STEAM_REGION="$STEAM_ACTIVE_REGION" "$steam_cli" specials --output alfred-json 2>"$err_file")"; then
+    rm -f "$err_file"
+
+    if [[ -z "$json_output" ]]; then
+      echo "steam-cli returned empty response" >&2
+      return 1
+    fi
+
+    if command -v jq >/dev/null 2>&1; then
+      if ! jq -e '.items | type == "array"' >/dev/null <<<"$json_output"; then
+        echo "steam-cli returned malformed Alfred JSON" >&2
+        return 1
+      fi
+    fi
+
+    printf '%s\n' "$json_output"
+    return 0
+  fi
+
+  cat "$err_file" >&2
+  rm -f "$err_file"
+  return 1
+}
+
 query="$(sfqp_resolve_query_input "${1:-}")"
 query="$(sfqp_trim "$query")"
 
 if [[ -z "$query" ]]; then
   clear_region_override
-  sfej_emit_error_item_json "Enter a search query" "Type keywords after st to search Steam."
+  STEAM_ACTIVE_REGION="$(resolve_active_region)"
+
+  specials_err="${TMPDIR:-/tmp}/steam-search-specials-main.err.$$.$RANDOM"
+  if specials_json="$(steam_specials_fetch_json 2>"$specials_err")"; then
+    rm -f "$specials_err"
+    printf '%s\n' "$specials_json"
+  else
+    print_error_item "$(cat "$specials_err" 2>/dev/null)"
+    rm -f "$specials_err"
+  fi
   exit 0
 fi
 

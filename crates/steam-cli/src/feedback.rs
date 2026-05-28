@@ -4,6 +4,8 @@ use crate::steam_store_api::{SteamItemType, SteamPrice, SteamSearchResult};
 
 const NO_RESULTS_TITLE: &str = "No games found";
 const NO_RESULTS_SUBTITLE: &str = "Try broader keywords or switch STEAM_REGION.";
+const NO_SPECIALS_TITLE: &str = "No Steam specials right now";
+const NO_SPECIALS_SUBTITLE: &str = "Steam returned no featured discounts for this region.";
 const REGION_CURRENT_TITLE_PREFIX: &str = "Current region:";
 const REGION_SWITCH_TITLE_PREFIX: &str = "Search in";
 const REGION_SWITCH_ARG_PREFIX: &str = "steam-requery:";
@@ -45,6 +47,22 @@ pub fn search_results_to_feedback(
             .map(|result| result_to_item(region, language, result)),
     );
     Feedback::new(items)
+}
+
+pub fn specials_to_feedback(
+    region: &str,
+    language: &str,
+    results: &[SteamSearchResult],
+) -> Feedback {
+    if results.is_empty() {
+        return Feedback::new(vec![
+            Item::new(NO_SPECIALS_TITLE)
+                .with_subtitle(NO_SPECIALS_SUBTITLE)
+                .with_valid(false),
+        ]);
+    }
+
+    search_results_to_feedback(region, "", &[], false, language, results)
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -535,6 +553,55 @@ mod tests {
         assert_eq!(feedback.items[0].title, "Heavy");
         assert_eq!(feedback.items[1].title, "Light");
         assert_eq!(feedback.items[2].title, "Full Price");
+    }
+
+    #[test]
+    fn feedback_specials_empty_emits_dedicated_no_specials_row() {
+        let feedback = specials_to_feedback("tw", "english", &[]);
+        assert_eq!(feedback.items.len(), 1);
+        assert_eq!(feedback.items[0].title, NO_SPECIALS_TITLE);
+        assert_eq!(
+            feedback.items[0].subtitle.as_deref(),
+            Some(NO_SPECIALS_SUBTITLE)
+        );
+        assert_eq!(feedback.items[0].valid, Some(false));
+    }
+
+    #[test]
+    fn feedback_specials_sorts_by_discount_and_skips_region_rows() {
+        let light = SteamSearchResult {
+            app_id: 1,
+            name: "Light".to_string(),
+            price: Some(SteamPrice {
+                final_price_cents: Some(7500),
+                final_formatted: Some("NT$ 75".to_string()),
+                original_price_cents: Some(10000),
+                original_formatted: Some("NT$ 100".to_string()),
+                discount_percent: Some(25),
+            }),
+            item_type: SteamItemType::Game,
+            platforms: SteamPlatforms::default(),
+        };
+        let heavy = SteamSearchResult {
+            app_id: 2,
+            name: "Heavy".to_string(),
+            price: Some(SteamPrice {
+                final_price_cents: Some(3400),
+                final_formatted: Some("NT$ 340".to_string()),
+                original_price_cents: Some(8500),
+                original_formatted: Some("NT$ 850".to_string()),
+                discount_percent: Some(60),
+            }),
+            item_type: SteamItemType::Game,
+            platforms: SteamPlatforms::default(),
+        };
+
+        let feedback = specials_to_feedback("tw", "english", &[light, heavy]);
+
+        assert_eq!(feedback.items.len(), 2);
+        assert_eq!(feedback.items[0].title, "Heavy");
+        assert_eq!(feedback.items[1].title, "Light");
+        assert!(feedback.items[0].arg.is_some());
     }
 
     #[test]
