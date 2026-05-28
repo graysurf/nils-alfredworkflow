@@ -79,9 +79,9 @@ if ! rg -n '^GOOGLE_AUTH_REMOVE_CONFIRM[[:space:]]*=[[:space:]]*"1"' "$manifest"
 fi
 
 plist_json="$(plist_to_json "$workflow_dir/src/info.plist.template")"
-assert_jq_json "$plist_json" '.objects | type == "array" and length == 6' "plist should contain four script filters, one action, and one hotkey trigger"
+assert_jq_json "$plist_json" '.objects | type == "array" and length == 9' "plist should contain four script filters, one action, and four hotkey triggers"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter")] | length == 4' "script filter count mismatch"
-assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.trigger.hotkey")] | length == 1' "hotkey trigger count mismatch"
+assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.trigger.hotkey")] | length == 4' "hotkey trigger count mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gs" and .config.scriptfile == "./scripts/script_filter_empty.sh")] | length == 1' "gs keyword binding mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gsa" and .config.scriptfile == "./scripts/script_filter.sh")] | length == 1' "gsa keyword binding mismatch"
 assert_jq_json "$plist_json" '[.objects[] | select(.type == "alfred.workflow.input.scriptfilter" and .config.keyword == "gsd" and .config.scriptfile == "./scripts/script_filter_drive.sh")] | length == 1' "gsd keyword binding mismatch"
