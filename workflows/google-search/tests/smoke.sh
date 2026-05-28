@@ -223,7 +223,7 @@ default_settle_log="$tmp_dir/brave-default-settle.log"
 default_settle_json="$({ BRAVE_STUB_LOG="$default_settle_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 env -u BRAVE_QUERY_COALESCE_SETTLE_SECONDS BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "paste query"; })"
 assert_jq_json "$default_settle_json" '.items[0].arg == "google-requery:search:paste query"' "gg default settle should expose direct row immediately"
 assert_jq_json "$default_settle_json" '.items[1].autocomplete == "res::paste query"' "gg default settle should return autocomplete rows immediately"
-[[ "$(grep -c -- '--input paste query --mode' "$default_settle_log" || true)" -eq 1 ]] || fail "gg default settle should fetch pasted query immediately"
+[[ "$(grep -c -- '--input paste query --output' "$default_settle_log" || true)" -eq 1 ]] || fail "gg default settle should fetch pasted query immediately"
 
 coalesce_probe_log="$tmp_dir/brave-coalesce-probe.log"
 coalesce_pending_a="$({ BRAVE_STUB_LOG="$coalesce_probe_log" BRAVE_QUERY_CACHE_TTL_SECONDS=0 BRAVE_QUERY_COALESCE_SETTLE_SECONDS=1 BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter.sh" "mayda"; })"
@@ -237,7 +237,7 @@ assert_jq_json "$coalesce_pending_b" '.items[0].title == "Fetching Google sugges
 assert_jq_json "$coalesce_pending_b" '.items[0].valid == false' "gg coalesce second pending item must be invalid"
 assert_jq_json "$coalesce_result" '.items[0].arg == "google-requery:search:mayday"' "gg coalesce final direct row mismatch"
 assert_jq_json "$coalesce_result" '.items[1].autocomplete == "res::mayday"' "gg coalesce final result query mismatch"
-[[ "$(grep -c -- '--input mayda --mode' "$coalesce_probe_log" || true)" -eq 0 ]] || fail "gg coalesce should avoid mayda backend invocation"
+[[ "$(grep -c -- '--input mayda --output' "$coalesce_probe_log" || true)" -eq 0 ]] || fail "gg coalesce should avoid mayda backend invocation"
 [[ "$(grep -c -- '--input mayday' "$coalesce_probe_log" || true)" -eq 1 ]] || fail "gg coalesce should invoke mayday exactly once"
 
 direct_success_json="$({ BRAVE_CLI_BIN="$tmp_dir/stubs/brave-cli-ok" "$workflow_dir/scripts/script_filter_direct.sh" "rust"; })"
