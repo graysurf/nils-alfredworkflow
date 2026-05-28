@@ -25,6 +25,25 @@ Cross-references:
 - Empty query behavior:
   - Do not call Steam Store API.
   - Return user error `query must not be empty` (stderr in Alfred mode).
+  - The workflow Script Filter routes empty input to `steam-cli specials` instead
+    of surfacing this error (see Specials Command).
+
+## Specials Command
+
+- Command: `steam-cli specials`.
+- Lists current Steam Store specials (a discount ranking) for the configured
+  region/language, used by the workflow when the query is empty.
+- Source: `https://store.steampowered.com/api/featuredcategories` (official API,
+  no scraping). Test override: `STEAM_FEATURED_CATEGORIES_ENDPOINT`.
+- The `specials` carousel alone is capped at ~10, so the CLI merges discounted
+  titles across `specials`, `top_sellers`, `new_releases`, and `coming_soon`,
+  dedupes by app id, keeps only discounted items, and ranks by discount percent
+  descending.
+- `featuredcategories` returns integer minor units plus a currency code with no
+  pre-formatted price string; the CLI formats the display price locally.
+- Row count is bounded by `STEAM_SPECIALS_MAX_RESULTS` (default `30`).
+- Reuses the same Alfred row contract, sorting, and strike-through pricing as
+  search result rows; region-switch rows are not emitted for specials.
 
 ## Runtime Config Contract
 
@@ -44,6 +63,10 @@ Cross-references:
   - Optional integer, default `10`.
   - Effective value clamped to `1..50`.
   - Non-integer values are config errors.
+- `STEAM_SPECIALS_MAX_RESULTS`:
+  - Optional integer, default `30`.
+  - Bounds the `specials` discount ranking; independent of `STEAM_MAX_RESULTS`.
+  - Effective value clamped to `1..50`. Non-integer values are config errors.
 - `STEAM_LANGUAGE`:
   - Optional, default empty (unset).
   - Normalized to lowercase.
@@ -76,6 +99,11 @@ Invalid config produces user error text and exit code `2`.
     - `cc=<steam_region>`
     - `json=1`
     - `max_results=<effective max>`
+    - Optional `l=<steam_language>`
+- `featuredcategories` endpoint (specials): `https://store.steampowered.com/api/featuredcategories`
+  - Test override: `STEAM_FEATURED_CATEGORIES_ENDPOINT`
+  - Query parameters:
+    - `cc=<steam_region>`
     - Optional `l=<steam_language>`
 - Non-2xx responses surface status + message (when present) as runtime errors.
 - Malformed success payloads return typed runtime parse errors.

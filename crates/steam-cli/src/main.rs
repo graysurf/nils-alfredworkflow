@@ -246,6 +246,7 @@ mod tests {
             region_options: vec!["jp".to_string(), "us".to_string()],
             show_region_options: true,
             max_results: 5,
+            specials_max_results: 30,
             language: "english".to_string(),
             search_api: SteamSearchApi::SearchSuggestions,
         }
@@ -257,6 +258,7 @@ mod tests {
             region_options: vec!["jp".to_string(), "us".to_string()],
             show_region_options: true,
             max_results: 5,
+            specials_max_results: 30,
             language: String::new(),
             search_api: SteamSearchApi::SearchSuggestions,
         }

@@ -6,7 +6,8 @@ CLI backend for the `steam-search` workflow.
 
 | Command | Options | Description |
 | --- | --- | --- |
-| `steam-cli search` | `--query <QUERY>`, `--mode <alfred\|service-json>` | Search Steam apps and print Alfred Script Filter JSON or service envelope JSON. |
+| `steam-cli search` | `--query <QUERY>`, `--output <alfred-json\|json>` | Search Steam apps and print Alfred Script Filter JSON or service envelope JSON. |
+| `steam-cli specials` | `--output <alfred-json\|json>` | List current Steam Store specials (discount ranking) merged across featured sections. |
 
 ## Environment Variables
 
@@ -14,10 +15,12 @@ CLI backend for the `steam-search` workflow.
 - Optional: `STEAM_REGION_OPTIONS` (default: current `STEAM_REGION`)
 - Optional: `STEAM_SHOW_REGION_OPTIONS` (default: `false`, accepts `1/0`, `true/false`, `yes/no`, `on/off`)
 - Optional: `STEAM_MAX_RESULTS` (default: `10`, clamped to `1..50`)
+- Optional: `STEAM_SPECIALS_MAX_RESULTS` (default: `30`, clamped to `1..50`; rows for the `specials` discount ranking)
 - Optional: `STEAM_LANGUAGE` (default: unset/empty; used as Steam search locale language)
 - Optional: `STEAM_SEARCH_API` (default: `search-suggestions`; allowed: `search-suggestions`, `storesearch`)
 - Optional test override for `search-suggestions`: `STEAM_SEARCH_SUGGESTIONS_ENDPOINT`
 - Optional test override for `storesearch`: `STEAM_STORE_SEARCH_ENDPOINT`
+- Optional test override for `specials`: `STEAM_FEATURED_CATEGORIES_ENDPOINT`
 
 ## Output Contract
 
@@ -47,4 +50,5 @@ CLI backend for the `steam-search` workflow.
 
 - `cargo run -p nils-steam-cli -- --help`
 - `cargo run -p nils-steam-cli -- search --help`
+- `cargo run -p nils-steam-cli -- specials --help`
 - `cargo test -p nils-steam-cli`

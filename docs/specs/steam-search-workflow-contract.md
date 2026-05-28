@@ -40,8 +40,13 @@
   strike-through original prices.
 - `featuredcategories` returns integer minor units plus a currency code and no
   pre-formatted price string; the CLI renders the display price locally.
-- The set is the region-curated specials carousel (a bounded list), not a full
-  discount leaderboard; `STEAM_MAX_RESULTS` truncates it client-side.
+- The `specials` carousel alone is capped at ~10. The CLI merges the discounted
+  titles across every featured section (`specials`, `top_sellers`,
+  `new_releases`, `coming_soon`), dedupes by app id, and keeps only items that
+  carry a discount, so a single official request yields a larger ranking. This
+  is still front-page-featured discounts, not a full store-wide leaderboard.
+- Row count is bounded by `STEAM_SPECIALS_MAX_RESULTS` (default `30`, clamped
+  `1..50`), independent of the search `STEAM_MAX_RESULTS` knob.
 - Submitting an empty query clears any region override and uses the configured
   `STEAM_REGION`.
 

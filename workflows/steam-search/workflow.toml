@@ -20,6 +20,8 @@ STEAM_SHOW_REGION_OPTIONS = "0"
 STEAM_LANGUAGE = ""
 # Optional: maximum number of results to return. Parsed as integer and clamped by steam-cli.
 STEAM_MAX_RESULTS = "10"
+# Optional: maximum number of specials (empty-query discount ranking) rows. Defaults to 30, clamped 1-50.
+STEAM_SPECIALS_MAX_RESULTS = "30"
 # Optional: backend selector for steam-cli search.
 # Allowed: search-suggestions (new default) or storesearch (legacy JSON endpoint).
 STEAM_SEARCH_API = "search-suggestions"

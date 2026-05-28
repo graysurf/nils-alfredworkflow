@@ -235,6 +235,27 @@
       <key>config</key>
       <dict>
         <key>default</key>
+        <string>30</string>
+        <key>placeholder</key>
+        <string>1-50</string>
+        <key>required</key>
+        <false/>
+        <key>trim</key>
+        <true/>
+      </dict>
+      <key>description</key>
+      <string>Optional maximum number of specials rows shown when the query is empty (discount ranking). Default is 30.</string>
+      <key>label</key>
+      <string>STEAM_SPECIALS_MAX_RESULTS</string>
+      <key>type</key>
+      <string>textfield</string>
+      <key>variable</key>
+      <string>STEAM_SPECIALS_MAX_RESULTS</string>
+    </dict>
+    <dict>
+      <key>config</key>
+      <dict>
+        <key>default</key>
         <string>search-suggestions</string>
         <key>placeholder</key>
         <string>search-suggestions or storesearch</string>

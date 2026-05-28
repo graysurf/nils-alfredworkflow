@@ -7,12 +7,14 @@ const REGION_ENV: &str = "STEAM_REGION";
 const REGION_OPTIONS_ENV: &str = "STEAM_REGION_OPTIONS";
 const SHOW_REGION_OPTIONS_ENV: &str = "STEAM_SHOW_REGION_OPTIONS";
 const MAX_RESULTS_ENV: &str = "STEAM_MAX_RESULTS";
+const SPECIALS_MAX_RESULTS_ENV: &str = "STEAM_SPECIALS_MAX_RESULTS";
 const LANGUAGE_ENV: &str = "STEAM_LANGUAGE";
 const SEARCH_API_ENV: &str = "STEAM_SEARCH_API";
 
 const MIN_RESULTS: i32 = 1;
 const MAX_RESULTS: i32 = 50;
 pub const DEFAULT_MAX_RESULTS: u8 = 10;
+pub const DEFAULT_SPECIALS_MAX_RESULTS: u8 = 30;
 pub const DEFAULT_REGION: &str = "us";
 pub const DEFAULT_LANGUAGE: &str = "";
 pub const DEFAULT_SHOW_REGION_OPTIONS: bool = false;
@@ -30,6 +32,7 @@ pub struct RuntimeConfig {
     pub region_options: Vec<String>,
     pub show_region_options: bool,
     pub max_results: u8,
+    pub specials_max_results: u8,
     pub language: String,
     pub search_api: SteamSearchApi,
 }
@@ -56,6 +59,8 @@ impl RuntimeConfig {
         let show_region_options =
             parse_show_region_options(env_map.get(SHOW_REGION_OPTIONS_ENV).map(String::as_str))?;
         let max_results = parse_max_results(env_map.get(MAX_RESULTS_ENV).map(String::as_str))?;
+        let specials_max_results =
+            parse_specials_max_results(env_map.get(SPECIALS_MAX_RESULTS_ENV).map(String::as_str))?;
         let language = parse_language(env_map.get(LANGUAGE_ENV).map(String::as_str))?;
         let search_api = parse_search_api(env_map.get(SEARCH_API_ENV).map(String::as_str))?;
 
@@ -64,6 +69,7 @@ impl RuntimeConfig {
             region_options,
             show_region_options,
             max_results,
+            specials_max_results,
             language,
             search_api,
         })
@@ -127,6 +133,18 @@ fn parse_max_results(raw: Option<&str>) -> Result<u8, ConfigError> {
     let parsed = value
         .parse::<i32>()
         .map_err(|_| ConfigError::InvalidMaxResults(value.to_string()))?;
+
+    Ok(parsed.clamp(MIN_RESULTS, MAX_RESULTS) as u8)
+}
+
+fn parse_specials_max_results(raw: Option<&str>) -> Result<u8, ConfigError> {
+    let Some(value) = raw.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(DEFAULT_SPECIALS_MAX_RESULTS);
+    };
+
+    let parsed = value
+        .parse::<i32>()
+        .map_err(|_| ConfigError::InvalidSpecialsMaxResults(value.to_string()))?;
 
     Ok(parsed.clamp(MIN_RESULTS, MAX_RESULTS) as u8)
 }
@@ -197,6 +215,8 @@ pub enum ConfigError {
     InvalidShowRegionOptions(String),
     #[error("invalid STEAM_MAX_RESULTS: {0}")]
     InvalidMaxResults(String),
+    #[error("invalid STEAM_SPECIALS_MAX_RESULTS: {0}")]
+    InvalidSpecialsMaxResults(String),
     #[error("invalid STEAM_LANGUAGE: {0} (expected lowercase letters/hyphen, length 2..24)")]
     InvalidLanguage(String),
     #[error("invalid STEAM_SEARCH_API: {0} (expected one of: search-suggestions, storesearch)")]
@@ -216,6 +236,7 @@ mod tests {
         assert_eq!(config.region_options, vec![DEFAULT_REGION.to_string()]);
         assert_eq!(config.show_region_options, DEFAULT_SHOW_REGION_OPTIONS);
         assert_eq!(config.max_results, DEFAULT_MAX_RESULTS);
+        assert_eq!(config.specials_max_results, DEFAULT_SPECIALS_MAX_RESULTS);
         assert_eq!(config.language, DEFAULT_LANGUAGE);
         assert_eq!(config.search_api, DEFAULT_SEARCH_API);
     }
@@ -284,6 +305,25 @@ mod tests {
             .expect_err("invalid max results should fail");
 
         assert_eq!(err, ConfigError::InvalidMaxResults("ten".to_string()));
+    }
+
+    #[test]
+    fn config_parses_and_clamps_specials_max_results_independently() {
+        let explicit = RuntimeConfig::from_pairs(vec![(SPECIALS_MAX_RESULTS_ENV, "40")])
+            .expect("specials max results should parse");
+        assert_eq!(explicit.specials_max_results, 40);
+        assert_eq!(explicit.max_results, DEFAULT_MAX_RESULTS);
+
+        let clamped = RuntimeConfig::from_pairs(vec![(SPECIALS_MAX_RESULTS_ENV, "999")])
+            .expect("specials max results should clamp");
+        assert_eq!(clamped.specials_max_results, 50);
+
+        let err = RuntimeConfig::from_pairs(vec![(SPECIALS_MAX_RESULTS_ENV, "lots")])
+            .expect_err("invalid specials max results should fail");
+        assert_eq!(
+            err,
+            ConfigError::InvalidSpecialsMaxResults("lots".to_string())
+        );
     }
 
     #[test]

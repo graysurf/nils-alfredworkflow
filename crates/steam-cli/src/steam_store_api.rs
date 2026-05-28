@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use base64::Engine as _;
 use prost::Message;
 use serde::Deserialize;
@@ -155,7 +157,7 @@ pub fn fetch_specials(
         .to_vec();
 
     let mut results = parse_featured_categories_response(status_code, &body)?;
-    results.truncate(usize::from(config.max_results));
+    results.truncate(usize::from(config.specials_max_results));
     Ok(results)
 }
 
@@ -437,69 +439,86 @@ pub fn parse_featured_categories_response(
     let payload: FeaturedCategoriesResponse = serde_json::from_str(body_text)
         .map_err(|source| SteamStoreApiError::InvalidResponse(ResponseDecodeError::Json(source)))?;
 
-    let Some(specials) = payload.specials else {
-        return Ok(Vec::new());
-    };
+    // The specials carousel alone is capped at ~10. Merge the discounted titles
+    // across every featured section so the empty-query view can show a larger
+    // discount ranking from a single official request.
+    let sections = [
+        payload.specials,
+        payload.top_sellers,
+        payload.new_releases,
+        payload.coming_soon,
+    ];
 
-    let results = specials
-        .items
-        .into_iter()
-        .filter_map(|item| {
-            let app_id = item.id?;
-            if app_id == 0 {
-                return None;
-            }
-
-            let name = item.name.trim().to_string();
-            if name.is_empty() {
-                return None;
-            }
-
-            let currency = item.currency.as_deref();
-            let final_formatted = item
-                .final_price
-                .and_then(|cents| format_price(cents, currency));
-            let original_formatted = item
-                .original_price
-                .and_then(|cents| format_price(cents, currency));
-
-            let discount_percent = item
-                .discount_percent
-                .filter(|percent| *percent > 0)
-                .or_else(|| {
-                    SteamPrice::compute_discount_percent(item.original_price, item.final_price)
-                });
-
-            let price = if item.final_price.is_some() || final_formatted.is_some() {
-                Some(SteamPrice {
-                    final_price_cents: item.final_price,
-                    final_formatted,
-                    original_price_cents: item.original_price,
-                    original_formatted,
-                    discount_percent,
-                })
-            } else {
-                None
+    let mut seen = HashSet::new();
+    let mut results: Vec<SteamSearchResult> = Vec::new();
+    for section in sections.into_iter().flatten() {
+        for item in section.items {
+            let Some(result) = featured_item_to_discounted_result(item) else {
+                continue;
             };
+            if seen.insert(result.app_id) {
+                results.push(result);
+            }
+        }
+    }
 
-            let platforms = SteamPlatforms {
-                windows: item.windows_available,
-                mac: item.mac_available,
-                linux: item.linux_available,
-            };
-            let item_type = SteamItemType::from_featured_type(item.item_type_code);
-
-            Some(SteamSearchResult {
-                app_id,
-                name,
-                price,
-                item_type,
-                platforms,
-            })
-        })
-        .collect();
+    results.sort_by(|a, b| {
+        let a_discount = a.price.as_ref().and_then(|price| price.discount_percent);
+        let b_discount = b.price.as_ref().and_then(|price| price.discount_percent);
+        b_discount.unwrap_or(0).cmp(&a_discount.unwrap_or(0))
+    });
 
     Ok(results)
+}
+
+fn featured_item_to_discounted_result(item: FeaturedItem) -> Option<SteamSearchResult> {
+    let app_id = item.id?;
+    if app_id == 0 {
+        return None;
+    }
+
+    let name = item.name.trim().to_string();
+    if name.is_empty() {
+        return None;
+    }
+
+    // Sections other than `specials` mix in full-price titles; keep only the
+    // ones that actually carry a discount.
+    let discount_percent = item
+        .discount_percent
+        .filter(|percent| *percent > 0)
+        .or_else(|| SteamPrice::compute_discount_percent(item.original_price, item.final_price))?;
+
+    let currency = item.currency.as_deref();
+    let final_formatted = item
+        .final_price
+        .and_then(|cents| format_price(cents, currency));
+    let original_formatted = item
+        .original_price
+        .and_then(|cents| format_price(cents, currency));
+
+    let price = Some(SteamPrice {
+        final_price_cents: item.final_price,
+        final_formatted,
+        original_price_cents: item.original_price,
+        original_formatted,
+        discount_percent: Some(discount_percent),
+    });
+
+    let platforms = SteamPlatforms {
+        windows: item.windows_available,
+        mac: item.mac_available,
+        linux: item.linux_available,
+    };
+    let item_type = SteamItemType::from_featured_type(item.item_type_code);
+
+    Some(SteamSearchResult {
+        app_id,
+        name,
+        price,
+        item_type,
+        platforms,
+    })
 }
 
 // featuredcategories returns integer minor units (price * 100) plus a currency
@@ -723,17 +742,23 @@ struct StoreSearchPlatformPayload {
 #[derive(Debug, Default, Deserialize)]
 struct FeaturedCategoriesResponse {
     #[serde(default)]
-    specials: Option<FeaturedSpecialsBlock>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct FeaturedSpecialsBlock {
+    specials: Option<FeaturedSection>,
     #[serde(default)]
-    items: Vec<FeaturedSpecialsItem>,
+    top_sellers: Option<FeaturedSection>,
+    #[serde(default)]
+    new_releases: Option<FeaturedSection>,
+    #[serde(default)]
+    coming_soon: Option<FeaturedSection>,
 }
 
 #[derive(Debug, Default, Deserialize)]
-struct FeaturedSpecialsItem {
+struct FeaturedSection {
+    #[serde(default)]
+    items: Vec<FeaturedItem>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct FeaturedItem {
     #[serde(default)]
     id: Option<u32>,
     #[serde(default)]
@@ -766,6 +791,7 @@ mod tests {
             region_options: vec![region.to_string()],
             show_region_options: false,
             max_results,
+            specials_max_results: 30,
             language: language.to_string(),
             search_api: SteamSearchApi::SearchSuggestions,
         }
@@ -1130,13 +1156,14 @@ mod tests {
     }
 
     #[test]
-    fn steam_store_api_parse_featured_categories_skips_partial_items_and_supports_missing_block() {
+    fn steam_store_api_parse_featured_categories_skips_partial_and_undiscounted_items() {
         let body = br#"{
             "specials": {
                 "items": [
-                    {"id": 0, "name": "skip", "final_price": 100, "currency": "USD"},
-                    {"id": 730, "name": "", "final_price": 100, "currency": "USD"},
-                    {"id": 570, "name": "Dota 2", "final_price": 0, "currency": "USD"}
+                    {"id": 0, "name": "skip-zero-id", "discount_percent": 50, "original_price": 200, "final_price": 100, "currency": "USD"},
+                    {"id": 730, "name": "", "discount_percent": 50, "original_price": 200, "final_price": 100, "currency": "USD"},
+                    {"id": 440, "name": "Full Price", "original_price": 1000, "final_price": 1000, "currency": "USD"},
+                    {"id": 570, "name": "Dota 2", "discount_percent": 60, "original_price": 1000, "final_price": 400, "currency": "USD"}
                 ]
             }
         }"#;
@@ -1146,6 +1173,41 @@ mod tests {
 
         let empty = parse_featured_categories_response(200, b"{}").expect("missing block parses");
         assert!(empty.is_empty());
+    }
+
+    #[test]
+    fn steam_store_api_parse_featured_categories_merges_sections_dedupes_and_sorts() {
+        let body = br#"{
+            "specials": {
+                "items": [
+                    {"id": 10, "name": "Specials 30%", "discount_percent": 30, "original_price": 1000, "final_price": 700, "currency": "USD"},
+                    {"id": 20, "name": "Shared", "discount_percent": 40, "original_price": 1000, "final_price": 600, "currency": "USD"}
+                ]
+            },
+            "top_sellers": {
+                "items": [
+                    {"id": 20, "name": "Shared Duplicate", "discount_percent": 40, "original_price": 1000, "final_price": 600, "currency": "USD"},
+                    {"id": 30, "name": "Top Full Price", "original_price": 1000, "final_price": 1000, "currency": "USD"}
+                ]
+            },
+            "new_releases": {
+                "items": [
+                    {"id": 40, "name": "New 80%", "discount_percent": 80, "original_price": 1000, "final_price": 200, "currency": "USD"}
+                ]
+            },
+            "coming_soon": {
+                "items": [
+                    {"id": 50, "name": "Soon 10%", "discount_percent": 10, "original_price": 1000, "final_price": 900, "currency": "USD"}
+                ]
+            }
+        }"#;
+
+        let results = parse_featured_categories_response(200, body).expect("response should parse");
+
+        let ids: Vec<u32> = results.iter().map(|result| result.app_id).collect();
+        // 80% (new), 40% (shared, deduped), 30% (specials), 10% (coming soon);
+        // the full-price top seller is dropped.
+        assert_eq!(ids, vec![40, 20, 10, 50]);
     }
 
     #[test]

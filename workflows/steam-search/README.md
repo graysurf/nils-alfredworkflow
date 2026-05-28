@@ -9,6 +9,9 @@ Search Steam Store games from Alfred and open selected app pages in your browser
 ## Features
 
 - Trigger Steam search with `st <query>` (alias: `steam`).
+- Leave the query empty (`st` alone) to browse the current Steam specials, ranked by
+  discount (highest first). Merges discounted titles across the featured sections and
+  shows up to `STEAM_SPECIALS_MAX_RESULTS` rows (default `30`).
 - Result subtitles surface the discount when present:
   `NT$ 50.00 (N̶T̶$̶ 1̶5̶2̶.̶0̶0̶, -67%) | Game`.
   Original price is rendered with Unicode strikethrough overlay; no-discount rows keep
@@ -33,6 +36,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | `STEAM_SHOW_REGION_OPTIONS` | No | `0` | Show region switch rows (`1/true/yes/on` to enable). |
 | `STEAM_LANGUAGE` | No | `(empty)` | Steam search locale language (for example `english`, `tchinese`); leave empty for endpoint default locale behavior. |
 | `STEAM_MAX_RESULTS` | No | `10` | Max results per query. Effective range is clamped by `steam-cli`. |
+| `STEAM_SPECIALS_MAX_RESULTS` | No | `30` | Max rows for the empty-query discount ranking. Clamped to `1..50`. |
 | `STEAM_SEARCH_API` | No | `search-suggestions` | Search backend selector: `search-suggestions` (default) or `storesearch` (alternate JSON endpoint). |
 
 ## Keyword
@@ -40,6 +44,7 @@ Set these via Alfred's "Configure Workflow..." UI:
 | Keyword | Behavior |
 | --- | --- |
 | `st <query>` / `steam <query>` | Search Steam Store games and open selected app URLs. |
+| `st` / `steam` (no query) | Show current Steam specials ranked by discount. |
 
 ## Advanced Runtime Parameters
 
