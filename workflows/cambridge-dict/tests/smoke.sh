@@ -548,16 +548,17 @@ plist_to_json "$packaged_plist" >"$packaged_json_file"
 
 assert_jq_file "$packaged_json_file" '.objects | length > 0' "packaged plist missing objects"
 assert_jq_file "$packaged_json_file" '.connections | length > 0' "packaged plist missing connections"
-assert_jq_file "$packaged_json_file" '[.objects[] | select(.type=="alfred.workflow.input.scriptfilter") | .config.type] | all(. == 8)' "script filter objects must be external script type=8"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptfile == "./scripts/script_filter.sh"' "script filter scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.scriptargtype == 1' "script filter scriptargtype must be argv"
+workflow_smoke_assert_standard_script_filter \
+  "$packaged_json_file" \
+  "70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10" \
+  "./scripts/script_filter.sh" \
+  "cambridge-dict script filter"
 assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.keyword == "cd||cambridge||cds"' "keyword trigger must include smart and suggest aliases"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.alfredfiltersresults == false' "script filter must disable Alfred-side filtering"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelaycustom == 1' "script filter queue delay custom must be 1 second"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelaymode == 0' "script filter queue delay mode must be custom seconds"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10") | .config.queuedelayimmediatelyinitially == false' "script filter must disable immediate initial run"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.scriptfile == "./scripts/action_open.sh"' "action scriptfile wiring mismatch"
-assert_jq_file "$packaged_json_file" '.objects[] | select(.uid=="D7E624DB-D4AB-4D53-8C03-D051A1A97A4A") | .config.type == 8' "action node must be external script type=8"
+workflow_smoke_assert_external_action \
+  "$packaged_json_file" \
+  "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" \
+  "./scripts/action_open.sh" \
+  "cambridge-dict action"
 assert_jq_file "$packaged_json_file" '.connections["70EEA820-E77B-42F3-A8D2-1A4D9E8E4A10"] | any(.destinationuid == "D7E624DB-D4AB-4D53-8C03-D051A1A97A4A" and .modifiers == 0)' "missing script-filter to action connection"
 assert_jq_file "$packaged_json_file" '[.userconfigurationconfig[] | .variable] | sort == ["CAMBRIDGE_DICT_MODE","CAMBRIDGE_HEADLESS","CAMBRIDGE_MAX_RESULTS","CAMBRIDGE_TIMEOUT_MS"]' "user configuration variables mismatch"
 assert_jq_file "$packaged_json_file" '.userconfigurationconfig[] | select(.variable=="CAMBRIDGE_DICT_MODE") | .config.default == "english"' "CAMBRIDGE_DICT_MODE default mismatch"
