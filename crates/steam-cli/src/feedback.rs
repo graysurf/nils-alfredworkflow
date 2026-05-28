@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use alfred_core::{Feedback, Item, ItemIcon};
 
 use crate::steam_store_api::{SteamItemType, SteamPrice, SteamSearchResult};
@@ -54,7 +52,6 @@ pub fn search_results_to_feedback(
 pub fn specials_to_feedback(
     region: &str,
     language: &str,
-    cover_dir: Option<&Path>,
     results: &[SteamSearchResult],
 ) -> Feedback {
     if results.is_empty() {
@@ -65,27 +62,8 @@ pub fn specials_to_feedback(
         ]);
     }
 
-    let mut ordered: Vec<&SteamSearchResult> = results.iter().collect();
-    ordered.sort_by(|a, b| {
-        let a_discount = a.price.as_ref().and_then(|price| price.discount_percent);
-        let b_discount = b.price.as_ref().and_then(|price| price.discount_percent);
-        b_discount.unwrap_or(0).cmp(&a_discount.unwrap_or(0))
-    });
-
-    let items = ordered
-        .into_iter()
-        .map(|result| {
-            let item = result_to_item(region, language, result);
-            match cover_dir.map(|dir| dir.join(format!("{}.jpg", result.app_id))) {
-                Some(path) if path.is_file() => {
-                    item.with_icon(ItemIcon::new(path.to_string_lossy().into_owned()))
-                }
-                _ => item,
-            }
-        })
-        .collect();
-
-    Feedback::new(items)
+    // Rows carry their cached cover path, so the shared renderer attaches icons.
+    search_results_to_feedback(region, "", &[], false, language, results)
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -109,9 +87,14 @@ fn result_to_item(region: &str, language: &str, result: &SteamSearchResult) -> I
     let item_type = format_item_type(result.item_type);
     let subtitle = single_line_subtitle(&format!("{price} | {item_type}"), SUBTITLE_MAX_CHARS);
 
-    Item::new(normalized_title)
+    let item = Item::new(normalized_title)
         .with_subtitle(subtitle)
-        .with_arg(canonical_app_url(result.app_id, region, language))
+        .with_arg(canonical_app_url(result.app_id, region, language));
+
+    match result.cover_path.as_deref().filter(|path| !path.is_empty()) {
+        Some(path) => item.with_icon(ItemIcon::new(path)),
+        None => item,
+    }
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -267,6 +250,7 @@ mod tests {
             item_type,
             platforms: SteamPlatforms::default(),
             image_url: None,
+            cover_path: None,
         }
     }
 
@@ -534,6 +518,7 @@ mod tests {
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
             image_url: None,
+            cover_path: None,
         };
         let light_discount = SteamSearchResult {
             app_id: 2,
@@ -548,6 +533,7 @@ mod tests {
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
             image_url: None,
+            cover_path: None,
         };
         let heavy_discount = SteamSearchResult {
             app_id: 3,
@@ -562,6 +548,7 @@ mod tests {
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
             image_url: None,
+            cover_path: None,
         };
 
         let feedback = search_results_to_feedback(
@@ -584,7 +571,7 @@ mod tests {
 
     #[test]
     fn feedback_specials_empty_emits_dedicated_no_specials_row() {
-        let feedback = specials_to_feedback("tw", "english", None, &[]);
+        let feedback = specials_to_feedback("tw", "english", &[]);
         assert_eq!(feedback.items.len(), 1);
         assert_eq!(feedback.items[0].title, NO_SPECIALS_TITLE);
         assert_eq!(
@@ -609,6 +596,7 @@ mod tests {
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
             image_url: None,
+            cover_path: None,
         };
         let heavy = SteamSearchResult {
             app_id: 2,
@@ -623,9 +611,10 @@ mod tests {
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
             image_url: None,
+            cover_path: None,
         };
 
-        let feedback = specials_to_feedback("tw", "english", None, &[light, heavy]);
+        let feedback = specials_to_feedback("tw", "english", &[light, heavy]);
 
         assert_eq!(feedback.items.len(), 2);
         assert_eq!(feedback.items[0].title, "Heavy");
@@ -634,11 +623,7 @@ mod tests {
     }
 
     #[test]
-    fn feedback_specials_attaches_icon_only_when_cover_file_exists() {
-        let cover_dir = std::env::temp_dir().join("nils-steam-cover-feedback-test");
-        let _ = std::fs::remove_dir_all(&cover_dir);
-        std::fs::create_dir_all(&cover_dir).expect("temp cover dir should be creatable");
-
+    fn feedback_attaches_icon_only_when_cover_path_is_set() {
         let with_cover = SteamSearchResult {
             app_id: 111,
             name: "Has Cover".to_string(),
@@ -652,6 +637,7 @@ mod tests {
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
             image_url: Some("https://cdn.example/111.jpg".to_string()),
+            cover_path: Some("/tmp/steam-covers/111.jpg".to_string()),
         };
         let without_cover = SteamSearchResult {
             app_id: 222,
@@ -666,17 +652,10 @@ mod tests {
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
             image_url: Some("https://cdn.example/222.jpg".to_string()),
+            cover_path: None,
         };
 
-        let cover_file = cover_dir.join("111.jpg");
-        std::fs::write(&cover_file, b"fake-jpeg").expect("cover file should be writable");
-
-        let feedback = specials_to_feedback(
-            "tw",
-            "english",
-            Some(cover_dir.as_path()),
-            &[with_cover, without_cover],
-        );
+        let feedback = specials_to_feedback("tw", "english", &[with_cover, without_cover]);
 
         // 222 has higher discount, so it sorts first but has no cached cover.
         assert_eq!(feedback.items[0].title, "No Cover");
@@ -685,10 +664,8 @@ mod tests {
         let icon = feedback.items[1]
             .icon
             .as_ref()
-            .expect("cached cover should produce an icon");
-        assert_eq!(icon.path, cover_file.to_string_lossy());
-
-        let _ = std::fs::remove_dir_all(&cover_dir);
+            .expect("cover_path should produce an icon");
+        assert_eq!(icon.path, "/tmp/steam-covers/111.jpg");
     }
 
     #[test]
@@ -704,6 +681,7 @@ mod tests {
             item_type: SteamItemType::Game,
             platforms: SteamPlatforms::default(),
             image_url: None,
+            cover_path: None,
         };
         let inputs = [make(1, "Alpha"), make(2, "Bravo"), make(3, "Charlie")];
 

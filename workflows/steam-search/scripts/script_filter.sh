@@ -144,6 +144,17 @@ resolve_active_region() {
 
 STEAM_ACTIVE_REGION=""
 
+# Alfred exports the cache path as lowercase alfred_workflow_cache; resolve a
+# writable cover cache dir so steam-cli does not depend on Alfred's env casing.
+resolve_cover_cache_dir() {
+  local dir
+  dir="${STEAM_COVER_CACHE_DIR:-${alfred_workflow_cache:-${ALFRED_WORKFLOW_CACHE:-}}}"
+  if [[ -z "$dir" ]]; then
+    dir="$(wfar_resolve_cache_dir "nils-steam-search-workflow")"
+  fi
+  printf '%s' "$dir"
+}
+
 steam_search_fetch_json() {
   local query="$1"
   local err_file="${TMPDIR:-/tmp}/steam-search-script-filter.err.$$.$RANDOM"
@@ -160,8 +171,11 @@ steam_search_fetch_json() {
     return 1
   fi
 
+  local cover_cache_dir
+  cover_cache_dir="$(resolve_cover_cache_dir)"
+
   local json_output
-  if json_output="$(STEAM_REGION="$STEAM_ACTIVE_REGION" "$steam_cli" search --query "$query" --output alfred-json 2>"$err_file")"; then
+  if json_output="$(STEAM_REGION="$STEAM_ACTIVE_REGION" STEAM_COVER_CACHE_DIR="$cover_cache_dir" "$steam_cli" search --query "$query" --output alfred-json 2>"$err_file")"; then
     rm -f "$err_file"
 
     if [[ -z "$json_output" ]]; then
@@ -200,14 +214,8 @@ steam_specials_fetch_json() {
     return 1
   fi
 
-  # Alfred exports the cache path as lowercase alfred_workflow_cache; resolve a
-  # writable cover cache dir here and pass it explicitly so steam-cli does not
-  # depend on Alfred's env-var casing.
   local cover_cache_dir
-  cover_cache_dir="${STEAM_COVER_CACHE_DIR:-${alfred_workflow_cache:-${ALFRED_WORKFLOW_CACHE:-}}}"
-  if [[ -z "$cover_cache_dir" ]]; then
-    cover_cache_dir="$(wfar_resolve_cache_dir "nils-steam-search-workflow")"
-  fi
+  cover_cache_dir="$(resolve_cover_cache_dir)"
 
   local json_output
   if json_output="$(STEAM_REGION="$STEAM_ACTIVE_REGION" STEAM_COVER_CACHE_DIR="$cover_cache_dir" "$steam_cli" specials --output alfred-json 2>"$err_file")"; then

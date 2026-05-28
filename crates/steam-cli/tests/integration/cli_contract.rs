@@ -12,6 +12,11 @@ use serde_json::Value;
 fn run_cli(args: &[&str], envs: &[(&str, &str)]) -> Output {
     let mut cmd = Command::new(resolve_cli_path());
     cmd.args(args);
+    // Keep tests hermetic: never let an inherited cache dir trigger real cover
+    // downloads from the Steam CDN.
+    cmd.env_remove("STEAM_COVER_CACHE_DIR");
+    cmd.env_remove("alfred_workflow_cache");
+    cmd.env_remove("ALFRED_WORKFLOW_CACHE");
     for (key, value) in envs {
         cmd.env(key, value);
     }

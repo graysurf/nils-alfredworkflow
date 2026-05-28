@@ -33,8 +33,10 @@ pub struct SteamSearchResult {
     pub price: Option<SteamPrice>,
     pub item_type: SteamItemType,
     pub platforms: SteamPlatforms,
-    /// Remote cover-art URL (currently populated for specials only).
+    /// Remote cover-art URL used to populate the local cache.
     pub image_url: Option<String>,
+    /// Local cached cover path (set after a successful cache hit/download).
+    pub cover_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -135,11 +137,32 @@ pub fn search_apps(
 ) -> Result<Vec<SteamSearchResult>, SteamStoreApiError> {
     let client = reqwest::blocking::Client::new();
 
-    match config.search_api {
+    let mut results = match config.search_api {
         SteamSearchApi::SearchSuggestions => {
-            search_apps_with_search_suggestions(&client, config, query)
+            search_apps_with_search_suggestions(&client, config, query)?
         }
-        SteamSearchApi::StoreSearch => search_apps_with_store_search(&client, config, query),
+        SteamSearchApi::StoreSearch => search_apps_with_store_search(&client, config, query)?,
+    };
+
+    cache_covers_if_enabled(config, &mut results);
+    Ok(results)
+}
+
+/// Steam's hashless capsule asset URL, derivable from the app id alone so it
+/// works for every search/specials row regardless of backend.
+fn capsule_image_url(app_id: u32) -> String {
+    format!(
+        "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{app_id}/capsule_184x69.jpg"
+    )
+}
+
+fn cache_covers_if_enabled(config: &RuntimeConfig, results: &mut [SteamSearchResult]) {
+    if let Some(base) = config
+        .cover_cache_dir
+        .as_deref()
+        .filter(|dir| config.show_covers && !dir.is_empty())
+    {
+        cache_covers(results, base);
     }
 }
 
@@ -169,28 +192,21 @@ pub fn fetch_specials(
     let mut results = parse_featured_categories_response(status_code, &body)?;
     results.truncate(usize::from(config.specials_max_results));
 
-    if let Some(base) = config
-        .cover_cache_dir
-        .as_deref()
-        .filter(|dir| config.show_covers && !dir.is_empty())
-    {
-        cache_specials_covers(&results, base);
-    }
-
+    cache_covers_if_enabled(config, &mut results);
     Ok(results)
 }
 
-/// Cover art cache directory for a given Alfred workflow cache base.
-pub fn specials_cover_dir(base: &str) -> PathBuf {
+fn cover_cache_root(base: &str) -> PathBuf {
     Path::new(base).join(COVER_CACHE_SUBDIR)
 }
 
-/// Download missing/stale specials covers into the local cache in parallel.
+/// Download missing/stale covers into the local cache in parallel, then record
+/// the local path on every row whose cover is cached.
 ///
 /// Best-effort: any failed download simply leaves that row without a cached
 /// cover, so the rendered feedback degrades to no icon rather than erroring.
-fn cache_specials_covers(results: &[SteamSearchResult], base_cache_dir: &str) {
-    let dir = specials_cover_dir(base_cache_dir);
+fn cache_covers(results: &mut [SteamSearchResult], base_cache_dir: &str) {
+    let dir = cover_cache_root(base_cache_dir);
     if std::fs::create_dir_all(&dir).is_err() {
         return;
     }
@@ -207,34 +223,39 @@ fn cache_specials_covers(results: &[SteamSearchResult], base_cache_dir: &str) {
         })
         .collect();
 
-    if jobs.is_empty() {
-        return;
+    if !jobs.is_empty()
+        && let Ok(client) = reqwest::blocking::Client::builder()
+            .user_agent(USER_AGENT)
+            .timeout(COVER_REQUEST_TIMEOUT)
+            .build()
+    {
+        let worker_count = jobs.len().min(COVER_MAX_WORKERS);
+        let next = AtomicUsize::new(0);
+
+        std::thread::scope(|scope| {
+            for _ in 0..worker_count {
+                scope.spawn(|| {
+                    loop {
+                        let index = next.fetch_add(1, Ordering::Relaxed);
+                        let Some((url, path)) = jobs.get(index) else {
+                            break;
+                        };
+                        download_cover(&client, url, path);
+                    }
+                });
+            }
+        });
     }
 
-    let Ok(client) = reqwest::blocking::Client::builder()
-        .user_agent(USER_AGENT)
-        .timeout(COVER_REQUEST_TIMEOUT)
-        .build()
-    else {
-        return;
-    };
-
-    let worker_count = jobs.len().min(COVER_MAX_WORKERS);
-    let next = AtomicUsize::new(0);
-
-    std::thread::scope(|scope| {
-        for _ in 0..worker_count {
-            scope.spawn(|| {
-                loop {
-                    let index = next.fetch_add(1, Ordering::Relaxed);
-                    let Some((url, path)) = jobs.get(index) else {
-                        break;
-                    };
-                    download_cover(&client, url, path);
-                }
-            });
+    for result in results.iter_mut() {
+        if result.image_url.is_none() {
+            continue;
         }
-    });
+        let path = cover_cache_path(&dir, result.app_id);
+        if path.is_file() {
+            result.cover_path = Some(path.to_string_lossy().into_owned());
+        }
+    }
 }
 
 fn cover_cache_path(dir: &Path, app_id: u32) -> PathBuf {
@@ -459,7 +480,8 @@ fn parse_search_suggestions_response(
                 price,
                 item_type,
                 platforms,
-                image_url: None,
+                image_url: Some(capsule_image_url(app_id)),
+                cover_path: None,
             })
         })
         .collect();
@@ -534,7 +556,8 @@ fn parse_store_search_response(
                 price,
                 item_type,
                 platforms,
-                image_url: None,
+                image_url: Some(capsule_image_url(app_id)),
+                cover_path: None,
             })
         })
         .collect();
@@ -644,6 +667,7 @@ fn featured_item_to_discounted_result(item: FeaturedItem) -> Option<SteamSearchR
         item_type,
         platforms,
         image_url,
+        cover_path: None,
     })
 }
 
@@ -1024,6 +1048,12 @@ mod tests {
         assert!(!results[0].platforms.windows);
         assert!(!results[0].platforms.mac);
         assert!(!results[0].platforms.linux);
+        assert_eq!(
+            results[0].image_url.as_deref(),
+            Some(
+                "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/capsule_184x69.jpg"
+            )
+        );
     }
 
     #[test]

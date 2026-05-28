@@ -19,6 +19,10 @@ Cross-references:
 ## Keyword and Query Handling
 
 - Command: `steam-cli search --query <QUERY>`.
+- Cover art: search rows also carry a cover. The image URL is derived from the
+  app id (`store_item_assets/steam/apps/<id>/capsule_184x69.jpg`) and cached
+  the same way as specials (see Specials Command); apps without that asset
+  simply render without an icon.
 - Query normalization:
   - Trim leading/trailing whitespace.
   - Preserve internal spacing and Unicode content.
@@ -74,7 +78,7 @@ Cross-references:
   - Bounds the `specials` discount ranking; independent of `STEAM_MAX_RESULTS`.
   - Effective value clamped to `1..50`. Non-integer values are config errors.
 - `STEAM_SHOW_COVERS`:
-  - Optional bool-like switch for downloading/showing specials cover art.
+  - Optional bool-like switch for downloading/showing search and specials covers.
   - Default `true`. Accepted values: `1/0`, `true/false`, `yes/no`, `on/off`.
 - `STEAM_COVER_CACHE_DIR`:
   - Optional cover cache directory; falls back to `ALFRED_WORKFLOW_CACHE`.
