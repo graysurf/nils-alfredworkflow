@@ -5,11 +5,12 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 
 workflow_id=""
+skip_third_party_audit=0
 
 usage() {
   cat <<USAGE
 Usage:
-  scripts/workflow-lint.sh [--id <workflow-id>]
+  scripts/workflow-lint.sh [--id <workflow-id>] [--skip-third-party-audit]
 USAGE
 }
 
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
       exit 2
     }
     shift 2
+    ;;
+  --skip-third-party-audit)
+    skip_third_party_audit=1
+    shift
     ;;
   -h | --help)
     usage
@@ -62,7 +67,11 @@ bash "$repo_root/scripts/ci/markdownlint-audit.sh" --strict
 bash "$repo_root/scripts/workflow-shared-foundation-audit.sh" --check
 bash "$repo_root/scripts/workflow-cli-resolver-audit.sh" --check
 bash "$repo_root/scripts/workflow-hotkey-policy.sh" --check
-bash "$repo_root/scripts/ci/third-party-artifacts-audit.sh" --strict
+if [[ "$skip_third_party_audit" -eq 0 ]]; then
+  bash "$repo_root/scripts/ci/third-party-artifacts-audit.sh" --strict
+else
+  echo "skip: third-party artifacts audit (--skip-third-party-audit)"
+fi
 bash "$repo_root/scripts/ci/ci-workflow-audit.sh" --check
 
 if command -v shellcheck >/dev/null 2>&1; then

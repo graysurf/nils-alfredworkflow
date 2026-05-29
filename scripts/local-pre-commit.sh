@@ -14,8 +14,8 @@ Usage:
   scripts/local-pre-commit.sh [--mode <default|ci>] [--with-package-smoke] [--skip-node-scraper-tests]
 
 Modes:
-  default  Local baseline without duplicated third-party audit.
-           Runs: workflow-lint -> script-filter-policy-check -> node-scraper-tests -> workflow-test --skip-third-party-audit
+  default  Local baseline with an early third-party artifact change gate.
+           Runs: third-party-artifacts-change-gate -> workflow-lint --skip-third-party-audit -> script-filter-policy-check -> node-scraper-tests -> workflow-test --skip-third-party-audit
   ci       Exact CI gate order.
            Runs: ci-run-gates lint -> third-party-artifacts-audit -> node-scraper-tests -> script-tests -> test
 
@@ -37,7 +37,8 @@ run() {
 }
 
 run_default_mode() {
-  run bash scripts/workflow-lint.sh
+  run bash scripts/ci/third-party-artifacts-change-gate.sh
+  run bash scripts/workflow-lint.sh --skip-third-party-audit
   run bash scripts/workflow-sync-script-filter-policy.sh --check
 
   if [[ "$skip_node_scraper_tests" -eq 0 ]]; then

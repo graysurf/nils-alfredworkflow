@@ -88,8 +88,13 @@ Use this file for day-to-day development, quality gates, and local validation fl
 ### Required before committing
 
 - Default local pre-commit entrypoint (recommended): `scripts/local-pre-commit.sh`
-  - Runs `scripts/workflow-lint.sh`, `scripts/workflow-sync-script-filter-policy.sh --check`,
-    `npm run test:cambridge-scraper`, and `scripts/workflow-test.sh --skip-third-party-audit`.
+  - Runs an early `scripts/ci/third-party-artifacts-change-gate.sh` check, then
+    `scripts/workflow-lint.sh --skip-third-party-audit`,
+    `scripts/workflow-sync-script-filter-policy.sh --check`, `npm run test:cambridge-scraper`,
+    and `scripts/workflow-test.sh --skip-third-party-audit`.
+  - The change gate runs strict third-party artifact freshness checks when `Cargo.lock`,
+    `package-lock.json`, `scripts/lib/codex_cli_version.sh`, the generator/audit scripts, or
+    generated third-party artifacts changed.
 - CI-parity local sequence (same gate order as `.github/workflows/ci.yml`):
   - `scripts/local-pre-commit.sh --mode ci`
 - Add package smoke gate when you want release-style package validation locally:
