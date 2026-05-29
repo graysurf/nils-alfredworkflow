@@ -1,6 +1,8 @@
 ---
 name: nils-alfredworkflow-pin-crates
 description: Pin managed crates and workflow runtime crate versions to an exact release.
+argument-hint: "--version <x.y.z> [--targets <t,…>] [--dry-run]"
+allowed-tools: Bash, Read
 ---
 
 # Pin Crates
@@ -87,3 +89,13 @@ Failure modes:
 5. Optionally run lock sync (`--update-lock`) for cargo targets.
 6. Optionally run semantic auto-commit and auto-push.
 7. Print summary with touched files and crates.
+
+## Boundary
+
+This is a project-local skill scoped to version pinning for this repository's
+managed crates and workflow runtime versions. It only touches the documented
+target mappings (pin strings, related docs text, and the Cargo lockfile under
+`--update-lock`) and — when explicitly requested — creates a `semantic-commit`
+and pushes the current branch. It must not mutate runtime-kit manifests,
+rendered product output, global runtime homes, credentials, sessions, or files
+outside the declared managed targets.

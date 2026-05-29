@@ -1,6 +1,8 @@
 ---
 name: nils-alfredworkflow-release-workflow
 description: Create and push a release tag to trigger GitHub Release workflow.
+argument-hint: "<vX.Y.Z> [--dry-run] [--force-tag]"
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob
 ---
 
 # Release Tag
@@ -85,6 +87,16 @@ Failure modes:
 7. Wait release workflow for the tag to complete with `success`.
 8. Wait release page to appear for the tag.
 9. If CI/release workflow fails, fix root cause on branch, update/push fix commit, then recreate/re-push tag and repeat until green.
+
+## Boundary
+
+This is a project-local skill scoped to cutting and publishing a release for
+this repository: version sync, release-head CI gating, annotated tag creation,
+and release-page verification on the configured remote. The broader
+`allowed-tools` set exists only to support the step 9 fix-and-retag loop on a
+failing release; it must not mutate runtime-kit manifests, rendered product
+output, global runtime homes, credentials, or sessions. Re-tagging an existing
+release version requires the explicit `--force-tag` flag.
 
 ## Alternate entry points
 
