@@ -21,3 +21,11 @@ path = "docs/PACKAGING.md"
 required = true
 when = "always"
 notes = "Workflow packaging, install, and macOS acceptance guide for maintainer tasks"
+
+# Finish-line validation contract: code edits in this repo must run the local
+# pre-commit gate before a project-dev task is declared done (agent-docs v0.30+).
+[[validation]]
+context = "project-dev"
+commands = ["bash scripts/local-pre-commit.sh"]
+marker = ".cache/agent-validation/project-dev.ok"
+description = "Run the local pre-commit gate (lint, script-filter policy, scraper tests, workflow tests) before declaring a project-dev task done."

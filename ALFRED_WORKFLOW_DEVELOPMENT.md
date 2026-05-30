@@ -395,11 +395,11 @@ A maintainer should complete the following flow in under three minutes:
 
 1. Open `README.md` and follow troubleshooting navigation to global standards.
 2. Jump from workflow README to local `TROUBLESHOOTING.md`.
-3. Run `agent-docs resolve --context project-dev --strict --format checklist`.
+3. Run `agent-docs preflight --intent project-dev --strict`.
 4. Confirm rollback path in the target workflow's `Rollback guidance` section is actionable.
 
 ## Validation
 
-- `agent-docs resolve --context startup --strict --format checklist`
-- `agent-docs resolve --context project-dev --strict --format checklist`
+- `agent-docs audit --target all --strict --format text`
+- `agent-docs preflight --intent project-dev --strict`
 - `rg -n "Troubleshooting|Validation|Rollback guidance" workflows/*/TROUBLESHOOTING.md`
