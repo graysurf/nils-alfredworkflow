@@ -29,3 +29,9 @@ context = "project-dev"
 commands = ["bash scripts/local-pre-commit.sh"]
 marker = ".cache/agent-validation/project-dev.ok"
 description = "Run the local pre-commit gate (lint, script-filter policy, scraper tests, workflow tests) before declaring a project-dev task done."
+
+# Opt in to the project-local skill-name prefix lint (agent-docs v1.0+):
+# `agent-docs audit` flags any `.agents/skills/<name>` directory whose name is
+# not lowercase kebab-case starting with `project-` or `private-`.
+[skills]
+enforce_name_prefix = true
