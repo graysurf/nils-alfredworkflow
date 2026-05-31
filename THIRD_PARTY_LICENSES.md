@@ -12,25 +12,25 @@ Do not edit manually.
 
 ## Deterministic Provenance
 
-- Data source fingerprint (SHA256): `b3d41b009175e1f403958b4ea4653659a94361898c9bb1d837cbf60ea78ac25a`
+- Data source fingerprint (SHA256): `27a53c53ac289e3799b1d62aae71d208d445915c1f26e73cc1b76e83a8acae59`
 - Runtime metadata fingerprint (SHA256): `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20`
 
 ## Data Sources
 
 | Source | Locator | SHA256 | Notes |
 | --- | --- | --- | --- |
-| Cargo lockfile | `Cargo.lock` | `93e602dfa193f800a9c585eb4578d4cf66bbf535f0a8db71bb43b82749e5cf58` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
+| Cargo lockfile | `Cargo.lock` | `9df6bb8fe83378c026a6c5d8d8f62e7bac908803224c7f55a30d73086be16f98` | `cargo metadata --format-version 1 --locked --filter-platform per supported target` |
 | Node lockfile | `package-lock.json` | `d8941f674a12cbe979fc656bf6b40b42320b66e4cf62cb0edcc762574dceeaec` | `jq package-lock extraction` |
 | Runtime crate pin | `scripts/lib/codex_cli_version.sh` | `65863452d659031214590bf2d8e8ee4b1a21d70c546647d30d373053ea7ad036` | `source for $CODEX_CLI_CRATE and $CODEX_CLI_VERSION` |
 | Runtime crate metadata | <https://crates.io/api/v1/crates/nils-codex-cli/0.7.3> | `a154f614b02ad4d117fbf4f14a69366ed065d9ebff5def78d019f90558ec3e20` | `curl crates.io API plus jq normalized fields` |
 
-## Rust License Summary (457 crates)
+## Rust License Summary (464 crates)
 
 | Count | License Expression |
 | ---: | --- |
-| 212 | MIT OR Apache-2.0 |
-| 115 | MIT |
-| 33 | Apache-2.0 OR MIT |
+| 213 | MIT OR Apache-2.0 |
+| 120 | MIT |
+| 34 | Apache-2.0 OR MIT |
 | 19 | MIT/Apache-2.0 |
 | 18 | Unicode-3.0 |
 | 15 | Apache-2.0 |
@@ -124,11 +124,12 @@ Do not edit manually.
 | clang-sys | 1.8.1 | Apache-2.0 | <https://github.com/KyleMayes/clang-sys> |
 | clap | 4.6.1 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_builder | 4.6.0 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
-| clap_complete | 4.6.3 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
+| clap_complete | 4.6.5 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_derive | 4.6.1 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | clap_lex | 1.1.0 | MIT OR Apache-2.0 | <https://github.com/clap-rs/clap> |
 | colorchoice | 1.0.5 | MIT OR Apache-2.0 | <https://github.com/rust-cli/anstyle.git> |
 | concurrent-queue | 2.5.0 | Apache-2.0 OR MIT | <https://github.com/smol-rs/concurrent-queue> |
+| console | 0.16.3 | MIT | <https://github.com/console-rs/console> |
 | core-foundation | 0.10.1 | MIT OR Apache-2.0 | <https://github.com/servo/core-foundation-rs> |
 | core-foundation-sys | 0.8.7 | MIT OR Apache-2.0 | <https://github.com/servo/core-foundation-rs> |
 | cpufeatures | 0.2.17 | MIT OR Apache-2.0 | <https://github.com/RustCrypto/utils> |
@@ -240,6 +241,7 @@ Do not edit manually.
 | idna_adapter | 1.2.2 | Apache-2.0 OR MIT | <https://github.com/hsivonen/idna_adapter> |
 | indexmap | 1.9.3 | Apache-2.0 OR MIT | <https://github.com/bluss/indexmap> |
 | indexmap | 2.14.0 | Apache-2.0 OR MIT | <https://github.com/indexmap-rs/indexmap> |
+| indicatif | 0.18.4 | MIT | <https://github.com/console-rs/indicatif> |
 | inout | 0.1.4 | MIT OR Apache-2.0 | <https://github.com/RustCrypto/utils> |
 | intrusive-collections | 0.9.7 | Apache-2.0/MIT | <https://github.com/Amanieu/intrusive-rs> |
 | inventory | 0.3.24 | MIT OR Apache-2.0 | <https://github.com/dtolnay/inventory> |
@@ -262,7 +264,7 @@ Do not edit manually.
 | libloading | 0.8.9 | ISC | <https://github.com/nagisa/rust_libloading/> |
 | libm | 0.2.16 | MIT | <https://github.com/rust-lang/compiler-builtins> |
 | libmimalloc-sys | 0.1.47 | MIT | <https://github.com/purpleprotocol/mimalloc_rust/tree/master/libmimalloc-sys> |
-| libsqlite3-sys | 0.37.0 | MIT | <https://github.com/rusqlite/rusqlite> |
+| libsqlite3-sys | 0.38.0 | MIT | <https://github.com/rusqlite/rusqlite> |
 | linux-keyutils | 0.2.5 | Apache-2.0 OR MIT | <https://github.com/landhb/linux-keyutils> |
 | linux-keyutils-keyring-store | 1.0.0 | MIT OR Apache-2.0 | <https://github.com/open-source-cooperative/linux-keyutils-keyring-store.git> |
 | linux-raw-sys | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | <https://github.com/sunfishcode/linux-raw-sys> |
@@ -287,8 +289,10 @@ Do not edit manually.
 | minimal-lexical | 0.2.1 | MIT/Apache-2.0 | <https://github.com/Alexhuszagh/minimal-lexical> |
 | mio | 1.2.0 | MIT | <https://github.com/tokio-rs/mio> |
 | murmurhash32 | 0.3.1 | MIT | <https://github.com/quickwit-inc/murmurhash32> |
-| nils-common | 0.8.3 | MIT | <https://github.com/sympoies/nils-cli> |
-| nils-memo-cli | 0.8.3 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-build-info | 1.0.0 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-common | 1.0.0 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-memo | 1.0.0 | MIT | <https://github.com/sympoies/nils-cli> |
+| nils-term | 1.0.0 | MIT | <https://github.com/sympoies/nils-cli> |
 | nom | 7.1.3 | MIT | <https://github.com/Geal/nom> |
 | nu-ansi-term | 0.50.3 | MIT | <https://github.com/nushell/nu-ansi-term> |
 | num | 0.4.3 | MIT OR Apache-2.0 | <https://github.com/rust-num/num> |
@@ -328,6 +332,7 @@ Do not edit manually.
 | pkg-config | 0.3.33 | MIT OR Apache-2.0 | <https://github.com/rust-lang/pkg-config-rs> |
 | polling | 3.11.0 | Apache-2.0 OR MIT | <https://github.com/smol-rs/polling> |
 | polyval | 0.6.2 | Apache-2.0 OR MIT | <https://github.com/RustCrypto/universal-hashes> |
+| portable-atomic | 1.13.1 | Apache-2.0 OR MIT | <https://github.com/taiki-e/portable-atomic> |
 | potential_utf | 0.1.5 | Unicode-3.0 | <https://github.com/unicode-org/icu4x> |
 | powerfmt | 0.2.0 | MIT OR Apache-2.0 | <https://github.com/jhpratt/powerfmt> |
 | ppv-lite86 | 0.2.21 | MIT OR Apache-2.0 | <https://github.com/cryptocorrosion/cryptocorrosion> |
@@ -369,7 +374,7 @@ Do not edit manually.
 | rpassword | 7.5.2 | Apache-2.0 | <https://github.com/conradkleinespel/rpassword> |
 | rprompt | 2.2.0 | Apache-2.0 | <https://github.com/conradkleinespel/rprompt> |
 | rtoolbox | 0.0.5 | Apache-2.0 | <https://github.com/conradkleinespel/rtoolbox> |
-| rusqlite | 0.39.0 | MIT | <https://github.com/rusqlite/rusqlite> |
+| rusqlite | 0.40.0 | MIT | <https://github.com/rusqlite/rusqlite> |
 | rust-stemmers | 1.2.0 | MIT/BSD-3-Clause | <https://github.com/CurrySoftware/rust-stemmers> |
 | rust_decimal | 1.42.0 | MIT | <https://github.com/paupino/rust-decimal> |
 | rustc-hash | 1.1.0 | Apache-2.0/MIT | <https://github.com/rust-lang-nursery/rustc-hash> |
@@ -479,6 +484,8 @@ Do not edit manually.
 | unicase | 2.9.0 | MIT OR Apache-2.0 | <https://github.com/seanmonstar/unicase> |
 | unicode-ident | 1.0.24 | (MIT OR Apache-2.0) AND Unicode-3.0 | <https://github.com/dtolnay/unicode-ident> |
 | unicode-width | 0.1.14 | MIT OR Apache-2.0 | <https://github.com/unicode-rs/unicode-width> |
+| unicode-width | 0.2.2 | MIT OR Apache-2.0 | <https://github.com/unicode-rs/unicode-width> |
+| unit-prefix | 0.5.2 | MIT | <https://codeberg.org/commons-rs/unit-prefix> |
 | universal-hash | 0.5.1 | MIT OR Apache-2.0 | <https://github.com/RustCrypto/traits> |
 | untrusted | 0.9.0 | ISC | <https://github.com/briansmith/untrusted> |
 | url | 2.5.8 | MIT OR Apache-2.0 | <https://github.com/servo/rust-url> |

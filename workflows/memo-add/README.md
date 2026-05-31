@@ -1,6 +1,6 @@
 # Memo Add - Alfred Workflow
 
-Capture memo text quickly into SQLite-backed `nils-memo-cli@0.8.3` storage.
+Capture memo text quickly into SQLite-backed `nils-memo@1.0.0` storage.
 
 ## Screenshot
 
@@ -25,7 +25,7 @@ Set these via Alfred's `Configure Workflow...` UI:
 
 | Variable                | Required | Default   | Description                                                                            |
 | ----------------------- | -------- | --------- | -------------------------------------------------------------------------------------- |
-| `MEMO_DB_PATH`          | No       | `(empty)` | SQLite path override. Empty uses Alfred workflow data dir, then memo-cli default path. |
+| `MEMO_DB_PATH`          | No       | `(empty)` | SQLite path override. Empty uses Alfred workflow data dir, then memo default path. |
 | `MEMO_SOURCE`           | No       | `alfred`  | Source label saved with each memo item.                                                |
 | `MEMO_REQUIRE_CONFIRM`  | No       | `0`       | `1/true/yes/on` adds an explicit confirm row before add action.                        |
 | `MEMO_MAX_INPUT_BYTES`  | No       | `4096`    | Max bytes allowed for one memo input.                                                  |

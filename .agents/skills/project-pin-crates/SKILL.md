@@ -37,9 +37,9 @@ Managed targets:
   - aliases: `codex-cli`, `codex`, `nils-codex-cli`
   - published crate: `nils-codex-cli`
   - updates: codex workflow runtime pin + related docs text
-- `memo-cli`
-  - aliases: `memo-cli`, `memo`, `nils-memo-cli`
-  - published crate: `nils-memo-cli`
+- `memo`
+  - aliases: `memo`, `nils-memo`
+  - published crate: `nils-memo`
   - updates: cargo dependency pin + related docs text
 
 Outputs:
@@ -85,7 +85,7 @@ Failure modes:
 3. Verify selected published crate versions exist on `crates.io`.
 4. Apply file updates for each target:
    - `codex-cli`: runtime script and docs pin strings.
-   - `memo-cli`: cargo dependency and docs pin strings.
+   - `memo`: cargo dependency and docs pin strings.
 5. Optionally run lock sync (`--update-lock`) for cargo targets.
 6. Optionally run semantic auto-commit and auto-push.
 7. Print summary with touched files and crates.

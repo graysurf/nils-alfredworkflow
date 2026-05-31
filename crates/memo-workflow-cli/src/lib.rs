@@ -2,9 +2,9 @@ use std::env;
 use std::path::PathBuf;
 
 use alfred_core::{Feedback, Item, ItemModifier};
-use memo_cli::errors::AppError as MemoCliError;
-use memo_cli::output::{format_item_id, parse_item_id};
-use memo_cli::storage::{Storage, repository, search};
+use memo::errors::AppError as MemoCliError;
+use memo::output::{format_item_id, parse_item_id};
+use memo::storage::{Storage, repository, search};
 use serde::Serialize;
 use thiserror::Error;
 
