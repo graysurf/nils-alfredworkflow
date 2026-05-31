@@ -1,5 +1,5 @@
 ---
-name: nils-alfredworkflow-pin-crates
+name: project-pin-crates
 description: Pin managed crates and workflow runtime crate versions to an exact release.
 argument-hint: "--version <x.y.z> [--targets <t,…>] [--dry-run]"
 allowed-tools: Bash, Read
@@ -76,7 +76,7 @@ Failure modes:
 
 ## Scripts (only entrypoints)
 
-- `<PROJECT_ROOT>/.agents/skills/nils-alfredworkflow-pin-crates/scripts/nils-alfredworkflow-pin-crates.sh`
+- `<PROJECT_ROOT>/.agents/skills/project-pin-crates/scripts/project-pin-crates.sh`
 
 ## Workflow
 

@@ -1,5 +1,5 @@
 ---
-name: nils-alfredworkflow-release-workflow
+name: project-release-workflow
 description: Create and push a release tag to trigger GitHub Release workflow.
 argument-hint: "<vX.Y.Z> [--dry-run] [--force-tag]"
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob
@@ -73,7 +73,7 @@ Failure modes:
 
 ## Scripts (only entrypoints)
 
-- `<PROJECT_ROOT>/.agents/skills/nils-alfredworkflow-release-workflow/scripts/nils-alfredworkflow-release-workflow.sh`
+- `<PROJECT_ROOT>/.agents/skills/project-release-workflow/scripts/project-release-workflow.sh`
 
 ## Workflow
 
