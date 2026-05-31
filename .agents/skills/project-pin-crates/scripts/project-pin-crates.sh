@@ -277,7 +277,7 @@ crate, version = sys.argv[1], sys.argv[2]
 url = f"https://crates.io/api/v1/crates/{crate}/{version}"
 request = urllib.request.Request(
     url,
-    headers={"User-Agent": "nils-alfredworkflow-pin-crates/1.0"},
+    headers={"User-Agent": "project-pin-crates/1.0"},
 )
 try:
     with urllib.request.urlopen(request, timeout=20) as response:
