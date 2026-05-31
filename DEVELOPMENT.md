@@ -19,7 +19,9 @@ Use this file for day-to-day development, quality gates, and local validation fl
 
 - If Rust/cargo (or required cargo tools) are not installed yet, run:
   - `scripts/setup-rust-tooling.sh`
-- For one-off Python helper isolation, use uv with `python3` without creating a repository virtual environment:
+- For Python helper isolation, `.envrc` creates a repository `.venv` with `uv venv` when direnv loads:
+  - `direnv allow`
+- For one-off Python helper runs that should stay isolated from the repository `.venv`, use uv with `python3`:
   - `uv run --python python3 --isolated python <script-or-module>`
 - For workflows that use Node + Playwright tooling, run:
   - `scripts/setup-node-playwright.sh`
