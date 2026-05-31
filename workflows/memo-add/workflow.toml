@@ -8,7 +8,7 @@ rust_binary = "memo-workflow-cli"
 assets = ["src/assets/icon.png"]
 
 [env]
-# Optional SQLite path override. Empty uses Alfred workflow data dir, then memo-cli default path.
+# Optional SQLite path override. Empty uses Alfred workflow data dir, then memo default path.
 MEMO_DB_PATH = ""
 # Optional source label persisted with each added memo.
 MEMO_SOURCE = "alfred"

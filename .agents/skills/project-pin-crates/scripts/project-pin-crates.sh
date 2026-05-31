@@ -32,7 +32,7 @@ Usage:
 
 Options:
   --version <ver>         Exact version to pin (example: 0.3.7)
-  --targets <list>        Comma-separated target aliases (example: codex-cli,memo-cli)
+  --targets <list>        Comma-separated target aliases (example: codex-cli,memo)
   --all                   Pin all managed targets (default if --targets omitted)
   --dry-run               Print planned changes without writing files
   --update-lock           Run cargo update --precise for cargo-managed targets
@@ -59,7 +59,7 @@ usage_error() {
 target_crate() {
   case "$1" in
     codex-cli) printf '%s\n' "nils-codex-cli" ;;
-    memo-cli) printf '%s\n' "nils-memo-cli" ;;
+    memo) printf '%s\n' "nils-memo" ;;
     *) return 1 ;;
   esac
 }
@@ -67,7 +67,7 @@ target_crate() {
 canonical_target() {
   case "$1" in
     codex-cli|codex|nils-codex-cli) printf '%s\n' "codex-cli" ;;
-    memo-cli|memo|nils-memo-cli) printf '%s\n' "memo-cli" ;;
+    memo|nils-memo) printf '%s\n' "memo" ;;
     *) return 1 ;;
   esac
 }
@@ -78,9 +78,9 @@ codex-cli
   aliases: codex-cli, codex, nils-codex-cli
   published_crate: nils-codex-cli
   kind: workflow runtime pin + docs
-memo-cli
-  aliases: memo-cli, memo, nils-memo-cli
-  published_crate: nils-memo-cli
+memo
+  aliases: memo, nils-memo
+  published_crate: nils-memo
   kind: cargo dependency pin + docs
 TARGETS
 }
@@ -198,7 +198,7 @@ pin_codex_cli() {
     "codex plist install hint pin"
 }
 
-pin_memo_cli() {
+pin_memo() {
   local cargo_file="$repo_root/crates/memo-workflow-cli/Cargo.toml"
   local crate_readme_file="$repo_root/crates/memo-workflow-cli/README.md"
   local workflow_readme_file="$repo_root/workflows/memo-add/README.md"
@@ -207,27 +207,27 @@ pin_memo_cli() {
 
   replace_in_file \
     "$cargo_file" \
-    'nils-memo-cli = "=[^"]+"' \
-    "nils-memo-cli = \"=${version}\"" \
+    'nils-memo = "=[^"]+"' \
+    "nils-memo = \"=${version}\"" \
     "memo cargo dependency pin"
 
   replace_in_file \
     "$crate_readme_file" \
-    'nils-memo-cli@[0-9A-Za-z.+-]+' \
-    "nils-memo-cli@${version}" \
+    'nils-memo@[0-9A-Za-z.+-]+' \
+    "nils-memo@${version}" \
     "memo crate readme pin"
 
   replace_in_file \
     "$workflow_readme_file" \
-    'nils-memo-cli@[0-9A-Za-z.+-]+' \
-    "nils-memo-cli@${version}" \
+    'nils-memo@[0-9A-Za-z.+-]+' \
+    "nils-memo@${version}" \
     "memo workflow readme pin"
 
   if [[ -f "$workflow_guide_file" ]]; then
     replace_in_file \
       "$workflow_guide_file" \
-      'nils-memo-cli@[0-9A-Za-z.+-]+' \
-      "nils-memo-cli@${version}" \
+      'nils-memo@[0-9A-Za-z.+-]+' \
+      "nils-memo@${version}" \
       "memo workflow guide pin"
   else
     echo "note: optional file missing, skipped memo workflow guide pin: $workflow_guide_file"
@@ -235,18 +235,18 @@ pin_memo_cli() {
 
   replace_in_file \
     "$workflow_contract_file" \
-    'nils-memo-cli@[0-9A-Za-z.+-]+' \
-    "nils-memo-cli@${version}" \
+    'nils-memo@[0-9A-Za-z.+-]+' \
+    "nils-memo@${version}" \
     "memo workflow contract pin"
 
-  record_lock_crate "nils-memo-cli"
+  record_lock_crate "nils-memo"
 }
 
 resolve_targets() {
   declare -A dedup=()
   local token canonical
   if [[ "$use_all" -eq 1 || -z "$targets_raw" ]]; then
-    selected_targets=("codex-cli" "memo-cli")
+    selected_targets=("codex-cli" "memo")
     return 0
   fi
 
@@ -518,7 +518,7 @@ verify_target_versions_available
 for target in "${selected_targets[@]}"; do
   case "$target" in
     codex-cli) pin_codex_cli ;;
-    memo-cli) pin_memo_cli ;;
+    memo) pin_memo ;;
     *) usage_error "unsupported target: $target" ;;
   esac
 done

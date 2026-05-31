@@ -194,7 +194,7 @@
   <key>createdby</key>
   <string>sympoies</string>
   <key>description</key>
-  <string>Add memos quickly via nils-memo-cli with optional db init and recent list preview.</string>
+  <string>Add memos quickly via nils-memo with optional db init and recent list preview.</string>
   <key>disabled</key>
   <false/>
   <key>name</key>
@@ -896,7 +896,7 @@
         <true/>
       </dict>
       <key>description</key>
-      <string>Optional SQLite path override. Empty uses Alfred workflow data dir then memo-cli fallback.</string>
+      <string>Optional SQLite path override. Empty uses Alfred workflow data dir then memo fallback.</string>
       <key>label</key>
       <string>MEMO_DB_PATH</string>
       <key>type</key>
